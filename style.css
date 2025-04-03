@@ -1,0 +1,27 @@
+/* Basic Reset & Body Styling */
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%; /* Ensure body takes full viewport height for centering */
+    overflow: hidden; /* Prevent scrollbars if container is slightly too big */
+    background-color: black; /* Black background for the whole page */
+    display: flex; /* Use flexbox for centering */
+    justify-content: center; /* Center horizontally */
+    align-items: center; /* Center vertically */
+    font-family: sans-serif; /* Basic font */
+}
+
+/* Game Container Styling */
+#game-container {
+    width: 800px; /* Match canvas width */
+    height: 800px; /* Match canvas height */
+    border: 3px solid white; /* White border */
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); /* Optional: subtle glow */
+}
+
+/* Canvas Styling */
+#game-canvas {
+    display: block; /* Prevents potential extra space below the canvas */
+    /* Width and height are controlled by the attributes in HTML for resolution,
+       and the container div controls the layout size. */
+}
