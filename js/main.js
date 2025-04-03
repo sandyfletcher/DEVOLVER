@@ -15,6 +15,8 @@ import * as Renderer from './renderer.js'; // Handles drawing to canvas
 import * as World from './world.js'; // Handles terrain generation and properties
 import { Player } from './player.js'; // The player character class/logic
 
+import * as ItemManager from './itemManager.js';
+
 // --- Future Module Imports (Placeholders) ---
 // import * as EnemyManager from './enemyManager.js'; // Handles enemy spawning, updates, drawing
 // import * as ItemManager from './itemManager.js';   // Handles dropped items, pickup logic
@@ -31,6 +33,58 @@ let lastTime = 0; // For delta time calculation
 // --- Future Global Variables ---
 // let currentWave = 0;
 // let resources = { wood: 0, stone: 0 }; // Example resource tracking
+
+// -----------------------------------------------------------------------------
+// Collision Detection Helper
+// -----------------------------------------------------------------------------
+/**
+ * Simple AABB collision check.
+ * @param {object} rect1 - {x, y, width, height}
+ * @param {object} rect2 - {x, y, width, height}
+ * @returns {boolean} True if rectangles overlap.
+ */
+function checkCollision(rect1, rect2) {
+    return rect1.x < rect2.x + rect2.width &&
+           rect1.x + rect1.width > rect2.x &&
+           rect1.y < rect2.y + rect2.height &&
+           rect1.y + rect1.height > rect2.y;
+}
+
+/**
+ * Checks for and handles collisions between the player and items.
+ */
+function checkPlayerItemCollisions() {
+    if (!player) return;
+
+    const items = ItemManager.getItems();
+    const playerRect = {
+        x: player.x,
+        y: player.y,
+        width: player.width,
+        height: player.height
+    };
+
+    // Iterate backwards to allow safe removal while looping
+    for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        const itemRect = {
+            x: item.x,
+            y: item.y, // Use the actual item y, not drawY with bobble for collision
+            width: item.width,
+            height: item.height
+        };
+
+        if (checkCollision(playerRect, itemRect)) {
+            // Attempt to pick up the item
+            const pickedUp = player.pickupItem(item);
+            if (pickedUp) {
+                // If pickup was successful, remove item from the world
+                ItemManager.removeItem(item);
+            }
+            // Optional: Add a small delay before picking up another item?
+        }
+    }
+}
 
 // -----------------------------------------------------------------------------
 // Game Loop
@@ -55,6 +109,8 @@ function gameLoop(timestamp) {
         player.update(dt, inputState, World.getSurfaceY);
     }
 
+    ItemManager.update(dt, World.getSurfaceY);
+
     // 2. Future Updates (Placeholders)
     // EnemyManager.update(dt, player.getPosition()); // Enemies might need player pos
     // ItemManager.update(dt);
@@ -64,6 +120,7 @@ function gameLoop(timestamp) {
 
     // 3. Collision Checks (Future - more complex interactions)
     // checkCollisions(player, EnemyManager.getEnemies(), ItemManager.getItems());
+    checkPlayerItemCollisions();
 
     // 4. Game State Checks (Future)
     // checkWinLossConditions();
@@ -74,6 +131,8 @@ function gameLoop(timestamp) {
     // 1. World Rendering
     World.draw(Renderer.getContext()); // Pass context if needed by draw functions
 
+    ItemManager.draw(Renderer.getContext());
+
     // 2. Future Rendering (Placeholders)
     // ItemManager.draw(Renderer.getContext());
     // EnemyManager.draw(Renderer.getContext());
@@ -83,6 +142,11 @@ function gameLoop(timestamp) {
     if (player) {
         player.draw(Renderer.getContext());
     }
+
+    // 5. UI Rendering (incl. touch controls)
+    Input.drawControls(Renderer.getContext()); // <-- DRAW TOUCH CONTROLS
+    // UI.draw(...)
+
 
     // 4. UI Rendering (Future - drawn last to be on top)
     // UI.draw(Renderer.getContext(), player.getHealth(), resources, currentWave);
@@ -102,6 +166,7 @@ function init() {
         Renderer.init(); // Get canvas, context
         Input.init();    // Start listening for keyboard/mouse events
         World.init();    // Could pre-calculate things if needed
+        ItemManager.init();
     } catch (error) {
         console.error("Error initializing core systems:", error);
         gameRunning = false; // Stop game if core setup fails

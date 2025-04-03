@@ -28,6 +28,14 @@ export const PLAYER_HEIGHT = 20;
 export const PLAYER_START_X = HILL_CENTER_X - (PLAYER_WIDTH / 2); // Centered horizontally
 export const PLAYER_START_Y = GROUND_BASE_LEVEL - HILL_MAX_HEIGHT - PLAYER_HEIGHT - 50; // Start well above peak
 
+// --- Item Constants ---
+export const ITEM_GRAVITY = 0.3; // Items might fall slower/faster than player
+export const SWORD_WIDTH = 25;
+export const SWORD_HEIGHT = 8; // Simple horizontal rectangle for now
+export const SWORD_COLOR = 'rgb(180, 180, 190)'; // Silvery color
+export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob up and down slightly when idle
+export const ITEM_BOBBLE_SPEED = 0.05; // How fast items bob
+
 // --- Physics Constants ---
 export const GRAVITY = 0.4;
 export const PLAYER_MOVE_SPEED = 4;

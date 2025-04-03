@@ -24,6 +24,10 @@ export class Player {
         this.jumpForce = Config.PLAYER_JUMP_FORCE;
         this.gravity = Config.GRAVITY;
 
+        // sword thing:
+
+         this.hasSword = false;
+
         // Future properties: health, inventory, selected item, etc.
         // this.health = 100;
         // this.inventory = {};
@@ -145,13 +149,52 @@ export class Player {
         ctx.fillStyle = this.color;
         ctx.fillRect(this.x, this.y, this.width, this.height);
 
+        if (this.hasSword) {
+            ctx.fillStyle = Config.SWORD_COLOR;
+            // Draw a small square on the player's back/side or change player color slightly
+            ctx.fillRect(this.x + this.width / 2 - 2, this.y + 5, 4, 10);
+            // Or maybe change player color:
+            // ctx.fillStyle = 'rgb(255, 80, 80)'; // Slightly brighter red
+            // ctx.fillRect(this.x, this.y, this.width, this.height);
+       }
+   }
+
         // Future: Draw equipped items, animations, health bar above head, etc.
-    }
 
     // --- Getters (Example) ---
     getPosition() {
         return { x: this.x, y: this.y };
     }
+
+ // --- NEW METHOD ---
+    /**
+     * Handles the player picking up an item.
+     * @param {Item} item - The item being picked up.
+     */
+    pickupItem(item) {
+        console.log(`Player collided with ${item.type}`);
+        if (item.type === 'sword') {
+            if (!this.hasSword) {
+                this.hasSword = true;
+                console.log("Player picked up the sword!");
+                // Play sound effect? Update UI?
+                return true; // Indicate successful pickup
+            } else {
+                console.log("Player already has a sword.");
+                return false; // Indicate pickup failed (already have one)
+            }
+        }
+        // Add logic for other item types later (wood, stone -> add to inventory)
+        /*
+        else if (item.type === 'wood') {
+            // this.inventory.wood = (this.inventory.wood || 0) + 1;
+            console.log("Picked up wood!");
+            return true;
+        }
+        */
+       return false; // Item type not handled or pickup failed
+    }
+    // --- END NEW ---
 
     // --- Future Methods ---
     // takeDamage(amount) { this.health -= amount; if (this.health <= 0) this.die(); }
