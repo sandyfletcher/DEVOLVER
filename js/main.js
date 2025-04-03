@@ -250,9 +250,10 @@ function gameLoop(timestamp) {
 
     // --- Update Phase ---
     updateWaveSystem(dt);
-    if (player) { player.update(dt, inputState, World.getSurfaceY); }
-    ItemManager.update(dt, World.getSurfaceY);
-    EnemyManager.update(dt, World.getSurfaceY);
+    if (player) { player.update(dt, inputState); }
+    ItemManager.update(dt);
+    EnemyManager.update(dt);
+    World.update(dt);
 
     // --- Collision Detection Phase ---
     checkPlayerItemCollisions();
@@ -282,7 +283,12 @@ function init() {
     console.log("Initializing game with Health & Waves...");
     let initializationOk = true;
     try {
-        Renderer.init(); Input.init(); World.init(); ItemManager.init(); EnemyManager.init();
+        Renderer.init();
+        Renderer.createGridCanvas();
+        Input.init();
+        World.init();
+        ItemManager.init();
+        EnemyManager.init();
     } catch (error) { console.error("FATAL: Init Error:", error); initializationOk = false; gameRunning = false; }
 
     if (initializationOk) {

@@ -5,9 +5,8 @@
 console.log("enemy.js loaded");
 
 import * as Config from './config.js';
-// World import might be needed if getSurfaceY is used directly, but it's passed in now.
-// import * as World from './world.js';
 import * as ItemManager from './itemManager.js';
+import * as World from './world.js';
 
 export class Enemy {
     constructor(x, y) {
@@ -20,144 +19,140 @@ export class Enemy {
         this.vx = 0;
         this.vy = 0;
         this.speed = Config.ENEMY_SPEED;
+        console.log(`>>> Enemy CONSTRUCTED Init State: x=${x}, y=${y}, speed=${this.speed}`);
+        this.x = x; // Ensure assignment happens
+        this.y = y;
         this.gravity = Config.ENEMY_GRAVITY;
         this.health = Config.ENEMY_HEALTH;
-
         this.isOnGround = false;
         this.isActive = true;
         this.targetX = Config.ENEMY_TARGET_X;
 
-        // Log construction (Keep this)
-        console.log(`>>> Enemy CONSTRUCTED at x: ${this.x?.toFixed(1)}, y: ${this.y?.toFixed(1)}`);
+        // console.log(`>>> Enemy CONSTRUCTED at x: ${this.x?.toFixed(1)}, y: ${this.y?.toFixed(1)}`);
     }
 
-    /**
-     * Updates the enemy's state (AI, physics, collisions).
-     * @param {number} dt - Delta time.
-     * @param {function} getSurfaceY - Function to get terrain height (passed from main).
-     */
-    update(dt, getSurfaceY) {
-        // *** Add log to confirm update is called ***
-        // console.log(`>>> Enemy Update called for enemy at x: ${this.x?.toFixed(1)}`); // Optional: enable if needed
 
+    update(dt) {
+        // *** ADD LOG AT THE VERY START OF UPDATE ***
+        console.log(`>>> Enemy Update Start: x=${this.x}, y=${this.y}, vx=${this.vx}, vy=${this.vy}`);
+        // *** END LOG ***
         if (!this.isActive) return;
 
         // --- Simple AI ---
-        const currentCenterX = this.x + this.width / 2;
-        if (Math.abs(currentCenterX - this.targetX) > this.speed) {
-            const direction = Math.sign(this.targetX - currentCenterX);
-            this.vx = direction * this.speed;
-        } else {
-            this.vx = 0;
+        const currentCenterX = this.x + this.width / 2; // If this.x is NaN here, currentCenterX will be NaN
+        let direction = 0;
+        // Add safety check for currentCenterX
+        if (!isNaN(currentCenterX) && Math.abs(currentCenterX - this.targetX) > this.speed) {
+            direction = Math.sign(this.targetX - currentCenterX);
+        } else if (isNaN(currentCenterX)) {
+            console.error(">>> Enemy Update AI ERROR: currentCenterX is NaN!");
+            // Maybe stop moving if center X is invalid?
+            direction = 0; // Or handle error case
         }
+        // console.log(`>>> Enemy Update AI: Before vx: direction = ${direction}, speed = ${this.speed}`);
+        this.vx = direction * this.speed;
+        // console.log(`>>> Enemy Update AI: After vx set: vx = ${this.vx}`);
 
-        // --- Physics ---
+
+        // --- Physics Step 1: Apply Gravity ---
         if (!this.isOnGround) {
             this.vy += this.gravity;
         }
 
-        // --- Update Position ---
+        // --- Physics Step 2: Update Potential Position ---
+        // console.log(`>>> Enemy Update Pos: Before: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}, vx=${this.vx}, vy=${this.vy}`);
         this.x += this.vx;
         this.y += this.vy;
-
-        // --- Collision Detection & Resolution ---
-        // Horizontal
-        if (this.x < Config.WATER_WIDTH) { this.x = Config.WATER_WIDTH; this.vx = 0; }
-        if (this.x + this.width > Config.CANVAS_WIDTH - Config.WATER_WIDTH) { this.x = Config.CANVAS_WIDTH - Config.WATER_WIDTH - this.width; this.vx = 0; }
-
-        // --- Vertical Collision ---
-        const checkX = this.x + this.width / 2;
-
-        // *** Log BEFORE calling getSurfaceY ***
-        console.log(`>>> Enemy Update Check: About to call getSurfaceY for checkX = ${checkX?.toFixed(1)}`);
-        const surfaceY = getSurfaceY(checkX); // Get the surface height
-        // *** Log AFTER calling getSurfaceY ***
-        console.log(`>>> Enemy Update Check: getSurfaceY returned surfaceY = ${surfaceY}`);
-
-        // Check if surfaceY is invalid
-        if (typeof surfaceY !== 'number' || isNaN(surfaceY)) {
-            console.error(`>>> Enemy Update ERROR: surfaceY is invalid (${surfaceY}) for checkX ${checkX}. Skipping vertical collision this frame.`);
-            // We skip the rest of the vertical collision logic if surfaceY is bad
-            // this.y might still be NaN if it became NaN from this.vy += this.gravity (if vy was already NaN)
-            // Let's check if vy is NaN too
-            if (isNaN(this.vy)) {
-                 console.error(`>>> Enemy Update ERROR: this.vy is also NaN! Resetting vy to 0.`);
-                 this.vy = 0; // Attempt recovery
-            }
-             // If y is already NaN, maybe try resetting it high up? Risky.
-             // if (isNaN(this.y)) { this.y = 50; } // Avoid this unless necessary
-            return;
-        }
-
-        // --- Process Valid Vertical Collision ---
-        this.isOnGround = false;
-        if (this.y + this.height >= surfaceY) {
-            if (this.vy >= 0) {
-                 const prevFeetY = (this.y - this.vy) + this.height;
-                 if (prevFeetY <= surfaceY + 1) {
-                    this.y = surfaceY - this.height; // Assign based on valid surfaceY
-                    // console.log(`>>> Enemy Update: Snapped Y to ${this.y?.toFixed(1)} based on surfaceY ${surfaceY.toFixed(1)}`);
-                    this.vy = 0;
-                    this.isOnGround = true;
-                 }
-                 else if (this.y + this.height > surfaceY + this.height / 2) {
-                    this.y = surfaceY - this.height;
-                    // console.log(`>>> Enemy Update (Safety): Snapped Y to ${this.y?.toFixed(1)} based on surfaceY ${surfaceY.toFixed(1)}`);
-                    this.vy = 0;
-                    this.isOnGround = true;
-                 }
-            }
-        }
-    } // --- End of update method ---
-
-
-    draw(ctx) {
         // Keep this log active
-        // console.log(`>>> Attempting to draw Enemy. isActive: ${this.isActive}, x: ${this.x?.toFixed(1)}, y: ${this.y?.toFixed(1)}, color: ${this.color}`);
+        console.log(`>>> Enemy Update Pos: After Add: x = ${this.x}, y = ${this.y}`);
 
-        if (!this.isActive) return;
-        if (!ctx) return;
 
+        // --- Physics Step 3: Grid Collision Detection & Resolution ---
+        // console.log(`>>> Enemy Update Collision: Before Check: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}`);
+        // Add check BEFORE calling collision if x or y is already NaN
         if (isNaN(this.x) || isNaN(this.y)) {
-             console.error(`>>> Enemy DRAW ERROR: Preventing draw due to NaN coordinates! x: ${this.x}, y: ${this.y}`);
-             return;
+            console.error(`>>> Enemy Update ERROR: Skipping collision check because x or y is NaN before check! x=${this.x}, y=${this.y}`);
+            // Don't call collision if state is invalid
+        } else {
+            const collisionResult = World.checkGridCollision(this); // This modifies x, y, vx, vy
+            this.isOnGround = collisionResult.isOnGround;
+            // console.log(`>>> Enemy Update Collision: After Check: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}, vx=${this.vx}, vy=${this.vy}, onGround=${this.isOnGround}`);
         }
 
-        ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+        // --- Screen Boundary Checks ---
+         // Add NaN check here too
+         if (!isNaN(this.x)) {
+            if (this.x < 0) {
+                 this.x = 0;
+                 if (this.vx < 0) this.vx = 0;
+            }
+            if (this.x + this.width > Config.CANVAS_WIDTH) {
+                 this.x = Config.CANVAS_WIDTH - this.width;
+                 if (this.vx > 0) this.vx = 0;
+            }
+        }
+
+
+        // --- Reset if falling out of world ---
+        if (this.y > Config.CANVAS_HEIGHT + 200) {
+            console.warn("Enemy fell out of world, marking inactive.");
+            this.isActive = false;
+        }
+
     }
 
+    // ... (takeDamage, die, getPosition, getRect) ...
     takeDamage(amount) {
         if (!this.isActive) return;
         this.health -= amount;
-        if (this.health <= 0) {
-            this.die();
-        }
+        if (this.health <= 0) { this.die(); }
     }
-
+    
     die() {
         if (!this.isActive) return;
-        console.log("Enemy died at:", this.x?.toFixed(1), this.y?.toFixed(1));
         this.isActive = false;
+        // Use optional chaining ?. for safety if x/y could be NaN when dying (shouldn't happen now but good practice)
+        const deadX = this.x ?? 0;
+        const deadY = this.y ?? 0;
+        console.log("Enemy died at:", deadX.toFixed(1), deadY.toFixed(1));
 
+        // Trigger Drops
         if (Math.random() < Config.ENEMY_DROP_CHANCE) {
             for (let i = 0; i < Config.ENEMY_DROP_AMOUNT; i++) {
-                 if (typeof this.x === 'number' && typeof this.y === 'number' && !isNaN(this.x) && !isNaN(this.y)) {
-                     let dropX = this.x + (this.width / 2) + (Math.random() - 0.5) * 10;
-                     let dropY = this.y + (this.height / 2);
+                 if (typeof deadX === 'number' && typeof deadY === 'number') {
+                     // --- ADJUST Y POSITION ---
+                     // Spawn near the center X, but slightly ABOVE the enemy's top edge
+                     let dropX = deadX + (this.width / 2);
+                     let dropY = deadY - Config.BLOCK_HEIGHT; // Start one block height above enemy 'y'
+                     // Add slight randomness so multiple drops don't stack perfectly
+                     dropX += (Math.random() - 0.5) * Config.BLOCK_WIDTH;
+                     dropY += (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.5;
+                     // --- END ADJUSTMENT ---
+
                      ItemManager.spawnItem(dropX, dropY, Config.ENEMY_DROP_TYPE);
                  } else {
                       console.warn("Enemy died with invalid coordinates, skipping drop spawn.");
                  }
             }
+            // console.log(`Enemy dropped ${Config.ENEMY_DROP_AMOUNT} ${Config.ENEMY_DROP_TYPE}`);
         }
     }
 
     getPosition() { return { x: this.x, y: this.y }; }
-
     getRect() {
-         const safeX = typeof this.x === 'number' && !isNaN(this.x) ? this.x : 0;
-         const safeY = typeof this.y === 'number' && !isNaN(this.y) ? this.y : 0;
-         return { x: safeX, y: safeY, width: this.width, height: this.height };
+         const sX = typeof this.x === 'number' && !isNaN(this.x) ? this.x : 0;
+         const sY = typeof this.y === 'number' && !isNaN(this.y) ? this.y : 0;
+         return { x: sX, y: sY, width: this.width, height: this.height };
     }
-} // --- END CLASS ---
+
+    draw(ctx) {
+        if (!this.isActive || !ctx) return;
+        if (isNaN(this.x) || isNaN(this.y)) {
+             console.error(`>>> Enemy DRAW ERROR: Preventing draw due to NaN coordinates! x: ${this.x}, y: ${this.y}`);
+             return;
+        }
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+    }
+
+}

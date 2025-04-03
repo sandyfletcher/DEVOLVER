@@ -5,9 +5,6 @@
 console.log("enemyManager.js loaded");
 
 import * as Config from './config.js';
-// World import might not be strictly needed if spawn calculation is simple,
-// but kept for potential future use (e.g., spawning near surface).
-import * as World from './world.js';
 import { Enemy } from './enemy.js';  // Import the Enemy class
 
 // --- Module State ---
@@ -31,33 +28,50 @@ export function init() {
  * @returns {boolean} True if an enemy was successfully spawned, false otherwise.
  */
 export function trySpawnEnemy() {
-    // Limit the total number of enemies allowed on screen
     if (enemies.length >= Config.MAX_ENEMIES) {
-        // console.log("Max enemies reached, spawn failed."); // Optional log
-        return false; // Cannot spawn more
+        return false;
     }
 
-    // Determine spawn side (left or right)
-    let spawnX;
+    // Determine island boundaries to spawn outside them
+    const islandWidth = Math.floor(Config.GRID_COLS * Config.WORLD_ISLAND_WIDTH_PERCENT);
+    const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2);
+    const islandEndCol = islandStartCol + islandWidth;
+
+    let spawnCol;
     const spawnSide = Math.random() < 0.5 ? 'left' : 'right';
 
-    // Calculate spawn position just outside the water zone, with slight randomness
     if (spawnSide === 'left') {
-        spawnX = Config.WATER_WIDTH - Config.ENEMY_WIDTH - (Math.random() * 20 + 5); // Spawn left
+        // Pick a random column in the left water area
+        spawnCol = Math.floor(Math.random() * islandStartCol);
     } else { // Right side
-        spawnX = Config.CANVAS_WIDTH - Config.WATER_WIDTH + (Math.random() * 20 + 5); // Spawn right
+        // Pick a random column in the right water area
+        spawnCol = islandEndCol + Math.floor(Math.random() * (Config.GRID_COLS - islandEndCol));
+    }
+     // Ensure spawnCol is within valid grid bounds (safety)
+     spawnCol = Math.max(0, Math.min(Config.GRID_COLS - 1, spawnCol));
+
+
+    // Calculate pixel X position (center of the chosen column)
+    const spawnX = (spawnCol + 0.5) * Config.BLOCK_WIDTH - (Config.ENEMY_WIDTH / 2); // Center enemy in block
+
+    // Spawn just above the defined water level row
+    const spawnY = (Config.WORLD_WATER_LEVEL_ROW - 1) * Config.BLOCK_HEIGHT;
+
+    // Optional: Add small random Y variation?
+    // const spawnY = (Config.WORLD_WATER_LEVEL_ROW - 1 + (Math.random() - 0.5)) * Config.BLOCK_HEIGHT;
+
+
+    console.log(`>>> trySpawnEnemy: Spawning in col ${spawnCol} at x=${spawnX.toFixed(1)}, y=${spawnY.toFixed(1)}`);
+
+    // Check if calculated spawnX is valid before creating enemy
+    if (isNaN(spawnX) || isNaN(spawnY)) {
+        console.error(">>> trySpawnEnemy ERROR: Calculated NaN spawn coordinates!", spawnX, spawnY);
+        return false; // Prevent spawning with NaN
     }
 
-    // Spawn relatively high up, let gravity handle the drop
-    // Could use World.getSurfaceY(spawnX) here if we wanted them to spawn
-    // closer to the ground, but spawning high is simpler for now.
-    const spawnY = 50 + (Math.random() - 0.5) * 20; // Slight vertical variation
-
-    // Create and add the new enemy
     const newEnemy = new Enemy(spawnX, spawnY);
     enemies.push(newEnemy);
-    // console.log(`Spawned enemy on ${spawnSide}. Total: ${enemies.length}`); // Can be noisy
-    return true; // Spawn was successful
+    return true;
 }
 
 /**

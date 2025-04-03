@@ -1,82 +1,98 @@
 // -----------------------------------------------------------------------------
-// renderer.js - Handles Canvas Setup and Basic Drawing Operations
+// js/renderer.js - Handles Canvas Setup and Drawing Operations
 // -----------------------------------------------------------------------------
+
 console.log("renderer.js loaded");
 
-import * as Config from './config.js'; // For canvas dimensions, background color
+import * as Config from './config.js';
 
 // --- Module State ---
 let canvas = null;
 let ctx = null;
+let gridCanvas = null; // The off-screen canvas element
+let gridCtx = null;    // The context for the off-screen canvas
 
 // --- Public Functions ---
 
-/**
- * Initializes the renderer by getting the canvas and context.
- * Must be called before any drawing operations.
- */
+/** Initializes the main canvas and rendering context. */
 export function init() {
     canvas = document.getElementById('game-canvas');
-    if (!canvas) {
-        throw new Error("Renderer: Canvas element with ID 'game-canvas' not found!");
-    }
-
-    // Set internal canvas dimensions explicitly from config
+    if (!canvas) { throw new Error("Renderer: Canvas element 'game-canvas' not found!"); }
     canvas.width = Config.CANVAS_WIDTH;
     canvas.height = Config.CANVAS_HEIGHT;
-
     ctx = canvas.getContext('2d');
-    if (!ctx) {
-        throw new Error("Renderer: Failed to get 2D rendering context!");
-    }
-
+    if (!ctx) { throw new Error("Renderer: Failed to get 2D context!"); }
     console.log("Renderer initialized successfully.");
 }
 
+/** Creates and initializes the off-screen canvas for the static grid layer. */
+export function createGridCanvas() {
+    // Check if it already exists maybe? For now, just create.
+    gridCanvas = document.createElement('canvas');
+    gridCanvas.width = Config.CANVAS_WIDTH;
+    gridCanvas.height = Config.CANVAS_HEIGHT;
+    gridCtx = gridCanvas.getContext('2d');
+    if (!gridCtx) { throw new Error("Renderer: Failed to get 2D context for grid canvas!"); }
+    console.log("Renderer: Grid canvas created.");
+    // Note: We don't return it here anymore, use getGridCanvas() / getGridContext()
+}
+
+/** Returns the main rendering context. */
+export function getContext() {
+    return ctx;
+}
+
+/** Returns the context for the off-screen grid canvas. */
+export function getGridContext() {
+    return gridCtx;
+}
+
 /**
- * Clears the entire canvas and fills with the background color.
+ * Returns the off-screen grid canvas HTML element itself.
+ * @returns {HTMLCanvasElement | null} The grid canvas element or null if not created.
+ */
+export function getGridCanvas() {
+    return gridCanvas;
+}
+
+/**
+ * Clears the entire main canvas and fills with the background color.
  */
 export function clear() {
     if (!ctx || !canvas) {
         console.error("Renderer: Cannot clear - not initialized.");
         return;
     }
-    // Clear the rectangle
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Optionally fill with background color (good practice)
     ctx.fillStyle = Config.BACKGROUND_COLOR;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
 /**
- * Returns the 2D rendering context.
- * @returns {CanvasRenderingContext2D | null} The context, or null if not initialized.
+ * Clears a rectangular region on the main canvas.
+ * Used for partial updates.
+ * @param {number} x - X-coordinate of top-left corner.
+ * @param {number} y - Y-coordinate of top-left corner.
+ * @param {number} width - Width of rectangle to clear.
+ * @param {number} height - Height of rectangle to clear.
  */
-export function getContext() {
-    return ctx;
+export function clearRect(x, y, width, height) {
+    if (!ctx) { console.error("Renderer: Cannot clearRect - not initialized."); return; }
+    // Maybe add bounds checking?
+    ctx.clearRect(x, y, width, height);
 }
 
+
 /**
- * Returns the canvas element.
+ * Returns the main canvas element.
  * @returns {HTMLCanvasElement | null} The canvas element, or null if not initialized.
  */
 export function getCanvas() {
     return canvas;
 }
 
-// --- Future Drawing Helpers (Examples) ---
+// --- Future Drawing Helpers (Examples - No Change) ---
 /*
-export function drawRect(x, y, width, height, color) {
-    if (!ctx) return;
-    ctx.fillStyle = color;
-    ctx.fillRect(x, y, width, height);
-}
-
-export function drawText(text, x, y, color = 'white', font = '16px sans-serif') {
-    if (!ctx) return;
-    ctx.fillStyle = color;
-    ctx.font = font;
-    ctx.fillText(text, x, y);
-}
+export function drawRect(x, y, width, height, color) { ... }
+export function drawText(text, x, y, color = 'white', font = '16px sans-serif') { ... }
 */

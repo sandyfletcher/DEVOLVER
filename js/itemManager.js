@@ -5,88 +5,99 @@
 console.log("itemManager.js loaded");
 
 import * as Config from './config.js';
-// Removed direct import of World, as getSurfaceY is passed into update now.
+import * as World from './world.js'; // <<< --- IMPORT WORLD ---
 
 // --- Internal Item Class ---
 class Item {
     constructor(x, y, type, width, height, color) {
         this.x = x;
         this.y = y;
-        this.type = type; // e.g., 'sword', 'wood', 'stone'
+        this.type = type;
         this.width = width;
         this.height = height;
         this.color = color;
 
-        this.vx = 0; // Items could have horizontal velocity from drops later
+        this.vx = 0; // Can be used for dropping with velocity
         this.vy = 0;
         this.isOnGround = false;
-        this.bobbleOffset = Math.random() * Math.PI * 2; // Random start for bobble animation
+        this.bobbleOffset = Math.random() * Math.PI * 2;
 
-        this.gravity = Config.ITEM_GRAVITY;
+        // Use general GRAVITY or specific ITEM_GRAVITY
+        this.gravity = Config.ITEM_GRAVITY ?? Config.GRAVITY;
     }
 
-    update(dt, getSurfaceY) {
-        // --- Physics ---
+    /**
+     * Updates the item's physics and state using grid collision.
+     * @param {number} dt - Delta time.
+     * @param {function} _getSurfaceY_IGNORED - Old function, no longer needed.
+     */
+    // --- Remove the getSurfaceY parameter ---
+    update(dt /*, getSurfaceY - REMOVED */) {
+
+        // --- Physics Step 1: Apply Forces (Gravity) ---
         if (!this.isOnGround) {
-            this.vy += this.gravity; // Apply item-specific gravity
-            this.y += this.vy; // Update vertical position
-
-            // --- Ground Collision ---
-            // Check surface level below the center of the item
-            const checkX = this.x + this.width / 2;
-            const surfaceY = getSurfaceY(checkX);
-
-            if (this.y + this.height >= surfaceY) {
-                 // Simple snap, similar to player/enemy
-                 const prevFeetY = (this.y - this.vy) + this.height;
-                 if (prevFeetY <= surfaceY + 1) { // Check if we were above last frame
-                    this.y = surfaceY - this.height; // Snap feet to surface
-                    this.vy = 0; // Stop vertical movement
-                    this.isOnGround = true;
-                 }
-                 // Safety snap if somehow embedded
-                 else if (this.y + this.height > surfaceY + this.height / 2) {
-                    this.y = surfaceY - this.height;
-                    this.vy = 0;
-                    this.isOnGround = true;
-                 }
-            }
+            this.vy += this.gravity;
+            // Optional: Clamp fall speed?
         } else {
-             // Simple bobbing effect when on ground
-             this.bobbleOffset += Config.ITEM_BOBBLE_SPEED; // Increase phase angle
-             // Calculation happens in draw()
+             // Apply bobbing offset change only when on ground
+             this.bobbleOffset += Config.ITEM_BOBBLE_SPEED;
         }
 
-        // Optional: Add horizontal movement decay/friction if vx is used later
-        // this.vx *= 0.95; // Example friction
-        // this.x += this.vx;
+        // --- Physics Step 2: Update Potential Position ---
+        // Apply friction/drag if needed: this.vx *= 0.95;
+        this.x += this.vx;
+        this.y += this.vy;
 
-        // Optional: World bounds check (prevent falling out, although they should hit ground)
+        // --- Physics Step 3: Grid Collision Detection & Resolution ---
+        // World.checkGridCollision handles snapping and velocity changes
+        const collisionResult = World.checkGridCollision(this);
+        this.isOnGround = collisionResult.isOnGround;
+
+        // If item hits something horizontally, maybe make it bounce slightly?
+        // if (collisionResult.collidedX && this.vx !== 0) {
+        //     this.vx *= -0.5; // Reverse and dampen horizontal velocity
+        // }
+
+        // --- Optional: Screen Boundary Checks (If needed) ---
+        if (this.x < 0) { this.x = 0; if (this.vx < 0) this.vx = 0; }
+        if (this.x + this.width > Config.CANVAS_WIDTH) { this.x = Config.CANVAS_WIDTH - this.width; if (this.vx > 0) this.vx = 0; }
+
+        // --- Despawn/Remove if falls out of world ---
         if (this.y > Config.CANVAS_HEIGHT + 100) {
-            // Mark for removal? Or just let it fall?
-            // For now, let it fall. Could be removed by manager later if needed.
-            // console.log(`Item ${this.type} fell out of bounds.`);
+             // Mark for removal? Need ItemManager to handle this.
+             // For now, just log and let it fall. A better way is needed.
+             console.warn(`Item ${this.type} fell out of bounds and was not removed.`);
+             // To properly remove, Item would need a flag like 'isActive'
+             // and ItemManager.update would filter inactive items.
         }
-    }
+
+    } // --- End of update method ---
+
 
     draw(ctx) {
+        if (!ctx) return;
+        // Check for NaN before drawing
+        if (isNaN(this.x) || isNaN(this.y)) {
+             console.error(`>>> Item DRAW ERROR: Preventing draw due to NaN coordinates! type: ${this.type}, x: ${this.x}, y: ${this.y}`);
+             return;
+        }
+
         let drawY = this.y;
         if (this.isOnGround) {
-            // Apply bobbing using sine wave, based on the offset calculated in update
+            // Apply bobbing only when on ground
              drawY += Math.sin(this.bobbleOffset) * Config.ITEM_BOBBLE_AMOUNT * this.height;
         }
 
         ctx.fillStyle = this.color;
-        ctx.fillRect(this.x, drawY, this.width, this.height);
-
-        // Could add fancier drawing based on type later (e.g., simple sprites)
+        ctx.fillRect(this.x, drawY, this.width, this.height); // Use floor? Math.floor(this.x), etc.
     }
 
-    // Getter for collision box
     getRect() {
+         const safeX = typeof this.x === 'number' && !isNaN(this.x) ? this.x : 0;
+         const safeY = typeof this.y === 'number' && !isNaN(this.y) ? this.y : 0;
         return {
-            x: this.x,
-            y: this.y, // Use actual position for collision, not bobbing position
+            x: safeX,
+            y: safeY, // Use non-bobbing Y for collision
             width: this.width,
             height: this.height
         };
@@ -95,108 +106,59 @@ class Item {
 
 
 // --- Module State ---
-let items = []; // Array to hold all active Item instances
+let items = [];
 
 // --- Public Functions ---
 
-/**
- * Initializes the item manager. Spawns initial items if needed.
- */
 export function init() {
     items = [];
-    // Spawn the initial sword for testing
+    // Spawn initial sword - Adjust starting Y based on new grid/block size
+    const startY = (Config.WORLD_GROUND_LEVEL_MEAN - 10) * Config.BLOCK_HEIGHT; // Spawn ~10 blocks above ground mean
     spawnItem(
-        Config.HILL_CENTER_X - Config.SWORD_WIDTH / 2, // Center horizontally
-        50,                                            // Start high up
+        Config.CANVAS_WIDTH / 2 - Config.SWORD_WIDTH / 2, // Approx center X
+        startY,
         'sword'
     );
     console.log("Item Manager initialized.");
 }
 
-/**
- * Spawns a new item in the world based on its type.
- * @param {number} x - Initial X position.
- * @param {number} y - Initial Y position.
- * @param {string} type - The type of item (e.g., 'sword', 'wood').
- */
 export function spawnItem(x, y, type) {
     let newItem = null;
-
     if (type === 'sword') {
-        newItem = new Item(
-            x, y, type,
-            Config.SWORD_WIDTH,
-            Config.SWORD_HEIGHT,
-            Config.SWORD_COLOR
-        );
+        newItem = new Item(x, y, type, Config.SWORD_WIDTH, Config.SWORD_HEIGHT, Config.SWORD_COLOR);
     }
-    // --- HANDLE WOOD ITEM SPAWNING ---
-    else if (type === Config.ENEMY_DROP_TYPE) { // Use config constant 'wood'
-         newItem = new Item(
-             x, y, type,
-             Config.WOOD_ITEM_WIDTH,
-             Config.WOOD_ITEM_HEIGHT,
-             Config.WOOD_ITEM_COLOR
-         );
+    else if (type === Config.ENEMY_DROP_TYPE) { // 'wood'
+         newItem = new Item(x, y, type, Config.WOOD_ITEM_WIDTH, Config.WOOD_ITEM_HEIGHT, Config.WOOD_ITEM_COLOR);
     }
-    // --- Add 'else if' for other future item types (stone, etc.) ---
-    // else if (type === 'stone') {
-    //     newItem = new Item(x, y, type, Config.STONE_ITEM_WIDTH, ...);
-    // }
+    // Add other item types here
 
-
-    // Add the newly created item to the list if it's valid
-    if (newItem) {
-        items.push(newItem);
-        // console.log(`Spawned item: ${type} at (${x.toFixed(1)}, ${y.toFixed(1)})`); // Optional logging
-    } else {
-        console.warn(`Attempted to spawn unknown or unhandled item type: ${type}`);
-    }
+    if (newItem) { items.push(newItem); }
+    else { console.warn(`ItemManager: Attempted to spawn unknown item type: ${type}`); }
 }
 
 /**
- * Updates all active items (physics, state).
+ * Updates all active items using grid collision.
  * @param {number} dt - Delta time.
- * @param {function} getSurfaceY - Function to get terrain height (passed from main loop).
+ * @param {function} _getSurfaceY_IGNORED - Old function, no longer needed.
  */
-export function update(dt, getSurfaceY) {
-    // Update all items. Could optimize later if many items exist.
+// --- Remove getSurfaceY parameter ---
+export function update(dt /*, getSurfaceY - REMOVED */) {
+    // Update items (consider iterating backwards if removing items within loop)
     items.forEach(item => {
-        item.update(dt, getSurfaceY);
-        // Add logic here later for item despawning after a certain time?
-        // item.lifetime -= dt; if (item.lifetime <= 0) removeItem(item);
+        item.update(dt); // Call item update without getSurfaceY
+        // TODO: Implement item despawning logic here if needed
+        // (e.g., item.lifetime -= dt; if (item.lifetime <= 0) markForRemoval = true;)
     });
+    // TODO: Filter out items marked for removal
+    // items = items.filter(item => !item.markForRemoval);
 }
 
-/**
- * Draws all active items.
- * @param {CanvasRenderingContext2D} ctx - The drawing context.
- */
 export function draw(ctx) {
-    items.forEach(item => {
-        item.draw(ctx);
-    });
+    items.forEach(item => { item.draw(ctx); });
 }
 
-/**
- * Returns the array of active items (for collision checks, etc.).
- * @returns {Item[]} The array of item instances.
- */
-export function getItems() {
-    return items;
-}
+export function getItems() { return items; }
 
-/**
- * Removes a specific item instance from the manager.
- * Usually called after the player picks it up.
- * @param {Item} itemToRemove - The specific item instance to remove.
- */
 export function removeItem(itemToRemove) {
-    // Filter out the item to remove, creating a new array
     items = items.filter(item => item !== itemToRemove);
-    // console.log(`Removed item: ${itemToRemove.type}`); // Optional logging
 }
-
-// --- Future functions ---
-// function removeItemsInRect(rect) { ... }
-// function getNearestItem(pos, type) { ... }
