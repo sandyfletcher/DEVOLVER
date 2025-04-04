@@ -9,8 +9,8 @@ export const CANVAS_WIDTH = 800; // Match canvas element width
 export const CANVAS_HEIGHT = 800; // Match canvas element height
 
 // --- NEW: Grid & Block Constants ---
-export const GRID_COLS = 100; // Updated size
-export const GRID_ROWS = 100; // Updated size
+export const GRID_COLS = 200; // Updated size
+export const GRID_ROWS = 200; // Updated size
 export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;   // Now 8 pixels wide
 export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS; // Now 8 pixels high
 
@@ -57,20 +57,30 @@ export const BLOCK_COLORS = {
 };
 
 // --- Procedural Generation Parameters ---
-export const WORLD_WATER_LEVEL_ROW = Math.floor(GRID_ROWS * 0.65); // Water fills up to ~65% from top
-export const WORLD_GROUND_LEVEL_MEAN = Math.floor(GRID_ROWS * 0.6); // Average ground level row index
-export const WORLD_GROUND_VARIATION = 8; // Max +/- rows variation from mean ground level
-export const WORLD_STONE_LEVEL_MEAN = Math.floor(GRID_ROWS * 0.75); // Average stone level
-export const WORLD_STONE_VARIATION = 6; // Max +/- rows variation for stone layer start
-export const WORLD_ISLAND_WIDTH_PERCENT = 0.8; // How much of the grid width is land (80%)
-export const WORLD_NOISE_SCALE = 0.08; // Controls frequency/waviness of terrain noise
+
+// Define water level as percentage from the bottom
+export const WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM = 0.04; // Target 4% water height (adjust between 0.02 and 0.06)
+// Calculate the actual row index (0 = top, GRID_ROWS-1 = bottom) Water will fill UP TO (and including) this row.
+export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM));
+
+// Adjust ground/stone levels relative to the NEW water level concept
+// Example: Mean ground level slightly above the target water level
+export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.05); // e.g., 5% of height above water
+export const WORLD_STONE_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1); // e.g., 10% of height below water (ensure it's below ground mean)
+
+// DRASTICALLY REDUCE variation for flatter terrain
+export const WORLD_GROUND_VARIATION = 2; // Max +/- rows variation (Try small values like 2, 3, 4)
+export const WORLD_STONE_VARIATION = 1; // Max +/- rows variation (Try small values like 1, 2, 3)
+
+export const WORLD_ISLAND_WIDTH_PERCENT = 0.8; // Keep this - we can use it to lower terrain outside this zone
+export const WORLD_NOISE_SCALE = 0.06; // Slightly smaller scale might work better with low variation, adjust as needed (0.05 - 0.1 range)
 
 // --- Player Constants ---
 export const PLAYER_WIDTH = Math.max(5, Math.floor(1.25 * BLOCK_WIDTH));
 export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT));
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
-// Start slightly above the mean ground level
-export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT);
+// Start slightly above the *new* mean ground level
+export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (3 * BLOCK_HEIGHT); // Adjusted buffer
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 export const PLAYER_INITIAL_HEALTH = 3;
 export const PLAYER_MAX_HEALTH = 10;
