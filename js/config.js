@@ -59,21 +59,21 @@ export const BLOCK_COLORS = {
 // --- Procedural Generation Parameters ---
 
 // Define water level as percentage from the bottom
-export const WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM = 0.04; // Target 4% water height (adjust between 0.02 and 0.06)
+export const WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM = 0.15; // Water covers bottom 15%
 // Calculate the actual row index (0 = top, GRID_ROWS-1 = bottom) Water will fill UP TO (and including) this row.
 export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM));
 
-// Adjust ground/stone levels relative to the NEW water level concept
-// Example: Mean ground level slightly above the target water level
-export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.05); // e.g., 5% of height above water
-export const WORLD_STONE_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1); // e.g., 10% of height below water (ensure it's below ground mean)
+// Ground level comfortably above water
+export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // e.g., 10% of height above water (Row ~130)
+// Stone level below ground level
+export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + Math.floor(GRID_ROWS * 0.15); // e.g., 15% below ground (Row ~160) - Ensure this is > WORLD_GROUND_LEVEL_MEAN
 
 // DRASTICALLY REDUCE variation for flatter terrain
-export const WORLD_GROUND_VARIATION = 2; // Max +/- rows variation (Try small values like 2, 3, 4)
-export const WORLD_STONE_VARIATION = 1; // Max +/- rows variation (Try small values like 1, 2, 3)
+export const WORLD_GROUND_VARIATION = 3; // Max +/- rows variation (Try 5-15)
+export const WORLD_STONE_VARIATION = 3; // Max +/- rows variation (Try 4-10)
 
 export const WORLD_ISLAND_WIDTH_PERCENT = 0.8; // Keep this - we can use it to lower terrain outside this zone
-export const WORLD_NOISE_SCALE = 0.06; // Slightly smaller scale might work better with low variation, adjust as needed (0.05 - 0.1 range)
+export const WORLD_NOISE_SCALE = 0.05; // Adjust (0.03 - 0.08)
 
 // --- Player Constants ---
 export const PLAYER_WIDTH = Math.max(5, Math.floor(1.25 * BLOCK_WIDTH));
