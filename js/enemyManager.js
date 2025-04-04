@@ -111,7 +111,7 @@ if (waterSurfaceRow !== -1) {
         return false; // Prevent spawning
     }
 
-    console.log(`>>> trySpawnEnemy SUCCESS: Spawning 'tetrapod' in col ${spawnCol} at x=${spawnX.toFixed(1)}, y=${spawnY.toFixed(1)}`);
+    // console.log(`>>> trySpawnEnemy SUCCESS: Spawning 'tetrapod' in col ${spawnCol} at x=${spawnX.toFixed(1)}, y=${spawnY.toFixed(1)}`);
     const newEnemy = new Enemy(spawnX, spawnY); // Pass coords to constructor
     enemies.push(newEnemy);
     return true;

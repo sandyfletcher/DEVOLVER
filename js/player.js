@@ -208,7 +208,7 @@ export class Player {
         // Use config drop type key for pickup check
         else if (Config.ENEMY_DROP_TYPE && item.type === Config.ENEMY_DROP_TYPE) {
              this.inventory[item.type] = (this.inventory[item.type] || 0) + 1;
-             console.log(`Picked up ${item.type}! Total: ${this.inventory[item.type]}`);
+             // console.log(`Picked up ${item.type}! Total: ${this.inventory[item.type]}`);
              return true;
         }
         return false;

@@ -106,8 +106,7 @@ function updateWaveSystem(dt) {
          }
     }
     else if (waveState === 'SPAWNING') {
-        // --- ADD DETAILED LOGS HERE ---
-        console.log(`[Spawning Update] Enemies Spawned: ${enemiesSpawnedThisWave}/${enemiesToSpawnThisWave}. Delay Timer: ${enemySpawnDelayTimer.toFixed(3)}`);
+        // console.log(`[Spawning Update] Enemies Spawned: ${enemiesSpawnedThisWave}/${enemiesToSpawnThisWave}. Delay Timer: ${enemySpawnDelayTimer.toFixed(3)}`);
 
         // Check if finished spawning
         if (enemiesSpawnedThisWave >= enemiesToSpawnThisWave) {
@@ -118,16 +117,16 @@ function updateWaveSystem(dt) {
 
         // Decrement spawn delay timer
         enemySpawnDelayTimer -= dt;
-        console.log(`[Spawning Update] Decremented Delay Timer to: ${enemySpawnDelayTimer.toFixed(3)}`);
+        // console.log(`[Spawning Update] Decremented Delay Timer to: ${enemySpawnDelayTimer.toFixed(3)}`);
 
         // Check if timer is ready
         if (enemySpawnDelayTimer <= 0) {
-            console.log(`[Spawning Update] Delay timer <= 0. Attempting spawn via EnemyManager.trySpawnEnemy().`);
+            // console.log(`[Spawning Update] Delay timer <= 0. Attempting spawn via EnemyManager.trySpawnEnemy().`);
             const spawned = EnemyManager.trySpawnEnemy(); // Attempt the spawn
 
             if (spawned) {
                 enemiesSpawnedThisWave++;
-                console.log(`[Spawning Update] Spawn SUCCESS! enemiesSpawnedThisWave now ${enemiesSpawnedThisWave}. Resetting delay timer.`);
+                // console.log(`[Spawning Update] Spawn SUCCESS! enemiesSpawnedThisWave now ${enemiesSpawnedThisWave}. Resetting delay timer.`);
                 enemySpawnDelayTimer = Config.WAVE_ENEMY_SPAWN_DELAY; // Reset delay for next spawn
             } else {
                  console.warn(`[Spawning Update] Spawn FAILED (trySpawnEnemy returned false - max enemies reached?). Retrying shortly.`);

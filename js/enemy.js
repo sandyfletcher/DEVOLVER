@@ -19,7 +19,7 @@ export class Enemy {
         this.vx = 0;
         this.vy = 0;
         this.speed = Config.ENEMY_SPEED;
-        console.log(`>>> Enemy CONSTRUCTED Init State: x=${x}, y=${y}, speed=${this.speed}`);
+        // console.log(`>>> Enemy CONSTRUCTED Init State: x=${x}, y=${y}, speed=${this.speed}`);
         this.x = x; // Ensure assignment happens
         this.y = y;
         this.gravity = Config.ENEMY_GRAVITY;
@@ -33,9 +33,7 @@ export class Enemy {
 
 
     update(dt) {
-        // *** ADD LOG AT THE VERY START OF UPDATE ***
-        console.log(`>>> Enemy Update Start: x=${this.x}, y=${this.y}, vx=${this.vx}, vy=${this.vy}`);
-        // *** END LOG ***
+        // console.log(`>>> Enemy Update Start: x=${this.x}, y=${this.y}, vx=${this.vx}, vy=${this.vy}`);
         if (!this.isActive) return;
 
         // --- Simple AI ---
@@ -63,8 +61,8 @@ export class Enemy {
         // console.log(`>>> Enemy Update Pos: Before: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}, vx=${this.vx}, vy=${this.vy}`);
         this.x += this.vx;
         this.y += this.vy;
-        // Keep this log active
-        console.log(`>>> Enemy Update Pos: After Add: x = ${this.x}, y = ${this.y}`);
+
+        // console.log(`>>> Enemy Update Pos: After Add: x = ${this.x}, y = ${this.y}`);
 
 
         // --- Physics Step 3: Grid Collision Detection & Resolution ---
@@ -114,7 +112,7 @@ export class Enemy {
         // Use optional chaining ?. for safety if x/y could be NaN when dying (shouldn't happen now but good practice)
         const deadX = this.x ?? 0;
         const deadY = this.y ?? 0;
-        console.log("Enemy died at:", deadX.toFixed(1), deadY.toFixed(1));
+        // console.log("Enemy died at:", deadX.toFixed(1), deadY.toFixed(1));
 
         // Trigger Drops
         if (Math.random() < Config.ENEMY_DROP_CHANCE) {
