@@ -29,14 +29,13 @@ function setupNextWave(waveNum) {
         // Example: Increase by 5 each wave, but maybe add variety later
         enemiesToSpawnThisWave = Config.WAVE_1_ENEMY_COUNT + (waveNum - 1) * 5;
     }
-    console.log(`[WaveManager] Enemies to spawn this wave: ${enemiesToSpawnThisWave}`);
+    // console.log(`[WaveManager] Enemies to spawn this wave: ${enemiesToSpawnThisWave}`);
 }
 
 
 // --- Exported Functions ---
 
 export function init() {
-    console.log("[WaveManager] Initializing...");
     currentWaveNumber = 0;
     state = 'PRE_WAVE';
     timer = Config.WAVE_START_DELAY;

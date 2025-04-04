@@ -2,7 +2,6 @@
 // main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
 console.log("main.js loaded");
-
 // --- Module Imports ---
 import * as Config from './config.js';
 import * as Input from './input.js';
@@ -14,100 +13,78 @@ import * as EnemyManager from './enemyManager.js';
 import * as UI from './ui.js';
 import * as WaveManager from './waveManager.js';
 import * as CollisionManager from './collisionManager.js';
-
 // --- Global Game Variables ---
 let player = null;
 let gameRunning = true;
 let lastTime = 0;
-
 // --- Restart Game Function ---
 function restartGame() {
     console.log(">>> RESTARTING GAME <<<");
-    // 1. Reset Player
-    if (player) {
-        player.reset();
-    } else { // Should not happen, but safety check
-        player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
-    }
-    // 2. Reset Items
+    if (player) {player.reset();
+    } else {player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);}
     ItemManager.init();
-    // 3. Reset Enemies
     EnemyManager.clearAllEnemies();
-    // 4. Reset Wave System
     WaveManager.reset();
-    // 5. Reset Timings and Flags
     lastTime = performance.now();
     gameRunning = true;
-    // 6. Consume any click that triggered the restart
     Input.consumeClick();
-    // 7. Restart the animation loop if it was fully stopped (optional, depends on game over handling)
-    // Our current loop doesn't fully stop, just skips updates, so no need to re-request frame here.
     console.log(">>> GAME RESTARTED <<<");
 }
-
-// // --- Game Loop ---
-    function gameLoop(timestamp) {
-        // --- Game Over Check ---
-        if (player && player.getCurrentHealth() <= 0 && !WaveManager.isGameOver()) {
-            console.log("Game Over detected in loop (Player health <= 0).");
-            WaveManager.setGameOver();
-            // Optional: Stop player movement immediately if desired
-            // if (player) { player.stopMovement(); }
-        }
-
-    // --- Handle GAME OVER state ---
+// --- Game Loop ---
+function gameLoop(timestamp) {
+// --- Game Over Check ---
+    if (player && player.getCurrentHealth() <= 0 && !WaveManager.isGameOver()) {
+        console.log("Game Over detected in loop (Player health <= 0).");
+        WaveManager.setGameOver();
+        // if (player) { player.stopMovement(); } --- Stop player movement immediately if needed ---
+    }
+// --- Handle GAME OVER state ---
     if (WaveManager.isGameOver()) {
         Renderer.clear();
-        // Draw world/items/enemies in their final state
+// --- Draw final state: world->items->enemies->player ---
         World.draw(Renderer.getContext());
         ItemManager.draw(Renderer.getContext());
         EnemyManager.draw(Renderer.getContext());
-        if (player) player.draw(Renderer.getContext()); // Draw player in their final state
-        // Draw the Game Over UI
+        if (player) player.draw(Renderer.getContext());
+// --- Draw Game Over UI ---
         if (player) {
-           const waveInfo = WaveManager.getWaveInfo(); // Get wave info for UI
+           const waveInfo = WaveManager.getWaveInfo(); // Get and print wave info
            UI.draw(Renderer.getContext(), player.getCurrentHealth(), player.getMaxHealth(), waveInfo);
         }
-        // Check for restart click
+// --- Check for restart click ---
         if (Input.didClickPlayAgain()) {
             console.log("Play Again button clicked!");
             restartGame();
             requestAnimationFrame(gameLoop);
             return;
         }
-        // Draw touch controls if needed
+// --- raw touch controls if needed ---
         Input.drawControls(Renderer.getContext());
-        // Keep requesting frames to draw the game over screen and check for clicks
+// --- Keep requesting frames to draw the game over screen and check for clicks ---
         requestAnimationFrame(gameLoop);
         return; 
     }
-
-    // --- If Game is Active, Proceed with Normal Loop ---
+// --- If Game is Active, Proceed with Normal Loop ---
     if (!gameRunning) return; // Allow pausing in the future
-
-    // --- Delta Time Calc ---
+// --- Delta Time Calc ---
     const deltaTime = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
     const dt = Math.min(deltaTime, Config.MAX_DELTA_TIME);
-
-    // --- Input Phase ---
+// --- Input Phase ---
     const inputState = Input.getState();
-
-    // --- Update Phase ---
+// --- Update Phase ---
     WaveManager.update(dt);
     if (player) { player.update(dt, inputState); }
     ItemManager.update(dt);
     EnemyManager.update(dt);
     World.update(dt);
-
-    // --- Collision Detection Phase ---
+// --- Collision Detection Phase ---
     if (player) { // Only check collisions if the player exists
         CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
         CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
         CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
     }
-
-    // --- Render Phase ---
+// --- Render Phase ---
     Renderer.clear();
     World.draw(Renderer.getContext());
     ItemManager.draw(Renderer.getContext());
@@ -118,15 +95,13 @@ function restartGame() {
         UI.draw(Renderer.getContext(), player.getCurrentHealth(), player.getMaxHealth(), waveInfo);
     }
     Input.drawControls(Renderer.getContext());
-
+// --- ---
     if (!WaveManager.isGameOver()) {
         Input.consumeClick();
     }
-
-    // --- Loop Continuation ---
+// --- Loop Continuation ---
     requestAnimationFrame(gameLoop);
-    }
-
+}
 // --- Initialization ---
 function init() {
     console.log("Initializing game...");
@@ -144,8 +119,8 @@ function init() {
         initializationOk = false;
         gameRunning = false;
     }
-
-    if (initializationOk) {
+// --- ---
+if (initializationOk) {
         try {
             player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
         } catch (error) {
@@ -154,10 +129,9 @@ function init() {
             gameRunning = false;
         }
     }
-
-    // Reset click flag on initial load
+// --- Reset click flag on initial load ---
     Input.consumeClick();
-
+// --- ---
     if (initializationOk) {
         lastTime = performance.now();
         gameRunning = true;
@@ -167,6 +141,5 @@ function init() {
         console.error("Game initialization failed. Game will not start.");
     }
 }
-
 // --- Start the Game ---
 window.addEventListener('DOMContentLoaded', init);

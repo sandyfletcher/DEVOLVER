@@ -2,32 +2,17 @@
 // js/world.js - Handles Grid-Based Terrain Data and Drawing (with Procedural Gen)
 // -----------------------------------------------------------------------------
 console.log("world.js loaded");
-
 import * as Config from './config.js';
 import * as Renderer from './renderer.js';
-// Import from the new utility modules
 import { PerlinNoise } from './utils/noise.js';
 import { createBlock } from './utils/block.js';
+import * as GridRenderer from './utils/grid.js';
 
 // --- Module State ---
 let worldGrid = []; // 2D Array: worldGrid[row][col] = blockObject or BLOCK_AIR(0)
-let noiseGenerator = null; // Will hold our noise instance
-let gridCanvas = null; // Reference to the off-screen grid canvas
-
-// --- Perlin Noise Implementation ---
-// // CLASS REMOVED - Now imported from ./utils/noise.js // //
-// class PerlinNoise { ... }
-
-// --- Helper functions ---
-
-/**
- * Creates a block object with default properties for a given type.
- * @param {number} type - Block type ID (e.g., Config.BLOCK_DIRT).
- * @param {number} [orientation=Config.ORIENTATION_FULL] - Orientation ID.
- * @returns {object} The block data object { type, orientation, hp, maxHp }.
- */
-// // FUNCTION REMOVED - Now imported from ./utils/block.js // //
-// function createBlock(type, orientation = Config.ORIENTATION_FULL) { ... }
+let noiseGenerator = null;
+let gridCanvas = null; // Reference to the off-screen grid canvas (still needed for drawing)
+let showGrid = true; // State for toggling grid visibility
 
 // --- Add a Linear Interpolation helper function ---
 // NOTE: This is a general utility. Could be moved to a shared utils.js later.
@@ -373,41 +358,6 @@ function applySandPass() {
     console.log(`Sand pass complete. ${finalChanges.length} blocks changed to sand.`);
 }
 
-
-/**
- * Draws the static grid lines onto the off-screen grid canvas (once).
- * (Function logic remains the same, relies on Renderer module)
- */
-function drawGridLayerOnce() {
-    const gridCtx = Renderer.getGridContext();
-    if (!gridCtx || !gridCanvas) { console.error("World.drawGridLayerOnce: Grid context/canvas missing!"); return; }
-    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
-    gridCtx.save();
-    gridCtx.strokeStyle = 'rgba(50, 50, 50, 0.1)'; // Faint grid lines
-    gridCtx.lineWidth = 0.5;
-
-    // Draw vertical lines
-    for (let c = 0; c <= Config.GRID_COLS; c++) { // Iterate one past the last column for the final line
-        const x = c * Config.BLOCK_WIDTH;
-        gridCtx.beginPath();
-        gridCtx.moveTo(x, 0);
-        gridCtx.lineTo(x, gridCanvas.height);
-        gridCtx.stroke();
-    }
-    // Draw horizontal lines
-    for (let r = 0; r <= Config.GRID_ROWS; r++) { // Iterate one past the last row for the final line
-        const y = r * Config.BLOCK_HEIGHT;
-        gridCtx.beginPath();
-        gridCtx.moveTo(0, y);
-        gridCtx.lineTo(gridCanvas.width, y);
-        gridCtx.stroke();
-    }
-
-    gridCtx.restore();
-    console.log("Static grid layer drawn.");
-}
-
-
 // --- PUBLIC EXPORTED FUNCTIONS ---
 
 /**
@@ -415,33 +365,48 @@ function drawGridLayerOnce() {
  */
 export function init() {
     console.time("WorldInit");
-    generateLandmass();       // Step 1: Base terrain (uses imported Noise and createBlock)
-    // Step 2: Optional - Add stone variations, caves, ores etc. (e.g., applyStonePatches();)
-    applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET); // Step 3: Water (uses internal helpers)
-    applySandPass();          // Step 4: Sand beaches (uses internal helpers)
+    generateLandmass();
+    applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
+    applySandPass();
 
-    // Ensure grid canvas exists via Renderer
-    gridCanvas = Renderer.getGridCanvas();
+    // Ensure grid canvas exists via Renderer and get a reference to it
+    gridCanvas = Renderer.getGridCanvas(); // Get reference first
     if (!gridCanvas) {
-        Renderer.createGridCanvas(Config.GRID_COLS * Config.BLOCK_WIDTH, Config.GRID_ROWS * Config.BLOCK_HEIGHT); // Ensure size matches world
-        gridCanvas = Renderer.getGridCanvas(); // Get the reference after creation
+        // Calculate required size
+        const gridWidth = Config.GRID_COLS * Config.BLOCK_WIDTH;
+        const gridHeight = Config.GRID_ROWS * Config.BLOCK_HEIGHT;
+        Renderer.createGridCanvas(gridWidth, gridHeight); // Create with correct size
+        gridCanvas = Renderer.getGridCanvas(); // Get reference *after* creation
     } else {
-         // Optional: Resize if necessary (e.g., config changed)
-         if (gridCanvas.width !== Config.GRID_COLS * Config.BLOCK_WIDTH || gridCanvas.height !== Config.GRID_ROWS * Config.BLOCK_HEIGHT) {
-              gridCanvas.width = Config.GRID_COLS * Config.BLOCK_WIDTH;
-              gridCanvas.height = Config.GRID_ROWS * Config.BLOCK_HEIGHT;
-         }
+        // Optional: Resize if necessary
+        const expectedWidth = Config.GRID_COLS * Config.BLOCK_WIDTH;
+        const expectedHeight = Config.GRID_ROWS * Config.BLOCK_HEIGHT;
+        if (gridCanvas.width !== expectedWidth || gridCanvas.height !== expectedHeight) {
+             console.warn("World Init: Resizing existing grid canvas.");
+             gridCanvas.width = expectedWidth;
+             gridCanvas.height = expectedHeight;
+        }
     }
 
-
-    if (gridCanvas) {
-        drawGridLayerOnce(); // Step 5: Draw static grid background
+    // Draw the static grid onto the off-screen canvas using the new module
+    if (gridCanvas && Renderer.getGridContext()) { // Check we have canvas AND context
+        GridRenderer.drawStaticGrid(); // Use the new module's function
     } else {
-        console.error("World Init: Failed to get or create grid canvas!");
+        console.error("World Init: Failed to get or create grid canvas/context! Cannot draw static grid.");
     }
 
     console.timeEnd("WorldInit");
-    console.log("World initialized with improved procedural generation.");
+    console.log("World initialized.");
+}
+
+/**
+ * Toggles the visibility of the static grid overlay.
+ * @param {boolean} [visible] - Optional. If provided, sets visibility state directly. Otherwise, toggles.
+ */
+export function toggleGrid(visible) {
+    showGrid = (visible === undefined) ? !showGrid : visible;
+    console.log(`Grid visibility set to: ${showGrid}`);
+    // Note: The actual drawing update happens in the main draw loop.
 }
 
 // --- Getters and Setters (Public API) ---
@@ -499,13 +464,15 @@ export function setBlock(col, row, blockType, orientation = Config.ORIENTATION_F
 export function draw(ctx) {
     if (!ctx) { console.error("World.draw: No context provided!"); return; }
 
-    // 1. Draw Static Grid Layer (pre-rendered)
-    if (gridCanvas) {
-        // Potential Optimization: Only draw if gridCanvas is actually visible in the viewport
-        ctx.drawImage(gridCanvas, 0, 0); // Assuming viewport starts at 0,0 of world for now
+    // 1. Draw Static Grid Layer (pre-rendered) - IF enabled
+    // Use the module's showGrid state variable to control this
+    if (showGrid && gridCanvas) {
+        // We still need the gridCanvas reference here in world.js
+        // Draw the pre-rendered grid from the off-screen canvas to the main canvas
+        ctx.drawImage(gridCanvas, 0, 0); // Assumes viewport starts at 0,0 for now
     }
 
-    // 2. Draw Dynamic Blocks
+    // 2. Draw Dynamic Blocks (The actual world tiles)
     // TODO: Optimize to only draw visible/dirty blocks/chunks based on viewport
     const startRow = 0; // Replace with viewport calculation later
     const endRow = Config.GRID_ROWS; // Replace with viewport calculation later
@@ -557,8 +524,6 @@ export function draw(ctx) {
         }
     }
 }
-
-
 // --- Collision and Utilities ---
 
 /**
