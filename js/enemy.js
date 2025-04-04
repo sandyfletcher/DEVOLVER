@@ -6,7 +6,8 @@ console.log("enemy.js loaded");
 
 import * as Config from './config.js';
 import * as ItemManager from './itemManager.js';
-import * as World from './world.js';
+import * as World from './worldManager.js';
+import * as GridCollision from './utils/gridCollision.js'
 
 export class Enemy {
     constructor(x, y) {
@@ -72,7 +73,7 @@ export class Enemy {
             console.error(`>>> Enemy Update ERROR: Skipping collision check because x or y is NaN before check! x=${this.x}, y=${this.y}`);
             // Don't call collision if state is invalid
         } else {
-            const collisionResult = World.checkGridCollision(this); // This modifies x, y, vx, vy
+            const collisionResult = GridCollision.checkGridCollision_Discrete(this);
             this.isOnGround = collisionResult.isOnGround;
             // console.log(`>>> Enemy Update Collision: After Check: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}, vx=${this.vx}, vy=${this.vy}, onGround=${this.isOnGround}`);
         }

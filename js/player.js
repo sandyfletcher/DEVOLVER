@@ -5,7 +5,8 @@
 console.log("player.js loaded");
 
 import * as Config from './config.js';
-import * as World from './world.js'; // <<< --- IMPORT WORLD ---
+import * as World from './worldManager.js'; // <<< --- IMPORT WORLD ---
+import * as GridCollision from './utils/gridCollision.js';
 
 export class Player {
     constructor(x, y, width, height, color) {
@@ -90,8 +91,7 @@ export class Player {
 
         // --- Physics Step 3: Grid Collision Detection & Resolution ---
         // The checkGridCollision function modifies this.x, this.y, this.vx, this.vy directly
-        const collisionResult = World.checkGridCollision(this);
-        // Update the player's state based on the collision result
+        const collisionResult = GridCollision.checkGridCollision_Discrete(this);        // Update the player's state based on the collision result
         this.isOnGround = collisionResult.isOnGround;
         // Note: checkGridCollision already zeroed out vx/vy upon collision.
 

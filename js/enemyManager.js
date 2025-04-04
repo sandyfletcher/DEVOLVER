@@ -6,7 +6,7 @@ console.log("enemyManager.js loaded");
 
 import * as Config from './config.js';
 import { Enemy } from './enemy.js';
-import * as World from './world.js'; // *** Import World to query grid ***
+import * as World from './worldManager.js'; // *** Import World to query grid ***
 import * as ItemManager from './itemManager.js'; // Needed for enemy drop logic
 
 // --- Module State ---
