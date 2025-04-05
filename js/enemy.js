@@ -58,22 +58,15 @@ export class Enemy {
             this.vy += this.gravity;
         }
 
-        // --- Physics Step 2: Update Potential Position ---
-        // console.log(`>>> Enemy Update Pos: Before: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}, vx=${this.vx}, vy=${this.vy}`);
-        this.x += this.vx;
-        this.y += this.vy;
 
-        // console.log(`>>> Enemy Update Pos: After Add: x = ${this.x}, y = ${this.y}`);
-
-
-        // --- Physics Step 3: Grid Collision Detection & Resolution ---
+        // --- Physics Step 2: Grid Collision Detection & Resolution ---
         // console.log(`>>> Enemy Update Collision: Before Check: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}`);
         // Add check BEFORE calling collision if x or y is already NaN
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Enemy Update ERROR: Skipping collision check because x or y is NaN before check! x=${this.x}, y=${this.y}`);
             // Don't call collision if state is invalid
         } else {
-            const collisionResult = GridCollision.checkGridCollision_Discrete(this);
+            const collisionResult = GridCollision.collideAndResolve(this);
             this.isOnGround = collisionResult.isOnGround;
             // console.log(`>>> Enemy Update Collision: After Check: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}, vx=${this.vx}, vy=${this.vy}, onGround=${this.isOnGround}`);
         }

@@ -84,14 +84,9 @@ export class Player {
             // if (this.vy > MAX_FALL_SPEED) { this.vy = MAX_FALL_SPEED; }
         }
 
-        // --- Physics Step 2: Update Potential Position ---
-        // Calculate where the player *would* move without collision
-        this.x += this.vx;
-        this.y += this.vy;
-
-        // --- Physics Step 3: Grid Collision Detection & Resolution ---
+        // --- Physics Step 2: Grid Collision Detection & Resolution ---
         // The checkGridCollision function modifies this.x, this.y, this.vx, this.vy directly
-        const collisionResult = GridCollision.checkGridCollision_Discrete(this);        // Update the player's state based on the collision result
+        const collisionResult = GridCollision.collideAndResolve(this);
         this.isOnGround = collisionResult.isOnGround;
         // Note: checkGridCollision already zeroed out vx/vy upon collision.
 

@@ -44,15 +44,9 @@ class Item {
              this.bobbleOffset += Config.ITEM_BOBBLE_SPEED;
         }
 
-        // --- Physics Step 2: Update Potential Position ---
-        // Note: Items currently don't have their own vx updated after spawn,
-        // but this structure allows for it (e.g., items pushed by explosions)
-        // this.x += this.vx; // If items had horizontal velocity
-        this.y += this.vy;
-
         // --- Physics Step 3: Grid Collision Detection & Resolution ---
         // Use the refactored GridCollision module and the discrete check (for now)
-        const collisionResult = GridCollision.checkGridCollision_Discrete(this);
+        const collisionResult = GridCollision.collideAndResolve(this);
         this.isOnGround = collisionResult.isOnGround;
 
         // --- Optional: Screen Boundary Checks (If needed) ---
@@ -66,7 +60,7 @@ class Item {
              this.isActive = false; // Mark for removal
         }
 
-    } // --- End of update method ---
+    }
 
 
     draw(ctx) {
