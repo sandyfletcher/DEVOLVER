@@ -4,28 +4,13 @@
 console.log("world-data.js loaded");
 
 import * as Config from '../config.js';
-// Import createBlock as it's needed when setting block data
 import { createBlock } from './block.js';
 
 // --- Module State ---
 let worldGrid = []; // The single source of truth for world block data
 
-// --- Internal Helper (Optional but good practice) ---
-// Can be used by generator for direct access if needed, but public functions are preferred
-/*
-function _setRawBlock(c, r, blockData) {
-    if (worldGrid[r]) {
-        worldGrid[r][c] = blockData;
-    }
-}
-*/
-
 // --- Public API ---
-
-/**
- * Initializes the world grid array structure with default values (e.g., Air).
- * Must be called before generating or setting blocks.
- */
+/* Initializes the world grid array structure with default values (air). Must be called before generating or setting blocks. */
 export function initializeGrid() {
     console.log(`Initializing world grid (${Config.GRID_ROWS}x${Config.GRID_COLS})...`);
     worldGrid = new Array(Config.GRID_ROWS);
@@ -35,7 +20,6 @@ export function initializeGrid() {
     }
     console.log("World grid initialized.");
 }
-
 
 /**
  * Gets the block object or BLOCK_AIR at specific grid coordinates.
@@ -113,17 +97,7 @@ export function setBlockData(col, row, blockData) {
      return false;
 }
 
-
-/**
- * Retrieves the entire world grid array. Use with caution - modifying this
- * directly bypasses safety checks in setBlock/getBlock.
- * Primarily for read-only operations or bulk processing where performance is critical.
- * @returns {Array<Array<object|number>>} The world grid 2D array.
- */
+/* @returns {Array<Array<object|number>>} Retrieves the entire world grid array, bypassing safety checks in setBlock/getBlock. */
 export function getGrid() {
     return worldGrid;
 }
-
-// --- Optional: Add functions for bulk operations if needed later ---
-// export function setRegion(startX, startY, width, height, blockType) { ... }
-// export function loadGrid(newGridData) { ... }

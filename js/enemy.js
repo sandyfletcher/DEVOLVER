@@ -5,9 +5,9 @@
 console.log("enemy.js loaded");
 
 import * as Config from './config.js';
-import * as ItemManager from './itemManager.js';
-import * as World from './worldManager.js';
-import * as GridCollision from './utils/gridCollision.js'
+import * as ItemManager from './itemManager.js'; // Needed for drops on death
+import * as World from './worldManager.js';   // Potentially needed for more complex AI later
+import * as GridCollision from './utils/gridCollision.js'; // Correctly imports the collision utility
 
 export class Enemy {
     constructor(x, y) {
@@ -20,107 +20,132 @@ export class Enemy {
         this.vx = 0;
         this.vy = 0;
         this.speed = Config.ENEMY_SPEED;
-        // console.log(`>>> Enemy CONSTRUCTED Init State: x=${x}, y=${y}, speed=${this.speed}`);
-        this.x = x; // Ensure assignment happens
-        this.y = y;
         this.gravity = Config.ENEMY_GRAVITY;
         this.health = Config.ENEMY_HEALTH;
-        this.isOnGround = false;
-        this.isActive = true;
-        this.targetX = Config.ENEMY_TARGET_X;
+        this.isOnGround = false; // Assume airborne initially, collision check will correct
+        this.isActive = true;    // Enemies start active
+        this.targetX = Config.ENEMY_TARGET_X; // Simple target for AI
 
+        // Initial position sanity check
+        if (isNaN(this.x) || isNaN(this.y)) {
+            console.error(`>>> Enemy CONSTRUCTED with NaN coordinates! x: ${x}, y: ${y}. Resetting to default.`);
+            this.x = Config.ENEMY_TARGET_X; // Fallback position
+            this.y = 50; // Arbitrary fallback Y
+        }
         // console.log(`>>> Enemy CONSTRUCTED at x: ${this.x?.toFixed(1)}, y: ${this.y?.toFixed(1)}`);
     }
 
 
     update(dt) {
-        // console.log(`>>> Enemy Update Start: x=${this.x}, y=${this.y}, vx=${this.vx}, vy=${this.vy}`);
-        if (!this.isActive) return;
+        if (!this.isActive) return; // Don't update inactive enemies
 
-        // --- Simple AI ---
-        const currentCenterX = this.x + this.width / 2; // If this.x is NaN here, currentCenterX will be NaN
-        let direction = 0;
-        // Add safety check for currentCenterX
-        if (!isNaN(currentCenterX) && Math.abs(currentCenterX - this.targetX) > this.speed) {
-            direction = Math.sign(this.targetX - currentCenterX);
-        } else if (isNaN(currentCenterX)) {
-            console.error(">>> Enemy Update AI ERROR: currentCenterX is NaN!");
-            // Maybe stop moving if center X is invalid?
-            direction = 0; // Or handle error case
+        // Safety Check: Prevent updates if position is invalid
+        if (isNaN(this.x) || isNaN(this.y)) {
+             console.error(`>>> Enemy Update ERROR: Skipping update due to NaN coordinates! x=${this.x}, y=${this.y}`);
+             this.isActive = false; // Mark as inactive to prevent further issues
+             return;
         }
-        // console.log(`>>> Enemy Update AI: Before vx: direction = ${direction}, speed = ${this.speed}`);
+
+        // --- Simple AI: Move towards target X ---
+        const currentCenterX = this.x + this.width / 2;
+        let direction = 0;
+        // Check distance to target to avoid jittering when close
+        if (Math.abs(currentCenterX - this.targetX) > this.speed) { // Use speed as threshold
+            direction = Math.sign(this.targetX - currentCenterX);
+        }
         this.vx = direction * this.speed;
-        // console.log(`>>> Enemy Update AI: After vx set: vx = ${this.vx}`);
 
 
         // --- Physics Step 1: Apply Gravity ---
+        // Apply gravity if not on the ground (based on *last* frame's collision result)
         if (!this.isOnGround) {
             this.vy += this.gravity;
+             // Optional: Clamp fall speed
+             // if (this.vy > Config.MAX_FALL_SPEED) { this.vy = Config.MAX_FALL_SPEED; }
+        } else {
+             // Optional: Zero out small positive vertical velocity when grounded
+             // if(this.vy > 0) {
+             //    this.vy = 0;
+             // }
         }
 
 
         // --- Physics Step 2: Grid Collision Detection & Resolution ---
-        // console.log(`>>> Enemy Update Collision: Before Check: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}`);
-        // Add check BEFORE calling collision if x or y is already NaN
-        if (isNaN(this.x) || isNaN(this.y)) {
-            console.error(`>>> Enemy Update ERROR: Skipping collision check because x or y is NaN before check! x=${this.x}, y=${this.y}`);
-            // Don't call collision if state is invalid
-        } else {
-            const collisionResult = GridCollision.collideAndResolve(this);
-            this.isOnGround = collisionResult.isOnGround;
-            // console.log(`>>> Enemy Update Collision: After Check: x=${this.x?.toFixed(1)}, y=${this.y?.toFixed(1)}, vx=${this.vx}, vy=${this.vy}, onGround=${this.isOnGround}`);
-        }
+        // This function handles all wall, floor, ceiling collisions and step-up logic.
+        // It directly modifies this.x, this.y, this.vx, this.vy.
+        const collisionResult = GridCollision.collideAndResolve(this);
 
-        // --- Screen Boundary Checks ---
-         // Add NaN check here too
-         if (!isNaN(this.x)) {
-            if (this.x < 0) {
-                 this.x = 0;
-                 if (this.vx < 0) this.vx = 0;
-            }
-            if (this.x + this.width > Config.CANVAS_WIDTH) {
-                 this.x = Config.CANVAS_WIDTH - this.width;
-                 if (this.vx > 0) this.vx = 0;
-            }
-        }
+        // Update the enemy's ground status based on the *current* frame's result.
+        this.isOnGround = collisionResult.isOnGround;
+
+        // --- Optional: AI adjustments based on collision ---
+        // Example: If collided horizontally, maybe change target or behavior?
+        // if (collisionResult.collidedX) {
+        //     console.log("Enemy hit a wall horizontally.");
+             // Reverse direction? Choose a new target? Jump?
+             // this.targetX = currentCenterX - direction * 100; // Move away briefly
+        // }
+        // Example: If stepped up, maybe trigger a sound?
+        // if (collisionResult.didStepUp) {
+        //     console.log("Enemy stepped up.");
+        // }
 
 
-        // --- Reset if falling out of world ---
-        if (this.y > Config.CANVAS_HEIGHT + 200) {
+        // --- Screen Boundary Checks (simple prevention) ---
+        // Prevent moving beyond canvas edges (redundant if world grid fills canvas)
+         if (this.x < 0) {
+              this.x = 0;
+              if (this.vx < 0) this.vx = 0;
+         }
+         if (this.x + this.width > Config.CANVAS_WIDTH) {
+              this.x = Config.CANVAS_WIDTH - this.width;
+              if (this.vx > 0) this.vx = 0;
+         }
+
+
+        // --- Deactivation if falling out of world ---
+        if (this.y > Config.CANVAS_HEIGHT + 200) { // Check well below canvas bottom
             console.warn("Enemy fell out of world, marking inactive.");
-            this.isActive = false;
+            this.isActive = false; // Mark for removal by enemyManager
         }
 
-    }
+    } // End of update method
 
-    // ... (takeDamage, die, getPosition, getRect) ...
     takeDamage(amount) {
-        if (!this.isActive) return;
+        if (!this.isActive) return; // Can't damage inactive enemies
+
         this.health -= amount;
-        if (this.health <= 0) { this.die(); }
+        // console.log(`Enemy took ${amount} damage. Health: ${this.health}`);
+        if (this.health <= 0) {
+             this.die(); // Trigger death process
+        }
+        // Optional: Add visual feedback for taking damage (flash color, etc.)
     }
-    
+
     die() {
-        if (!this.isActive) return;
-        this.isActive = false;
-        // Use optional chaining ?. for safety if x/y could be NaN when dying (shouldn't happen now but good practice)
-        const deadX = this.x ?? 0;
-        const deadY = this.y ?? 0;
-        // console.log("Enemy died at:", deadX.toFixed(1), deadY.toFixed(1));
+        if (!this.isActive) return; // Prevent multiple death triggers
 
-        // Trigger Drops
+        // console.log("Enemy died at:", this.x?.toFixed(1), this.y?.toFixed(1));
+        this.isActive = false; // Mark as inactive for removal and stop updates/drawing
+        this.vx = 0; // Stop movement
+        this.vy = 0;
+
+        // --- Trigger Item Drops ---
+        // Check drop chance
         if (Math.random() < Config.ENEMY_DROP_CHANCE) {
+            // Spawn configured number of items
             for (let i = 0; i < Config.ENEMY_DROP_AMOUNT; i++) {
-                 if (typeof deadX === 'number' && typeof deadY === 'number') {
-                     // --- ADJUST Y POSITION ---
-                     // Spawn near the center X, but slightly ABOVE the enemy's top edge
-                     let dropX = deadX + (this.width / 2);
-                     let dropY = deadY - Config.BLOCK_HEIGHT; // Start one block height above enemy 'y'
-                     // Add slight randomness so multiple drops don't stack perfectly
-                     dropX += (Math.random() - 0.5) * Config.BLOCK_WIDTH;
-                     dropY += (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.5;
-                     // --- END ADJUSTMENT ---
+                 // Ensure coordinates are valid before spawning
+                 if (typeof this.x === 'number' && typeof this.y === 'number') {
+                     // Calculate spawn position: center X, slightly above enemy's original position
+                     let dropX = this.x + (this.width / 2);
+                     let dropY = this.y - Config.BLOCK_HEIGHT; // Start one block height above enemy 'y'
 
+                     // Add slight randomness to prevent perfect stacking
+                     dropX += (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.5;
+                     dropY += (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.25;
+
+                     // Call ItemManager to spawn the item
                      ItemManager.spawnItem(dropX, dropY, Config.ENEMY_DROP_TYPE);
                  } else {
                       console.warn("Enemy died with invalid coordinates, skipping drop spawn.");
@@ -130,21 +155,34 @@ export class Enemy {
         }
     }
 
-    getPosition() { return { x: this.x, y: this.y }; }
+    // --- Simple Getters ---
+    getPosition() {
+         // Returns the enemy's top-left position.
+         return { x: this.x, y: this.y };
+    }
+
     getRect() {
-         const sX = typeof this.x === 'number' && !isNaN(this.x) ? this.x : 0;
-         const sY = typeof this.y === 'number' && !isNaN(this.y) ? this.y : 0;
-         return { x: sX, y: sY, width: this.width, height: this.height };
+         // Returns the enemy's bounding box.
+         // Includes safety check for NaN coordinates, returning a default rect if invalid.
+         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
+         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
+         return { x: safeX, y: safeY, width: this.width, height: this.height };
     }
 
     draw(ctx) {
-        if (!this.isActive || !ctx) return;
+        if (!this.isActive || !ctx) return; // Don't draw if inactive or no context
+
+        // Safety Check: Prevent drawing if position is invalid
         if (isNaN(this.x) || isNaN(this.y)) {
              console.error(`>>> Enemy DRAW ERROR: Preventing draw due to NaN coordinates! x: ${this.x}, y: ${this.y}`);
              return;
         }
+
+        // Simple rectangle drawing
         ctx.fillStyle = this.color;
         ctx.fillRect(this.x, this.y, this.width, this.height);
+
+        // Optional: Add health bar or other visual indicators
     }
 
-}
+} // End of Enemy Class

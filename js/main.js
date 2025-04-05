@@ -1,22 +1,26 @@
 // -----------------------------------------------------------------------------
 // main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
+
 console.log("main.js loaded");
+
 // --- Module Imports ---
-import * as Config from './config.js';
-import * as Input from './input.js';
-import * as Renderer from './renderer.js';
-import * as World from './worldManager.js';
+import * as UI from './ui.js';
 import { Player } from './player.js';
+import * as Input from './input.js';
+import * as Config from './config.js';
+import * as Renderer from './renderer.js';
+import * as CollisionManager from './collisionManager.js';
+import * as World from './worldManager.js';
 import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
-import * as UI from './ui.js';
 import * as WaveManager from './waveManager.js';
-import * as CollisionManager from './collisionManager.js';
+
 // --- Global Game Variables ---
 let player = null;
 let gameRunning = true;
 let lastTime = 0;
+
 // --- Restart Game Function ---
 function restartGame() {
     console.log(">>> RESTARTING GAME <<<");
