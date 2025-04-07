@@ -1,6 +1,7 @@
 // -----------------------------------------------------------------------------
 // js/world-data.js - Manages the core world grid data structure
 // -----------------------------------------------------------------------------
+
 console.log("world-data.js loaded");
 
 import * as Config from '../config.js';
