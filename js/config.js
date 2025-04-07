@@ -1,6 +1,7 @@
 // -----------------------------------------------------------------------------
 // js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
+
 console.log("config.js loaded");
 
 // --- World Parameters ---
@@ -27,12 +28,12 @@ export const BLOCK_METAL = 7;
 // Add more later: GLASS, specific ores, etc.
 
 // --- Block Orientation IDs ---
-// Implement drawing/collision later
 export const ORIENTATION_FULL = 0;
 export const ORIENTATION_SLOPE_BL = 1; // Bottom-Left triangle solid
 export const ORIENTATION_SLOPE_BR = 2; // Bottom-Right triangle solid
 export const ORIENTATION_SLOPE_TR = 3; // Top-Right triangle solid
 export const ORIENTATION_SLOPE_TL = 4; // Top-Left triangle solid
+// Implement drawing/collision later
 
 // --- Block Base HP ---
 export const BLOCK_HP = {
