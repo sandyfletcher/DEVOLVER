@@ -68,23 +68,39 @@ export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_
 // Calculate mean ground level (surface)
 export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // e.g., 10% of height above water
 
-// **** START OF CHANGE ****
+// Define how deep stone starts below the average ground level
+const STONE_DEPTH_BELOW_GROUND = 15; // Adjust this value (e.g., 10-25) to control average soil thickness
+
+// Calculate mean stone level - ** NOW BASED ON GROUND LEVEL **
+export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELOW_GROUND;
+
 // Calculate the approximate deep ocean floor level first (for reference)
 // These are intermediate values and don't need to be exported
 const _deepOceanBaseRow = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1);
 const _deepOceanMaxRow = GRID_ROWS - 3; // Limit how close to very bottom
 const _deepOceanFloorStartRow = Math.min(_deepOceanMaxRow, _deepOceanBaseRow);
 
-// Calculate mean stone level - ** NOW BASED ON DEEP OCEAN FLOOR **
-// This ensures the stone base in the center aims for the same depth as the deep ocean floor's surface.
-// Adjust this if you want the stone slightly higher or lower on average than the deep ocean floor surface.
-export const WORLD_STONE_LEVEL_MEAN = _deepOceanFloorStartRow;
-
 
 // Keep variations and noise scale
 export const WORLD_GROUND_VARIATION = 3;
 export const WORLD_STONE_VARIATION = 3; // Can adjust this noise amount if needed
 export const WORLD_NOISE_SCALE = 0.05;
+
+// --- You might also need to adjust the ocean stone levels ---
+// These define the target for the taper. Ensure they make sense relative to the water level
+// Maybe OCEAN_STONE_ROW_NEAR_ISLAND should just be a fixed depth below OCEAN_FLOOR_ROW_NEAR_ISLAND
+
+const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5;
+// Example: Make ocean stone consistently 8 blocks below the ocean floor near the island
+const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;
+
+// Define deep ocean levels relative to water level or absolute bottom
+const deepOceanBaseRow = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1);
+const deepOceanMaxRow = GRID_ROWS - 3; // Leave a few rows at the bottom
+const deepOceanFloorStartRow = Math.min(deepOceanMaxRow, deepOceanBaseRow);
+// Example: Make deep ocean stone consistently 8 blocks below the deep ocean floor
+const deepOceanStoneStartRow = deepOceanFloorStartRow + 8; // Base stone level under deep floor
+
 
 // =============================================================================
 // --- Player Constants ---
