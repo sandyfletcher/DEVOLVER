@@ -1,11 +1,10 @@
-// js/input.js
 // -----------------------------------------------------------------------------
-// input.js - Handles Keyboard and Touch Input
+// root/js/input.js - Handles Keyboard and Touch Input
 // -----------------------------------------------------------------------------
+
 console.log("input.js loaded");
 
 import * as Config from './config.js'; // For button positioning if needed
-
 import * as UI from './ui.js'; // <-- Import UI to get button rect
 
 // --- Input State ---
@@ -66,9 +65,7 @@ const defineTouchButtons = () => {
     };
 };
 
-// --- Event Handlers ---
-
-// Keyboard Handlers (Your existing logic is correct for attack)
+// --- Keyboard Handlers ---
 const handleKeyDown = (e) => {
     const action = keyMap[e.key];
     if (action) {
@@ -91,26 +88,15 @@ const handleKeyUp = (e) => {
     }
 };
 
-// Keep track if a click/touch just happened for restart check
-let justClicked = false;
-let clickPos = { x: 0, y: 0 };
-
-// --- MOUSE INPUT --- (Your existing logic is correct)
-// Modify Mouse/Touch handlers to record click position
+// --- MOUSE/TOUCH INPUT ---
+// Simplified - only handle attack trigger if needed by game logic
 const handleMouseDown = (e) => {
     if (e.target === canvas) {
-         clickPos = { x: e.clientX - canvas.getBoundingClientRect().left, y: e.clientY - canvas.getBoundingClientRect().top };
-         justClicked = true; // Mark that a click happened this frame
-
-         // Handle regular attack click if NOT game over
-         if (e.button === 0) { // Left click
-             // We check game state in main loop now before processing attack
-             // Only set state if needed for attack logic
-             if (!state.attack) {
-                 state.attack = true; // Set attack flag for player update check
-             }
-             e.preventDefault();
-         }
+        // Handle attack click if necessary (check game state in main loop)
+        if (e.button === 0 && !state.attack) { // Left click
+            state.attack = true; // Set attack flag for player update check
+            e.preventDefault();
+        }
     }
 };
 
@@ -121,28 +107,19 @@ const handleTouchStart = (e) => {
     const touches = e.changedTouches;
     const canvasRect = canvas.getBoundingClientRect();
 
-    // Use only the first touch for potential UI interaction / restart click
-    if (touches.length > 0) {
-        const touch = touches[0];
-        clickPos = { x: touch.clientX - canvasRect.left, y: touch.clientY - canvasRect.top };
-        justClicked = true; // Mark that a touch happened
-    }
-
-
-    // Handle regular gameplay buttons
+    // Handle gameplay buttons (attack, move, jump)
     for (let i = 0; i < touches.length; i++) {
         const touch = touches[i];
         const touchId = touch.identifier;
         const touchX = touch.clientX - canvasRect.left;
         const touchY = touch.clientY - canvasRect.top;
-
-        let buttonHit = false; // Flag to see if touch hit *any* gameplay button
+        let buttonHit = false;
         for (const buttonName in touchState.buttons) {
             const button = touchState.buttons[buttonName];
             if (touchX >= button.rect.x && touchX <= button.rect.x + button.rect.width &&
                 touchY >= button.rect.y && touchY <= button.rect.y + button.rect.height)
             {
-                buttonHit = true; // This touch is on a gameplay button
+                buttonHit = true;
                 button.pressed = true;
                 touchState.activeTouches[touchId] = buttonName;
                 if (buttonName === 'attack') {
@@ -153,11 +130,8 @@ const handleTouchStart = (e) => {
                 break;
             }
         }
-         // If touch didn't hit a gameplay button, it might be for the restart button
-         // We check that separately using justClicked flag and clickPos
-    }
+   }
 }
-
 const handleTouchEndOrCancel = (e) => {
     e.preventDefault();
     const touches = e.changedTouches;
@@ -221,11 +195,9 @@ const handleTouchMove = (e) => {
 
             if (isOutside) {
                 button.pressed = false;
-                // *** CHANGE HERE: Only set state false for non-attack buttons ***
                 if (buttonName !== 'attack') {
                     state[buttonName] = false; // Stop moving/jumping if dragged off
                 }
-                 // *** END CHANGE ***
                 delete touchState.activeTouches[touchId]; // Stop tracking this touch for this button
             }
         }
@@ -233,58 +205,27 @@ const handleTouchMove = (e) => {
     }
 };
 
-// Add a function to reset the click flag after it's checked
+// Consume attack flag
 export function consumeClick() {
-    justClicked = false;
-}
-
-
-// --- NEW: Check for Restart Click ---
-/**
- * Checks if a click/touch occurred within the Play Again button bounds.
- * IMPORTANT: This should only be called when the game state is GAME_OVER.
- * @returns {boolean} True if the click was on the button.
- */
-export function didClickPlayAgain() {
-    if (!justClicked) {
-        return false; // No click happened this frame
-    }
-
-    const buttonRect = UI.getPlayAgainButtonRect();
-    if (!buttonRect) {
-        return false; // Button isn't being drawn (not game over?)
-    }
-
-    // Check if clickPos is within buttonRect
-    const clickedOnButton = (
-        clickPos.x >= buttonRect.x &&
-        clickPos.x <= buttonRect.x + buttonRect.width &&
-        clickPos.y >= buttonRect.y &&
-        clickPos.y <= buttonRect.y + buttonRect.height
-    );
-
-    return clickedOnButton;
+    // This name is a bit misleading now, maybe rename to consumeAttackInput?
+    state.attack = false;
 }
 
 // --- Public Interface ---
-
 export function init() {
     canvas = document.getElementById('game-canvas');
-    if (!canvas) {console.error("Input: Canvas element not found!");
-        return;
-    }
+    if (!canvas) { console.error("Input: Canvas element not found!"); return; }
     defineTouchButtons();
     // Keyboard Listeners
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     // Touch Listeners
-    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousedown', handleMouseDown); // Keep for attack
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchcancel', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-
-    console.log("Input system initialized (with attack & click check).");
+    console.log("Input system initialized.");
 }
 
 export function getState() {

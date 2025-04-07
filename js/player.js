@@ -1,12 +1,11 @@
-// js/player.js
 // -----------------------------------------------------------------------------
-// player.js - Player Character Class
+// root/js/player.js - Player Character Class
 // -----------------------------------------------------------------------------
+
 console.log("player.js loaded");
 
 import * as Config from './config.js';
-// import * as World from './worldManager.js'; // Keep if needed for other interactions later
-import * as GridCollision from './utils/gridCollision.js'; // Correctly imports the collision utility
+import * as GridCollision from './utils/gridCollision.js';
 
 export class Player {
     constructor(x, y, width, height, color) {
@@ -15,18 +14,10 @@ export class Player {
         this.width = width;
         this.height = height;
         this.color = color;
-
         // Physics state (velocity)
         this.vx = 0; // Velocity in pixels per second
         this.vy = 0; // Velocity in pixels per second
         this.isOnGround = false;
-
-        // --- REMOVED OLD PHYSICS PROPERTIES ---
-        // this.moveSpeed = Config.PLAYER_MOVE_SPEED; // OLD - REMOVED
-        // this.jumpForce = Config.PLAYER_JUMP_FORCE; // OLD - REMOVED
-        // this.gravity = Config.GRAVITY;             // OLD - REMOVED
-        // --- Use Config constants directly in update ---
-
         // Combat / Interaction State
         this.hasSword = false;
         this.isAttacking = false;
@@ -35,14 +26,12 @@ export class Player {
         this.lastDirection = 1; // 1 for right, -1 for left
         this.hitEnemiesThisSwing = [];
         this.inventory = {};
-
         // Health State
         this.maxHealth = Config.PLAYER_MAX_HEALTH;
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
-
-        console.log(`Player object created at ${x?.toFixed(1)}, ${y?.toFixed(1)}`);
+        // console.log(`Player object created at ${x?.toFixed(1)}, ${y?.toFixed(1)}`);
     }
 
     /**
@@ -130,14 +119,9 @@ export class Player {
             }
         }
 
-        // --- Calculate Potential Movement This Frame ---
-        // This is the maximum distance the player *would* move if no collisions occurred
+        // --- Calculate maximum distance the player *would* move this frame if no collisions occurred  ---
         const potentialMoveX = this.vx * dt;
         const potentialMoveY = this.vy * dt;
-
-        // --- Add Logging Before Collision ---
-        // console.log(`BEFORE Col -> x: ${this.x.toFixed(2)}, y: ${this.y.toFixed(2)}, vx: ${this.vx.toFixed(2)}, vy: ${this.vy.toFixed(2)}, potentialY: ${potentialMoveY.toFixed(3)}, onGround: ${this.isOnGround}`);
-
 
         // --- Physics Step 2: Grid Collision ---
         // Pass the *potential* movement distances for THIS FRAME to the collision function.
@@ -146,10 +130,7 @@ export class Player {
 
         // Update ground status based on the collision result for the *next* frame's logic
         this.isOnGround = collisionResult.isOnGround;
-
-        // --- Add Logging After Collision ---
         // console.log(`AFTER Col -> x: ${this.x.toFixed(2)}, y: ${this.y.toFixed(2)}, vx: ${this.vx.toFixed(2)}, vy: ${this.vy.toFixed(2)}, collidedY: ${collisionResult.collidedY}, onGround: ${this.isOnGround}`);
-
 
         // --- Optional: Screen Boundary Checks ---
         if (this.x < 0) {
@@ -166,10 +147,7 @@ export class Player {
            console.warn("Player fell out of world!");
            this.resetPosition();
         }
-    } // --- End of update method ---
-
-    // --- draw, takeDamage, die, reset, resetPosition, getAttackHitbox, pickupItem, hit helpers, getters ---
-    // --- (No changes needed in these methods for the physics update) ---
+    } 
     draw(ctx) {
         if (!ctx) { console.error("Player.draw: Rendering context not provided!"); return; }
 
@@ -208,30 +186,7 @@ export class Player {
                 ctx.fillRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
             }
         }
-
-        // Draw Inventory UI (consider moving to UI module if it gets complex)
-        ctx.fillStyle = Config.UI_TEXT_COLOR;
-        ctx.font = '14px sans-serif';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        let invY = Config.UI_AREA_HEIGHT + 10; // Position below main UI area
-        const invX = 10;
-        ctx.fillText("Inventory:", invX, invY);
-        invY += 18; // Line spacing
-        let itemCount = 0;
-        for (const itemType in this.inventory) {
-            if (this.inventory[itemType] > 0) {
-                 ctx.fillText(`${itemType}: ${this.inventory[itemType]}`, invX, invY);
-                 invY += 16; // Smaller line spacing for items
-                 itemCount++;
-            }
-        }
-        // Optional: Indicate if inventory is empty
-        // if (itemCount === 0) {
-        //    ctx.fillText("(Empty)", invX + 5, invY);
-        // }
     }
-
     takeDamage(amount) {
         if (this.isInvulnerable || this.currentHealth <= 0) return; // Cannot take damage if invulnerable or already dead
 
@@ -248,7 +203,6 @@ export class Player {
             // Optional: Add knockback or other effects on taking damage
         }
     }
-
     die() {
         // This function is called when health drops to 0 or below.
         // Currently, it just logs. Game over logic is handled in main.js loop.
@@ -258,7 +212,6 @@ export class Player {
         this.vy = 0;
         // Could trigger death animation, sound effects, etc. here
     }
-
     reset() {
         // Resets the player to initial state, typically called on game restart.
         console.log("Resetting player state...");
@@ -278,7 +231,6 @@ export class Player {
         this.lastDirection = 1; // Reset facing direction
         this.hitEnemiesThisSwing = []; // Clear hit list
     }
-
     resetPosition() {
          // Resets only the player's position and velocity, e.g., after falling out.
          console.log("Player position reset (fell out).");
@@ -292,9 +244,7 @@ export class Player {
          // this.isInvulnerable = true;
          // this.invulnerabilityTimer = 0.5;
     }
-
-    getAttackHitbox() {
-        // Calculates the position and size of the attack hitbox based on player state.
+    getAttackHitbox() { // Calculates the position and size of the attack hitbox based on player state.
         if (!this.isAttacking) { return null; } // No hitbox if not attacking
 
         const verticalCenter = this.y + this.height / 2;
@@ -318,11 +268,9 @@ export class Player {
             height: Config.PLAYER_ATTACK_HEIGHT
         };
     }
-
-    pickupItem(item) {
-        // Handles logic when the player collides with an item.
+    pickupItem(item) { // Handles logic when the player collides with an item.
         if (!item || !item.type) return false; // Safety check
-
+        // Sword
         if (item.type === 'sword') {
             if (!this.hasSword) { // Only pick up if doesn't already have one
                  this.hasSword = true;
@@ -346,26 +294,20 @@ export class Player {
         // If item type is not recognized or cannot be picked up
         return false;
     }
-
     // --- Helper methods for attack collision ---
-    hasHitEnemyThisSwing(enemy) {
-        // Checks if a specific enemy instance has already been hit during the current attack swing.
+    hasHitEnemyThisSwing(enemy) { // Checks if a specific enemy has already been hit during the current attack
         return this.hitEnemiesThisSwing.includes(enemy);
     }
-    registerHitEnemy(enemy) {
-        // Adds an enemy to the list of those hit during the current swing, preventing multiple hits per swing.
+    registerHitEnemy(enemy) { // Adds enemy to list of hit, preventing multiple per swing
         if (!this.hasHitEnemyThisSwing(enemy)) {
             this.hitEnemiesThisSwing.push(enemy);
         }
     }
-
     // --- Simple Getters ---
-    getRect() {
-        // Returns the player's bounding box.
+    getRect() { // Returns player's bounding box
         return { x: this.x, y: this.y, width: this.width, height: this.height };
     }
-    getPosition() {
-        // Returns the player's top-left position.
+    getPosition() { // Returns player's top-left position
         return { x: this.x, y: this.y };
     }
     getCurrentHealth() {
@@ -374,5 +316,10 @@ export class Player {
     getMaxHealth() {
         return this.maxHealth;
     }
-
-} // End of Player Class
+    getInventory() {
+        return this.inventory;
+    }
+     getSwordStatus() {
+         return this.hasSword;
+    }
+}

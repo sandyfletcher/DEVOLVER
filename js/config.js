@@ -13,8 +13,8 @@ export const GRID_COLS = 200; // Updated size
 export const GRID_ROWS = 200; // Updated size
 
 // --- Block Constants ---
-export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;   // Now 8 pixels wide
-export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS; // Now 8 pixels high
+export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;
+export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS;
 
 // --- Block Type IDs ---
 export const BLOCK_AIR = 0;
