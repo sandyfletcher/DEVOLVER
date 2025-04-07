@@ -5,7 +5,7 @@
 console.log("player.js loaded");
 
 import * as Config from './config.js';
-import * as World from './worldManager.js'; // Used for potential future interactions, not directly in collision now
+// import * as World from './worldManager.js'; // Keep if needed for other interactions later
 import * as GridCollision from './utils/gridCollision.js'; // Correctly imports the collision utility
 
 export class Player {
@@ -16,22 +16,27 @@ export class Player {
         this.height = height;
         this.color = color;
 
-        this.vx = 0;
-        this.vy = 0;
+        // Physics state (velocity)
+        this.vx = 0; // Velocity in pixels per second
+        this.vy = 0; // Velocity in pixels per second
         this.isOnGround = false;
 
-        this.moveSpeed = Config.PLAYER_MOVE_SPEED;
-        this.jumpForce = Config.PLAYER_JUMP_FORCE;
-        this.gravity = Config.GRAVITY;
+        // --- REMOVED OLD PHYSICS PROPERTIES ---
+        // this.moveSpeed = Config.PLAYER_MOVE_SPEED; // OLD - REMOVED
+        // this.jumpForce = Config.PLAYER_JUMP_FORCE; // OLD - REMOVED
+        // this.gravity = Config.GRAVITY;             // OLD - REMOVED
+        // --- Use Config constants directly in update ---
 
+        // Combat / Interaction State
         this.hasSword = false;
         this.isAttacking = false;
         this.attackTimer = 0;
         this.attackCooldown = 0;
-        this.lastDirection = 1;
+        this.lastDirection = 1; // 1 for right, -1 for left
         this.hitEnemiesThisSwing = [];
         this.inventory = {};
 
+        // Health State
         this.maxHealth = Config.PLAYER_MAX_HEALTH;
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
         this.isInvulnerable = false;
@@ -52,91 +57,119 @@ export class Player {
         if (this.attackTimer > 0) {
             this.attackTimer -= dt;
             if (this.attackTimer <= 0) {
-                this.isAttacking = false; this.hitEnemiesThisSwing = [];
+                this.isAttacking = false;
+                this.hitEnemiesThisSwing = [];
             }
         }
         if (this.invulnerabilityTimer > 0) {
             this.invulnerabilityTimer -= dt;
-            if (this.invulnerabilityTimer <= 0) { this.isInvulnerable = false; }
+            if (this.invulnerabilityTimer <= 0) {
+                this.isInvulnerable = false;
+            }
         }
 
-        // --- Input Handling ---
-        // Horizontal Movement
-        if (inputState.left && !inputState.right) { this.vx = -this.moveSpeed; this.lastDirection = -1; }
-        else if (inputState.right && !inputState.left) { this.vx = this.moveSpeed; this.lastDirection = 1; }
-        else { this.vx = 0; }
-        // Jumping
-        // Only allow jump if currently on ground (prevents double jump unless intended)
-        if (inputState.jump && this.isOnGround) {
-             this.vy = -this.jumpForce;
-             this.isOnGround = false; // Player is now airborne after jumping
-             // Optional: Consume jump input if needed, depends on input system
-             // inputState.jump = false;
+        // --- Input Handling & Acceleration ---
+        let targetVx = 0;
+        if (inputState.left && !inputState.right) {
+            targetVx = -Config.PLAYER_MAX_SPEED_X;
+            this.lastDirection = -1;
+        } else if (inputState.right && !inputState.left) {
+            targetVx = Config.PLAYER_MAX_SPEED_X;
+            this.lastDirection = 1;
         }
+
+        // Apply acceleration towards target velocity
+        if (targetVx !== 0) {
+            // Accelerate
+            this.vx += Math.sign(targetVx) * Config.PLAYER_MOVE_ACCELERATION * dt;
+            // Clamp to max speed, preserving direction
+            if (Math.abs(this.vx) > Config.PLAYER_MAX_SPEED_X) {
+                this.vx = Math.sign(this.vx) * Config.PLAYER_MAX_SPEED_X;
+            }
+        } else {
+            // Apply friction when no movement input
+            const frictionFactor = Math.pow(Config.PLAYER_FRICTION_BASE, dt);
+            this.vx *= frictionFactor;
+            // Stop completely if velocity is very small
+            if (Math.abs(this.vx) < 1) {
+                this.vx = 0;
+            }
+        }
+
+        // Jumping (Apply initial velocity impulse)
+        if (inputState.jump && this.isOnGround) {
+            this.vy = -Config.PLAYER_JUMP_VELOCITY; // Use jump velocity directly
+            this.isOnGround = false; // Instantly airborne after jump press
+            // Optional: Add variable jump height logic here if desired
+        }
+
         // Attack Triggering
         if (inputState.attack && this.hasSword && this.attackCooldown <= 0 && !this.isAttacking) {
-             this.isAttacking = true; this.attackTimer = Config.PLAYER_ATTACK_DURATION;
-             this.attackCooldown = Config.PLAYER_ATTACK_COOLDOWN; this.hitEnemiesThisSwing = [];
-             // Consume attack input flag after triggering
-             inputState.attack = false;
+            this.isAttacking = true;
+            this.attackTimer = Config.PLAYER_ATTACK_DURATION;
+            this.attackCooldown = Config.PLAYER_ATTACK_COOLDOWN;
+            this.hitEnemiesThisSwing = [];
+            inputState.attack = false; // Consume attack input
         } else if (inputState.attack) {
-             // Consume attack input even if it couldn't be performed (e.g., on cooldown)
-             inputState.attack = false;
+            inputState.attack = false; // Consume attack input even if on cooldown
         }
 
 
         // --- Physics Step 1: Apply Forces (Gravity) ---
-        // Apply gravity *before* collision checks if the player is not on the ground.
-        // Note: `isOnGround` here is from the *previous* frame's collision result.
+        // Apply gravity acceleration if airborne
         if (!this.isOnGround) {
-            this.vy += this.gravity;
-            // Optional: Clamp fall speed to prevent excessive velocity
-            // if (this.vy > Config.MAX_FALL_SPEED) { this.vy = Config.MAX_FALL_SPEED; }
+            this.vy += Config.GRAVITY_ACCELERATION * dt;
+            // Clamp fall speed
+            if (this.vy > Config.MAX_FALL_SPEED) {
+                this.vy = Config.MAX_FALL_SPEED;
+            }
         } else {
-             // Optional: If on ground and not jumping, ensure vertical velocity is exactly 0
-             // This can help prevent slight bouncing or sinking due to floating point inaccuracies
-             // if (this.vy > 0) {
-             //    this.vy = 0;
-             // }
+            // If on ground and somehow moving down slightly (e.g., landed on slope), clamp vy
+            if (this.vy > 0) {
+                 this.vy = 0;
+            }
         }
 
+        // --- Calculate Potential Movement This Frame ---
+        // This is the maximum distance the player *would* move if no collisions occurred
+        const potentialMoveX = this.vx * dt;
+        const potentialMoveY = this.vy * dt;
 
-        // --- Physics Step 2: Grid Collision Detection & Resolution ---
-        // This function modifies this.x, this.y, this.vx, this.vy directly based on collisions.
-        // It also returns information about the collision state.
-        const collisionResult = GridCollision.collideAndResolve(this);
+        // --- Add Logging Before Collision ---
+        // console.log(`BEFORE Col -> x: ${this.x.toFixed(2)}, y: ${this.y.toFixed(2)}, vx: ${this.vx.toFixed(2)}, vy: ${this.vy.toFixed(2)}, potentialY: ${potentialMoveY.toFixed(3)}, onGround: ${this.isOnGround}`);
 
-        // Update the player's ground status based on the *current* frame's collision result.
+
+        // --- Physics Step 2: Grid Collision ---
+        // Pass the *potential* movement distances for THIS FRAME to the collision function.
+        // The collision function MUST be updated to use these values.
+        const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+
+        // Update ground status based on the collision result for the *next* frame's logic
         this.isOnGround = collisionResult.isOnGround;
 
-        // Optional: Log step-up events if needed for debugging
-        // if (collisionResult.didStepUp) {
-        //    console.log("Player stepped up!");
-        // }
+        // --- Add Logging After Collision ---
+        // console.log(`AFTER Col -> x: ${this.x.toFixed(2)}, y: ${this.y.toFixed(2)}, vx: ${this.vx.toFixed(2)}, vy: ${this.vy.toFixed(2)}, collidedY: ${collisionResult.collidedY}, onGround: ${this.isOnGround}`);
 
-        // --- Optional: Screen Boundary Checks (If needed beyond grid world bounds) ---
-        // Prevent moving beyond the absolute canvas edges
+
+        // --- Optional: Screen Boundary Checks ---
         if (this.x < 0) {
-             this.x = 0;
-             if (this.vx < 0) this.vx = 0; // Stop velocity if hitting edge
+            this.x = 0;
+            if (this.vx < 0) this.vx = 0;
         }
         if (this.x + this.width > Config.CANVAS_WIDTH) {
-             this.x = Config.CANVAS_WIDTH - this.width;
-             if (this.vx > 0) this.vx = 0; // Stop velocity if hitting edge
+            this.x = Config.CANVAS_WIDTH - this.width;
+            if (this.vx > 0) this.vx = 0;
         }
-        // --- End Optional Boundary Checks ---
-
 
         // --- Reset if falling out of world ---
-        if (this.y > Config.CANVAS_HEIGHT + 200) { // Check well below canvas bottom
+        if (this.y > Config.CANVAS_HEIGHT + 200) {
            console.warn("Player fell out of world!");
-           this.resetPosition(); // Reset position and basic state
-           // Consider applying damage or other penalties for falling out
-           // this.takeDamage(1); // Example: take 1 damage
+           this.resetPosition();
         }
     } // --- End of update method ---
 
-
+    // --- draw, takeDamage, die, reset, resetPosition, getAttackHitbox, pickupItem, hit helpers, getters ---
+    // --- (No changes needed in these methods for the physics update) ---
     draw(ctx) {
         if (!ctx) { console.error("Player.draw: Rendering context not provided!"); return; }
 

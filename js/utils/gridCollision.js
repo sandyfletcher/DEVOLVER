@@ -1,15 +1,18 @@
+// js/utils/gridCollision.js
 // -----------------------------------------------------------------------------
 // js/utils/gridCollision.js - Handles Entity vs World Grid Collision Logic
+// NOW UPDATED for Delta-Time based movement amounts.
 // -----------------------------------------------------------------------------
-console.log("utils/gridCollision.js loaded (with precise snapping)"); // Added note
+console.log("utils/gridCollision.js loaded (UPDATED for dt movement)");
 
 // Import necessary modules
 import * as Config from '../config.js';         // For block dimensions, grid size etc.
 import * as WorldData from './worldData.js'; // To access world block data (getBlock)
 
+// --- Collision Helper Functions --- (isSolid, worldToGridCoords remain the same)
+
 /**
  * Checks if a block at given grid coordinates is solid for collision purposes.
- * This is the CORE logic that determines what stops movement.
  * Includes explicit boundary checks.
  * @param {number} col - Column index.
  * @param {number} row - Row index.
@@ -21,45 +24,31 @@ export function isSolid(col, row) {
         return false; // Treat out of bounds as not solid
     }
 
-    // Delegate to WorldData to get the block (now we know row/col are within bounds)
     const block = WorldData.getBlock(col, row);
 
-    // Check if block data is null (shouldn't happen if within bounds after init, but safety check)
-    if (block === null) {
-        // console.warn(`gridCollision.isSolid: getBlock returned null for in-bounds coords [${col}, ${row}]`);
-        return false;
-    }
-
-    // Check if it's an air block
-    if (block === Config.BLOCK_AIR) {
+    // Check if block data is null or air
+    if (block === null || block === Config.BLOCK_AIR) {
         return false;
     }
 
     // Check specific non-solid types (assuming block is an object now)
-    // Ensure block has a 'type' property before accessing it
-    if (typeof block === 'object' && block.type === Config.BLOCK_WATER /* && block.orientation === Config.ORIENTATION_FULL */ ) {
-        // TODO: Water physics might require separate handling (e.g., buoyancy, slower movement)
-        // For basic collision, treat it as non-solid for stopping movement.
+    if (typeof block === 'object' && block.type === Config.BLOCK_WATER) {
+        // TODO: Water physics later
         return false; // Water is not solid for stopping purposes
     }
 
-    // TODO: Implement slope-aware collision checks based on block.orientation
-    // This is where you'd add logic like: if (block.orientation === SLOPE_TL) { calculate height at specific x within block... }
-    // For now, any block object that exists and isn't air or water is considered solid
-    // regardless of orientation. This collides with the block's bounding box.
-    // Check if it's a valid block object (has type) before assuming solid
+    // TODO: Implement slope-aware collision checks based on block.orientation later
+    // For now, any block object that exists and isn't air or water is considered solid.
     if (typeof block === 'object' && typeof block.type === 'number') {
         return true; // It's a block object representing a solid tile
     }
 
-    // Fallback: if it's not air, not water, not null, but also not a valid block object, treat as non-solid? Or warn?
-    // console.warn(`gridCollision.isSolid: Encountered unexpected block data at [${col}, ${row}]:`, block);
-    return false; // Default to non-solid if data format is unexpected
+    // Fallback for unexpected data
+    return false;
 }
 
 /**
  * Converts world coordinates (pixels) to grid coordinates (column, row).
- * Utility function often needed alongside collision checks.
  * @param {number} worldX - X position in pixels.
  * @param {number} worldY - Y position in pixels.
  * @returns {{col: number, row: number}} Object containing column and row indices.
@@ -70,262 +59,243 @@ export function worldToGridCoords(worldX, worldY) {
     return { col, row };
 }
 
-/**
- * Finds the Y pixel coordinate of the highest solid block surface below a given point in a column.
- * Useful for initial placement or checking fall distances.
- * (Optional - keep if useful, depends on isSolid)
- * @param {number} col - Column index.
- * @param {number} startRow - Row index to start searching downwards from.
- * @returns {number} The Y pixel coordinate of the top surface, or a large value if no solid ground below.
- */
+/** Finds the Y pixel coordinate of the highest solid block surface below a given point. (Optional helper) */
 export function getCollisionSurfaceYBelow(col, startRow) {
-    if (col < 0 || col >= Config.GRID_COLS) return Config.CANVAS_HEIGHT * 2; // Out of bounds below view
-
-    // Ensure startRow is within reasonable bounds
-    const searchStartRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, Math.floor(startRow)));
-
-    for (let r = searchStartRow; r < Config.GRID_ROWS; r++) {
-        if (isSolid(col, r)) {
-            return r * Config.BLOCK_HEIGHT; // Return top edge of the first solid block found
-        }
-    }
-    return Config.CANVAS_HEIGHT * 2; // No solid block found below
+    // ... (implementation remains the same as before) ...
+     if (col < 0 || col >= Config.GRID_COLS) return Config.CANVAS_HEIGHT * 2;
+     const searchStartRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, Math.floor(startRow)));
+     for (let r = searchStartRow; r < Config.GRID_ROWS; r++) {
+         if (isSolid(col, r)) {
+             return r * Config.BLOCK_HEIGHT;
+         }
+     }
+     return Config.CANVAS_HEIGHT * 2;
 }
 
+
+// --- Main Collision Resolution Function (UPDATED) ---
 
 /**
  * Performs swept AABB collision detection and resolution against the world grid.
  * Includes logic for stepping up 1-block high obstacles.
  * Updates the entity's position and velocity based on collisions.
- * Assumes entity velocity (vx, vy) is in pixels per frame.
- * MODIFIED: Uses more precise snapping on collision.
+ * Uses precise snapping on collision.
+ *
  * @param {object} entity - The entity object (must have x, y, width, height, vx, vy).
+ * @param {number} potentialMoveX - The intended horizontal movement distance for this frame (entity.vx * dt).
+ * @param {number} potentialMoveY - The intended vertical movement distance for this frame (entity.vy * dt).
  * @returns {{collidedX: boolean, collidedY: boolean, isOnGround: boolean, didStepUp: boolean}} Collision results.
  */
-export function collideAndResolve(entity) {
-    let moveX = entity.vx;
-    let moveY = entity.vy;
+export function collideAndResolve(entity, potentialMoveX, potentialMoveY) {
+    let moveX = potentialMoveX; // Use the passed-in movement amount
+    let moveY = potentialMoveY; // Use the passed-in movement amount
     let collidedX = false;
     let collidedY = false;
-    let isOnGround = false;
+    let isOnGround = false; // Assume not on ground initially for this frame check
     let didStepUp = false;
 
-    // Small value for floating point comparisons and preventing sticking. Can be tuned.
-    // Smaller values increase precision but risk missing collisions if movement is very large per frame.
-    const E_EPSILON = 1e-4;
+    // Small value for floating point comparisons.
+    const E_EPSILON = 1e-4; // Tiny offset to prevent floating point errors / sticking
 
     // Determine if Step-Up is possible based on state
-    // Allow step-up only if not moving upwards fast (prevents jump-steps)
-    const canAttemptStepUp = entity.vy >= -Config.GRAVITY * 2; // Allow if falling or moving up slowly/level
+    // Allow step-up only if vertical velocity isn't significantly upward (prevents jump-steps)
+    // Compare against gravity effect over one frame for a threshold
+    const canAttemptStepUp = entity.vy <= Config.GRAVITY_ACCELERATION * (1 / 60); // Allow if falling or moving up slowly
 
     // --- Step 1: Resolve X-axis Collision ---
-    let earliestToiX = 1.0;       // Time of impact (0 to 1)
-    let collisionSurfaceX = 0;    // Store the X coordinate of the surface we hit
-    let stepUpCandidateCol = -1;
-    let stepUpCandidateRow = -1;
-
     if (Math.abs(moveX) > E_EPSILON) {
         const signX = Math.sign(moveX);
-        const xEdge = (signX > 0) ? entity.x + entity.width : entity.x; // Leading edge in X direction
-        const targetXEdge = xEdge + moveX; // Where the leading edge would end up without collision
+        const xEdge = (signX > 0) ? entity.x + entity.width : entity.x; // Leading edge
+        let earliestToiX = 1.0; // Time of impact (0 to 1)
+        let collisionSurfaceX = 0;
+        let stepUpCandidateCol = -1;
+        let stepUpCandidateRow = -1;
 
         // Calculate row span of the entity
         const yStart = entity.y;
         const yEnd = entity.y + entity.height;
         const minRow = Math.max(0, Math.floor(yStart / Config.BLOCK_HEIGHT));
-        // Subtract epsilon when calculating maxRow to handle cases where entity bottom is exactly on a grid line
-        const maxRow = Math.min(Config.GRID_ROWS - 1, Math.floor((yEnd - E_EPSILON) / Config.BLOCK_HEIGHT));
+        const maxRow = Math.min(Config.GRID_ROWS - 1, Math.floor((yEnd - E_EPSILON) / Config.BLOCK_HEIGHT)); // Use epsilon for bottom edge
 
-        // Calculate column span for the sweep check
-        const startCol = Math.floor(xEdge / Config.BLOCK_WIDTH);
-        // Add small epsilon to target edge when flooring to ensure check includes target column itself
-        const endCol = Math.floor((targetXEdge + (signX > 0 ? E_EPSILON : -E_EPSILON)) / Config.BLOCK_WIDTH);
+        // Calculate column span for the sweep check based on moveX
+        const targetXEdge = xEdge + moveX;
+        const startColCheck = Math.floor(xEdge / Config.BLOCK_WIDTH);
+        const endColCheck = Math.floor((targetXEdge + (signX > 0 ? E_EPSILON : -E_EPSILON)) / Config.BLOCK_WIDTH);
 
         // Find the earliest X collision across the entity's vertical span
         for (let r = minRow; r <= maxRow; r++) {
             // Determine column check range and direction for this row
-            // Start check from the column adjacent to the current one in the direction of movement
-            const colCheckStart = (signX > 0) ? Math.max(0, startCol + 1) : Math.min(Config.GRID_COLS - 1, startCol);
-            const colCheckEnd = (signX > 0) ? Math.min(Config.GRID_COLS - 1, endCol) : Math.max(0, endCol);
+            const checkStart = (signX > 0) ? Math.max(0, startColCheck + 1) : Math.min(Config.GRID_COLS - 1, startColCheck);
+            const checkEnd = (signX > 0) ? Math.min(Config.GRID_COLS - 1, endColCheck) : Math.max(0, endColCheck);
             const step = (signX > 0) ? 1 : -1;
 
-            // Scan columns towards the target end column
-            for (let c = colCheckStart; (signX > 0 ? c <= colCheckEnd : c >= colCheckEnd); c += step) {
+            for (let c = checkStart; (signX > 0 ? c <= checkEnd : c >= checkEnd); c += step) {
                 if (isSolid(c, r)) {
-                    // Calculate X coordinate of the block edge we might hit
                     const blockEdgeX = (signX > 0) ? c * Config.BLOCK_WIDTH : (c + 1) * Config.BLOCK_WIDTH;
-                    // Calculate time of impact (fraction of movement)
-                    const toiX = (blockEdgeX - xEdge) / moveX;
+                    const toiX = (blockEdgeX - xEdge) / moveX; // Calculate time of impact (fraction of moveX)
 
-                    // Check if collision is valid (forward in time) and earlier than others found so far
+                    // Check if valid collision (forward in time) and earliest found
                     if (toiX >= -E_EPSILON && toiX < earliestToiX) {
-                        earliestToiX = toiX; // Store the earliest TOI
-                        collisionSurfaceX = blockEdgeX; // Store the X coordinate of the surface hit
-                        // Store the block coordinates that caused this potential collision for step-up check
+                        earliestToiX = toiX;
+                        collisionSurfaceX = blockEdgeX;
                         stepUpCandidateCol = c;
                         stepUpCandidateRow = r;
                     }
-                    // Optimization: Once a solid block is hit in the path for this row,
-                    // no need to check further columns in this row in the direction of movement.
-                    if (signX > 0 ? c >= endCol : c <= endCol) break;
+                     // Optimization: Break inner loop once collision is found in this row's path
+                    break; // Stop checking further columns in this row
                 }
             }
         } // End X-collision detection loop
 
-        // --- Check for Step-Up Condition *if* a potential collision was found ---
+        // --- Check for Step-Up Condition ---
+        let performStepUp = false;
         if (earliestToiX < 1.0 - E_EPSILON && canAttemptStepUp && stepUpCandidateCol !== -1) {
-            // Calculate entity height in blocks for head clearance check
             const entityHeightInBlocks = Math.ceil(entity.height / Config.BLOCK_HEIGHT);
-
-            // Condition 1: Is the collision *only* with the block at the entity's feet level?
             const isObstacleAtFeet = (stepUpCandidateRow === maxRow);
-
-            // Condition 2: Is the space directly above the obstacle clear?
             const isSpaceAboveObstacleClear = !isSolid(stepUpCandidateCol, stepUpCandidateRow - 1);
-
-            // Condition 3: Is there head clearance above the *target* step position?
-            // Check block(s) where the entity's head would be after stepping up.
             const headClearanceRow = stepUpCandidateRow - entityHeightInBlocks;
             const isHeadClearanceAvailable = !isSolid(stepUpCandidateCol, headClearanceRow);
 
-            // *** Perform Step-Up? ***
             if (isObstacleAtFeet && isSpaceAboveObstacleClear && isHeadClearanceAvailable) {
-                // YES, Step Up!
-                didStepUp = true;
-                // Allow intended horizontal movement up to the point of collision
-                entity.x += moveX * earliestToiX;
-
-                // Adjust Y position vertically to place feet EXACTLY on top of the step
-                entity.y = (stepUpCandidateRow * Config.BLOCK_HEIGHT) - entity.height;
-                entity.vy = 0; // Crucial: Stop vertical velocity during the step
-
-                collidedX = false; // This wasn't a wall collision that stopped movement
-                // Do not zero vx, allow movement to continue if input is held
-            } else {
-                // *** Standard X Collision Response (NO Step Up) ***
-                // Move EXACTLY to the collision surface, plus epsilon to prevent sticking
-                entity.x = (signX > 0) ? (collisionSurfaceX - entity.width - E_EPSILON) : (collisionSurfaceX + E_EPSILON);
-                entity.vx = 0; // Stop horizontal movement
-                collidedX = true;
+                 performStepUp = true;
+                 didStepUp = true;
             }
-        } else {
-            // No collision detected OR step-up conditions not met & no collision, move freely horizontally
-            entity.x += moveX * earliestToiX; // Move potentially full distance if earliestToiX remained 1.0
-            collidedX = false;
         }
 
-    } // End X-axis check
+        // --- Apply X Collision Result ---
+        if (performStepUp) {
+            // Step Up: Allow horizontal movement up to collision, adjust Y, stop VY
+            const allowedMoveX = moveX * earliestToiX;
+            entity.x += allowedMoveX;
+            entity.y = (stepUpCandidateRow * Config.BLOCK_HEIGHT) - entity.height; // Place feet exactly on step
+            entity.vy = 0; // Stop vertical velocity during step
+            // Note: We don't set collidedX=true or vx=0, allowing slide if input held
+        } else if (earliestToiX < 1.0 - E_EPSILON) {
+            // Standard X Collision: Move exactly to surface, stop VX
+            const allowedMoveX = moveX * earliestToiX;
+            entity.x += allowedMoveX;
+            // Snap precisely: Adjust slightly away from the wall to prevent sticking
+            entity.x = (signX > 0) ? (collisionSurfaceX - entity.width - E_EPSILON) : (collisionSurfaceX + E_EPSILON);
+            entity.vx = 0; // Stop horizontal velocity
+            collidedX = true;
+        } else {
+            // No X collision: Move freely horizontally for the full potential distance
+            entity.x += moveX;
+        }
+    } // End X-axis resolution
+
 
     // --- Step 2: Resolve Y-axis Collision ---
     // *** Important: Use the entity's potentially updated X and Y from Step 1 ***
-    // If a step-up occurred, entity.y was adjusted and vy was zeroed.
-    moveY = entity.vy; // Re-read vy in case it was zeroed by step-up
-    let earliestToiY = 1.0;
-    let collisionSurfaceY = 0; // Store the Y coordinate of the surface we hit
+    // Re-read moveY in case vy was zeroed by step-up
+    moveY = didStepUp ? 0 : potentialMoveY; // If stepped up, no vertical move this frame
 
-    // Check Y if moving vertically OR if just stepped up (to confirm landing)
-    if (Math.abs(moveY) > E_EPSILON || didStepUp) {
-        const signY = Math.sign(moveY);
-        // If stepped up, treat the effective direction as downwards to check for ground immediately below
-        const effectiveSignY = (didStepUp && moveY === 0) ? 1 : signY;
+    if (Math.abs(moveY) > E_EPSILON || didStepUp) { // Also check Y if step-up occurred to confirm landing
+        const signY = didStepUp ? 1 : Math.sign(moveY); // If stepped up, check downwards
+        const yEdge = (signY > 0) ? entity.y + entity.height : entity.y;
+        let earliestToiY = 1.0;
+        let collisionSurfaceY = 0;
 
         // Calculate column span of the entity at its (potentially new) X position
         const xStart = entity.x;
         const xEnd = entity.x + entity.width;
         const minCol = Math.max(0, Math.floor(xStart / Config.BLOCK_WIDTH));
-        // Subtract epsilon for maxCol calculation
-        const maxCol = Math.min(Config.GRID_COLS - 1, Math.floor((xEnd - E_EPSILON) / Config.BLOCK_WIDTH));
-
-        // Determine leading edge and target edge in Y direction
-        const yEdge = (effectiveSignY > 0) ? entity.y + entity.height : entity.y;
-        // Add a tiny bit in the direction of movement for target edge calculation if stepped up, to ensure check below happens
-        const targetYEdge = yEdge + (didStepUp ? E_EPSILON : moveY);
+        const maxCol = Math.min(Config.GRID_COLS - 1, Math.floor((xEnd - E_EPSILON) / Config.BLOCK_WIDTH)); // Use epsilon for right edge
 
         // Calculate row span for the sweep check
-        const startRow = Math.floor(yEdge / Config.BLOCK_HEIGHT);
-        // Add small epsilon to target edge when flooring to ensure check includes target row itself
-        const endRow = Math.floor((targetYEdge + (effectiveSignY > 0 ? E_EPSILON : -E_EPSILON)) / Config.BLOCK_HEIGHT);
+        // If stepped up, target edge is just slightly below current position
+        const targetYEdge = yEdge + (didStepUp ? E_EPSILON * 2 : moveY);
+        const startRowCheck = Math.floor(yEdge / Config.BLOCK_HEIGHT);
+        const endRowCheck = Math.floor((targetYEdge + (signY > 0 ? E_EPSILON : -E_EPSILON)) / Config.BLOCK_HEIGHT);
+
 
         // Find the earliest Y collision across the entity's horizontal span
         for (let c = minCol; c <= maxCol; c++) {
-            // Determine row check range and direction for this column
-            // Start check from the row adjacent to the current one in the direction of movement
-            const rowCheckStart = (effectiveSignY > 0) ? Math.max(0, startRow + 1) : Math.min(Config.GRID_ROWS - 1, startRow);
-            const rowCheckEnd = (effectiveSignY > 0) ? Math.min(Config.GRID_ROWS - 1, endRow) : Math.max(0, endRow);
-            const step = (effectiveSignY > 0) ? 1 : -1;
+            const checkStart = (signY > 0) ? Math.max(0, startRowCheck + 1) : Math.min(Config.GRID_ROWS - 1, startRowCheck);
+            const checkEnd = (signY > 0) ? Math.min(Config.GRID_ROWS - 1, endRowCheck) : Math.max(0, endRowCheck);
+            const step = (signY > 0) ? 1 : -1;
 
-            for (let r = rowCheckStart; (effectiveSignY > 0 ? r <= rowCheckEnd : r >= rowCheckEnd); r += step) {
+            for (let r = checkStart; (signY > 0 ? r <= checkEnd : r >= checkEnd); r += step) {
                 if (isSolid(c, r)) {
-                    const blockEdgeY = (effectiveSignY > 0) ? r * Config.BLOCK_HEIGHT : (r + 1) * Config.BLOCK_HEIGHT;
-                    // Calculate TOI only if actually moving vertically to avoid division by zero
+                    const blockEdgeY = (signY > 0) ? r * Config.BLOCK_HEIGHT : (r + 1) * Config.BLOCK_HEIGHT;
                     let toiY = 1.0;
+
+                    // Calculate TOI only if actually moving vertically (or checking after step up)
                     if (Math.abs(moveY) > E_EPSILON) {
                          toiY = (blockEdgeY - yEdge) / moveY;
-                    } else if (didStepUp && effectiveSignY > 0 && blockEdgeY >= yEdge) {
-                         // If stepped up and checking below, treat TOI as 0 if immediately colliding or slightly overlapping
-                         toiY = 0;
+                    } else if (didStepUp && blockEdgeY >= yEdge) { // If stepped up, check immediately below
+                         toiY = 0; // Treat as immediate collision if solid block is below
                     }
 
                     if (toiY >= -E_EPSILON && toiY < earliestToiY) {
                         earliestToiY = toiY;
-                        collisionSurfaceY = blockEdgeY; // Store surface Y
+                        collisionSurfaceY = blockEdgeY;
                     }
-                    if (effectiveSignY > 0 ? r >= endRow : r <= endRow) break; // Optimization
+                    // Optimization: Break inner loop once collision is found in this column's path
+                    break; // Stop checking further rows in this column
                 }
             }
         } // End Y-collision detection loop
 
         // --- Apply Y Collision Result ---
         if (earliestToiY < 1.0 - E_EPSILON) { // Collision detected
-             // Snap EXACTLY to the collision surface, plus epsilon
-             entity.y = (effectiveSignY > 0) ? (collisionSurfaceY - entity.height - E_EPSILON) : (collisionSurfaceY + E_EPSILON);
+            const allowedMoveY = moveY * earliestToiY;
+            entity.y += allowedMoveY;
+            // Snap precisely: Adjust slightly away from surface
+            entity.y = (signY > 0) ? (collisionSurfaceY - entity.height - E_EPSILON) : (collisionSurfaceY + E_EPSILON);
 
-            if (effectiveSignY > 0) { // Collided downwards (or landed after step-up)
+            if (signY > 0) { // Collided downwards (landed)
                 isOnGround = true; // Landed on something
             }
-            entity.vy = 0; // Stop vertical movement
+            entity.vy = 0; // Stop vertical velocity
             collidedY = true;
         } else if (!didStepUp) {
-             // No Y collision detected AND didn't step up, move freely vertically
-             entity.y += moveY * earliestToiY; // Move potentially full distance
-             collidedY = false;
-             isOnGround = false; // Not on ground if moving freely downwards
+            // No Y collision detected AND didn't step up, move freely vertically
+            entity.y += moveY; // Move full potential distance
+            // isOnGround remains false if moving downwards freely
         } else {
-             // If step-up occurred but no *immediate* downward collision was found (e.g., stepped onto edge),
-             // entity remains at the stepped Y, but is airborne until next frame's gravity takes effect.
-             isOnGround = false; // Not confirmed on ground yet
+             // Stepped up, but didn't immediately hit ground below (e.g. stepped onto edge)
+             // isOnGround remains false until next frame or final check confirms
         }
 
-    } // End Y-axis check
+    } // End Y-axis resolution
+
 
     // --- Step 3: Final Ground Check (Post-Resolution) ---
-    // This is essential! It confirms ground status if sliding horizontally onto a ledge,
-    // standing still, or immediately after a step-up where the Y-collision check might not have registered.
-    // Checks slightly below the entity's final position.
-    if (!isOnGround) { // Only run if Y-collision didn't already confirm ground
-        const checkYBelow = entity.y + entity.height + Config.BLOCK_HEIGHT * 0.1; // Check a bit (~10% block height) below feet
-        // Check columns slightly inset from edges to avoid issues at exact corners
-        const checkColLeft = worldToGridCoords(entity.x + entity.width * 0.1, checkYBelow).col; // Inset 10%
-        const checkColRight = worldToGridCoords(entity.x + entity.width * 0.9, checkYBelow).col; // Inset 10%
-        const checkRowBelow = worldToGridCoords(entity.x, checkYBelow).row; // Row index below entity
+    // Crucial! Confirms ground status after all movement/snapping, catches landings from horizontal slides or step-ups.
+    if (!isOnGround) { // Only run if not already confirmed on ground by Y-collision
+        const checkDist = 1.0; // Check 1 pixel below the entity's feet
+        const yBelow = entity.y + entity.height + checkDist;
+        const rowBelow = Math.floor(yBelow / Config.BLOCK_HEIGHT);
 
-        // Check if either point below hits solid ground
-        if (isSolid(checkColLeft, checkRowBelow) || isSolid(checkColRight, checkRowBelow)) {
-            // There is solid ground directly below. Check if the entity is *very close* to it.
-            const groundSurfaceY = checkRowBelow * Config.BLOCK_HEIGHT;
-            // Use a small tolerance, related to E_EPSILON, for proximity check
-            if (Math.abs((entity.y + entity.height) - groundSurfaceY) < E_EPSILON * 5) {
-                isOnGround = true;
-                 // Optional: Snap precisely to ground if vertical velocity is negligible (prevents floating point creep)
-                 // Use a threshold slightly larger than Epsilon but smaller than gravity impact per frame
-                if (Math.abs(entity.vy) < Config.GRAVITY * 0.5) {
-                    entity.y = groundSurfaceY - entity.height; // Snap feet exactly to surface
-                    entity.vy = 0; // Ensure velocity is zeroed if snapped
+        // Check multiple points along the bottom edge for robustness
+        const checkPointsX = [
+            entity.x + E_EPSILON,                // Left edge (inset slightly)
+            entity.x + entity.width * 0.5,       // Center
+            entity.x + entity.width - E_EPSILON  // Right edge (inset slightly)
+        ];
+
+        for (const checkX of checkPointsX) {
+            const col = Math.floor(checkX / Config.BLOCK_WIDTH);
+            if (isSolid(col, rowBelow)) {
+                // Solid ground detected below. Check if entity is *very close* to it.
+                const groundSurfaceY = rowBelow * Config.BLOCK_HEIGHT;
+                // Use a slightly larger tolerance than E_EPSILON for snapping check
+                if (Math.abs((entity.y + entity.height) - groundSurfaceY) < checkDist * 1.5) {
+                    isOnGround = true;
+                    // Snap feet precisely to the ground surface if close enough
+                    entity.y = groundSurfaceY - entity.height;
+                    // Ensure vertical velocity is zeroed if we snap to ground here
+                    if (entity.vy > 0) {
+                        entity.vy = 0;
+                    }
+                    collidedY = true; // Considered a Y collision if snapped
+                    break; // Found ground, no need to check other points
                 }
             }
         }
     } // End final ground check
 
-    // Return results, including the new didStepUp flag
+    // Return results
     return { collidedX, collidedY, isOnGround, didStepUp };
 }

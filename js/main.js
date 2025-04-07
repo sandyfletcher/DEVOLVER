@@ -36,77 +36,105 @@ function restartGame() {
 }
 // --- Game Loop ---
 function gameLoop(timestamp) {
-// --- Game Over Check ---
+    // --- Game Over Check ---
     if (player && player.getCurrentHealth() <= 0 && !WaveManager.isGameOver()) {
         console.log("Game Over detected in loop (Player health <= 0).");
         WaveManager.setGameOver();
-        // if (player) { player.stopMovement(); } --- Stop player movement immediately if needed ---
     }
-// --- Handle GAME OVER state ---
+
+    // --- Handle GAME OVER state ---
     if (WaveManager.isGameOver()) {
         Renderer.clear();
-// --- Draw final state: world->items->enemies->player ---
+        // Draw final state
         World.draw(Renderer.getContext());
         ItemManager.draw(Renderer.getContext());
         EnemyManager.draw(Renderer.getContext());
         if (player) player.draw(Renderer.getContext());
-// --- Draw Game Over UI ---
+        // Draw Game Over UI
         if (player) {
-           const waveInfo = WaveManager.getWaveInfo(); // Get and print wave info
+           const waveInfo = WaveManager.getWaveInfo();
            UI.draw(Renderer.getContext(), player.getCurrentHealth(), player.getMaxHealth(), waveInfo);
         }
-// --- Check for restart click ---
+        // Check for restart click
         if (Input.didClickPlayAgain()) {
             console.log("Play Again button clicked!");
             restartGame();
-            requestAnimationFrame(gameLoop);
-            return;
+            requestAnimationFrame(gameLoop); // Start new loop after restart
+            return; // Exit this game over frame
         }
-// --- raw touch controls if needed ---
+        // Draw touch controls on game over screen too
         Input.drawControls(Renderer.getContext());
-// --- Keep requesting frames to draw the game over screen and check for clicks ---
+        // Keep requesting frames for game over screen
         requestAnimationFrame(gameLoop);
-        return; 
+        return; // Exit this game over frame
     }
-// --- If Game is Active, Proceed with Normal Loop ---
-    if (!gameRunning) return; // Allow pausing in the future
-// --- Delta Time Calc ---
+
+    // --- If Game is Active, Proceed with Normal Loop ---
+    if (!gameRunning) return;
+
+    // --- Delta Time Calc ---
     const deltaTime = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
     const dt = Math.min(deltaTime, Config.MAX_DELTA_TIME);
-// --- Input Phase ---
+
+    // --- Input Phase ---
     const inputState = Input.getState();
-// --- Update Phase ---
-    WaveManager.update(dt);
+
+    // --- Get Player Position ---
+    let currentPlayerPosition = null;
+    if (player && player.getCurrentHealth() > 0) {
+        currentPlayerPosition = player.getPosition();
+    }
+
+    // --- Update Phase ---
+    // Player update can happen early
     if (player) { player.update(dt, inputState); }
-    ItemManager.update(dt);
-    EnemyManager.update(dt);
-    World.update(dt);
-// --- Collision Detection Phase ---
-    if (player) { // Only check collisions if the player exists
+    ItemManager.update(dt); // Update items
+
+    // --- VVV CHANGE ORDER HERE VVV ---
+    // Update Enemy Manager FIRST to remove dead enemies from last frame
+    EnemyManager.update(dt, currentPlayerPosition);
+    // Update Wave Manager AFTER enemies are cleaned up, so living count is accurate
+    WaveManager.update(dt);
+    // --- END CHANGE ORDER ---
+
+    World.update(dt); // World updates (e.g., block changes)
+
+    // --- Collision Detection Phase ---
+    if (player) {
         CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
         CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
         CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
     }
-// --- Render Phase ---
+
+    // --- Render Phase ---
     Renderer.clear();
     World.draw(Renderer.getContext());
     ItemManager.draw(Renderer.getContext());
     EnemyManager.draw(Renderer.getContext());
     if (player) { player.draw(Renderer.getContext()); }
+
+    // --- Draw In-Game UI --- (FIXED SECTION)
     if (player) {
         const waveInfo = WaveManager.getWaveInfo();
+        // Separate line for UI.draw
         UI.draw(Renderer.getContext(), player.getCurrentHealth(), player.getMaxHealth(), waveInfo);
-    }
+    } // <-- Added missing closing brace for the inner if(player)
+
+    // Draw touch controls AFTER other elements
     Input.drawControls(Renderer.getContext());
-// --- ---
-    if (!WaveManager.isGameOver()) {
-        Input.consumeClick();
-    }
-// --- Loop Continuation ---
+
+
+    // --- End of Frame Logic ---
+    // Consume click state only if the game isn't over (handled separately above)
+    Input.consumeClick(); // Consume click regardless of wave state if game running
+
+    // --- Loop Continuation ---
     requestAnimationFrame(gameLoop);
-}
-// --- Initialization ---
+
+} // --- End of gameLoop Function ---
+// 
+// // --- Initialization ---
 function init() {
     console.log("Initializing game...");
     let initializationOk = true;

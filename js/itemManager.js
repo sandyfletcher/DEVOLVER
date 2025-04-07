@@ -1,14 +1,10 @@
-// js/itemManager.js
 // -----------------------------------------------------------------------------
 // itemManager.js - Manages Items in the World
 // -----------------------------------------------------------------------------
 console.log("itemManager.js loaded");
 
 import * as Config from './config.js';
-// Remove the direct import of WorldManager if only used for collision check
-// import * as World from './worldManager.js';
-// Import the new GridCollision module
-import * as GridCollision from './utils/gridCollision.js'; // Adjust path if needed
+import * as GridCollision from './utils/gridCollision.js';
 
 // --- Internal Item Class ---
 class Item {
@@ -19,14 +15,10 @@ class Item {
         this.width = width;
         this.height = height;
         this.color = color;
-
-        this.vx = 0;
-        this.vy = 0;
+        this.vx = 0; // Items generally don't move horizontally unless pushed
+        this.vy = 0; // Velocity pixels/sec
         this.isOnGround = false;
-        this.bobbleOffset = Math.random() * Math.PI * 2;
-        this.gravity = Config.ITEM_GRAVITY ?? Config.GRAVITY;
-
-        // Add an isActive flag for potential despawning/removal
+        this.bobbleOffset = Math.random() * Math.PI * 2; // Start bobble at random point
         this.isActive = true;
     }
 
@@ -35,54 +27,52 @@ class Item {
      * @param {number} dt - Delta time.
      */
     update(dt) {
-        if (!this.isActive) return; // Don't update inactive items
+        if (!this.isActive) return;
 
-        // --- Physics Step 1: Apply Forces (Gravity) ---
+        // --- Physics Step 1: Apply Gravity ---
         if (!this.isOnGround) {
-            this.vy += this.gravity;
+            this.vy += Config.GRAVITY_ACCELERATION * dt;
+            // Clamp fall speed (using general max fall speed)
+             this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
         } else {
-             this.bobbleOffset += Config.ITEM_BOBBLE_SPEED;
+            // If on ground, stop vertical velocity and apply bobbing
+            if (this.vy > 0) this.vy = 0;
+            this.bobbleOffset += Config.ITEM_BOBBLE_SPEED * dt; // Bobbing speed scaled by dt
         }
 
-        // --- Physics Step 3: Grid Collision Detection & Resolution ---
-        // Use the refactored GridCollision module and the discrete check (for now)
-        const collisionResult = GridCollision.collideAndResolve(this);
-        this.isOnGround = collisionResult.isOnGround;
+        // --- Calculate Potential Movement This Frame ---
+        const potentialMoveX = this.vx * dt; // Usually 0 for items
+        const potentialMoveY = this.vy * dt;
 
-        // --- Optional: Screen Boundary Checks (If needed) ---
-        // Items typically just fall out, but this prevents going off sides
-        // if (this.x < 0) { this.x = 0; if (this.vx < 0) this.vx = 0; }
-        // if (this.x + this.width > Config.CANVAS_WIDTH) { this.x = Config.CANVAS_WIDTH - this.width; if (this.vx > 0) this.vx = 0; }
+        // --- Physics Step 2: Grid Collision Detection & Resolution ---
+        const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+        this.isOnGround = collisionResult.isOnGround;
 
         // --- Despawn/Remove if falls out of world ---
         if (this.y > Config.CANVAS_HEIGHT + 100) {
              console.warn(`Item ${this.type} fell out of bounds.`);
-             this.isActive = false; // Mark for removal
+             this.isActive = false;
         }
-
     }
 
-
     draw(ctx) {
-        if (!this.isActive || !ctx) return; // Don't draw inactive items
-        // Check for NaN before drawing
+        if (!this.isActive || !ctx) return;
         if (isNaN(this.x) || isNaN(this.y)) {
-             console.error(`>>> Item DRAW ERROR: Preventing draw due to NaN coordinates! type: ${this.type}, x: ${this.x}, y: ${this.y}`);
+             console.error(`>>> Item DRAW ERROR: NaN coordinates! type: ${this.type}, x: ${this.x}, y: ${this.y}`);
              return;
         }
 
         let drawY = this.y;
+        // Apply bobble effect only when on ground
         if (this.isOnGround) {
              drawY += Math.sin(this.bobbleOffset) * Config.ITEM_BOBBLE_AMOUNT * this.height;
         }
 
         ctx.fillStyle = this.color;
-        // Use floor for potentially crisper rendering on pixel grid
         ctx.fillRect(Math.floor(this.x), Math.floor(drawY), this.width, this.height);
     }
 
-    getRect() {
-        // Add NaN checks here too for safety before collision checks use this rect
+    getRect() { // No change needed
          const safeX = typeof this.x === 'number' && !isNaN(this.x) ? this.x : 0;
          const safeY = typeof this.y === 'number' && !isNaN(this.y) ? this.y : 0;
         return {
@@ -92,8 +82,7 @@ class Item {
             height: this.height
         };
     }
-} // --- End of Item Class ---
-
+}
 
 // --- Module State ---
 let items = [];
@@ -149,7 +138,6 @@ export function update(dt) {
 }
 
 export function draw(ctx) {
-    // No need to check isActive here, draw method handles it
     items.forEach(item => { item.draw(ctx); });
 }
 

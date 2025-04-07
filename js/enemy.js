@@ -10,107 +10,97 @@ import * as World from './worldManager.js';   // Potentially needed for more com
 import * as GridCollision from './utils/gridCollision.js'; // Correctly imports the collision utility
 
 export class Enemy {
-    constructor(x, y) {
+    // Accept enemyType in constructor
+    constructor(x, y, enemyType = Config.ENEMY_TYPE_CENTER_SEEKER) { // Default to center seeker
         this.x = x;
         this.y = y;
+        this.type = enemyType; // Store the type
+
+        // --- Assign stats based on type ---
+        const stats = Config.ENEMY_STATS[this.type];
+        if (!stats) {
+            console.error(`>>> Enemy CONSTRUCTOR: Unknown enemy type "${enemyType}". Using fallback stats.`);
+            this.color = 'purple'; // Fallback color
+            this.maxSpeedX = 30;
+            this.health = 1;
+        } else {
+            this.color = stats.color;
+            this.maxSpeedX = stats.maxSpeedX; // Use speed from config stats
+            this.health = stats.health;
+            // Assign other stats like contact damage if they differ by type later
+        }
+        // --- Assign general properties ---
         this.width = Config.ENEMY_WIDTH;
         this.height = Config.ENEMY_HEIGHT;
-        this.color = Config.ENEMY_COLOR;
+        this.vx = 0; // Velocity pixels/sec
+        this.vy = 0; // Velocity pixels/sec
+        this.isOnGround = false;
+        this.isActive = true;
+        // targetX removed, calculated dynamically in update
 
-        this.vx = 0;
-        this.vy = 0;
-        this.speed = Config.ENEMY_SPEED;
-        this.gravity = Config.ENEMY_GRAVITY;
-        this.health = Config.ENEMY_HEALTH;
-        this.isOnGround = false; // Assume airborne initially, collision check will correct
-        this.isActive = true;    // Enemies start active
-        this.targetX = Config.ENEMY_TARGET_X; // Simple target for AI
-
-        // Initial position sanity check
-        if (isNaN(this.x) || isNaN(this.y)) {
-            console.error(`>>> Enemy CONSTRUCTED with NaN coordinates! x: ${x}, y: ${y}. Resetting to default.`);
-            this.x = Config.ENEMY_TARGET_X; // Fallback position
-            this.y = 50; // Arbitrary fallback Y
-        }
-        // console.log(`>>> Enemy CONSTRUCTED at x: ${this.x?.toFixed(1)}, y: ${this.y?.toFixed(1)}`);
+        if (isNaN(this.x) || isNaN(this.y)) { /* ... NaN check ... */ }
     }
 
+    // Update now accepts playerPosition (can be null if player doesn't exist)
+    update(dt, playerPosition) {
+        if (!this.isActive) return;
+        if (isNaN(this.x) || isNaN(this.y)) { /* ... NaN check ... */ }
 
-    update(dt) {
-        if (!this.isActive) return; // Don't update inactive enemies
-
-        // Safety Check: Prevent updates if position is invalid
-        if (isNaN(this.x) || isNaN(this.y)) {
-             console.error(`>>> Enemy Update ERROR: Skipping update due to NaN coordinates! x=${this.x}, y=${this.y}`);
-             this.isActive = false; // Mark as inactive to prevent further issues
-             return;
+        // --- Determine Target X based on AI Type ---
+        let dynamicTargetX;
+        if (this.type === Config.ENEMY_TYPE_PLAYER_CHASER && playerPosition) {
+            // Target the horizontal center of the player
+            dynamicTargetX = playerPosition.x + (Config.PLAYER_WIDTH / 2);
+        } else {
+            // Default or Center Seeker targets the middle of the canvas
+            dynamicTargetX = Config.CANVAS_WIDTH / 2;
         }
 
-        // --- Simple AI: Move towards target X ---
+        // --- Simple AI: Move towards Dynamic Target X ---
         const currentCenterX = this.x + this.width / 2;
-        let direction = 0;
-        // Check distance to target to avoid jittering when close
-        if (Math.abs(currentCenterX - this.targetX) > this.speed) { // Use speed as threshold
-            direction = Math.sign(this.targetX - currentCenterX);
+        let targetDirection = 0;
+        // Check distance to target - use the enemy's specific maxSpeedX
+        if (Math.abs(currentCenterX - dynamicTargetX) > this.maxSpeedX * dt * 1.5) { // Adjust threshold slightly
+            targetDirection = Math.sign(dynamicTargetX - currentCenterX);
         }
-        this.vx = direction * this.speed;
+        // Set velocity based on direction and type-specific max speed
+        this.vx = targetDirection * this.maxSpeedX; // Use maxSpeedX from constructor
 
 
         // --- Physics Step 1: Apply Gravity ---
-        // Apply gravity if not on the ground (based on *last* frame's collision result)
         if (!this.isOnGround) {
-            this.vy += this.gravity;
-             // Optional: Clamp fall speed
-             // if (this.vy > Config.MAX_FALL_SPEED) { this.vy = Config.MAX_FALL_SPEED; }
+            this.vy += Config.GRAVITY_ACCELERATION * dt;
+            this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
         } else {
-             // Optional: Zero out small positive vertical velocity when grounded
-             // if(this.vy > 0) {
-             //    this.vy = 0;
-             // }
+            if(this.vy > 0) this.vy = 0;
         }
 
+        // --- Calculate Potential Movement ---
+        const potentialMoveX = this.vx * dt;
+        const potentialMoveY = this.vy * dt;
 
-        // --- Physics Step 2: Grid Collision Detection & Resolution ---
-        // This function handles all wall, floor, ceiling collisions and step-up logic.
-        // It directly modifies this.x, this.y, this.vx, this.vy.
-        const collisionResult = GridCollision.collideAndResolve(this);
-
-        // Update the enemy's ground status based on the *current* frame's result.
+        // --- Physics Step 2: Grid Collision ---
+        const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
         this.isOnGround = collisionResult.isOnGround;
 
-        // --- Optional: AI adjustments based on collision ---
-        // Example: If collided horizontally, maybe change target or behavior?
-        // if (collisionResult.collidedX) {
-        //     console.log("Enemy hit a wall horizontally.");
-             // Reverse direction? Choose a new target? Jump?
-             // this.targetX = currentCenterX - direction * 100; // Move away briefly
-        // }
-        // Example: If stepped up, maybe trigger a sound?
-        // if (collisionResult.didStepUp) {
-        //     console.log("Enemy stepped up.");
-        // }
-
-
-        // --- Screen Boundary Checks (simple prevention) ---
-        // Prevent moving beyond canvas edges (redundant if world grid fills canvas)
-         if (this.x < 0) {
-              this.x = 0;
-              if (this.vx < 0) this.vx = 0;
-         }
-         if (this.x + this.width > Config.CANVAS_WIDTH) {
-              this.x = Config.CANVAS_WIDTH - this.width;
-              if (this.vx > 0) this.vx = 0;
-         }
-
-
-        // --- Deactivation if falling out of world ---
-        if (this.y > Config.CANVAS_HEIGHT + 200) { // Check well below canvas bottom
-            console.warn("Enemy fell out of world, marking inactive.");
-            this.isActive = false; // Mark for removal by enemyManager
+        // --- Basic AI Reaction to Collision ---
+        // (Can be expanded later)
+        if (collisionResult.collidedX) {
+            // If hit a wall, just stop horizontal velocity for this frame.
+            // AI logic above will recalculate direction next frame.
+            // Or, for simple reversal: this.vx *= -0.5; // Dampen and reverse slightly
+            // Consider adding jump logic for chasers later.
         }
 
-    } // End of update method
+        // --- Screen Boundary Checks ---
+         if (this.x < 0) { this.x = 0; if (this.vx < 0) this.vx = 0; }
+         if (this.x + this.width > Config.CANVAS_WIDTH) { this.x = Config.CANVAS_WIDTH - this.width; if (this.vx > 0) this.vx = 0; }
 
+        // --- Deactivation if falling out of world ---
+        if (this.y > Config.CANVAS_HEIGHT + 200) { /* ... */ }
+
+    } // End of update method
+        
     takeDamage(amount) {
         if (!this.isActive) return; // Can't damage inactive enemies
 
@@ -131,27 +121,16 @@ export class Enemy {
         this.vy = 0;
 
         // --- Trigger Item Drops ---
-        // Check drop chance
         if (Math.random() < Config.ENEMY_DROP_CHANCE) {
-            // Spawn configured number of items
             for (let i = 0; i < Config.ENEMY_DROP_AMOUNT; i++) {
-                 // Ensure coordinates are valid before spawning
                  if (typeof this.x === 'number' && typeof this.y === 'number') {
-                     // Calculate spawn position: center X, slightly above enemy's original position
-                     let dropX = this.x + (this.width / 2);
-                     let dropY = this.y - Config.BLOCK_HEIGHT; // Start one block height above enemy 'y'
-
-                     // Add slight randomness to prevent perfect stacking
-                     dropX += (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.5;
-                     dropY += (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.25;
-
-                     // Call ItemManager to spawn the item
+                     let dropX = this.x + (this.width / 2) + (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.5;
+                     let dropY = this.y - Config.BLOCK_HEIGHT + (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.25;
                      ItemManager.spawnItem(dropX, dropY, Config.ENEMY_DROP_TYPE);
                  } else {
                       console.warn("Enemy died with invalid coordinates, skipping drop spawn.");
                  }
             }
-            // console.log(`Enemy dropped ${Config.ENEMY_DROP_AMOUNT} ${Config.ENEMY_DROP_TYPE}`);
         }
     }
 
