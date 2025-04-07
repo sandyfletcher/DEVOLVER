@@ -41,7 +41,6 @@ function gameLoop(timestamp) {
         console.log("Game Over detected in loop (Player health <= 0).");
         WaveManager.setGameOver();
     }
-
     // --- Handle GAME OVER state ---
     if (WaveManager.isGameOver()) {
         Renderer.clear();
@@ -66,7 +65,7 @@ function gameLoop(timestamp) {
         Input.drawControls(Renderer.getContext());
         // Keep requesting frames for game over screen
         requestAnimationFrame(gameLoop);
-        return; // Exit this game over frame
+        return;
     }
 
     // --- If Game is Active, Proceed with Normal Loop ---
@@ -87,17 +86,10 @@ function gameLoop(timestamp) {
     }
 
     // --- Update Phase ---
-    // Player update can happen early
     if (player) { player.update(dt, inputState); }
     ItemManager.update(dt); // Update items
-
-    // --- VVV CHANGE ORDER HERE VVV ---
-    // Update Enemy Manager FIRST to remove dead enemies from last frame
     EnemyManager.update(dt, currentPlayerPosition);
-    // Update Wave Manager AFTER enemies are cleaned up, so living count is accurate
     WaveManager.update(dt);
-    // --- END CHANGE ORDER ---
-
     World.update(dt); // World updates (e.g., block changes)
 
     // --- Collision Detection Phase ---
@@ -114,27 +106,23 @@ function gameLoop(timestamp) {
     EnemyManager.draw(Renderer.getContext());
     if (player) { player.draw(Renderer.getContext()); }
 
-    // --- Draw In-Game UI --- (FIXED SECTION)
+    // --- Draw In-Game UI ---
     if (player) {
         const waveInfo = WaveManager.getWaveInfo();
         // Separate line for UI.draw
         UI.draw(Renderer.getContext(), player.getCurrentHealth(), player.getMaxHealth(), waveInfo);
-    } // <-- Added missing closing brace for the inner if(player)
-
+    } 
     // Draw touch controls AFTER other elements
     Input.drawControls(Renderer.getContext());
-
-
-    // --- End of Frame Logic ---
     // Consume click state only if the game isn't over (handled separately above)
     Input.consumeClick(); // Consume click regardless of wave state if game running
 
-    // --- Loop Continuation ---
+// --- Loop Continuation ---
     requestAnimationFrame(gameLoop);
 
-} // --- End of gameLoop Function ---
-// 
-// // --- Initialization ---
+}
+
+// --- Initialization ---
 function init() {
     console.log("Initializing game...");
     let initializationOk = true;
@@ -152,7 +140,7 @@ function init() {
         gameRunning = false;
     }
 // --- ---
-if (initializationOk) {
+    if (initializationOk) {
         try {
             player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
         } catch (error) {
@@ -161,9 +149,7 @@ if (initializationOk) {
             gameRunning = false;
         }
     }
-// --- Reset click flag on initial load ---
     Input.consumeClick();
-// --- ---
     if (initializationOk) {
         lastTime = performance.now();
         gameRunning = true;
