@@ -2,7 +2,7 @@
 // root/js/input.js - Handles Keyboard and Touch Input
 // -----------------------------------------------------------------------------
 
-console.log("input.js loaded");
+console.log("input loaded");
 
 import * as Config from './config.js'; // For button positioning if needed
 import * as UI from './ui.js'; // <-- Import UI to get button rect

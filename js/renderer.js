@@ -2,7 +2,7 @@
 // js/renderer.js - Handles Canvas Setup and Drawing Operations
 // -----------------------------------------------------------------------------
 
-console.log("renderer.js loaded");
+console.log("renderer loaded");
 
 import * as Config from './config.js';
 

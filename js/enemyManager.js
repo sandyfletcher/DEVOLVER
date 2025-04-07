@@ -68,7 +68,7 @@ export function trySpawnEnemy(enemyType) { // Accepts enemyType
     // Validate type before passing, or let constructor handle fallback
     const typeToSpawn = Config.ENEMY_STATS[enemyType] ? enemyType : Config.ENEMY_TYPE_CENTER_SEEKER;
 
-    console.log(`>>> Spawning '${typeToSpawn}' at x=${spawnX.toFixed(1)}, y=${spawnY.toFixed(1)}`);
+    // console.log(`>>> Spawning '${typeToSpawn}' at x=${spawnX.toFixed(1)}, y=${spawnY.toFixed(1)}`);
     const newEnemy = new Enemy(spawnX, spawnY, typeToSpawn); // Pass the type
     enemies.push(newEnemy);
     return true;

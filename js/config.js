@@ -2,7 +2,7 @@
 // js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
-console.log("config.js loaded");
+console.log("config loaded");
 
 // --- World Parameters ---
 export const CANVAS_WIDTH = 800; // Match canvas width

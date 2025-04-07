@@ -1,8 +1,8 @@
 // -----------------------------------------------------------------------------
-// js/world-data.js - Manages the core world grid data structure
+// root/js/worldData.js - Manages core world grid data structure
 // -----------------------------------------------------------------------------
 
-console.log("world-data.js loaded");
+console.log("utils/worldData loaded");
 
 import * as Config from '../config.js';
 import { createBlock } from './block.js';
@@ -10,8 +10,7 @@ import { createBlock } from './block.js';
 // --- Module State ---
 let worldGrid = []; // The single source of truth for world block data
 
-// --- Public API ---
-/* Initializes the world grid array structure with default values (air). Must be called before generating or setting blocks. */
+// --- Initialize world grid array structure with default values (air) ---
 export function initializeGrid() {
     console.log(`Initializing world grid (${Config.GRID_ROWS}x${Config.GRID_COLS})...`);
     worldGrid = new Array(Config.GRID_ROWS);
@@ -72,7 +71,7 @@ export function setBlock(col, row, blockType, orientation = Config.ORIENTATION_F
         worldGrid[row][col] = createBlock(blockType, orientation);
         return true;
     } else {
-        // Optional: console.warn(`Set block out of bounds: ${row}, ${col}`);
+        console.warn(`Set block out of bounds: ${row}, ${col}`);
         return false; // Out of bounds
     }
 }

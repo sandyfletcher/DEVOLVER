@@ -58,7 +58,6 @@ export function reset() {
  * @param {number} dt - Delta time in seconds.
  */
 export function update(dt) {
-    // --- ADD DETAILED LOGGING AT START OF UPDATE ---
     const livingCount = EnemyManager.getLivingEnemyCount(); // Get count once per frame
     // console.log(`[WaveMgr Update] State: ${state}, Living: ${livingCount}, Spawned: ${enemiesSpawnedThisWave}/${enemiesToSpawnThisWave}, Timer: ${timer.toFixed(1)}`);
 
@@ -71,46 +70,44 @@ export function update(dt) {
                 // Skip further processing this frame after state change
                 return; // Added return to prevent immediate SPAWNING logic run
             }
-            break; // End PRE_WAVE
+            break;
 
         case 'SPAWNING':
-             // --- Check for completion FIRST ---
-             if (enemiesSpawnedThisWave >= enemiesToSpawnThisWave) {
-                 console.log(`[WaveManager] SPAWNING -> ACTIVE (Spawned ${enemiesSpawnedThisWave}/${enemiesToSpawnThisWave})`); // Log transition
-                 state = 'ACTIVE';
-                 // Intentional fall-through: Let ACTIVE case check immediately
-             } else {
-                 // --- If not complete, try spawning ---
-                 enemySpawnDelayTimer -= dt;
-                 if (enemySpawnDelayTimer <= 0) {
-                     // --- Choose enemy type ---
-                     let typeToSpawn;
-                     const chanceForChaser = Math.min(0.8, 0.1 + (currentWaveNumber * 0.1));
-                     if (currentWaveNumber === 1) {
-                         typeToSpawn = Config.ENEMY_TYPE_CENTER_SEEKER;
-                     } else if (Math.random() < chanceForChaser) {
-                         typeToSpawn = Config.ENEMY_TYPE_PLAYER_CHASER;
-                     } else {
-                         typeToSpawn = Config.ENEMY_TYPE_CENTER_SEEKER;
-                     }
+            // --- Check for completion FIRST ---
+            if (enemiesSpawnedThisWave >= enemiesToSpawnThisWave) {
+                console.log(`[WaveManager] SPAWNING -> ACTIVE (Spawned ${enemiesSpawnedThisWave}/${enemiesToSpawnThisWave})`); // Log transition
+                state = 'ACTIVE';
+                // Intentional fall-through: Let ACTIVE case check immediately
+            } else {
+                // --- If not complete, try spawning ---
+                enemySpawnDelayTimer -= dt;
+                if (enemySpawnDelayTimer <= 0) {
+                    // --- Choose enemy type ---
+                    let typeToSpawn;
+                    const chanceForChaser = Math.min(0.8, 0.1 + (currentWaveNumber * 0.1));
+                    if (currentWaveNumber === 1) {
+                        typeToSpawn = Config.ENEMY_TYPE_CENTER_SEEKER;
+                    } else if (Math.random() < chanceForChaser) {
+                        typeToSpawn = Config.ENEMY_TYPE_PLAYER_CHASER;
+                    } else {
+                        typeToSpawn = Config.ENEMY_TYPE_CENTER_SEEKER;
+                    }
+                    // --- Attempt spawn ---
+                    const spawned = EnemyManager.trySpawnEnemy(typeToSpawn);
+                    // console.log(`[WaveMgr SPAWNING] Try spawn type: ${typeToSpawn}, Result: ${spawned}`);
 
-                     // --- Attempt spawn ---
-                     const spawned = EnemyManager.trySpawnEnemy(typeToSpawn);
-                     // --- ADD LOGGING ---
-                     console.log(`[WaveMgr SPAWNING] Try spawn type: ${typeToSpawn}, Result: ${spawned}`);
-
-                     if (spawned) {
+                    if (spawned) {
                          enemiesSpawnedThisWave++;
                          enemySpawnDelayTimer = Config.WAVE_ENEMY_SPAWN_DELAY; // Reset delay for next spawn
-                     } else {
+                    } else {
                          // console.warn(`[WaveManager] Spawn FAILED (Max enemies? Bad point?). Retrying shortly.`);
                          enemySpawnDelayTimer = 0.2; // Slightly longer retry delay if spawn failed
-                     }
-                 }
-                 // --- Break ensures we only spawn or check completion, not both+ACTIVE in one frame ---
-                 break; // End SPAWNING case (if still spawning)
-             }
-             // --- Intentional fall-through from SPAWNING completion check ---
+                    }
+                }
+                // --- Break ensures we only spawn or check completion, not both+ACTIVE in one frame ---
+                break; // End SPAWNING case (if still spawning)
+            }
+            // --- Intentional fall-through from SPAWNING completion check ---
 
         case 'ACTIVE':
             // This case runs if state was already ACTIVE, or if SPAWNING just completed this frame.
@@ -125,9 +122,9 @@ export function update(dt) {
                 state = 'INTERMISSION';
                 timer = Config.WAVE_INTERMISSION_DURATION; // Set intermission timer
                  // Skip further processing this frame after state change
-                return; // Added return
+                return;
             }
-            break; // End ACTIVE case
+            break;
 
         case 'INTERMISSION':
             timer -= dt;
@@ -137,11 +134,11 @@ export function update(dt) {
                  // Skip further processing this frame after state change
                 return; // Added return
             }
-            break; // End INTERMISSION
+            break;
 
         case 'GAME_OVER':
             // No actions needed in wave manager update during game over
-            break; // End GAME_OVER
+            break;
 
         default:
             console.error("Unknown wave state:", state);

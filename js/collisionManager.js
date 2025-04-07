@@ -1,9 +1,10 @@
-// js/collisionManager.js
-import * as Config from './config.js'; // Might need config values later (e.g., damage amounts, though currently they are passed in via method calls)
-// We don't import Player, ItemManager, EnemyManager here.
-// We receive the necessary objects/data as arguments to our functions.
+// -----------------------------------------------------------------------------
+// root/js/collisionManager.js - Collision handling
+// -----------------------------------------------------------------------------
 
-console.log("collisionManager.js loaded");
+import * as Config from './config.js'; // Might need config values later (e.g., damage amounts, though currently they are passed in via method calls)
+
+console.log("collisionManager loaded");
 
 // --- Private Utility Function ---
 // Renamed for clarity, logic remains the same

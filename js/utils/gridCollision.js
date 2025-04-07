@@ -2,11 +2,11 @@
 // -----------------------------------------------------------------------------
 // root/js/utils/gridCollision.js - Handles Entity vs World Grid Collision Logic
 // -----------------------------------------------------------------------------
-console.log("utils/gridCollision.js loaded");
 
-// Import necessary modules
-import * as Config from '../config.js';         // For block dimensions, grid size etc.
-import * as WorldData from './worldData.js'; // To access world block data (getBlock)
+console.log("utils/gridCollision loaded");
+
+import * as Config from '../config.js';
+import * as WorldData from './worldData.js';
 
 // --- Collision Helper Functions --- 
 

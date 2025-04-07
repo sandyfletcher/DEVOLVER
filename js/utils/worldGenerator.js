@@ -1,9 +1,11 @@
-// js/worldGenerator.js
+// -----------------------------------------------------------------------------
+// root/js/worldGenerator.js - Semi-random world generation to start game
+// -----------------------------------------------------------------------------
 
 import * as Config from '../config.js';
 import { PerlinNoise } from './noise.js';
 import { createBlock } from './block.js';
-import { setBlockData, getBlockType, setBlock } from './worldData.js'; // Ensure setBlock is imported if needed later (like in sand pass)
+import { setBlockData, getBlockType, setBlock } from './worldData.js';
 
 // --- Helper functions ---
 function lerp(t, a, b) {
@@ -14,9 +16,8 @@ function lerp(t, a, b) {
 let noiseGenerator = null; // Generator instance
 
 /**
- * Generates the initial landmass (Stone/Dirt/Grass) and fills the rest with Air.
- * Modifies the grid directly using imported functions from world-data.
- * Uses a multi-pass approach with boundary smoothing.
+ * Generates initial landmass (Stone/Dirt/Grass) and fills the rest with Air by modifying grid directly
+ * Multi-pass approach with boundary smoothing
  */
 function generateLandmass() {
     console.log("Generating landmass with boundary smoothing...");
@@ -297,7 +298,6 @@ function applyFloodFill(targetWaterRow) {
     console.log(`Flood fill complete. Filled ${processed} water blocks.`);
 }
 
-
 // --- Sand Pass Function (No Changes Needed, but ensure setBlock is imported) ---
 function applySandPass() {
     // ... (Keep existing sand pass logic, making sure it uses setBlock) ...
@@ -390,17 +390,14 @@ function applySandPass() {
     console.log(`Sand pass complete. ${finalChanges.length} blocks changed to sand.`);
 }
 
-// --- Public API ---
-
 /**
  * Runs the entire world generation process, step-by-step.
  * Assumes the grid has been initialized by world-data.initializeGrid().
  */
 export function generateInitialWorld() {
-    console.time("WorldGen");
+    console.time("World generated in");
     generateLandmass(); // Uses the new multi-pass method
     applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
     applySandPass();
-    console.timeEnd("WorldGen");
-    console.log("Initial world generation finished.");
+    console.timeEnd("World generated in");
 }
