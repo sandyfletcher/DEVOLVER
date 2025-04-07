@@ -61,11 +61,29 @@ export const BLOCK_COLORS = {
 // --- Procedural Generation Parameters ---
 export const WORLD_ISLAND_WIDTH_PERCENT = 0.8;
 export const WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM = 0.15; // Water covers bottom 15%
+
+// Calculate base water level
 export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM));
+
+// Calculate mean ground level (surface)
 export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // e.g., 10% of height above water
-export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + Math.floor(GRID_ROWS * 0.15); // e.g., 15% below ground
+
+// **** START OF CHANGE ****
+// Calculate the approximate deep ocean floor level first (for reference)
+// These are intermediate values and don't need to be exported
+const _deepOceanBaseRow = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1);
+const _deepOceanMaxRow = GRID_ROWS - 3; // Limit how close to very bottom
+const _deepOceanFloorStartRow = Math.min(_deepOceanMaxRow, _deepOceanBaseRow);
+
+// Calculate mean stone level - ** NOW BASED ON DEEP OCEAN FLOOR **
+// This ensures the stone base in the center aims for the same depth as the deep ocean floor's surface.
+// Adjust this if you want the stone slightly higher or lower on average than the deep ocean floor surface.
+export const WORLD_STONE_LEVEL_MEAN = _deepOceanFloorStartRow;
+
+
+// Keep variations and noise scale
 export const WORLD_GROUND_VARIATION = 3;
-export const WORLD_STONE_VARIATION = 3;
+export const WORLD_STONE_VARIATION = 3; // Can adjust this noise amount if needed
 export const WORLD_NOISE_SCALE = 0.05;
 
 // =============================================================================
@@ -74,7 +92,8 @@ export const WORLD_NOISE_SCALE = 0.05;
 export const PLAYER_WIDTH = Math.max(5, Math.floor(1.25 * BLOCK_WIDTH)); // Approx 10px
 export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT)); // Approx 20px
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
-export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (3 * BLOCK_HEIGHT);
+// Adjust Player Start Y slightly as ground/stone levels changed relative position
+export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // Increased buffer slightly
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 
 // --- Player Health & Combat ---
