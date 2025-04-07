@@ -78,7 +78,7 @@ export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 
 // --- Player Health & Combat ---
-export const PLAYER_INITIAL_HEALTH = 3;
+export const PLAYER_INITIAL_HEALTH = 8;
 export const PLAYER_MAX_HEALTH = 10;
 export const PLAYER_INVULNERABILITY_DURATION = 2.0; // seconds
 export const PLAYER_ATTACK_DURATION = 0.25; // seconds
@@ -129,8 +129,14 @@ export const ENEMY_STATS = {
 // Ensure ENEMY_STATS includes entries for all defined types above!
 
 // --- NEW: Enemy Separation Behavior ---
-export const ENEMY_SEPARATION_RADIUS_FACTOR = 0.7; // Check for overlap within X% of enemy width
-export const ENEMY_SEPARATION_STRENGTH = 0.4;   // How strongly to push apart (0 to 1). Adjust for desired effect.
+// How close enemies need to be before they start pushing each other apart.
+// This is a factor of the enemy's width. 1.0 means they push when touching edge-to-edge.
+// Less than 1.0 means they push before touching. Use ~0.7-1.2 as a starting point.
+export const ENEMY_SEPARATION_RADIUS_FACTOR = 1.0; // Check within 1x enemy width
+
+// How strongly enemies push each other apart. Higher values = stronger push.
+// Treat this like a speed boost (pixels per second) applied in the separation direction.
+export const ENEMY_SEPARATION_STRENGTH = 60; // Pixels per second push speed. Adjust for desired effect.
 
 export const ENEMY_CONTACT_DAMAGE = 1; // Keep general contact damage for now
 export const ENEMY_DROP_TYPE = 'wood';

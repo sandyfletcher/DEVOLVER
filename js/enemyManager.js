@@ -76,20 +76,31 @@ export function trySpawnEnemy(enemyType) { // Accepts enemyType
 
 /**
  * Updates all active enemies and removes inactive ones.
+ * Passes the full enemy list to each enemy for separation checks.
  * @param {number} dt - Delta time.
  * @param {object | null} playerPosition - The player's current {x, y} position, or null.
  */
 export function update(dt, playerPosition) { // Accept playerPosition
+    // Create a filtered list of *active* enemies to pass for separation checks
+    // This prevents inactive enemies from influencing separation
+    const activeEnemies = enemies.filter(enemy => enemy.isActive);
+
+    // Update loop (iterate backwards for safe removal)
     for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         if (enemy.isActive) {
-            enemy.update(dt, playerPosition); // Pass playerPosition to enemy update
+            // Pass dt, playerPosition, and the list of *active* enemies
+            enemy.update(dt, playerPosition, activeEnemies); // <-- Pass activeEnemies here
         } else {
-            // Handle drops (No change needed here)
-            if (enemy.shouldDropItem) { /* ... */ }
+            // If enemy became inactive *during* its update (e.g. fell out),
+            // or was already inactive, remove it.
             enemies.splice(i, 1);
         }
     }
+
+    // Optional: Second pass for separation? Usually not needed if done within update.
+    // Some implementations do separation as a separate pass *after* basic movement update
+    // but before physics resolution. Doing it within update is generally fine.
 }
 
 /**
