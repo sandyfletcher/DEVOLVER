@@ -206,7 +206,7 @@ export class Player {
     die() {
         // This function is called when health drops to 0 or below.
         // Currently, it just logs. Game over logic is handled in main.js loop.
-        console.error("PLAYER DIED!");
+        console.log("PLAYER DIED!");
         // Stop movement immediately
         this.vx = 0;
         this.vy = 0;
