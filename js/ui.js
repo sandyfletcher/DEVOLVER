@@ -46,36 +46,33 @@ export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
     let timerText = '';
     let enemyText = '';
 
-    switch (waveInfo.state) {
-        case 'PRE_WAVE':
-            statusText = 'Get Ready...';
-            timerText = `First Wave In: ${waveInfo.timer > 0 ? waveInfo.timer.toFixed(1) : '0.0'}s`;
-            break;
-        case 'SPAWNING':
-            statusText = `Wave ${waveInfo.number} - Spawning`;
-             // timerText = `Spawning... (${waveInfo.enemiesSpawned}/${waveInfo.enemiesToSpawn})`; // Example detail
-             enemyText = `Enemies Remaining: ${livingEnemies}`; // Show living count
-            break;
-        case 'ACTIVE':
-            statusText = `Wave ${waveInfo.number} - Active`;
+    if (waveInfo.isGameOver) {
+        statusText = 'GAME OVER';
+        // You might want to pass the final wave number reached to game over screen separately
+        timerText = `Survived ${waveInfo.mainWaveNumber > 0 ? waveInfo.mainWaveNumber -1 : 0} Waves`; // Show completed waves
+    } else if (waveInfo.allWavesCleared) {
+        statusText = 'VICTORY!';
+        timerText = 'All Waves Cleared!';
+    } else {
+        // Active Gameplay States
+        statusText = `Wave ${waveInfo.mainWaveNumber || 1}`; // Show current main wave
+
+        if (waveInfo.timerLabel && waveInfo.timer > 0) {
+            timerText = `${waveInfo.timerLabel} ${waveInfo.timer.toFixed(1)}s`;
+        } else {
+             timerText = waveInfo.progressText || ''; // Show spawning progress or clear message
+        }
+
+        if (waveInfo.state === 'ACTIVE' || waveInfo.state === 'SPAWNING') {
             enemyText = `Enemies Remaining: ${livingEnemies}`;
-            break;
-        case 'INTERMISSION':
-            statusText = `Wave ${waveInfo.number} Cleared!`;
-            timerText = `Next Wave In: ${waveInfo.timer > 0 ? waveInfo.timer.toFixed(1) : '0.0'}s`;
-            break;
-        case 'GAME_OVER':
-            statusText = 'GAME OVER';
-            timerText = `Survived ${waveInfo.number} Waves`;
-             enemyText = ''; // Clear enemy count
-            break;
-        default:
-            statusText = 'Loading...';
+        } else {
+             enemyText = ''; // No enemy count during intermission/pre-wave
+        }
     }
 
     waveStatusEl.textContent = statusText;
     waveTimerEl.textContent = timerText;
-    if (enemyCountEl) { // Update optional enemy count display
+    if (enemyCountEl) {
         enemyCountEl.textContent = enemyText;
     }
 }

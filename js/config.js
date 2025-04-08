@@ -11,8 +11,8 @@ export const CANVAS_HEIGHT = 800; // Match canvas height
 export const GRID_COLS = 200;
 export const GRID_ROWS = 200;
 // --- Block Constants ---
-export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;
-export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS;
+export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;   // Calculated: 4
+export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS; // Calculated: 4
 // --- Block Type IDs ---
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
@@ -55,154 +55,305 @@ export const BLOCK_COLORS = {
 // --- Procedural Generation Parameters ---
 export const WORLD_ISLAND_WIDTH = 0.8; // width of main island as a percentage
 export const WORLD_WATER_LEVEL = 0.15; // Water coverage: bottom 15%, can be raised for environmental chaos
-export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL)); // Calculate base water level
-export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // // Calculate mean ground level (surface) e.g., 10% of height above water
-const STONE_DEPTH_BELOW_GROUND = 15; // Define how deep stone starts below the average ground level, adjust (e.g., 10-25) to control average soil thickness
-export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELOW_GROUND; // Calculate mean stone level BASED ON GROUND LEVEL
-const _deepOceanBaseRow = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1); // Calculate the approximate deep ocean floor level first (for reference)
-const _deepOceanMaxRow = GRID_ROWS - 3; // Limit how close to very bottom
-const _deepOceanFloorStartRow = Math.min(_deepOceanMaxRow, _deepOceanBaseRow);
+export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL)); // Calculate base water level (row 170)
+export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // Calculate mean ground level (surface) e.g., row 150
+const STONE_DEPTH_BELOW_GROUND = 15; // Define how deep stone starts below the average ground level
+export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELOW_GROUND; // Calculate mean stone level (row 165)
 export const WORLD_GROUND_VARIATION = 3; // variations and noise scale
 export const WORLD_STONE_VARIATION = 3; // Can adjust this noise amount if needed
 export const WORLD_NOISE_SCALE = 0.05;
-// These define the target for the taper. Ensure they make sense relative to the water level
-// Maybe OCEAN_STONE_ROW_NEAR_ISLAND should just be a fixed depth below OCEAN_FLOOR_ROW_NEAR_ISLAND
-const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5;
-// Example: Make ocean stone consistently 8 blocks below the ocean floor near the island
-const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;
-// Define deep ocean levels relative to water level or absolute bottom
-const deepOceanBaseRow = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1);
-const deepOceanMaxRow = GRID_ROWS - 3; // Leave a few rows at the bottom
-const deepOceanFloorStartRow = Math.min(deepOceanMaxRow, deepOceanBaseRow);
-// Example: Make deep ocean stone consistently 8 blocks below the deep ocean floor
-const deepOceanStoneStartRow = deepOceanFloorStartRow + 8; // Base stone level under deep floor
+// Ocean Tapering Config
+export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5;      // Row 175
+export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;     // Row 183
+export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1);        // 20 rows below water level
+export const DEEP_OCEAN_MAX_ROW = GRID_ROWS - 3;                              // Limit deep ocean floor (row 197)
+export const DEEP_OCEAN_FLOOR_START_ROW = Math.min(DEEP_OCEAN_MAX_ROW, WORLD_WATER_LEVEL_ROW_TARGET + DEEP_OCEAN_BASE_ROW_OFFSET); // Row 190 approx
+export const DEEP_OCEAN_STONE_START_ROW = DEEP_OCEAN_FLOOR_START_ROW + 8;      // Row 198 approx
+export const EDGE_TAPER_WIDTH_FACTOR = 0.15; // Percentage of grid width for edge taper
+export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 5; // Target stone level below map at edge
+export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 10; // Target floor level below deep ocean floor at edge
+export const ISLAND_CENTER_TAPER_WIDTH = 80; // Width of taper from island edge inward
+
 
 // =============================================================================
 // --- Player Constants ---
 // =============================================================================
-export const PLAYER_WIDTH = Math.max(5, Math.floor(1.25 * BLOCK_WIDTH)); // Approx 10px
-export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT)); // Approx 20px
+
+export const PLAYER_WIDTH = Math.max(5, Math.floor(1.25 * BLOCK_WIDTH)); // Approx 5px (adjust if block size changes)
+export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT)); // Approx 10px (adjust if block size changes)
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
-// Adjust Player Start Y slightly as ground/stone levels changed relative position
-export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // Increased buffer slightly
+export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // Spawn slightly above mean ground
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 // --- Player Health & Combat ---
 export const PLAYER_INITIAL_HEALTH = 8;
 export const PLAYER_MAX_HEALTH = 10;
-export const PLAYER_INVULNERABILITY_DURATION = 2.0; // seconds
+export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds (reduced slightly)
 export const PLAYER_ATTACK_DURATION = 0.25; // seconds
 export const PLAYER_ATTACK_COOLDOWN = 0.4; // seconds
 export const PLAYER_ATTACK_DAMAGE = 1;
-export const PLAYER_ATTACK_REACH_X = Math.floor(2.25 * BLOCK_WIDTH); // Approx 18px
-export const PLAYER_ATTACK_REACH_Y = 0;
-export const PLAYER_ATTACK_WIDTH = Math.floor(1.25 * BLOCK_WIDTH); // Approx 10px
-export const PLAYER_ATTACK_HEIGHT = PLAYER_HEIGHT;
+export const PLAYER_ATTACK_REACH_X = Math.floor(2.25 * BLOCK_WIDTH); // Approx 9px reach horizontal offset from edge
+export const PLAYER_ATTACK_REACH_Y = 0; // Vertical offset from player center
+export const PLAYER_ATTACK_WIDTH = Math.floor(1.25 * BLOCK_WIDTH); // Approx 5px width
+export const PLAYER_ATTACK_HEIGHT = PLAYER_HEIGHT; // Same height as player for now
 export const PLAYER_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
 // --- Delta-Time Based Player Physics ---
-export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second (Increase for faster acceleration)
-export const PLAYER_MAX_SPEED_X = 120;     // Pixels per second (Top horizontal speed)
-export const PLAYER_FRICTION_BASE = 0.04;  // Base friction multiplier (0=instant stop, 1=no friction). Used as Math.pow(PLAYER_FRICTION_BASE, dt). Lower values = stronger friction.
+export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second
+export const PLAYER_MAX_SPEED_X = 120;     // Pixels per second
+export const PLAYER_FRICTION_BASE = 0.04;  // Base friction multiplier (Lower = stronger friction)
 export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward velocity)
-// Optional: Add jump cutoff multiplier if implementing variable jump height
-// export const PLAYER_JUMP_CUTOFF_MULTIPLIER = 0.4; // Reduce upward velocity to this fraction when jump key released
 
 // =============================================================================
 // --- Enemy Constants ---
 // =============================================================================
-export const ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);
-export const ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT);
-// --- Enemy Types ---
+
+// --- Default Enemy Size (can be overridden in ENEMY_STATS) ---
+export const DEFAULT_ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);   // Approx 6px
+export const DEFAULT_ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT); // Approx 9px
+
+// --- Enemy Type Identifiers ---
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
-// --- Stats per Enemy Type ---
+// Add new type constants here: export const ENEMY_TYPE_FLYER = 'flyer';
+
+// --- Default Separation Behavior ---
+// Can be overridden in ENEMY_STATS per type
+export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // How close before pushing (factor of width)
+export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 60;     // How hard they push (pixels/sec velocity boost)
+
+// --- General Enemy Config ---
+export const MAX_ENEMIES = 100;
+export const ENEMY_SPAWN_EDGE_MARGIN = 80; // Pixels away from screen edge to attempt spawning
+export const ENEMY_FLASH_DURATION = 0.15; // Seconds enemy flashes when hit
+
+// --- Detailed Enemy Stats ---
+// This structure allows adding many new enemy types easily by defining their properties here.
+// The Enemy class constructor and AI Strategies will read from this configuration.
 export const ENEMY_STATS = {
     [ENEMY_TYPE_CENTER_SEEKER]: {
-        color: 'rgb(80, 150, 80)',   // Original green
-        maxSpeedX: 40,               // Pixels per second
-        health: 1,
-        // Add other specific stats later if needed (e.g., damage)
+        displayName: "Seeker",              // For potential UI/debugging
+        aiType: 'seekCenter',             // Key to match an AI Strategy class (to be implemented)
+        color: 'rgb(80, 150, 80)',        // Visual color
+        width: DEFAULT_ENEMY_WIDTH,         // Use default size
+        height: DEFAULT_ENEMY_HEIGHT,
+        maxSpeedX: 40,                    // Movement speed (pixels/sec)
+        health: 1,                        // Starting health points
+        contactDamage: 1,                 // Damage dealt on player collision
+        applyGravity: true,               // Does gravity affect this enemy?
+        gravityFactor: 1.0,               // Multiplier for gravity (1.0 = normal)
+        canJump: false,                   // Can this enemy initiate a jump?
+        jumpVelocity: 0,                  // Initial jump speed if canJump is true
+        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR, // Use default separation
+        separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
+        dropTable: [                      // Loot drops on death
+            // { type: 'item_id', chance: 0.0 to 1.0, minAmount: N, maxAmount: M }
+            { type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 },
+        ],
+        // --- Future properties ---
+        // attackType: 'none', // 'melee', 'ranged', 'aura', 'special'
+        // attackDamage: 0,
+        // attackRange: 0,
+        // attackCooldown: 0,
+        // projectileType: null, // Key for projectile config if attackType is 'ranged'
+        // immunities: [], // e.g., ['fire', 'poison'] - strings matching damage types
+        // resistances: { 'physical': 0.1 }, // e.g., 10% physical resistance (0.0 to 1.0)
+        // vulnerabilities: { 'fire': 1.5 }, // e.g., 50% extra fire damage
+        // specialFlags: [], // e.g., ['explodes_on_death', 'teleports']
     },
     [ENEMY_TYPE_PLAYER_CHASER]: {
-        color: 'rgb(150, 80, 80)',   // Reddish
-        maxSpeedX: 55,               // Slightly faster chaser
-        health: 2,                   // Maybe slightly tougher
+        displayName: "Chaser",
+        aiType: 'chasePlayer',            // Key for AI Strategy
+        color: 'rgb(150, 80, 80)',
+        width: DEFAULT_ENEMY_WIDTH,
+        height: DEFAULT_ENEMY_HEIGHT,
+        maxSpeedX: 55,                    // Slightly faster
+        health: 2,                        // Slightly tougher
+        contactDamage: 1,
+        applyGravity: true,
+        gravityFactor: 1.0,
+        canJump: true,                   // Chasers can jump over small obstacles
+        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.75, // Jump strength relative to player
+        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
+        separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
+        dropTable: [
+            { type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 },
+            // Example: Maybe a small chance for something else?
+            // { type: 'enemy_part', chance: 0.05, minAmount: 1, maxAmount: 1 },
+        ],
+         // --- Future properties ---
+        // attackType: 'melee', // Could have a bite attack later
+        // attackDamage: 1,
+        // attackRange: 5, // Short melee range
+        // attackCooldown: 1.5,
+    },
+    // --- Template for a new enemy type ---
+    /*
+    ['new_enemy_type_key']: {
+        displayName: "New Enemy Name",
+        aiType: 'newAiStrategyKey',
+        color: 'rgb(x, y, z)',
+        width: PIXELS or DEFAULT_ENEMY_WIDTH,
+        height: PIXELS or DEFAULT_ENEMY_HEIGHT,
+        maxSpeedX: PIXELS_PER_SECOND,
+        health: NUMBER,
+        contactDamage: NUMBER,
+        applyGravity: BOOLEAN,
+        gravityFactor: NUMBER, // Usually 1.0
+        canJump: BOOLEAN,
+        jumpVelocity: PIXELS_PER_SECOND,
+        separationFactor: NUMBER, // Usually DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR
+        separationStrength: NUMBER, // Usually DEFAULT_ENEMY_SEPARATION_STRENGTH
+        dropTable: [
+             { type: 'item_id', chance: 0.0-1.0, minAmount: N, maxAmount: M },
+             // ... more potential drops
+        ],
+        // Add future properties as needed (attack, resistances etc.)
     }
+    */
 };
 
-// ---  Enemy Separation Behavior ---
-// How close enemies need to be before they start pushing each other apart.
-// This is a factor of the enemy's width. 1.0 means they push when touching edge-to-edge.
-// Less than 1.0 means they push before touching. Use ~0.7-1.2 as a starting point.
-export const ENEMY_SEPARATION_RADIUS_FACTOR = 0.9;
-// How strongly enemies push each other apart. Higher values = stronger push
-// Treat this like a speed boost (pixels per second) applied in the separation direction
-export const ENEMY_SEPARATION_STRENGTH = 60; // Pixels per second push speed
-export const ENEMY_CONTACT_DAMAGE = 1; // Keep general contact damage for now
-export const ENEMY_DROP_TYPE = 'wood';
-export const ENEMY_DROP_AMOUNT = 1;
-export const ENEMY_DROP_CHANCE = 1.0;
-export const MAX_ENEMIES = 100;
-export const ENEMY_SPAWN_EDGE_MARGIN = 80;
+// REMOVED: ENEMY_CONTACT_DAMAGE (now defined per enemy in ENEMY_STATS)
+// REMOVED: ENEMY_DROP_TYPE, ENEMY_DROP_AMOUNT, ENEMY_DROP_CHANCE (replaced by dropTable in ENEMY_STATS)
+
 
 // =============================================================================
 // --- Item Constants ---
 // =============================================================================
-export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH); // Approx 24px
-export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT); // Approx 8px
+// Define item appearance and behavior
+// Specific item types are often checked by string ('sword', 'wood', etc.)
+export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH);      // Approx 12px
+export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);     // Approx 4px
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
-export const WOOD_ITEM_WIDTH = Math.floor(1 * BLOCK_WIDTH); // Approx 8px
-export const WOOD_ITEM_HEIGHT = Math.floor(1 * BLOCK_HEIGHT); // Approx 8px
-export const WOOD_ITEM_COLOR = 'rgb(139, 69, 19)';
+export const WOOD_ITEM_WIDTH = Math.floor(1 * BLOCK_WIDTH);   // Approx 4px
+export const WOOD_ITEM_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);  // Approx 4px
+export const WOOD_ITEM_COLOR = 'rgb(139, 69, 19)'; // Brown
+
 export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob (relative to height)
 export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle
 
-// --- Item Physics (Delta-Time Based) ---
-// Items use general GRAVITY_ACCELERATION
-// Optional: Define specific item fall speed or friction if needed
-// export const ITEM_MAX_FALL_SPEED = 300;
-// export const ITEM_FRICTION_BASE = 0.2; // If items should slide
 
 // =============================================================================
 // --- General Physics Constants (Delta-Time Based) ---
 // =============================================================================
-export const GRAVITY_ACCELERATION = 700;   // Pixels per second per second - *** TUNE THIS! *** Affects player, enemies, items unless overridden.
+export const GRAVITY_ACCELERATION = 700;   // Pixels per second per second
 export const MAX_FALL_SPEED = 450;         // Pixels per second - General max fall speed unless overridden
 
+
 // =============================================================================
-// --- Wave System Constants ---
+// --- Wave System Definitions ---
 // =============================================================================
-export const WAVE_START_DELAY = 20.0; // Seconds before first wave
-export const WAVE_INTERMISSION_DURATION = 20.0; // Seconds between waves
-export const WAVE_1_ENEMY_COUNT = 15;
-export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Seconds between enemy spawns in a wave
+export const WAVE_START_DELAY = 10.0; // Seconds before the very first wave starts
+export const WAVE_INTERMISSION_DURATION = 15.0; // Seconds between *main* waves
+export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in group
+
+// --- Detailed Wave Structure ---
+// Each element is a Main Wave.
+// Each Main Wave has 'subWaves'.
+// Each Sub-Wave has 'enemyGroups'.
+// Each Enemy Group defines a batch of a specific enemy type.
+export const WAVES = [
+    { // ==================== Main Wave 1 ====================
+        mainWaveNumber: 1, // For reference/UI
+        subWaves: [
+            { // --- Sub-Wave 1.1 ---
+                // description: "Initial Seekers", // Optional for debugging/UI
+                enemyGroups: [
+                    // Group 1: Spawn 5 Seekers, 0.7s apart
+                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7 },
+                     // Group 2: Spawn 3 more Seekers slightly faster, after a 2s delay from the start of this sub-wave
+                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 2.0 },
+                ]
+            },
+            { // --- Sub-Wave 1.2 ---
+                // description: "Introducing Chasers",
+                enemyGroups: [
+                    // Group 1: Spawn 4 Seekers
+                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
+                    // Group 2: Spawn 2 Chasers, slower spawn rate, starting later
+                    { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
+                ]
+            },
+            { // --- Sub-Wave 1.3 ---
+                // description: "Mixed Finish",
+                enemyGroups: [
+                    // Group 1: Quick burst of Seekers
+                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
+                     // Group 2: A single tougher Chaser
+                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.0, startDelay: 4.0 }
+                ]
+            }
+        ]
+    },
+    { // ==================== Main Wave 2 ====================
+        mainWaveNumber: 2,
+        subWaves: [
+            { // --- Sub-Wave 2.1 ---
+                 // description: "Chaser Focus",
+                 enemyGroups: [
+                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
+                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 }, // Support seekers
+                 ]
+            },
+            { // --- Sub-Wave 2.2 ---
+                 // description: "Dense Pack",
+                 enemyGroups: [
+                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 }, // Tightly packed
+                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 }, // Late chasers
+                 ]
+            },
+            { // --- Sub-Wave 2.3 ---
+                // description: "Final Push",
+                 enemyGroups: [
+                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
+                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
+                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 }, // Elite chasers
+                 ]
+            }
+        ]
+    },
+    // ==================== Add Main Wave 3, 4, etc. here ====================
+];
+
 
 // =============================================================================
 // --- UI Constants ---
 // =============================================================================
-export const UI_AREA_HEIGHT = 30; // Height reserved for UI at the top
-export const UI_HEALTH_BOX_SIZE = 15;
-export const UI_HEALTH_BOX_PADDING = 4;
-export const UI_HEALTH_LABEL_X = 10;
-export const UI_HEALTH_BOX_START_X = 80;
-export const UI_Y_POSITION = 8;
+// Sidebar elements are handled by CSS now, these might be redundant unless used for canvas UI
+// export const UI_AREA_HEIGHT = 30;
+export const UI_HEALTH_BOX_SIZE = 15;       // Used by CSS? No, used in ui.js for creating divs
+export const UI_HEALTH_BOX_PADDING = 4;     // Used by CSS gap property now
+// export const UI_HEALTH_LABEL_X = 10;        // Position handled by CSS flex/grid
+// export const UI_HEALTH_BOX_START_X = 80;    // Position handled by CSS
+// export const UI_Y_POSITION = 8;           // Position handled by CSS
 
-// --- Rendering & Colors ---
-export const BACKGROUND_COLOR = 'rgb(135, 206, 235)'; // Sky Blue
-export const UI_HEALTH_BOX_COLOR_EMPTY = 'rgb(80, 80, 80)';
-export const UI_HEALTH_BOX_COLOR_FULL = 'rgb(220, 40, 40)';
-export const UI_TEXT_COLOR = 'black';
+// --- Colors (mostly used by HTML/CSS, but keep for reference/canvas UI) ---
+export const BACKGROUND_COLOR = 'rgb(135, 206, 235)'; // Sky Blue (Main canvas background)
+export const UI_HEALTH_BOX_COLOR_EMPTY = 'rgb(80, 80, 80)';  // Used in ui.js for health box divs
+export const UI_HEALTH_BOX_COLOR_FULL = 'rgb(220, 40, 40)'; // Used in ui.js for health box divs
+// export const UI_TEXT_COLOR = 'black'; // Defined in CSS as white for sidebars
 
-// Game Over Screen
-export const UI_GAMEOVER_OVERLAY_COLOR = 'rgba(0, 0, 0, 0.75)';
-export const UI_GAMEOVER_TEXT_COLOR = 'red';
-export const UI_GAMEOVER_STATS_COLOR = 'white';
-export const UI_GAMEOVER_BUTTON_COLOR = 'darkred';
-export const UI_GAMEOVER_BUTTON_TEXT_COLOR = 'white';
-export const UI_GAMEOVER_BUTTON_WIDTH = 180;
-export const UI_GAMEOVER_BUTTON_HEIGHT = 50;
+// Game Over Screen (If implemented on canvas, otherwise CSS)
+// export const UI_GAMEOVER_OVERLAY_COLOR = 'rgba(0, 0, 0, 0.75)';
+// export const UI_GAMEOVER_TEXT_COLOR = 'red';
+// export const UI_GAMEOVER_STATS_COLOR = 'white';
+// export const UI_GAMEOVER_BUTTON_COLOR = 'darkred';       // Defined in CSS
+// export const UI_GAMEOVER_BUTTON_TEXT_COLOR = 'white';    // Defined in CSS
+// export const UI_GAMEOVER_BUTTON_WIDTH = 180;             // Defined in CSS
+// export const UI_GAMEOVER_BUTTON_HEIGHT = 50;            // Defined in CSS
+
 
 // =============================================================================
 // --- Game Loop ---
 // =============================================================================
+export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
 
-export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps minimum simulation rate)
+
+// =============================================================================
+// --- Input Constants (Touch Controls) ---
+// =============================================================================
+// These could be moved to input.js if preferred, but keeping layout-related numbers here is okay too
+export const TOUCH_BUTTON_SIZE = 80; // Pixel size of touch buttons
+export const TOUCH_BUTTON_MARGIN = 20; // Pixel margin around buttons / from edge
+export const TOUCH_BUTTON_COLOR_IDLE = 'rgba(128, 128, 128, 0.4)';
+export const TOUCH_BUTTON_COLOR_PRESSED = 'rgba(255, 255, 255, 0.6)';
+export const TOUCH_BUTTON_LABEL_COLOR = 'rgba(255, 255, 255, 0.8)';
+export const TOUCH_BUTTON_LABEL_FONT = 'bold 24px sans-serif';

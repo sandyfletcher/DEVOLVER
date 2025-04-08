@@ -268,32 +268,58 @@ export class Player {
             height: Config.PLAYER_ATTACK_HEIGHT
         };
     }
-    pickupItem(item) { // Handles logic when the player collides with an item.
+    
+    /**
+     * Handles logic when the player collides with an item.
+     * Checks item type and updates inventory or player state accordingly.
+     * @param {Item} item - The item object the player collided with.
+     * @returns {boolean} True if the item was successfully picked up, false otherwise.
+     */
+    pickupItem(item) {
         if (!item || !item.type) return false; // Safety check
-        // Sword
+
+        // --- Sword Pickup Logic ---
         if (item.type === 'sword') {
             if (!this.hasSword) { // Only pick up if doesn't already have one
                  this.hasSword = true;
                  console.log("Player picked up the sword!");
                  return true; // Successfully picked up
             } else {
-                 console.log("Player already has a sword.");
+                 // console.log("Player already has a sword.");
                  return false; // Did not pick up (already have it)
             }
         }
-        // Check for resource items (using the configured enemy drop type as an example)
-        else if (Config.ENEMY_DROP_TYPE && item.type === Config.ENEMY_DROP_TYPE) {
-             // Add to inventory, initializing if necessary
+        // --- Resource Pickup Logic (FIXED) ---
+        // Check for specific known resource types directly by their string identifier.
+        // Add more 'else if' blocks here for other resources you add (e.g., stone, metal).
+        else if (item.type === 'wood') {
+             // Add to inventory, initializing count if it's the first one
              this.inventory[item.type] = (this.inventory[item.type] || 0) + 1;
              console.log(`Picked up ${item.type}! Total: ${this.inventory[item.type]}`);
              return true; // Successfully picked up
         }
-        // Add conditions for other item types here
-        // else if (item.type === 'health_potion') { ... }
+        /*
+        else if (item.type === 'enemy_part') { // Example for another resource
+             this.inventory[item.type] = (this.inventory[item.type] || 0) + 1;
+             console.log(`Picked up ${item.type}! Total: ${this.inventory[item.type]}`);
+             return true;
+        }
+        else if (item.type === 'health_potion') { // Example for a consumable
+             // Maybe heal the player instead of adding to inventory, or add limited stack
+             // const healed = this.heal(2); // Assuming a heal method exists
+             // console.log(`Used health potion!`);
+             // return healed; // Return true only if successfully used/picked up
+             console.log("Picked up health potion (logic TBD)"); // Placeholder
+             return true; // For now, just remove it from ground
+        }
+        */
 
+        // --- Fallback ---
         // If item type is not recognized or cannot be picked up
+        // console.log(`Collision with unhandled item type: ${item.type}`);
         return false;
     }
+    
     // --- Helper methods for attack collision ---
     hasHitEnemyThisSwing(enemy) { // Checks if a specific enemy has already been hit during the current attack
         return this.hitEnemiesThisSwing.includes(enemy);
