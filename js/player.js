@@ -2,7 +2,7 @@
 // root/js/player.js - Player Character Class
 // -----------------------------------------------------------------------------
 
-console.log("player loaded");
+// console.log("player loaded");
 
 import * as Config from './config.js';
 import * as GridCollision from './utils/gridCollision.js';

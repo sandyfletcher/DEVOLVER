@@ -2,7 +2,7 @@
 // js/utils/block.js - Block Object Creation and Definition
 // -----------------------------------------------------------------------------
 
-console.log("utils/block loaded");
+// console.log("utils/block loaded");
 
 import * as Config from '../config.js';
 

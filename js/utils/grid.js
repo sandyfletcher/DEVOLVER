@@ -2,7 +2,7 @@
 // root/js/utils/grid.js - Draws grid onto off-screen canvas
 // -----------------------------------------------------------------------------
 
-console.log("utils/grid loaded");
+// console.log("utils/grid loaded");
 
 import * as Config from '../config.js';
 import * as Renderer from '../renderer.js';

@@ -1,8 +1,11 @@
-// js/waveManager.js
-import * as Config from './config.js';
-import * as EnemyManager from './enemyManager.js'; // Needs EnemyManager to spawn and check counts
+// -----------------------------------------------------------------------------
+// root/js/waveManager.js - Manages waves of enemies and timing
+// -----------------------------------------------------------------------------
 
-console.log("waveManager.js loaded (with debug logging)"); // Added note
+// console.log("waveManager loaded)");
+
+import * as Config from './config.js';
+import * as EnemyManager from './enemyManager.js';
 
 // --- Module State ---
 let currentWaveNumber = 0;
@@ -16,12 +19,11 @@ let enemySpawnDelayTimer = 0;
 
 // Sets up the next wave's parameters
 function setupNextWave(waveNum) {
-    console.log(`[WaveManager] Setting up Wave ${waveNum}. State: SPAWNING.`);
+    // console.log(`[WaveManager] Setting up Wave ${waveNum}. State: SPAWNING.`);
     currentWaveNumber = waveNum;
     state = 'SPAWNING';
     enemiesSpawnedThisWave = 0; // Reset spawn count for the new wave
     enemySpawnDelayTimer = Config.WAVE_ENEMY_SPAWN_DELAY; // Initial delay before first spawn
-
     // Example scaling - adjust as needed
     if (waveNum === 1) {
         enemiesToSpawnThisWave = Config.WAVE_1_ENEMY_COUNT;
@@ -29,10 +31,8 @@ function setupNextWave(waveNum) {
         // Example: Increase by 5 each wave
         enemiesToSpawnThisWave = Config.WAVE_1_ENEMY_COUNT + (waveNum - 1) * 5;
     }
-    // --- ADD LOGGING ---
     console.log(`[WaveManager Setup] Wave: ${currentWaveNumber}, To Spawn: ${enemiesToSpawnThisWave}`);
 }
-
 
 // --- Exported Functions ---
 
@@ -60,7 +60,6 @@ export function reset() {
 export function update(dt) {
     const livingCount = EnemyManager.getLivingEnemyCount(); // Get count once per frame
     // console.log(`[WaveMgr Update] State: ${state}, Living: ${livingCount}, Spawned: ${enemiesSpawnedThisWave}/${enemiesToSpawnThisWave}, Timer: ${timer.toFixed(1)}`);
-
     switch (state) {
         case 'PRE_WAVE':
             timer -= dt;
@@ -111,12 +110,9 @@ export function update(dt) {
 
         case 'ACTIVE':
             // This case runs if state was already ACTIVE, or if SPAWNING just completed this frame.
-            // --- Check if wave can progress ---
-            // Use the livingCount obtained at the start of the update function.
+            // Check if wave can progress using the livingCount obtained at the start of the update function
             const canProgress = (livingCount === 0 && enemiesSpawnedThisWave >= enemiesToSpawnThisWave);
-             // Optional detailed log:
              // console.log(`[WaveMgr ACTIVE Check] Living: ${livingCount}, Spawned Check: ${enemiesSpawnedThisWave >= enemiesToSpawnThisWave}, Can Progress: ${canProgress}`);
-
             if (canProgress) {
                 console.log(`[WaveManager] ACTIVE -> INTERMISSION (Wave ${currentWaveNumber} Cleared!)`); // Log transition
                 state = 'INTERMISSION';
@@ -129,10 +125,10 @@ export function update(dt) {
         case 'INTERMISSION':
             timer -= dt;
             if (timer <= 0) {
-                console.log("[WaveManager] INTERMISSION -> SPAWNING (Next Wave)"); // Log transition
-                setupNextWave(currentWaveNumber + 1); // Setup the next wave
+                console.log("[WaveManager] INTERMISSION -> SPAWNING (Next Wave)");
+                setupNextWave(currentWaveNumber + 1);
                  // Skip further processing this frame after state change
-                return; // Added return
+                return;
             }
             break;
 

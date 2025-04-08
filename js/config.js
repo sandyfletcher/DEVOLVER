@@ -2,7 +2,7 @@
 // js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
-console.log("config loaded");
+// console.log("config loaded");
 
 // --- World Parameters ---
 export const CANVAS_WIDTH = 800; // Match canvas width
@@ -53,32 +53,23 @@ export const BLOCK_COLORS = {
     [BLOCK_METAL]: 'rgb(190, 190, 200)',
 };
 // --- Procedural Generation Parameters ---
-export const WORLD_ISLAND_WIDTH_PERCENT = 0.8;
-export const WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM = 0.15; // Water covers bottom 15%
-// Calculate base water level
-export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL_PERCENT_FROM_BOTTOM));
-// Calculate mean ground level (surface)
-export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // e.g., 10% of height above water
-// Define how deep stone starts below the average ground level
-const STONE_DEPTH_BELOW_GROUND = 15; // Adjust this value (e.g., 10-25) to control average soil thickness
-// Calculate mean stone level - ** NOW BASED ON GROUND LEVEL **
-export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELOW_GROUND;
-// Calculate the approximate deep ocean floor level first (for reference)
-// These are intermediate values and don't need to be exported
-const _deepOceanBaseRow = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1);
+export const WORLD_ISLAND_WIDTH = 0.8; // width of main island as a percentage
+export const WORLD_WATER_LEVEL = 0.15; // Water coverage: bottom 15%, can be raised for environmental chaos
+export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL)); // Calculate base water level
+export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // // Calculate mean ground level (surface) e.g., 10% of height above water
+const STONE_DEPTH_BELOW_GROUND = 15; // Define how deep stone starts below the average ground level, adjust (e.g., 10-25) to control average soil thickness
+export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELOW_GROUND; // Calculate mean stone level BASED ON GROUND LEVEL
+const _deepOceanBaseRow = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1); // Calculate the approximate deep ocean floor level first (for reference)
 const _deepOceanMaxRow = GRID_ROWS - 3; // Limit how close to very bottom
 const _deepOceanFloorStartRow = Math.min(_deepOceanMaxRow, _deepOceanBaseRow);
-// Keep variations and noise scale
-export const WORLD_GROUND_VARIATION = 3;
+export const WORLD_GROUND_VARIATION = 3; // variations and noise scale
 export const WORLD_STONE_VARIATION = 3; // Can adjust this noise amount if needed
 export const WORLD_NOISE_SCALE = 0.05;
-// --- You might also need to adjust the ocean stone levels ---
 // These define the target for the taper. Ensure they make sense relative to the water level
 // Maybe OCEAN_STONE_ROW_NEAR_ISLAND should just be a fixed depth below OCEAN_FLOOR_ROW_NEAR_ISLAND
 const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5;
 // Example: Make ocean stone consistently 8 blocks below the ocean floor near the island
 const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;
-
 // Define deep ocean levels relative to water level or absolute bottom
 const deepOceanBaseRow = WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(GRID_ROWS * 0.1);
 const deepOceanMaxRow = GRID_ROWS - 3; // Leave a few rows at the bottom
@@ -107,11 +98,11 @@ export const PLAYER_ATTACK_REACH_Y = 0;
 export const PLAYER_ATTACK_WIDTH = Math.floor(1.25 * BLOCK_WIDTH); // Approx 10px
 export const PLAYER_ATTACK_HEIGHT = PLAYER_HEIGHT;
 export const PLAYER_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
-// --- Player Physics (Delta-Time Based - TUNING REQUIRED!) ---
+// --- Delta-Time Based Player Physics ---
 export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second (Increase for faster acceleration)
 export const PLAYER_MAX_SPEED_X = 120;     // Pixels per second (Top horizontal speed)
-export const PLAYER_FRICTION_BASE = 0.05;  // Base friction multiplier (0=instant stop, 1=no friction). Used as Math.pow(PLAYER_FRICTION_BASE, dt). Lower values = stronger friction.
-export const PLAYER_JUMP_VELOCITY = 280;   // Pixels per second (Initial upward velocity) - *** TUNE THIS! ***
+export const PLAYER_FRICTION_BASE = 0.04;  // Base friction multiplier (0=instant stop, 1=no friction). Used as Math.pow(PLAYER_FRICTION_BASE, dt). Lower values = stronger friction.
+export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward velocity)
 // Optional: Add jump cutoff multiplier if implementing variable jump height
 // export const PLAYER_JUMP_CUTOFF_MULTIPLIER = 0.4; // Reduce upward velocity to this fraction when jump key released
 

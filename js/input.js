@@ -2,7 +2,7 @@
 // root/js/input.js - Handles Keyboard and Touch Input
 // -----------------------------------------------------------------------------
 
-console.log("input loaded");
+// console.log("input loaded");
 
 import * as Config from './config.js'; // For button positioning if needed
 import * as UI from './ui.js'; // <-- Import UI to get button rect
@@ -225,7 +225,7 @@ export function init() {
     canvas.addEventListener('touchend', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchcancel', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    console.log("Input system initialized.");
+    // console.log("Input system initialized.");
 }
 
 export function getState() {

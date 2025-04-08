@@ -31,7 +31,7 @@ export function init() {
     if (!waveStatusEl || !waveTimerEl || !healthBoxesEl || !inventoryListEl || !swordStatusEl || !restartButtonEl) {
         console.warn("UI Init: Could not find all expected UI elements in the DOM!");
     }
-    console.log("UI Module Initialized (HTML Mode)");
+    // console.log("UI Module Initialized (HTML Mode)");
 }
 
 /**
@@ -125,21 +125,13 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
 }
 
 // --- Game Over Handling ---
-/**
- * Updates the UI state based on whether the game is over.
- * @param {boolean} isGameOver - True if the game is over, false otherwise.
- * @param {number} [wavesSurvived=0] - Final wave number if game is over.
- */
+
 export function updateGameOverState(isGameOver, wavesSurvived = 0) {
     if (restartButtonEl) {
         restartButtonEl.style.display = isGameOver ? 'inline-block' : 'none';
     }
-
     if (isGameOver) {
-        // Optional: Update other UI elements to reflect game over state if needed
-        // (e.g., clear timer, show final stats) - waveInfo update already covers some of this.
         console.log(`UI: Displaying Game Over elements - Waves: ${wavesSurvived}`);
-    // } else {
-        // Optional: Ensure any specific game over overlays are hidden
+
     }
 }

@@ -2,7 +2,7 @@
 // root/js/worldManager.js - Manages world state, drawing, and interactions
 // -----------------------------------------------------------------------------
 
-console.log("worldManager.js loaded");
+// console.log("worldManager loaded");
 
 import * as Config from './config.js';
 import * as Renderer from './renderer.js'; // Needs access to the grid canvas/context
@@ -102,7 +102,7 @@ function updateStaticWorldAt(col, row) {
 
 // --- Initialize world manager: grid data, generate world, pre-render static blocks ---
 export function init() {
-    console.time("WorldManagerInit");
+    console.time("WorldManager initialized");
     // Step 1: Initialize the grid data structure in WorldData
     WorldData.initializeGrid();
     // Step 2: Generate the initial world content into WorldData
@@ -111,18 +111,16 @@ export function init() {
     const gridCanvas = Renderer.getGridCanvas();
     if (!gridCanvas) {
         console.error("FATAL: WorldManager Init - Grid Canvas not found! Ensure Renderer.createGridCanvas() runs before World.init().");
-        // Attempt recovery (less ideal than ensuring correct init order)
         console.warn("WorldManager Init: Attempting fallback grid canvas creation.");
         Renderer.createGridCanvas();
         if (!Renderer.getGridCanvas()) {
-            throw new Error("WorldManager Init: Fallback grid canvas creation failed."); // Critical failure
+            throw new Error("WorldManager Init: Fallback grid canvas creation failed.");
         }
     }
     // Step 4: Render the static world data onto the off-screen canvas
     renderStaticWorldToGridCanvas();
 
-    console.timeEnd("WorldManagerInit");
-    console.log("World Manager initialized (with static pre-render).");
+    console.timeEnd("WorldManager initialized");
 }
 
 // --- Getters and Setters ---

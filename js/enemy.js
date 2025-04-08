@@ -1,8 +1,7 @@
-// js/enemy.js
 // -----------------------------------------------------------------------------
-// enemy.js - Enemy Class
+// root/js/enemy.js - Enemy Class
 // -----------------------------------------------------------------------------
-console.log("enemy.js loaded");
+// console.log("enemy loaded");
 
 import * as Config from './config.js';
 import * as ItemManager from './itemManager.js'; // Needed for drops on death

@@ -1,7 +1,8 @@
 // -----------------------------------------------------------------------------
 // js/utils/noise.js - Perlin Noise Generator Implementation
 // -----------------------------------------------------------------------------
-console.log("utils/noise.js loaded");
+
+// console.log("utils/noise loaded");
 
 /**
  * A classic Perlin noise generator implementation (1D focus for this project).

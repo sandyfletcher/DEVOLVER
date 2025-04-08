@@ -3,7 +3,7 @@
 // root/js/utils/gridCollision.js - Handles Entity vs World Grid Collision Logic
 // -----------------------------------------------------------------------------
 
-console.log("utils/gridCollision loaded");
+// console.log("utils/gridCollision loaded");
 
 import * as Config from '../config.js';
 import * as WorldData from './worldData.js';

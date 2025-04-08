@@ -1,7 +1,8 @@
 // -----------------------------------------------------------------------------
-// enemyManager.js - Manages Enemy Instances (UPDATED for types)
+// root/js/enemyManager.js - Manages Enemy Instances
 // -----------------------------------------------------------------------------
-console.log("enemyManager.js loaded");
+
+// console.log("enemyManager loaded");
 
 import * as Config from './config.js';
 import { Enemy } from './enemy.js';
@@ -11,7 +12,10 @@ import * as GridCollision from './utils/gridCollision.js'; // Keep if needed els
 
 let enemies = [];
 
-export function init() { /* ... no change ... */ }
+export function init() {
+    enemies = [];
+    // console.log("Enemy Manager initialized (Wave Controlled).");
+}
 
 /**
  * Attempts to spawn a single enemy of a specific type.

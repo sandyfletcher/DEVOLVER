@@ -1,7 +1,8 @@
 // -----------------------------------------------------------------------------
 // itemManager.js - Manages Items in the World
 // -----------------------------------------------------------------------------
-console.log("itemManager.js loaded");
+
+// console.log("itemManager loaded");
 
 import * as Config from './config.js';
 import * as GridCollision from './utils/gridCollision.js';

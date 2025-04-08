@@ -2,10 +2,10 @@
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
 
-console.log("main.js loaded");
+// console.log("main loaded");
 
 // --- Module Imports ---
-import * as UI from './ui.js'; // UI now handles HTML elements
+import * as UI from './ui.js';
 import { Player } from './player.js';
 import * as Input from './input.js';
 import * as Config from './config.js';
@@ -150,7 +150,7 @@ function gameLoop(timestamp) {
 
 // --- Initialization ---
 function init() {
-    console.log("Initializing game...");
+    console.log("Resources loaded, initializing game...");
     let initializationOk = true;
     try {
         UI.init(); // Initialize UI element references FIRST

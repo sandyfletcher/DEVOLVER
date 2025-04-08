@@ -1,8 +1,8 @@
 // -----------------------------------------------------------------------------
-// root/js/worldData.js - Manages core world grid data structure
+// root/js/utils/worldData.js - Manages core world grid data structure
 // -----------------------------------------------------------------------------
 
-console.log("utils/worldData loaded");
+// console.log("utils/worldData loaded");
 
 import * as Config from '../config.js';
 import { createBlock } from './block.js';
@@ -18,7 +18,7 @@ export function initializeGrid() {
         // Initialize each row with BLOCK_AIR
         worldGrid[r] = new Array(Config.GRID_COLS).fill(Config.BLOCK_AIR);
     }
-    console.log("World grid initialized.");
+    // console.log("World grid initialized.");
 }
 
 /**

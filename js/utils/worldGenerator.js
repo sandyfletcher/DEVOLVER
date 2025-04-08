@@ -7,7 +7,7 @@ import { PerlinNoise } from './noise.js';
 import { createBlock } from './block.js';
 import { setBlockData, getBlockType, setBlock } from './worldData.js';
 
-// --- Helper functions ---
+// --- Helper ---
 function lerp(t, a, b) {
     return a + t * (b - a);
 }
@@ -15,19 +15,14 @@ function lerp(t, a, b) {
 // --- Module State ---
 let noiseGenerator = null; // Generator instance
 
-/**
- * Generates initial landmass (Stone/Dirt/Grass) and fills the rest with Air by modifying grid directly
- * Multi-pass approach with boundary smoothing
- */
+// --- Generates initial landmass (Stone/Dirt/Grass) and fills the rest with Air by modifying grid directly ---
 function generateLandmass() {
-    console.log("Generating landmass with boundary smoothing...");
+    // console.log("Generating landmass with boundary smoothing...");
     noiseGenerator = new PerlinNoise();
-
-    const islandWidth = Math.floor(Config.GRID_COLS * Config.WORLD_ISLAND_WIDTH_PERCENT);
-    const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2);
-    const islandEndCol = islandStartCol + islandWidth;
+    const islandWidth = Math.floor(Config.GRID_COLS * Config.WORLD_ISLAND_WIDTH); // 200*0.8=160
+    const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2);              // 200-160=40/2=20
+    const islandEndCol = islandStartCol + islandWidth;                                    // 20+160=180
     const islandTaperWidth = 80; // Taper from island edge towards center
-
     // Ocean level constants from Config (ensure they are defined there)
     const OCEAN_FLOOR_ROW_NEAR_ISLAND = Config.WORLD_WATER_LEVEL_ROW_TARGET + 5;
     const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;
@@ -124,8 +119,7 @@ function generateLandmass() {
 
     // --- Pass 2: Smooth the boundary ---
     console.log("Pass 2: Smoothing boundaries...");
-    const smoothingWidth = 5; // How many columns INTO the island to blend with ocean values
-                            // Adjust this for a wider/narrower smoothed beach transition
+    const smoothingWidth = 20; // How many columns INTO the island to blend with ocean values, Adjust this for a wider/narrower smoothed beach transition
     for (let i = 0; i < smoothingWidth; i++) {
         // --- Left Boundary ---
         const islandCol = islandStartCol + i;

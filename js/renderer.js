@@ -2,7 +2,7 @@
 // js/renderer.js - Handles Canvas Setup and Drawing Operations
 // -----------------------------------------------------------------------------
 
-console.log("renderer loaded");
+// console.log("renderer loaded");
 
 import * as Config from './config.js';
 
@@ -22,7 +22,7 @@ export function init() {
     canvas.height = Config.CANVAS_HEIGHT;
     ctx = canvas.getContext('2d');
     if (!ctx) { throw new Error("Renderer: Failed to get 2D context!"); }
-    console.log("Renderer initialized successfully.");
+    // console.log("Renderer initialized successfully.");
 }
 
 /** Creates and initializes the off-screen canvas for the static grid layer. */
@@ -33,8 +33,7 @@ export function createGridCanvas() {
     gridCanvas.height = Config.CANVAS_HEIGHT;
     gridCtx = gridCanvas.getContext('2d');
     if (!gridCtx) { throw new Error("Renderer: Failed to get 2D context for grid canvas!"); }
-    console.log("Renderer: Grid canvas created.");
-    // Note: We don't return it here anymore, use getGridCanvas() / getGridContext()
+    // console.log("Renderer: Grid canvas created.");
 }
 
 /** Returns the main rendering context. */
