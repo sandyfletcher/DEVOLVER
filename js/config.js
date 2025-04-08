@@ -93,12 +93,12 @@ export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
 export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // Spawn slightly above mean ground
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 // --- Player Health & Combat ---
-export const PLAYER_INITIAL_HEALTH = 8;
-export const PLAYER_MAX_HEALTH = 10;
+export const PLAYER_INITIAL_HEALTH = 100;
+export const PLAYER_MAX_HEALTH_DISPLAY = 100;
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds (reduced slightly)
 export const PLAYER_ATTACK_DURATION = 0.25; // seconds
 export const PLAYER_ATTACK_COOLDOWN = 0.4; // seconds
-export const PLAYER_ATTACK_DAMAGE = 1;
+export const PLAYER_ATTACK_DAMAGE = 10;
 export const PLAYER_ATTACK_REACH_X = Math.floor(2.25 * BLOCK_WIDTH); // Approx 9px reach horizontal offset from edge
 export const PLAYER_ATTACK_REACH_Y = 0; // Vertical offset from player center
 export const PLAYER_ATTACK_WIDTH = Math.floor(1.25 * BLOCK_WIDTH); // Approx 5px width
@@ -165,7 +165,7 @@ export const ENEMY_STATS = {
         height: DEFAULT_ENEMY_HEIGHT,
         maxSpeedX: 40,                    // Movement speed (pixels/sec)
         health: 1,                        // Starting health points
-        contactDamage: 1,                 // Damage dealt on player collision
+        contactDamage: 10,                 // Damage dealt on player collision
         applyGravity: true,               // Does gravity affect this enemy?
         gravityFactor: 1.0,               // Multiplier for gravity (1.0 = normal)
         canJump: false,                   // Can this enemy initiate a jump?
@@ -195,7 +195,7 @@ export const ENEMY_STATS = {
         height: DEFAULT_ENEMY_HEIGHT,
         maxSpeedX: 55,                    // Slightly faster
         health: 2,                        // Slightly tougher
-        contactDamage: 1,
+        contactDamage: 10,
         applyGravity: true,
         gravityFactor: 1.0,
         canJump: true,                   // Chasers can jump over small obstacles
@@ -283,18 +283,11 @@ export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in 
 // =============================================================================
 // --- UI Constants ---
 // =============================================================================
-// Sidebar elements are handled by CSS now, these might be redundant unless used for canvas UI
-// export const UI_AREA_HEIGHT = 30;
-export const UI_HEALTH_BOX_SIZE = 15;       // Used by CSS? No, used in ui.js for creating divs
-export const UI_HEALTH_BOX_PADDING = 4;     // Used by CSS gap property now
-// export const UI_HEALTH_LABEL_X = 10;        // Position handled by CSS flex/grid
-// export const UI_HEALTH_BOX_START_X = 80;    // Position handled by CSS
-// export const UI_Y_POSITION = 8;           // Position handled by CSS
 
 // --- Colors (mostly used by HTML/CSS, but keep for reference/canvas UI) ---
 export const BACKGROUND_COLOR = 'rgb(135, 206, 235)'; // Sky Blue (Main canvas background)
-export const UI_HEALTH_BOX_COLOR_EMPTY = 'rgb(80, 80, 80)';  // Used in ui.js for health box divs
-export const UI_HEALTH_BOX_COLOR_FULL = 'rgb(220, 40, 40)'; // Used in ui.js for health box divs
+export const UI_HEALTH_BAR_COLOR_EMPTY = 'rgb(80, 80, 80)';  // NEW: Background for health bar
+export const UI_HEALTH_BAR_COLOR_FULL = 'rgb(220, 40, 40)'; // NEW: Fill color for health bar
 // export const UI_TEXT_COLOR = 'black'; // Defined in CSS as white for sidebars
 
 // Game Over Screen (If implemented on canvas, otherwise CSS)

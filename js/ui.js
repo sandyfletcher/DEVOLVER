@@ -7,7 +7,7 @@ import * as Config from './config.js';
 // --- DOM Element References ---
 // Cache elements for performance
 let waveStatusEl, waveTimerEl, enemyCountEl;
-let healthBoxesEl;
+let healthLabelEl, healthBarContainerEl, healthBarFillEl, healthTextEl;
 let inventoryListEl;
 let swordStatusEl;
 // Game Over elements (assuming an overlay structure later)
@@ -22,13 +22,16 @@ let restartButtonEl;
 export function init() {
     waveStatusEl = document.getElementById('wave-status');
     waveTimerEl = document.getElementById('wave-timer');
-    enemyCountEl = document.getElementById('enemy-count'); // Optional element
-    healthBoxesEl = document.getElementById('health-boxes');
+    enemyCountEl = document.getElementById('enemy-count');
+    healthLabelEl = document.getElementById('health-label'); // Keep label ref if needed elsewhere
+    healthBarContainerEl = document.getElementById('health-bar-container');
+    healthBarFillEl = document.getElementById('health-bar-fill');
+    healthTextEl = document.getElementById('health-text');
     inventoryListEl = document.getElementById('inventory-list');
     swordStatusEl = document.getElementById('sword-status'); // Sword status element
     restartButtonEl = document.getElementById('restart-button');
 
-    if (!waveStatusEl || !waveTimerEl || !healthBoxesEl || !inventoryListEl || !swordStatusEl || !restartButtonEl) {
+    if (!waveStatusEl || !waveTimerEl || !enemyCountEl || !healthLabelEl || !healthBarContainerEl || !healthBarFillEl|| !healthTextEl || !inventoryListEl || !swordStatusEl || !restartButtonEl) {
         console.warn("UI Init: Could not find all expected UI elements in the DOM!");
     }
     // console.log("UI Module Initialized (HTML Mode)");
@@ -85,18 +88,17 @@ export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
  * @param {boolean} hasSword - Whether the player currently has the sword.
  */
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword) {
-    // Update Health Boxes
-    if (healthBoxesEl) {
-        let healthHTML = '';
-        // Use PLAYER_MAX_HEALTH from config for total boxes
-        for (let i = 0; i < Config.PLAYER_MAX_HEALTH; i++) {
-            const boxClass = (i < currentHealth) ? 'full' : 'empty';
-            // Use div elements for boxes
-            healthHTML += `<div class="health-box ${boxClass}"></div>`;
-        }
-        healthBoxesEl.innerHTML = healthHTML;
-    }
-    // Update Inventory List
+        // Update Health Bar
+        if (healthBarFillEl && healthTextEl) {
+            // Clamp health between 0 and maxHealth
+            const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
+            // Calculate percentage, handle maxHealth being 0
+            const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
+    
+            healthBarFillEl.style.width = `${healthPercent}%`;
+            healthTextEl.textContent = `${Math.round(clampedHealth)}/${maxHealth}`; // Show rounded current health
+             }
+                // Update Inventory List
     if (inventoryListEl) {
         let inventoryHTML = '';
         const items = Object.keys(inventory);

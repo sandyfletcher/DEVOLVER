@@ -81,7 +81,7 @@ body {
     overflow: hidden; /* Prevent canvas from spilling out */
 }
 
-/* Canvas Styling (no change needed) */
+/* Canvas Styling */
 #game-canvas {
     display: block;
     max-width: 100%;
@@ -91,31 +91,32 @@ body {
     image-rendering: crisp-edges;
 }
 
-/* UI Element Styles (health, inventory etc - no changes from previous) */
+/* UI Element Styles */
 #health-display {
     margin-bottom: 15px;
+    display: flex; /* Arrange label, bar, text horizontally */
+    align-items: center; /* Vertically align items */
+    gap: 8px; /* Space between elements */
 }
 
-#health-boxes {
-    display: flex; /* Arrange health boxes horizontally */
-    flex-wrap: wrap; /* Allow wrapping if too many */
-    gap: 4px; /* Space between boxes */
-    margin-top: 5px;
-    /* Adjust alignment if needed */
+#health-label {
+    flex-shrink: 0; /* Prevent label from shrinking */
 }
 
-.health-box {
-    width: 15px;
-    height: 15px;
-    border: 1px solid #ccc; /* Add border for visibility */
+#health-bar-container {
+    flex-grow: 1; /* Allow bar to take available space */
+    height: 18px;
+    background-color: rgb(80, 80, 80); /* Config.UI_HEALTH_BAR_COLOR_EMPTY */
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    overflow: hidden; /* Hide fill overflow */
 }
 
-.health-box.full {
-    background-color: rgb(220, 40, 40); /* Config.UI_HEALTH_BOX_COLOR_FULL */
-}
-
-.health-box.empty {
-    background-color: rgb(80, 80, 80); /* Config.UI_HEALTH_BOX_COLOR_EMPTY */
+#health-bar-fill {
+    height: 100%;
+    width: 100%; /* Start full */
+    background-color: rgb(220, 40, 40); /* Config.UI_HEALTH_BAR_COLOR_FULL */
+    transition: width 0.2s ease-out; /* Smooth transition */
 }
 
 #inventory-list {
@@ -131,7 +132,7 @@ body {
 }
 
 #wave-status, #wave-timer, #enemy-count, #sword-status {
-     font-size: 1.1em;
+     font-size: 1em;
      color: #ccc;
 }
 

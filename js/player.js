@@ -27,7 +27,7 @@ export class Player {
         this.hitEnemiesThisSwing = [];
         this.inventory = {};
         // Health State
-        this.maxHealth = Config.PLAYER_MAX_HEALTH;
+        this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
@@ -220,7 +220,7 @@ export class Player {
         this.vx = 0;
         this.vy = 0;
         this.isOnGround = false; // Assume starting airborne, gravity/collision will correct
-        this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
+        this.currentHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
         this.isAttacking = false;
