@@ -1,7 +1,6 @@
 // -----------------------------------------------------------------------------
 // root/js/enemy.js - Enemy Class (Refactored for Config & AI Strategy)
 // -----------------------------------------------------------------------------
-// console.log("enemy loaded");
 
 import * as Config from './config.js';
 import * as ItemManager from './itemManager.js'; // Needed for drops on death
@@ -9,11 +8,13 @@ import * as World from './worldManager.js';   // Potentially needed by AI strate
 import * as GridCollision from './utils/gridCollision.js'; // For physics
 import { SeekCenterAI } from './ai/seekCenterAI.js';
 import { ChasePlayerAI } from './ai/chasePlayerAI.js';
+import { FlopAI } from './ai/flopAI.js';
 
 // Map AI type strings from config to the actual AI Strategy classes
 const aiStrategyMap = {
     'seekCenter': SeekCenterAI,
     'chasePlayer': ChasePlayerAI,
+    'flopAI': FlopAI,
     // 'flyPatrol': FlyerAI, // Add mappings for new AI types here
     // 'standAndShoot': ShooterAI,
 };

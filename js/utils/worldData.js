@@ -2,8 +2,6 @@
 // root/js/utils/worldData.js - Manages core world grid data structure
 // -----------------------------------------------------------------------------
 
-// console.log("utils/worldData loaded");
-
 import * as Config from '../config.js';
 import { createBlock } from './block.js';
 

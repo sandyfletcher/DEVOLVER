@@ -2,56 +2,16 @@
 // js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
-// console.log("config loaded");
-
+// =============================================================================
 // --- World Parameters ---
-export const CANVAS_WIDTH = 800; // Match canvas width
-export const CANVAS_HEIGHT = 800; // Match canvas height
-// --- Grid Constants ---
+// =============================================================================
+
+// --- Canvas ---
+export const CANVAS_WIDTH = 800;
+export const CANVAS_HEIGHT = 800;
+// --- Grid ---
 export const GRID_COLS = 200;
 export const GRID_ROWS = 200;
-// --- Block Constants ---
-export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;   // Calculated: 4
-export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS; // Calculated: 4
-// --- Block Type IDs ---
-export const BLOCK_AIR = 0;
-export const BLOCK_WATER = 1;
-export const BLOCK_SAND = 2;
-export const BLOCK_DIRT = 3;
-export const BLOCK_GRASS = 4;
-export const BLOCK_STONE = 5;
-export const BLOCK_WOOD_WALL = 6;
-export const BLOCK_METAL = 7;
-// TODO: GLASS, specific ores, etc.
-// --- Block Orientation IDs ---
-export const ORIENTATION_FULL = 0;
-export const ORIENTATION_SLOPE_BL = 1; // Bottom-Left triangle solid
-export const ORIENTATION_SLOPE_BR = 2; // Bottom-Right triangle solid
-export const ORIENTATION_SLOPE_TR = 3; // Top-Right triangle solid
-export const ORIENTATION_SLOPE_TL = 4; // Top-Left triangle solid
-// TODO: Implement drawing/collision later
-// --- Block Base HP ---
-export const BLOCK_HP = {
-    [BLOCK_WATER]: Infinity,
-    [BLOCK_SAND]: 30,
-    [BLOCK_DIRT]: 50,
-    [BLOCK_GRASS]: 50,
-    [BLOCK_STONE]: 300,
-    [BLOCK_WOOD_WALL]: 100,
-    [BLOCK_METAL]: 500,
-// TODO: Add HP for other types later
-};
-// --- Block Colors ---
-export const BLOCK_COLORS = {
-    // BLOCK_AIR is background color
-    [BLOCK_WATER]: 'rgb(50, 100, 200)',
-    [BLOCK_SAND]: 'rgb(210, 180, 140)',
-    [BLOCK_DIRT]: 'rgb(130, 82, 45)',
-    [BLOCK_GRASS]: 'rgb(80, 180, 80)',
-    [BLOCK_STONE]: 'rgb(140, 140, 140)',
-    [BLOCK_WOOD_WALL]: 'rgb(160, 110, 70)',
-    [BLOCK_METAL]: 'rgb(190, 190, 200)',
-};
 // --- Procedural Generation Parameters ---
 export const WORLD_ISLAND_WIDTH = 0.8; // width of main island as a percentage
 export const WORLD_WATER_LEVEL = 0.15; // Water coverage: bottom 15%, can be raised for environmental chaos
@@ -62,7 +22,7 @@ export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELO
 export const WORLD_GROUND_VARIATION = 3; // variations and noise scale
 export const WORLD_STONE_VARIATION = 3; // Can adjust this noise amount if needed
 export const WORLD_NOISE_SCALE = 0.05;
-// Ocean Tapering Config
+// --- Ocean Tapering Config ---
 export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5;      // Row 175
 export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;     // Row 183
 export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1);        // 20 rows below water level
@@ -74,6 +34,54 @@ export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 5; // Target stone level below
 export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 10; // Target floor level below deep ocean floor at edge
 export const ISLAND_CENTER_TAPER_WIDTH = 80; // Width of taper from island edge inward
 
+// =============================================================================
+// --- Block Parameters ---
+// =============================================================================
+
+// --- Block ---
+export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;   // Calculated: 4
+export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS; // Calculated: 4
+// --- Block Type IDs ---
+export const BLOCK_AIR = 0;
+export const BLOCK_WATER = 1;
+export const BLOCK_SAND = 2;
+export const BLOCK_DIRT = 3;
+export const BLOCK_GRASS = 4;
+export const BLOCK_STONE = 5;
+export const BLOCK_WOOD_WALL = 6;
+export const BLOCK_METAL = 7;
+// TODO: Glass, specific ores, etc. 
+
+// --- Block Orientation IDs ---
+export const ORIENTATION_FULL = 0;
+export const ORIENTATION_SLOPE_BL = 1; // Bottom-Left triangle solid
+export const ORIENTATION_SLOPE_BR = 2; // Bottom-Right triangle solid
+export const ORIENTATION_SLOPE_TR = 3; // Top-Right triangle solid
+export const ORIENTATION_SLOPE_TL = 4; // Top-Left triangle solid
+// TODO: Implement drawing/collision later
+
+// --- Block Base HP ---
+export const BLOCK_HP = {
+    [BLOCK_WATER]: Infinity,
+    [BLOCK_SAND]: 30,
+    [BLOCK_DIRT]: 50,
+    [BLOCK_GRASS]: 50,
+    [BLOCK_STONE]: 300,
+    [BLOCK_WOOD_WALL]: 100,
+    [BLOCK_METAL]: 500,
+}; // TODO: Add HP for other types later
+
+// --- Block Colors ---
+export const BLOCK_COLORS = {
+    // BLOCK_AIR is background color
+    [BLOCK_WATER]: 'rgb(50, 100, 200)',
+    [BLOCK_SAND]: 'rgb(210, 180, 140)',
+    [BLOCK_DIRT]: 'rgb(130, 82, 45)',
+    [BLOCK_GRASS]: 'rgb(80, 180, 80)',
+    [BLOCK_STONE]: 'rgb(140, 140, 140)',
+    [BLOCK_WOOD_WALL]: 'rgb(160, 110, 70)',
+    [BLOCK_METAL]: 'rgb(190, 190, 200)',
+};
 
 // =============================================================================
 // --- Player Constants ---
@@ -109,10 +117,10 @@ export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward 
 // --- Default Enemy Size (can be overridden in ENEMY_STATS) ---
 export const DEFAULT_ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);   // Approx 6px
 export const DEFAULT_ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT); // Approx 9px
-
 // --- Enemy Type Identifiers ---
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
+export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
 // Add new type constants here: export const ENEMY_TYPE_FLYER = 'flyer';
 
 // --- Default Separation Behavior ---
@@ -129,6 +137,26 @@ export const ENEMY_FLASH_DURATION = 0.15; // Seconds enemy flashes when hit
 // This structure allows adding many new enemy types easily by defining their properties here.
 // The Enemy class constructor and AI Strategies will read from this configuration.
 export const ENEMY_STATS = {
+
+    [ENEMY_TYPE_TETRAPOD]: {
+        displayName: "Tetrapod",
+        aiType: 'flopAI',                 // <-- Link to the new AI strategy
+        color: 'rgb(100, 120, 80)',       // Muddy green/brown color
+        width: DEFAULT_ENEMY_WIDTH,       // Use default size for now
+        height: DEFAULT_ENEMY_HEIGHT,
+        maxSpeedX: 20,                    // Very slow horizontal movement during flops
+        health: 1,                        // Very fragile
+        contactDamage: 0,                 // <-- Minimal damage (0 for now, can adjust)
+        applyGravity: true,
+        gravityFactor: 1.0,
+        canJump: true,                    // Needs to jump to "flop"
+        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.4, // Weak jump/flop strength
+        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2, // Maybe slightly more space? Optional.
+        separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.8, // Less pushy? Optional.
+        dropTable: [],                    // No drops for the basic version
+    },
+
+
     [ENEMY_TYPE_CENTER_SEEKER]: {
         displayName: "Seeker",              // For potential UI/debugging
         aiType: 'seekCenter',             // Key to match an AI Strategy class (to be implemented)
@@ -250,68 +278,6 @@ export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in 
 // Each Main Wave has 'subWaves'.
 // Each Sub-Wave has 'enemyGroups'.
 // Each Enemy Group defines a batch of a specific enemy type.
-export const WAVES = [
-    { // ==================== Main Wave 1 ====================
-        mainWaveNumber: 1, // For reference/UI
-        subWaves: [
-            { // --- Sub-Wave 1.1 ---
-                // description: "Initial Seekers", // Optional for debugging/UI
-                enemyGroups: [
-                    // Group 1: Spawn 5 Seekers, 0.7s apart
-                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7 },
-                     // Group 2: Spawn 3 more Seekers slightly faster, after a 2s delay from the start of this sub-wave
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 2.0 },
-                ]
-            },
-            { // --- Sub-Wave 1.2 ---
-                // description: "Introducing Chasers",
-                enemyGroups: [
-                    // Group 1: Spawn 4 Seekers
-                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
-                    // Group 2: Spawn 2 Chasers, slower spawn rate, starting later
-                    { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
-                ]
-            },
-            { // --- Sub-Wave 1.3 ---
-                // description: "Mixed Finish",
-                enemyGroups: [
-                    // Group 1: Quick burst of Seekers
-                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
-                     // Group 2: A single tougher Chaser
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.0, startDelay: 4.0 }
-                ]
-            }
-        ]
-    },
-    { // ==================== Main Wave 2 ====================
-        mainWaveNumber: 2,
-        subWaves: [
-            { // --- Sub-Wave 2.1 ---
-                 // description: "Chaser Focus",
-                 enemyGroups: [
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 }, // Support seekers
-                 ]
-            },
-            { // --- Sub-Wave 2.2 ---
-                 // description: "Dense Pack",
-                 enemyGroups: [
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 }, // Tightly packed
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 }, // Late chasers
-                 ]
-            },
-            { // --- Sub-Wave 2.3 ---
-                // description: "Final Push",
-                 enemyGroups: [
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 }, // Elite chasers
-                 ]
-            }
-        ]
-    },
-    // ==================== Add Main Wave 3, 4, etc. here ====================
-];
 
 
 // =============================================================================

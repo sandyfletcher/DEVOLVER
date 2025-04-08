@@ -2,10 +2,9 @@
 // root/js/waveManager.js - Manages waves of enemies and timing
 // -----------------------------------------------------------------------------
 
-// console.log("waveManager loaded)");
-
 import * as Config from './config.js';
 import * as EnemyManager from './enemyManager.js';
+import { WAVES } from './utils/waveScripts.js';
 
 // --- Module State ---
 let currentMainWaveIndex = -1; // Index in Config.WAVES array (-1 means not started)
@@ -23,10 +22,10 @@ let intermissionTimer = 0; // Timer between main waves
 // --- Internal Helper Functions ---
 
 function getCurrentWaveData() {
-    if (currentMainWaveIndex < 0 || currentMainWaveIndex >= Config.WAVES.length) {
+    if (currentMainWaveIndex < 0 || currentMainWaveIndex >= WAVES.length) {
         return null;
     }
-    return Config.WAVES[currentMainWaveIndex];
+    return WAVES[currentMainWaveIndex];
 }
 
 function getCurrentSubWaveData() {
@@ -89,7 +88,7 @@ function setupNextSubWave() {
 /** Sets up the state variables for the next main wave. */
 function setupNextMainWave() {
     currentMainWaveIndex++;
-    if (currentMainWaveIndex >= Config.WAVES.length) {
+    if (currentMainWaveIndex >= WAVES.length) {
         console.log("[WaveMgr] All defined waves completed!");
         // TODO: Implement game win state or loop waves
         state = 'ALL_WAVES_CLEARED'; // Or GAME_OVER, or loop index back to 0
