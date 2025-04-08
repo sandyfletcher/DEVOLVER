@@ -15,12 +15,50 @@ import * as World from './worldManager.js';
 import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
 import * as WaveManager from './waveManager.js';
+import * as WorldData from './utils/worldData.js';
 
 // --- Global Game Variables ---
 let player = null;
 let gameRunning = true;
 let lastTime = 0;
 let restartBtnRef = null; // Variable to hold button reference
+
+// --- Function to log the world grid ---
+function logWorldGrid() {
+    console.log("--- World Grid Debug Output ---");
+    console.time("GridLog Generation"); // Optional: time how long it takes
+
+    const blockToChar = {
+        [Config.BLOCK_AIR]: ' ', // Use space for air for better visual clarity
+        [Config.BLOCK_WATER]: '~', // Tilde often used for water
+        [Config.BLOCK_SAND]: '.', // Dot for sand
+        [Config.BLOCK_DIRT]: '#', // Hash for dirt
+        [Config.BLOCK_GRASS]: '"', // Double quote for grass tufts
+        [Config.BLOCK_STONE]: 'R', // R for Rock/Stone
+        [Config.BLOCK_WOOD_WALL]: 'P', // P for Plank/Wood Wall
+        [Config.BLOCK_METAL]: 'M', // M for Metal
+        // Add mappings for any other block types you have
+    };
+    const defaultChar = '?'; // Character for unknown block types
+
+    let gridString = "";
+    const gridHeight = Config.GRID_ROWS;
+    const gridWidth = Config.GRID_COLS;
+
+    for (let r = 0; r < gridHeight; r++) {
+        let rowString = "";
+        for (let c = 0; c < gridWidth; c++) {
+            const blockType = WorldData.getBlockType(c, r); // Use the getter
+            const char = blockToChar[blockType] ?? defaultChar; // Get char or default
+            rowString += char;
+        }
+        gridString += rowString + "\n"; // Add the completed row and a newline
+    }
+
+    console.log(gridString);
+    console.timeEnd("GridLog Generation"); // Optional: end timer
+    console.log("--- End World Grid Debug Output ---");
+}
 
 // --- Restart Game Function ---
 function restartGame() {
@@ -32,41 +70,45 @@ function restartGame() {
         player.reset();
     }
     // Reset Managers
+    // Clear world grid and regenerate
+    WorldData.initializeGrid();
+    World.init();
+
     ItemManager.init();
     EnemyManager.clearAllEnemies();
     WaveManager.reset();
+
+
     // Reset Game Loop State
     lastTime = performance.now();
     gameRunning = true;
     Input.consumeClick();
 
-    // Initial UI Update after reset (optional, loop will catch it)
+    // Initial UI Update after reset
     const waveInfo = WaveManager.getWaveInfo();
     const livingEnemies = EnemyManager.getLivingEnemyCount();
     UI.updateWaveInfo(waveInfo, livingEnemies);
     UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus());
     UI.updateGameOverState(false);
-
+    // log grid to console
+    logWorldGrid();
     console.log(">>> GAME RESTARTED <<<");
 }
 
 // --- Game Loop ---
 function gameLoop(timestamp) {
     // --- Delta Time Calc ---
-    // Calculate dt first, always needed
     const deltaTime = (timestamp - lastTime) / 1000;
     lastTime = timestamp;
     const dt = Math.min(deltaTime, Config.MAX_DELTA_TIME);
 
     // --- Game Over Check ---
-    // Check player health AFTER potential updates/collisions
-    // Check wave manager state as well
     let isGameOver = WaveManager.isGameOver();
-    if (!isGameOver && player && player.getCurrentHealth() <= 0) {
+    if (!isGameOver && player && player.getCurrentHealth() <= 0) {     // Check player health AFTER potential updates/collisions
         console.log("Game Over detected in loop (Player health <= 0). Setting state.");
         WaveManager.setGameOver();
         isGameOver = true; // Update local flag for this frame
-        UI.updateGameOverState(true, WaveManager.getCurrentWaveNumber());
+        UI.updateGameOverState(true, WaveManager.getCurrentWaveNumber());     // Check wave manager state as well
     }
 
     // --- Handle GAME OVER state ---
@@ -77,7 +119,6 @@ function gameLoop(timestamp) {
         ItemManager.draw(Renderer.getContext());
         EnemyManager.draw(Renderer.getContext());
         if (player) player.draw(Renderer.getContext());
-
         // Update UI (wave info shows game over, player info shows final state)
         const waveInfo = WaveManager.getWaveInfo();
         const livingEnemies = EnemyManager.getLivingEnemyCount();
@@ -89,14 +130,12 @@ function gameLoop(timestamp) {
         // Draw touch controls
         Input.drawControls(Renderer.getContext());
 
-        // No restart check here anymore
-
         requestAnimationFrame(gameLoop);
         return;
     }
     
-    // --- If Game is Active, Proceed with Normal Loop ---
-    // gameRunning flag might not be needed if game over state handles loop exit
+    // --- When Game is Active, Proceed with Normal Loop ---
+
     // if (!gameRunning) return; // Keep if you want an explicit pause flag later
 
     // --- Input Phase ---
@@ -157,14 +196,17 @@ function init() {
         Renderer.init();
         Renderer.createGridCanvas(); // Create canvas for world render
         Input.init(); // Setup input listeners
+        // Initialize WorldData first, then WorldManager which uses it
+        WorldData.initializeGrid(); // Ensures grid array is created
         World.init(); // Init world data and static render
+        // --- Log the generated grid AFTER generation ---
+        logWorldGrid();
         ItemManager.init();
         EnemyManager.init();
         WaveManager.init(); // Init wave manager state
     } catch (error) {
         console.error("FATAL: Module Initialization Error:", error);
         initializationOk = false;
-        // Potentially display error to user in HTML
     }
 
     if (initializationOk) {
@@ -196,10 +238,9 @@ function init() {
         // gameRunning = true; // Not strictly needed if relying on game over state
         requestAnimationFrame(gameLoop); // Start the main loop
         UI.updateGameOverState(false); // Ensure button is hidden initially
-        console.log("Game initialization complete. Starting loop.");
+        // console.log("Game initialization complete. Starting loop.");
     } else {
         console.error("Game initialization failed. Game will not start.");
-        // Display a user-friendly error message in the HTML body/overlay
     }
 }
 // --- Start the Game ---

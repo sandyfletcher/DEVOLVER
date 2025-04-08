@@ -214,14 +214,12 @@ function generateLandmass() {
 
 // --- Flood Fill Function (No Changes Needed) ---
 function applyFloodFill(targetWaterRow) {
-    // ... (Keep existing flood fill logic) ...
     console.log(`Applying flood fill up to row ${targetWaterRow}...`);
     const queue = [];
     const visited = new Set(); // Track visited cells: "c,r"
 
     // --- Optimized Start Points for Flood Fill ---
-    // Start from the bottom row and the sides *at or below* the water level.
-    // This assumes the generator leaves AIR where water should be.
+    // Start from the bottom row and the sides *at or below* the water level, assuming the generator leaves AIR where water should be
 
     // Bottom Row
     for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -292,9 +290,8 @@ function applyFloodFill(targetWaterRow) {
     console.log(`Flood fill complete. Filled ${processed} water blocks.`);
 }
 
-// --- Sand Pass Function (No Changes Needed, but ensure setBlock is imported) ---
+// --- Sand Pass Function  ---
 function applySandPass() {
-    // ... (Keep existing sand pass logic, making sure it uses setBlock) ...
     console.log("Applying sand generation pass (thicker beaches)...");
     const changes = []; // Store {r, c, type: Config.BLOCK_SAND}
     const maxDepth = 3; // How many blocks deep sand replaces dirt/stone below the surface sand
@@ -384,6 +381,49 @@ function applySandPass() {
     console.log(`Sand pass complete. ${finalChanges.length} blocks changed to sand.`);
 }
 
+// --- Function to fill remaining Dirt/Stone/Grass gaps below water near water ---
+function fillSubmergedSandGaps() {
+    console.log("Applying sand gap filling pass...");
+    const changesMade = []; // Optional: Track changes if needed
+    const waterLevelRow = Config.WORLD_WATER_LEVEL_ROW_TARGET;
+    const maxCheckRow = Config.GRID_ROWS; // Check all the way down
+
+    // Iterate rows from water level downwards
+    for (let r = waterLevelRow; r < maxCheckRow; r++) {
+        // Iterate columns
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+            const blockType = getBlockType(c, r);
+
+            // Is this a block that *should* potentially be sand?
+            if (blockType === Config.BLOCK_DIRT || blockType === Config.BLOCK_STONE || blockType === Config.BLOCK_GRASS) {
+                let isAdjacentToWater = false;
+                // Check 8 neighbors
+                const neighborCoords = [
+                    { nc: c, nr: r - 1 }, { nc: c, nr: r + 1 }, { nc: c - 1, nr: r }, { nc: c + 1, nr: r },
+                    { nc: c - 1, nr: r - 1 }, { nc: c + 1, nr: r - 1 }, { nc: c - 1, nr: r + 1 }, { nc: c + 1, nr: r + 1 }
+                ];
+
+                for (const { nc, nr } of neighborCoords) {
+                    // Check bounds for neighbor before getting type
+                    if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
+                        if (getBlockType(nc, nr) === Config.BLOCK_WATER) {
+                            isAdjacentToWater = true;
+                            break; // Found water, no need to check other neighbors
+                        }
+                    }
+                }
+
+                // If it was Dirt/Stone/Grass and next to Water, change it to Sand
+                if (isAdjacentToWater) {
+                    setBlock(c, r, Config.BLOCK_SAND); // Use the proper setter
+                    changesMade.push({r, c}); // Optional tracking
+                }
+            }
+        }
+    }
+    console.log(`Sand gap filling complete. ${changesMade.length} additional blocks changed to sand.`);
+}
+
 /**
  * Runs the entire world generation process, step-by-step.
  * Assumes the grid has been initialized by world-data.initializeGrid().
@@ -392,6 +432,7 @@ export function generateInitialWorld() {
     console.time("World generated in");
     generateLandmass(); // Uses the new multi-pass method
     applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
-    applySandPass();
+    applySandPass(); // Original sand pass (handles thickness)
+    fillSubmergedSandGaps(); // Backup sand
     console.timeEnd("World generated in");
 }
