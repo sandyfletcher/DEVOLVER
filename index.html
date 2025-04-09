@@ -1,68 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <!-- Prevent zoom -->
-    <meta name="description" content="DEVOLVER - A 2D wave survival game built with HTML Canvas and JavaScript.">
-    <title>DEVOLVER</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
-    <style>
-        /* Basic styles for hiding elements initially to prevent flash */
-        #landscape-warning { display: none; }
-    </style>
-</head>
-<body>
-    <!-- New Main Application Container -->
-    <div id="app-container">
-        <!-- Left Sidebar -->
-        <aside id="left-sidebar">
-            <h2>Wave Info</h2>
-            <div id="wave-status">Loading...</div>
-            <div id="wave-timer"></div>
-            <div id="enemy-count"></div>
-            <div id="controls-area">
-                <button id="restart-button">PLAY AGAIN</button>
-            </div>
-        </aside>
-
-        <!-- Game Area Wrapper -->
-        <main id="game-wrapper">
-            <canvas id="game-canvas" width="800" height="800">
-                Your browser does not support the HTML canvas element.
-            </canvas>
-        </main>
-
-        <!-- Right Sidebar -->
-        <aside id="right-sidebar">
-            <h2>Status</h2>
-            <div id="health-display">
-                <span id="health-label">HEALTH:</span>
-                <div id="health-bar-container">
-                    <div id="health-bar-fill"></div>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <!-- Prevent zoom -->
+        <meta name="description" content="DEVOLVER - A 2D wave survival game built with HTML Canvas and JavaScript.">
+        <title>DEVOLVER</title>
+        <link rel="stylesheet" href="style.css">
+        <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
+        <style>
+            /* Basic styles for hiding elements initially to prevent flash */
+            #landscape-warning { display: none; }
+        </style>
+    </head>
+    <body>
+        <!-- Main Container -->
+        <div id="app-container">
+            <!-- Left Sidebar -->
+            <aside id="left-sidebar">
+                <h2>Wave Info</h2>
+                <div id="wave-status">Loading...</div>
+                <div id="wave-timer"></div>
+                <div id="enemy-count"></div>
+                <div id="controls-area">
+                    <button id="restart-button">PLAY AGAIN</button>
                 </div>
-                <span id="health-text">Loading...</span>            </div>
-            <div id="inventory-display">
-                <h3>Inventory</h3>
-                <ul id="inventory-list">(Empty)</ul>
-            </div>
-             <!-- Add sword status -->
-            <div id="sword-status">Sword: Not Found</div>
-        </aside>
-    </div>
+            </aside>
+            <!-- Game Area Wrapper -->
+            <main id="game-wrapper">
+                <canvas id="game-canvas" width="800" height="800">
+                    Your browser does not support the HTML canvas.
+                </canvas>
+            </main>
+            <!-- Right Sidebar -->
+            <aside id="right-sidebar">
+                <h2>Status</h2>
+                <div id="health-display">
+                    <span id="health-label">HEALTH:</span>
+                    <div id="health-bar-container">
+                        <div id="health-bar-fill"></div>
+                    </div>
+                    <span id="health-text">Loading...</span>
+                </div>
+                <div id="inventory-display">
+                    <h3>Inventory</h3>
+                    <div id="inventory-boxes">Loading...</div>
+                    <div id="weapon-display">
+                        <h3>Weapons</h3>
+                        <div id="weapon-slots">Loading...</div>
+                    </div>
+                </div>
+            </aside>
 
-    <!-- Landscape Orientation Warning -->
-    <div id="landscape-warning">
-        <p>Please rotate your device to landscape mode to play.</p>
-    </div>
-
-    <!-- Noscript fallback -->
-    <noscript>
-        <p style="color: white; text-align: center; padding: 20px;">
-            This game requires JavaScript to run. Please enable JavaScript in your browser settings.
-        </p>
-    </noscript>
-
-    <script type="module" src="js/main.js" defer></script>
-</body>
+        </div>
+        <!-- Landscape Orientation Warning -->
+        <div id="landscape-warning">
+            <p>Please rotate your device to landscape mode to play.</p>
+        </div>
+        <!-- Noscript fallback -->
+        <noscript>
+            <p style="color: white; text-align: center; padding: 20px;">
+                This game requires JavaScript to run.
+            </p>
+        </noscript>
+        <script type="module" src="js/main.js" defer></script>
+    </body>
 </html>

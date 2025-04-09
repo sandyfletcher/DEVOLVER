@@ -291,31 +291,65 @@ export class Enemy {
         // --- Trigger Item Drops based on dropTable ---
         if (killedByPlayer && this.stats.dropTable && this.stats.dropTable.length > 0) {
             if (typeof this.x !== 'number' || typeof this.y !== 'number' || isNaN(this.x) || isNaN(this.y)) {
-                 console.warn(`${this.displayName} died with invalid coordinates, skipping drop spawn.`);
-                 return;
+                console.error(`>>> ${this.displayName} died with invalid coordinates [${this.x}, ${this.y}], skipping drop spawn.`);
+                return; // Exit the die method if coordinates are bad
             }
-
             this.stats.dropTable.forEach(dropInfo => {
-                if (Math.random() < (dropInfo.chance ?? 0)) { // Check drop chance (default 0 if undefined)
-                    // Calculate amount to drop within min/max range
+                if (Math.random() < (dropInfo.chance ?? 0)) { // Check drop chance
                     const min = dropInfo.minAmount ?? 1;
                     const max = dropInfo.maxAmount ?? 1;
                     const amount = Math.floor(Math.random() * (max - min + 1)) + min;
-
+        
                     // console.log(`Dropping ${amount} of ${dropInfo.type} from ${this.displayName}`);
-
+        
                     for (let i = 0; i < amount; i++) {
-                        // Slightly randomized spawn position around enemy center/top
-                        let dropX = this.x + (this.width / 2) + (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.5;
-                        let dropY = this.y + (this.height * 0.25) + (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.25; // Drop near vertical center/slightly above
-
+                        // --- THIS is the calculation we need to adjust ---
+        
+                        // ORIGINAL:
+                        // let dropX = this.x + (this.width / 2) + (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.5;
+                        // let dropY = this.y + (this.height * 0.25) + (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.25; // Drop near vertical center/slightly above
+        
+                        // --- REVISED Calculation ---
+                        // Target: Spawn centered horizontally, slightly *above* the enemy's top edge (this.y)
+                        const horizontalCenter = this.x + this.width / 2;
+                        const verticalTop = this.y; // Enemy's top edge coordinate
+        
+                        // Get the approximate size of the item being dropped (using wood as default if specific isn't easily known)
+                        const itemConf = Config.ITEM_CONFIG[dropInfo.type] || Config.ITEM_CONFIG['wood'];
+                        const itemHeight = itemConf?.height || Config.BLOCK_HEIGHT; // Fallback height
+        
+                        // Calculate base position slightly above the enemy's head, centered horizontally
+                        let dropXBase = horizontalCenter;
+                        // Start slightly above the enemy's head (y decreases upwards)
+                        // Subtracting itemHeight makes the *bottom* of the item appear near the enemy's top
+                        // Subtracting a bit more makes it pop *out* of the head
+                        let dropYBase = verticalTop - itemHeight - (Config.BLOCK_HEIGHT * 0.25);
+        
+                        // Add slight randomization around the base point
+                        let dropX = dropXBase + (Math.random() - 0.5) * (this.width * 0.6); // Randomize within ~half enemy width
+                        let dropY = dropYBase + (Math.random() - 0.5) * (Config.BLOCK_HEIGHT * 0.5); // Small vertical randomization
+        
+        
+                        // --- ADD Logging to Verify ---
+                        console.log(`Spawning ${dropInfo.type} from ${this.displayName} @ [${this.x?.toFixed(1)}, ${this.y?.toFixed(1)}] size [${this.width}, ${this.height}]. Calculated drop: [${dropX?.toFixed(1)}, ${dropY?.toFixed(1)}]`);
+                        // --- END Logging ---
+        
+        
                         // Clamp drop position within canvas bounds (ItemManager might do this too, but good safety)
                         // Need item dimensions - assume generic small size for clamping if specific item config isn't easily available here
-                        const approxItemWidth = Config.WOOD_ITEM_WIDTH; // Use a common item size
-                        dropX = Math.max(0, Math.min(Config.CANVAS_WIDTH - approxItemWidth, dropX));
-                        dropY = Math.max(0, dropY);
-
-                        ItemManager.spawnItem(dropX, dropY, dropInfo.type);
+                        const approxItemWidth = itemConf?.width || Config.BLOCK_WIDTH; // Fallback width
+                        // --- Temporarily DISABLE clamping to see raw calculation result ---
+                        // dropX = Math.max(0, Math.min(Config.CANVAS_WIDTH - approxItemWidth, dropX));
+                        // dropY = Math.max(0, dropY);
+                        // --- END Temporary Disable ---
+        
+                        // --- Final check for NaN before spawning ---
+                        if (!isNaN(dropX) && !isNaN(dropY)) {
+                             ItemManager.spawnItem(dropX, dropY, dropInfo.type);
+                        } else {
+                            console.error(`>>> ITEM SPAWN FAILED: NaN coordinates detected for ${dropInfo.type} from ${this.displayName}. EnemyPos:[${this.x}, ${this.y}], DropCalc:[${dropX}, ${dropY}]`);
+                        }
+                        // --- End NaN check ---
                     }
                 }
             });

@@ -211,8 +211,10 @@ function init() {
 
     if (initializationOk) {
         try {
-            // Create Player instance
+// Create Player instance
             player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
+// Pass player reference to UI for weapon switching etc.
+            UI.setPlayerReference(player);
         } catch (error) {
             console.error("FATAL: Player Creation Error:", error);
             initializationOk = false;

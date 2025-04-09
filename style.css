@@ -119,16 +119,67 @@ body {
     transition: width 0.2s ease-out; /* Smooth transition */
 }
 
-#inventory-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    font-size: 0.9em;
+#inventory-boxes {
+        display: flex;
+        flex-direction: row; /* Arrange boxes horizontally */
+        flex-wrap: wrap; /* Allow wrapping if space is tight */
+        gap: 6px; /* Space between boxes */
+    }
+    
+.inventory-item-box {
+        width: 45px; /* Adjust size as needed */
+        height: 45px;
+        border: 1px solid #666;
+        border-radius: 4px;
+        position: relative; /* For positioning the count text */
+        background-color: #333; /* Default background */
+        box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+}
+    
+.inventory-item-count {
+        position: absolute;
+        bottom: 2px;
+        right: 3px;
+        font-size: 0.9em;
+        font-weight: bold;
+        color: white;
+        text-shadow: 1px 1px 2px black;
 }
 
-#inventory-list li {
-    margin-bottom: 4px;
-    color: #ddd;
+#inventory-display h3 {
+    margin: 0 0 8px 0; /* Adjust margin */
+    padding-bottom: 5px;
+    text-align: center;
+}
+
+#weapon-display {
+    margin-top: 20px; /* Space above weapon section */
+    /* border-top: 1px solid #555;
+    padding-top: 15px; */
+}
+
+#weapon-slots {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
+
+.weapon-slot-box {
+    width: 60px; /* Larger than inventory items */
+    height: 60px;
+    border: 2px solid #555; /* Default border */
+    border-radius: 5px;
+    background-color: #111; /* Empty slot color */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer; /* Indicate clickable */
+    transition: border-color 0.2s ease;
+}
+
+.weapon-slot-box.active {
+    border-color: yellow; /* Highlight active weapon */
+    box-shadow: 0 0 8px yellow;
 }
 
 #wave-status, #wave-timer, #enemy-count, #sword-status {

@@ -2,7 +2,6 @@
 // root/js/player.js - Player Character Class
 // -----------------------------------------------------------------------------
 
-// console.log("player loaded");
 
 import * as Config from './config.js';
 import * as GridCollision from './utils/gridCollision.js';
@@ -20,6 +19,7 @@ export class Player {
         this.isOnGround = false;
         // Combat / Interaction State
         this.hasSword = false;
+        this.selectedWeapon = 'unarmed';  // why didn't we use null here?
         this.isAttacking = false;
         this.attackTimer = 0;
         this.attackCooldown = 0;
@@ -92,8 +92,9 @@ export class Player {
             // Optional: Add variable jump height logic here if desired
         }
 
-        // Attack Triggering
-        if (inputState.attack && this.hasSword && this.attackCooldown <= 0 && !this.isAttacking) {
+// Attack Triggering
+// CHANGED: Check selectedWeapon for attack capability
+        if (inputState.attack && this.canAttack() && this.attackCooldown <= 0 && !this.isAttacking) {
             this.isAttacking = true;
             this.attackTimer = Config.PLAYER_ATTACK_DURATION;
             this.attackCooldown = Config.PLAYER_ATTACK_COOLDOWN;
@@ -132,7 +133,7 @@ export class Player {
         this.isOnGround = collisionResult.isOnGround;
         // console.log(`AFTER Col -> x: ${this.x.toFixed(2)}, y: ${this.y.toFixed(2)}, vx: ${this.vx.toFixed(2)}, vy: ${this.vy.toFixed(2)}, collidedY: ${collisionResult.collidedY}, onGround: ${this.isOnGround}`);
 
-        // --- Optional: Screen Boundary Checks ---
+        // --- Screen Boundary Checks ---
         if (this.x < 0) {
             this.x = 0;
             if (this.vx < 0) this.vx = 0;
@@ -163,9 +164,8 @@ export class Player {
             ctx.fillStyle = this.color;
             ctx.fillRect(this.x, this.y, this.width, this.height);
 
-            // Draw Sword visual cue if held and not attacking
-            if (this.hasSword && !this.isAttacking) {
-                ctx.fillStyle = Config.SWORD_COLOR;
+            // Draw Sword visual cue if selected and not attacking
+            if (this.selectedWeapon === 'sword' && !this.isAttacking) {
                 // Simple visual representation of the sword at the side
                 const swordVisualWidth = 4;
                 const swordVisualHeight = 10;
@@ -178,8 +178,8 @@ export class Player {
             }
         }
 
-        // Draw Attack Hitbox visual (for debugging/visual feedback)
-        if (this.isAttacking) {
+        // Only Draw Attack Hitbox visual if attacking with a weapon (for debugging/visual feedback)
+            if (this.isAttacking && this.selectedWeapon !== 'unarmed') {
             const hitbox = this.getAttackHitbox();
             if (hitbox) {
                 ctx.fillStyle = Config.PLAYER_ATTACK_COLOR; // Semi-transparent white
@@ -227,6 +227,7 @@ export class Player {
         this.attackTimer = 0;
         this.attackCooldown = 0;
         this.hasSword = false;
+        this.selectedWeapon = 'unarmed'; // Reset weapon
         this.inventory = {}; // Clear inventory
         this.lastDirection = 1; // Reset facing direction
         this.hitEnemiesThisSwing = []; // Clear hit list
@@ -244,9 +245,10 @@ export class Player {
          // this.isInvulnerable = true;
          // this.invulnerabilityTimer = 0.5;
     }
-    getAttackHitbox() { // Calculates the position and size of the attack hitbox based on player state.
-        if (!this.isAttacking) { return null; } // No hitbox if not attacking
-
+    getAttackHitbox() { // Calculates the position and size of the attack hitbox based on player state and selected weapon.
+        if (!this.isAttacking || this.selectedWeapon === 'unarmed') {
+             return null;
+        }
         const verticalCenter = this.y + this.height / 2;
         // Calculate hitbox top-left Y, adjusting for reach and centering vertically
         const hitboxY = verticalCenter - (Config.PLAYER_ATTACK_HEIGHT / 2) + Config.PLAYER_ATTACK_REACH_Y;
@@ -260,13 +262,17 @@ export class Player {
             // Position hitbox to the left of the player
             hitboxX = this.x - Config.PLAYER_ATTACK_REACH_X - (Config.PLAYER_ATTACK_WIDTH / 2);
         }
-        // Return the calculated rectangle
-        return {
-            x: hitboxX,
-            y: hitboxY,
-            width: Config.PLAYER_ATTACK_WIDTH,
-            height: Config.PLAYER_ATTACK_HEIGHT
-        };
+        // Return the calculated rectangle based on weapon type (only sword for now)
+        if (this.selectedWeapon === 'sword') {
+            return {
+                x: hitboxX,
+                y: hitboxY,
+                width: Config.PLAYER_ATTACK_WIDTH,
+                height: Config.PLAYER_ATTACK_HEIGHT
+            };
+        }
+        // Fallback or other weapons later
+        return null;
     }
     
     /**
@@ -281,9 +287,10 @@ export class Player {
         // --- Sword Pickup Logic ---
         if (item.type === 'sword') {
             if (!this.hasSword) { // Only pick up if doesn't already have one
-                 this.hasSword = true;
-                 console.log("Player picked up the sword!");
-                 return true; // Successfully picked up
+                this.hasSword = true; // Mark that we possess a sword
+                this.equipWeapon('sword'); // Equip it immediately
+// console.log("Player picked up the sword!");
+                return true; // Successfully picked up
             } else {
                  // console.log("Player already has a sword.");
                  return false; // Did not pick up (already have it)
@@ -319,6 +326,23 @@ export class Player {
         // console.log(`Collision with unhandled item type: ${item.type}`);
         return false;
     }
+
+    /** Equips a weapon if the player possesses it */
+    equipWeapon(weaponType) {
+        // Check if player actually has the weapon (e.g., `this.hasSword`)
+        // Add checks for other weapons here later
+        let canEquip = false;
+        if (weaponType === 'sword' && this.hasSword) {
+            canEquip = true;
+        } else if (weaponType === 'unarmed') {
+             canEquip = true; // Can always equip unarmed
+        }
+
+        if (canEquip && this.selectedWeapon !== weaponType) {
+            this.selectedWeapon = weaponType;
+            console.log(`Player equipped ${weaponType}`);
+        }
+    }
     
     // --- Helper methods for attack collision ---
     hasHitEnemyThisSwing(enemy) { // Checks if a specific enemy has already been hit during the current attack
@@ -347,5 +371,9 @@ export class Player {
     }
      getSwordStatus() {
          return this.hasSword;
+    }
+    //  Can the player currently attack? (Based on selected weapon)
+    canAttack() {
+        return this.selectedWeapon !== 'unarmed'; // For now, only unarmed cannot attack
     }
 }

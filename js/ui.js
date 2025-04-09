@@ -4,21 +4,21 @@
 
 import * as Config from './config.js';
 
-// --- DOM Element References ---
-// Cache elements for performance
+// --- Cache DOM Element References for Performance ---
 let waveStatusEl, waveTimerEl, enemyCountEl;
 let healthLabelEl, healthBarContainerEl, healthBarFillEl, healthTextEl;
-let inventoryListEl;
-let swordStatusEl;
-// Game Over elements (assuming an overlay structure later)
-let gameOverOverlayEl, gameOverWaveEl, playAgainBtnEl;
-// Add restart button reference
+let inventoryBoxesEl;
+let weaponSlotsEl;
+let gameOverOverlayEl, gameOverWaveEl, playAgainBtnEl; // Game Over (assuming overlay structure later)
 let restartButtonEl;
+let playerRef = null; // Store player reference for weapon switching
+let itemManagerRef = null; // Store item manager reference if needed
 
-/**
- * Initializes the UI module by getting references to the HTML elements.
- * Call this once when the game starts.
- */
+// --- Configuration for UI elements ---
+const INVENTORY_MATERIALS = ['wood', 'stone', 'metal']; // Materials to display
+const WEAPON_SLOTS = ['sword']; // Weapons to display slots for
+
+// --- Initialize UI module references ---
 export function init() {
     waveStatusEl = document.getElementById('wave-status');
     waveTimerEl = document.getElementById('wave-timer');
@@ -27,52 +27,42 @@ export function init() {
     healthBarContainerEl = document.getElementById('health-bar-container');
     healthBarFillEl = document.getElementById('health-bar-fill');
     healthTextEl = document.getElementById('health-text');
-    inventoryListEl = document.getElementById('inventory-list');
-    swordStatusEl = document.getElementById('sword-status'); // Sword status element
+    inventoryBoxesEl = document.getElementById('inventory-boxes'); // UPDATED
+    weaponSlotsEl = document.getElementById('weapon-slots'); // NEW
     restartButtonEl = document.getElementById('restart-button');
-
-    if (!waveStatusEl || !waveTimerEl || !enemyCountEl || !healthLabelEl || !healthBarContainerEl || !healthBarFillEl|| !healthTextEl || !inventoryListEl || !swordStatusEl || !restartButtonEl) {
-        console.warn("UI Init: Could not find all expected UI elements in the DOM!");
+// check for proper loading
+    if (!waveStatusEl || !waveTimerEl || !enemyCountEl || !healthLabelEl || !healthBarContainerEl || !healthBarFillEl|| !healthTextEl || !restartButtonEl) {
+        console.error("UI Init: Could not find all expected UI elements in the DOM!");
     }
-    // console.log("UI Module Initialized (HTML Mode)");
 }
 
-/**
- * Updates the Wave Information displayed in the left sidebar.
- * @param {object} waveInfo - Object from WaveManager.getWaveInfo().
- * @param {number} livingEnemies - Current number of living enemies.
- */
+// --- Update Wave Information Display ---
 export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
-    if (!waveStatusEl || !waveTimerEl) return; // Elements not found
-
+    if (!waveStatusEl || !waveTimerEl) return; // not found
     let statusText = '';
     let timerText = '';
     let enemyText = '';
-
     if (waveInfo.isGameOver) {
         statusText = 'GAME OVER';
-        // You might want to pass the final wave number reached to game over screen separately
+// pass final wave number to game over screen separately
         timerText = `Survived ${waveInfo.mainWaveNumber > 0 ? waveInfo.mainWaveNumber -1 : 0} Waves`; // Show completed waves
     } else if (waveInfo.allWavesCleared) {
         statusText = 'VICTORY!';
         timerText = 'All Waves Cleared!';
     } else {
-        // Active Gameplay States
+// gameplay states:
         statusText = `Wave ${waveInfo.mainWaveNumber || 1}`; // Show current main wave
-
         if (waveInfo.timerLabel && waveInfo.timer > 0) {
             timerText = `${waveInfo.timerLabel} ${waveInfo.timer.toFixed(1)}s`;
         } else {
              timerText = waveInfo.progressText || ''; // Show spawning progress or clear message
         }
-
         if (waveInfo.state === 'ACTIVE' || waveInfo.state === 'SPAWNING') {
             enemyText = `Enemies Remaining: ${livingEnemies}`;
         } else {
-             enemyText = ''; // No enemy count during intermission/pre-wave
+             enemyText = ''; // No count during intermissions
         }
     }
-
     waveStatusEl.textContent = statusText;
     waveTimerEl.textContent = timerText;
     if (enemyCountEl) {
@@ -88,39 +78,72 @@ export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
  * @param {boolean} hasSword - Whether the player currently has the sword.
  */
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword) {
-        // Update Health Bar
-        if (healthBarFillEl && healthTextEl) {
-            // Clamp health between 0 and maxHealth
-            const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
-            // Calculate percentage, handle maxHealth being 0
-            const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
-    
-            healthBarFillEl.style.width = `${healthPercent}%`;
-            healthTextEl.textContent = `${Math.round(clampedHealth)}/${maxHealth}`; // Show rounded current health
-             }
-                // Update Inventory List
-    if (inventoryListEl) {
-        let inventoryHTML = '';
-        const items = Object.keys(inventory);
-        if (items.length === 0) {
-            inventoryHTML = '(Empty)';
-        } else {
-            items.forEach(itemType => {
-                if (inventory[itemType] > 0) {
-                    // Capitalize item type for display
-                    const displayName = itemType.charAt(0).toUpperCase() + itemType.slice(1);
-                    inventoryHTML += `<li>${displayName}: ${inventory[itemType]}</li>`;
-                }
-            });
-             if (inventoryHTML === '') inventoryHTML = '(Empty)'; // Handle case where items exist but count is 0
+// Update Health Bar
+    if (healthBarFillEl && healthTextEl) {
+// Clamp health between 0 and maxHealth
+        const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
+// Calculate percentage, handle maxHealth being 0
+        const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
+        healthBarFillEl.style.width = `${healthPercent}%`;
+        healthTextEl.textContent = `${Math.round(clampedHealth)}/${maxHealth}`; // Show rounded current health
+            }
+// Update Inventory List
+    if (inventoryBoxesEl) {
+            let inventoryHTML = '';
+            for (const materialType of INVENTORY_MATERIALS) {
+            const count = inventory[materialType] || 0;
+            const maxDisplayCount = 999;
+            const displayCount = Math.min(count, maxDisplayCount);
+// Fetch color from ITEM_CONFIG (requires basic configs added earlier)
+            const itemConfig = Config.ITEM_CONFIG[materialType];
+            const bgColor = itemConfig?.color || '#444'; // Fallback color
+
+            inventoryHTML += `
+                <div class="inventory-item-box" style="background-color: ${bgColor};" title="${materialType.toUpperCase()}">
+                    <span class="inventory-item-count">${displayCount}</span>
+                </div>
+            `;
         }
-        inventoryListEl.innerHTML = inventoryHTML;
+        inventoryBoxesEl.innerHTML = inventoryHTML;
     }
-     // Update Sword Status
-     if (swordStatusEl) {
-         swordStatusEl.textContent = hasSword ? "Sword: Acquired!" : "Sword: Not Found";
-         swordStatusEl.style.color = hasSword ? "#aaffaa" : "#ffaaaa"; // Green if has sword, red otherwise
-     }
+    // Update Weapon Slots (Initial Structure)
+    if (weaponSlotsEl && playerRef) { // Check if playerRef is set
+        weaponSlotsEl.innerHTML = ''; // Clear previous slots
+
+        for (const weaponType of WEAPON_SLOTS) {
+            const slotDiv = document.createElement('div');
+            slotDiv.classList.add('weapon-slot-box');
+            slotDiv.dataset.weapon = weaponType; // Store weapon type
+            slotDiv.title = weaponType.toUpperCase(); // Tooltip
+
+            let hasWeapon = false;
+            if (weaponType === 'sword' && playerRef.hasSword) {
+                hasWeapon = true;
+                slotDiv.textContent = '⚔️'; // Simple representation for now
+                slotDiv.style.fontSize = '24px'; // Make icon visible
+            }
+            // Add else if for other weapons later
+
+            if (hasWeapon) {
+                slotDiv.addEventListener('click', () => playerRef.equipWeapon(weaponType));
+                if (playerRef.selectedWeapon === weaponType) {
+                     slotDiv.classList.add('active'); // Add yellow border if active
+                }
+            }
+            weaponSlotsEl.appendChild(slotDiv);
+        }
+    }
+}
+
+/**
+ * Stores a reference to the player object. Needed for weapon switching callbacks.
+ * @param {Player} playerObject - The main player instance.
+ */
+export function setPlayerReference(playerObject) {
+        playerRef = playerObject;
+        // console.log("UI: Player reference set.");
+        // Initial update might be needed if player loaded before UI init
+        // updatePlayerInfo(playerRef.getCurrentHealth(), playerRef.getMaxHealth(), playerRef.getInventory(), playerRef.getSwordStatus());
 }
 
 // --- Game Over Handling ---

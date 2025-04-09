@@ -251,9 +251,35 @@ export const ENEMY_STATS = {
 export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH);      // Approx 12px
 export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);     // Approx 4px
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
-export const WOOD_ITEM_WIDTH = Math.floor(1 * BLOCK_WIDTH);   // Approx 4px
-export const WOOD_ITEM_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);  // Approx 4px
-export const WOOD_ITEM_COLOR = 'rgb(139, 69, 19)'; // Brown
+
+// --- NEW: Centralized Item Configuration Object ---
+export const ITEM_CONFIG = {
+    'sword': {
+        // Optional: Can also define sword properties here if you want everything centralized
+        width: Math.floor(3 * BLOCK_WIDTH), // Reference existing constants or define directly
+        height: Math.floor(1 * BLOCK_HEIGHT),
+        color: 'rgb(180, 180, 190)',
+        // Add other properties like pickup behavior, stack size etc. later
+    },
+    'wood': {
+        width: Math.floor(1 * BLOCK_WIDTH),   // Approx 4px
+        height: Math.floor(1 * BLOCK_HEIGHT),  // Approx 4px
+        color: 'rgb(139, 69, 19)', // Brown
+    },
+    'stone': {
+        // Config for stone item (primarily for UI color)
+        width: Math.floor(1 * BLOCK_WIDTH),
+        height: Math.floor(1 * BLOCK_HEIGHT),
+        color: BLOCK_COLORS[BLOCK_STONE], // Use block color (No Config. prefix needed inside this file)
+    },
+    'metal': {
+        // Config for metal item (primarily for UI color)
+        width: Math.floor(1 * BLOCK_WIDTH),
+        height: Math.floor(1 * BLOCK_HEIGHT),
+        color: BLOCK_COLORS[BLOCK_METAL], // Use block color (No Config. prefix needed inside this file)
+    },
+    // Add future items like 'coal', 'iron_ore', 'health_potion' here
+};
 
 export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob (relative to height)
 export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle
