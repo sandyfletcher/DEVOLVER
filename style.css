@@ -164,6 +164,9 @@ body {
     align-items: center;
     cursor: pointer; /* Indicate clickable */
     transition: border-color 0.2s ease;
+    font-size: 24px; /* Sets size for content like the emoji */
+    /* text-align: center; */ /* Already likely handled by flex */
+    /* line-height: 60px; */ /* Optional alternative centering */
 }
 
 .weapon-slot-box.active {

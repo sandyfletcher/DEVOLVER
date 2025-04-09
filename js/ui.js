@@ -120,7 +120,6 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             if (weaponType === 'sword' && playerRef.hasSword) {
                 hasWeapon = true;
                 slotDiv.textContent = '⚔️'; // Simple representation for now
-                slotDiv.style.fontSize = '24px'; // Make icon visible
             }
             // Add else if for other weapons later
 

@@ -2,10 +2,8 @@
 // root/js/input.js - Handles Keyboard and Touch Input
 // -----------------------------------------------------------------------------
 
-// console.log("input loaded");
-
-import * as Config from './config.js'; // For button positioning if needed
-import * as UI from './ui.js'; // <-- Import UI to get button rect
+import * as Config from './config.js';
+import * as UI from './ui.js';
 
 // --- Input State ---
 // This object holds the current state of actionable inputs
@@ -89,10 +87,9 @@ const handleKeyUp = (e) => {
 };
 
 // --- MOUSE/TOUCH INPUT ---
-// Simplified - only handle attack trigger if needed by game logic
+
 const handleMouseDown = (e) => {
     if (e.target === canvas) {
-        // Handle attack click if necessary (check game state in main loop)
         if (e.button === 0 && !state.attack) { // Left click
             state.attack = true; // Set attack flag for player update check
             e.preventDefault();
@@ -101,12 +98,10 @@ const handleMouseDown = (e) => {
 };
 
 // --- Touch Handlers ---
-
 const handleTouchStart = (e) => {
     e.preventDefault();
     const touches = e.changedTouches;
     const canvasRect = canvas.getBoundingClientRect();
-
     // Handle gameplay buttons (attack, move, jump)
     for (let i = 0; i < touches.length; i++) {
         const touch = touches[i];
@@ -144,15 +139,12 @@ const handleTouchEndOrCancel = (e) => {
         if (buttonName && touchState.buttons[buttonName]) {
             touchState.buttons[buttonName].pressed = false; // Always mark button visually as not pressed
 
-            // *** CHANGE HERE: Only set state false for non-attack buttons ***
             if (buttonName !== 'attack') {
                 state[buttonName] = false; // Stop moving/jumping
             }
-            // *** END CHANGE ***
         }
         delete touchState.activeTouches[touchId];
     }
-
     // Safety check (Good to keep)
     for (const buttonName in touchState.buttons) {
         let stillPressedByAnotherTouch = false;
@@ -170,7 +162,6 @@ const handleTouchEndOrCancel = (e) => {
                      state[buttonName] = false;
                  }
             }
-             // *** END CHANGE ***
         }
     }
 };
@@ -225,18 +216,16 @@ export function init() {
     canvas.addEventListener('touchend', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchcancel', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    // console.log("Input system initialized.");
 }
 
 export function getState() {
     return state;
 }
 
-export function drawControls(ctx) { /* ... as before, ensure attack button label exists ... */
+export function drawControls(ctx) {
     const touchSupported = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
     if (!touchSupported) return;
     ctx.save();
-    // ... styles ...
     for (const buttonName in touchState.buttons) {
         const button = touchState.buttons[buttonName];
         const rect = button.rect;
@@ -247,7 +236,7 @@ export function drawControls(ctx) { /* ... as before, ensure attack button label
              case 'left': label = '◀'; break;
              case 'right': label = '▶'; break;
              case 'jump': label = '▲'; break;
-             case 'attack': label = '⚔'; break; // Ensure this is here
+             case 'attack': label = '⚔'; break;
         }
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
          ctx.font = 'bold 24px sans-serif'; // Make sure font is set before fillText
