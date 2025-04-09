@@ -16,41 +16,34 @@ body {
     align-items: center;
 }
 
-/* App Container */
 #app-container {
     display: flex;
     flex-direction: row;
     height: 90vh; /* Base size on viewport height */
-    /* Calculate width based on height and desired aspect ratio (2:1) */
-    width: calc(90vh * 2);
-    /* Add max-width to prevent excessive size on ultra-wide screens,
-       but ensure height remains the primary driver */
-    max-width: 95vw;
-    background-color: #1a1a1a;
+    width: calc(90vh * 2); /* Calculate width based on height and desired aspect ratio (2:1) */
+    max-width: 95vw;     /* Add max-width to prevent excessive size on ultra-wide screens but ensure height remains the primary driver */
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-    gap: 8px; /* ADDED: Gap between sidebars and game area */
-    padding: 8px; /* ADDED: Padding around the content */
+    gap: 1rem;
+    padding: 1rem;
     box-sizing: border-box; /* Include padding in size */
 }
 
-/* Sidebars Styling */
 #left-sidebar, #right-sidebar {
-    flex-basis: 25%; /* Each sidebar takes 1/4 of the available space */
-    height: 100%; /* Height should be implicitly 100% due to flex stretch, but explicit can help */
-    background-color: #282828;
+    flex-basis: 25%; /* take 1/4 of available space */
+    height: 100%;
     padding: 15px;
     box-sizing: border-box;
     overflow-y: auto;
     display: flex;
-    flex-direction: column; /* Stack elements vertically */
-    border: 1px solid #444;
-    position: relative; /* ADDED: For positioning controls area */
+    flex-direction: column;
+    border: 0.2rem solid white;
+    position: relative;
 }
 
-/* Add margin to elements inside sidebar for spacing */
 #left-sidebar > *, #right-sidebar > * {
-    margin-bottom: 15px;
+    margin-bottom: 15px; /* Add margin to elements inside sidebar for spacing TO BE FIXED ONCE ALL ELEMENTS ARE SET IN PLACE */
 }
+
 #left-sidebar > *:last-child, #right-sidebar > *:last-child {
     margin-bottom: 0; /* Remove margin from last element */
 }
@@ -66,14 +59,10 @@ body {
 
 /* Game Area Wrapper Styling */
 #game-wrapper {
-    flex-basis: 50%; /* Game area takes 1/2 of the available space */
+    flex-basis: 50%; /* Game takes 1/2 of available space */
     height: 100%;
     position: relative;
-    background-color: #111;
-    /* REMOVED border-left/right, using gap now */
-    /* ADDED original white border */
-    border: 3px solid white;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5); /* Optional: subtle glow */
+    border: 0.2rem solid white;
     box-sizing: border-box;
     display: flex;
     justify-content: center;
@@ -127,9 +116,9 @@ body {
     }
     
 .inventory-item-box {
-        width: 45px; /* Adjust size as needed */
-        height: 45px;
-        border: 1px solid #666;
+        width: 3rem; /* Adjust size as needed */
+        height: 3rem;
+        border: 1px solid white;
         border-radius: 4px;
         position: relative; /* For positioning the count text */
         background-color: #333; /* Default background */
@@ -230,6 +219,12 @@ body {
     font-size: 1.5em;
 }
 
+noscript p { /* I might not need this if I set default fonts properly */
+    color: white;
+    text-align: center;
+    padding: 20px;
+}
+
 @media (orientation: portrait) {
     #app-container {
         display: none; /* Hide the game layout */
@@ -238,7 +233,6 @@ body {
         display: flex; /* Show the warning message */
     }
 }
-
 
 /* Hide scrollbars on sidebars */
 #left-sidebar::-webkit-scrollbar,

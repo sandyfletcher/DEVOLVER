@@ -7,33 +7,25 @@
         <title>DEVOLVER</title>
         <link rel="stylesheet" href="style.css">
         <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
-        <style>
-            /* Basic styles for hiding elements initially to prevent flash */
-            #landscape-warning { display: none; }
-        </style>
     </head>
     <body>
-        <!-- Main Container -->
         <div id="app-container">
-            <!-- Left Sidebar -->
             <aside id="left-sidebar">
-                <h2>Wave Info</h2>
+                <h2>PORTAL READOUT</h2>
                 <div id="wave-status">Loading...</div>
                 <div id="wave-timer"></div>
                 <div id="enemy-count"></div>
                 <div id="controls-area">
-                    <button id="restart-button">PLAY AGAIN</button>
+                    <button id="restart-button">TRY AGAIN</button>
                 </div>
             </aside>
-            <!-- Game Area Wrapper -->
             <main id="game-wrapper">
                 <canvas id="game-canvas" width="800" height="800">
                     Your browser does not support the HTML canvas.
                 </canvas>
             </main>
-            <!-- Right Sidebar -->
             <aside id="right-sidebar">
-                <h2>Status</h2>
+                <h2>SOLDIER</h2>
                 <div id="health-display">
                     <span id="health-label">HEALTH:</span>
                     <div id="health-bar-container">
@@ -42,26 +34,17 @@
                     <span id="health-text">Loading...</span>
                 </div>
                 <div id="inventory-display">
-                    <h3>Inventory</h3>
+                    <h3>INVENTORY</h3>
                     <div id="inventory-boxes">Loading...</div>
                     <div id="weapon-display">
-                        <h3>Weapons</h3>
+                        <h3>WEAPONS</h3>
                         <div id="weapon-slots">Loading...</div>
                     </div>
                 </div>
             </aside>
-
         </div>
-        <!-- Landscape Orientation Warning -->
-        <div id="landscape-warning">
-            <p>Please rotate your device to landscape mode to play.</p>
-        </div>
-        <!-- Noscript fallback -->
-        <noscript>
-            <p style="color: white; text-align: center; padding: 20px;">
-                This game requires JavaScript to run.
-            </p>
-        </noscript>
+        <div id="landscape-warning"><p>Rotate device to landscape mode.</p></div>
+        <noscript><p>This game requires JavaScript to run.</p></noscript>
         <script type="module" src="js/main.js" defer></script>
     </body>
 </html>

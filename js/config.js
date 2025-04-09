@@ -9,9 +9,14 @@
 // --- Canvas ---
 export const CANVAS_WIDTH = 800;
 export const CANVAS_HEIGHT = 800;
+
 // --- Grid ---
 export const GRID_COLS = 200;
 export const GRID_ROWS = 200;
+
+// --- Background ---
+export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
+
 // --- Procedural Generation Parameters ---
 export const WORLD_ISLAND_WIDTH = 0.8; // width of main island as a percentage
 export const WORLD_WATER_LEVEL = 0.15; // Water coverage: bottom 15%, can be raised for environmental chaos
@@ -22,17 +27,18 @@ export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELO
 export const WORLD_GROUND_VARIATION = 3; // variations and noise scale
 export const WORLD_STONE_VARIATION = 3; // Can adjust this noise amount if needed
 export const WORLD_NOISE_SCALE = 0.05;
+
 // --- Ocean Tapering Config ---
 export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5;      // Row 175
-export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;     // Row 183
-export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1);        // 20 rows below water level
-export const DEEP_OCEAN_MAX_ROW = GRID_ROWS - 3;                              // Limit deep ocean floor (row 197)
-export const DEEP_OCEAN_FLOOR_START_ROW = Math.min(DEEP_OCEAN_MAX_ROW, WORLD_WATER_LEVEL_ROW_TARGET + DEEP_OCEAN_BASE_ROW_OFFSET); // Row 190 approx
-export const DEEP_OCEAN_STONE_START_ROW = DEEP_OCEAN_FLOOR_START_ROW + 8;      // Row 198 approx
-export const EDGE_TAPER_WIDTH_FACTOR = 0.15; // Percentage of grid width for edge taper
-export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 5; // Target stone level below map at edge
-export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 10; // Target floor level below deep ocean floor at edge
-export const ISLAND_CENTER_TAPER_WIDTH = 80; // Width of taper from island edge inward
+export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;       // Row 183
+export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1);            // 20 rows below water level
+export const DEEP_OCEAN_MAX_ROW = GRID_ROWS - 3;                                  // Limit deep ocean floor (row 197)
+export const DEEP_OCEAN_FLOOR_START_ROW = Math.min(DEEP_OCEAN_MAX_ROW, WORLD_WATER_LEVEL_ROW_TARGET + DEEP_OCEAN_BASE_ROW_OFFSET);    // Row 190 approx
+export const DEEP_OCEAN_STONE_START_ROW = DEEP_OCEAN_FLOOR_START_ROW + 8;         // Row 198 approx
+export const EDGE_TAPER_WIDTH_FACTOR = 0.15;                                      // Percentage of grid width for edge taper
+export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 5;                              // Target stone level below map at edge
+export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 10;                             // Target floor level below deep ocean floor at edge
+export const ISLAND_CENTER_TAPER_WIDTH = 80;                                      // Width of taper from island edge inward
 
 // =============================================================================
 // --- Block Parameters ---
@@ -41,6 +47,7 @@ export const ISLAND_CENTER_TAPER_WIDTH = 80; // Width of taper from island edge 
 // --- Block ---
 export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;   // Calculated: 4
 export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS; // Calculated: 4
+
 // --- Block Type IDs ---
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
@@ -92,6 +99,7 @@ export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT)); // App
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
 export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // Spawn slightly above mean ground
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
+
 // --- Player Health & Combat ---
 export const PLAYER_INITIAL_HEALTH = 100;
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;
@@ -104,6 +112,7 @@ export const PLAYER_ATTACK_REACH_Y = 0; // Vertical offset from player center
 export const PLAYER_ATTACK_WIDTH = Math.floor(1.25 * BLOCK_WIDTH); // Approx 5px width
 export const PLAYER_ATTACK_HEIGHT = PLAYER_HEIGHT; // Same height as player for now
 export const PLAYER_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
+
 // --- Delta-Time Based Player Physics ---
 export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second
 export const PLAYER_MAX_SPEED_X = 120;     // Pixels per second
@@ -114,9 +123,10 @@ export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward 
 // --- Enemy Constants ---
 // =============================================================================
 
-// --- Default Enemy Size (can be overridden in ENEMY_STATS) ---
+// --- Default Enemy Size ---
 export const DEFAULT_ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);   // Approx 6px
 export const DEFAULT_ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT); // Approx 9px
+
 // --- Enemy Type Identifiers ---
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
@@ -239,20 +249,15 @@ export const ENEMY_STATS = {
     */
 };
 
-// REMOVED: ENEMY_CONTACT_DAMAGE (now defined per enemy in ENEMY_STATS)
-// REMOVED: ENEMY_DROP_TYPE, ENEMY_DROP_AMOUNT, ENEMY_DROP_CHANCE (replaced by dropTable in ENEMY_STATS)
-
-
 // =============================================================================
 // --- Item Constants ---
 // =============================================================================
-// Define item appearance and behavior
-// Specific item types are often checked by string ('sword', 'wood', etc.)
+
 export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH);      // Approx 12px
 export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);     // Approx 4px
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
 
-// --- NEW: Centralized Item Configuration Object ---
+// --- Centralized Item Configuration Object ---
 export const ITEM_CONFIG = {
     'sword': {
         // Optional: Can also define sword properties here if you want everything centralized
@@ -284,58 +289,32 @@ export const ITEM_CONFIG = {
 export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob (relative to height)
 export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle
 
-
 // =============================================================================
 // --- General Physics Constants (Delta-Time Based) ---
 // =============================================================================
+
 export const GRAVITY_ACCELERATION = 700;   // Pixels per second per second
 export const MAX_FALL_SPEED = 450;         // Pixels per second - General max fall speed unless overridden
-
 
 // =============================================================================
 // --- Wave System Definitions ---
 // =============================================================================
+
 export const WAVE_START_DELAY = 10.0; // Seconds before the very first wave starts
 export const WAVE_INTERMISSION_DURATION = 15.0; // Seconds between *main* waves
 export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in group
 
-// --- Detailed Wave Structure ---
-// Each element is a Main Wave.
-// Each Main Wave has 'subWaves'.
-// Each Sub-Wave has 'enemyGroups'.
-// Each Enemy Group defines a batch of a specific enemy type.
-
-
-// =============================================================================
-// --- UI Constants ---
-// =============================================================================
-
-// --- Colors (mostly used by HTML/CSS, but keep for reference/canvas UI) ---
-export const BACKGROUND_COLOR = 'rgb(135, 206, 235)'; // Sky Blue (Main canvas background)
-export const UI_HEALTH_BAR_COLOR_EMPTY = 'rgb(80, 80, 80)';  // NEW: Background for health bar
-export const UI_HEALTH_BAR_COLOR_FULL = 'rgb(220, 40, 40)'; // NEW: Fill color for health bar
-// export const UI_TEXT_COLOR = 'black'; // Defined in CSS as white for sidebars
-
-// Game Over Screen (If implemented on canvas, otherwise CSS)
-// export const UI_GAMEOVER_OVERLAY_COLOR = 'rgba(0, 0, 0, 0.75)';
-// export const UI_GAMEOVER_TEXT_COLOR = 'red';
-// export const UI_GAMEOVER_STATS_COLOR = 'white';
-// export const UI_GAMEOVER_BUTTON_COLOR = 'darkred';       // Defined in CSS
-// export const UI_GAMEOVER_BUTTON_TEXT_COLOR = 'white';    // Defined in CSS
-// export const UI_GAMEOVER_BUTTON_WIDTH = 180;             // Defined in CSS
-// export const UI_GAMEOVER_BUTTON_HEIGHT = 50;            // Defined in CSS
-
-
 // =============================================================================
 // --- Game Loop ---
 // =============================================================================
-export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
 
+export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
 
 // =============================================================================
 // --- Input Constants (Touch Controls) ---
 // =============================================================================
 // These could be moved to input.js if preferred, but keeping layout-related numbers here is okay too
+
 export const TOUCH_BUTTON_SIZE = 80; // Pixel size of touch buttons
 export const TOUCH_BUTTON_MARGIN = 20; // Pixel margin around buttons / from edge
 export const TOUCH_BUTTON_COLOR_IDLE = 'rgba(128, 128, 128, 0.4)';
