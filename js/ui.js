@@ -14,25 +14,61 @@ let restartButtonEl;
 let playerRef = null; // Store player reference for weapon switching
 let itemManagerRef = null; // Store item manager reference if needed
 
+// --- Store references to the weapon slot divs ---
+const weaponSlotDivs = {}; // Use an object: { sword: divElement, spear: divElement }
+
 // --- Configuration for UI elements ---
 const INVENTORY_MATERIALS = ['wood', 'stone', 'metal']; // Materials to display
-const WEAPON_SLOTS = ['sword']; // Weapons to display slots for
+const WEAPON_SLOTS = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR]; // Weapons to display slots for
 
 // --- Initialize UI module references ---
 export function init() {
     waveStatusEl = document.getElementById('wave-status');
     waveTimerEl = document.getElementById('wave-timer');
     enemyCountEl = document.getElementById('enemy-count');
-    healthLabelEl = document.getElementById('health-label'); // Keep label ref if needed elsewhere
+    healthLabelEl = document.getElementById('health-label'); // Keep label ref?  if needed elsewhere
     healthBarContainerEl = document.getElementById('health-bar-container');
     healthBarFillEl = document.getElementById('health-bar-fill');
     healthTextEl = document.getElementById('health-text');
-    inventoryBoxesEl = document.getElementById('inventory-boxes'); // UPDATED
-    weaponSlotsEl = document.getElementById('weapon-slots'); // NEW
+    inventoryBoxesEl = document.getElementById('inventory-boxes');
+    weaponSlotsEl = document.getElementById('weapon-slots');
     restartButtonEl = document.getElementById('restart-button');
 // check for proper loading
-    if (!waveStatusEl || !waveTimerEl || !enemyCountEl || !healthLabelEl || !healthBarContainerEl || !healthBarFillEl|| !healthTextEl || !restartButtonEl) {
+    if (!waveStatusEl || !waveTimerEl || !enemyCountEl || !healthLabelEl || !healthBarContainerEl || !healthBarFillEl|| !healthTextEl || !inventoryBoxesEl || !weaponSlotsEl || !restartButtonEl) {
         console.error("UI Init: Could not find all expected UI elements in the DOM!");
+    }
+// build weapon slot UI once
+    if (weaponSlotsEl) {
+        weaponSlotsEl.innerHTML = ''; // Clear any placeholder text
+        for (const weaponType of WEAPON_SLOTS) {
+            const slotDiv = document.createElement('div');
+            slotDiv.classList.add('weapon-slot-box');
+            slotDiv.dataset.weapon = weaponType;
+            slotDiv.title = weaponType.toUpperCase();
+            slotDiv.textContent = '?'; // Initial placeholder icon
+            // Add initial disabled state styling
+            slotDiv.classList.add('disabled');
+            slotDiv.style.backgroundColor = '#444';
+            weaponSlotsEl.appendChild(slotDiv);
+            // Store the reference
+            weaponSlotDivs[weaponType] = slotDiv;
+
+            // --- Add the click listener HERE, ONCE ---
+            // It's okay to add it even when disabled initially. The logic inside
+            // equipWeapon will prevent equipping if the player doesn't have it.
+            slotDiv.addEventListener('click', () => {
+                console.log(`--- CLICKED on ${weaponType} slot! ---`); // Keep this log
+                if (playerRef && playerRef.hasWeapon(weaponType)) { // Add a check in the listener too!
+                    playerRef.equipWeapon(weaponType);
+                } else if (!playerRef) {
+                    console.error("UI Click: playerRef is null!");
+                } else {
+                    console.log(`UI Click: Player does not have ${weaponType}. Cannot equip.`);
+                }
+            });
+        }
+    } else {
+        console.error("UI Init: Could not find #weapon-slots element!");
     }
 }
 
@@ -77,7 +113,7 @@ export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
  * @param {object} inventory - Player's inventory object { itemType: count }.
  * @param {boolean} hasSword - Whether the player currently has the sword.
  */
-export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword) {
+export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear) {
 // Update Health Bar
     if (healthBarFillEl && healthTextEl) {
 // Clamp health between 0 and maxHealth
@@ -106,30 +142,62 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         }
         inventoryBoxesEl.innerHTML = inventoryHTML;
     }
-    // Update Weapon Slots (Initial Structure)
-    if (weaponSlotsEl && playerRef) { // Check if playerRef is set
-        weaponSlotsEl.innerHTML = ''; // Clear previous slots
+    // --- Update EXISTING Weapon Slots ---
+    if (!playerRef) {
+        // console.warn("UI Update: playerRef is not set yet, skipping weapon slots.");
+        return; // Can't update slots without player reference
+    }
+    // console.log(`UI Update Check - HasSword: ${hasSword}, HasSpear: ${hasSpear}, Currently Selected: ${playerRef?.selectedWeapon}`);
 
-        for (const weaponType of WEAPON_SLOTS) {
-            const slotDiv = document.createElement('div');
-            slotDiv.classList.add('weapon-slot-box');
-            slotDiv.dataset.weapon = weaponType; // Store weapon type
-            slotDiv.title = weaponType.toUpperCase(); // Tooltip
 
-            let hasWeapon = false;
-            if (weaponType === 'sword' && playerRef.hasSword) {
-                hasWeapon = true;
-                slotDiv.textContent = '⚔️'; // Simple representation for now
+    for (const weaponType of WEAPON_SLOTS) {
+        const slotDiv = weaponSlotDivs[weaponType]; // Get the existing div reference
+        if (!slotDiv) {
+            console.error(`UI Update: Could not find stored div for weapon slot ${weaponType}`);
+            continue; // Skip if div wasn't created/stored properly
+        }
+
+        let playerHasWeapon = false;
+        let icon = '?';
+
+        // Determine possession and icon
+        if (weaponType === Config.WEAPON_TYPE_SWORD) {
+            playerHasWeapon = hasSword;
+            if (playerHasWeapon) icon = '⚔️';
+        } else if (weaponType === Config.WEAPON_TYPE_SPEAR) {
+            playerHasWeapon = hasSpear;
+            if (playerHasWeapon) icon = '↑';
+        }
+         // console.log(` > Updating Slot: ${weaponType}, PlayerHasWeapon: ${playerHasWeapon}`);
+
+        // Update content and styles based on possession and selection
+        slotDiv.textContent = icon;
+
+        if (playerHasWeapon) {
+            // Player HAS the weapon - remove disabled state, manage active state
+            slotDiv.classList.remove('disabled');
+            slotDiv.style.backgroundColor = ''; // Reset background (or set to default empty)
+            slotDiv.style.opacity = '1';
+             slotDiv.style.cursor = 'pointer'; // Ensure cursor is pointer
+            slotDiv.title = weaponType.toUpperCase();
+
+            // Check if it's the active/selected weapon
+            if (playerRef.selectedWeapon === weaponType) {
+                 // console.log(`   >>> Adding .active class to ${weaponType}`);
+                slotDiv.classList.add('active');
+            } else {
+                slotDiv.classList.remove('active');
             }
-            // Add else if for other weapons later
-
-            if (hasWeapon) {
-                slotDiv.addEventListener('click', () => playerRef.equipWeapon(weaponType));
-                if (playerRef.selectedWeapon === weaponType) {
-                     slotDiv.classList.add('active'); // Add yellow border if active
-                }
-            }
-            weaponSlotsEl.appendChild(slotDiv);
+        } else {
+            // Player DOES NOT have the weapon - apply disabled state
+             // console.log(`   Slot ${weaponType} is DISABLED.`);
+            slotDiv.classList.add('disabled');
+            slotDiv.classList.remove('active'); // Ensure not active if disabled
+            slotDiv.style.backgroundColor = '#444';
+            slotDiv.style.opacity = '0.4';
+            slotDiv.style.cursor = 'default'; // Change cursor back
+            slotDiv.textContent = ''; // Clear icon when disabled
+            slotDiv.title = `${weaponType.toUpperCase()} (Not Found)`;
         }
     }
 }
@@ -146,13 +214,11 @@ export function setPlayerReference(playerObject) {
 }
 
 // --- Game Over Handling ---
-
 export function updateGameOverState(isGameOver, wavesSurvived = 0) {
     if (restartButtonEl) {
         restartButtonEl.style.display = isGameOver ? 'inline-block' : 'none';
     }
     if (isGameOver) {
         console.log(`UI: Displaying Game Over elements - Waves: ${wavesSurvived}`);
-
     }
 }

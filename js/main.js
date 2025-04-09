@@ -69,15 +69,13 @@ function restartGame() {
     } else {
         player.reset();
     }
-    // Reset Managers
-    // Clear world grid and regenerate
+
+    // Reset managers to clear old data
     WorldData.initializeGrid();
     World.init();
-
     ItemManager.init();
     EnemyManager.clearAllEnemies();
     WaveManager.reset();
-
 
     // Reset Game Loop State
     lastTime = performance.now();
@@ -88,9 +86,10 @@ function restartGame() {
     const waveInfo = WaveManager.getWaveInfo();
     const livingEnemies = EnemyManager.getLivingEnemyCount();
     UI.updateWaveInfo(waveInfo, livingEnemies);
-    UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus());
+    UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus()); // remember to add new weapons here
     UI.updateGameOverState(false);
-    // log grid to console
+
+    // Console log depiction of generated world
     logWorldGrid();
     console.log(">>> GAME RESTARTED <<<");
 }
@@ -135,7 +134,6 @@ function gameLoop(timestamp) {
     }
     
     // --- When Game is Active, Proceed with Normal Loop ---
-
     // if (!gameRunning) return; // Keep if you want an explicit pause flag later
 
     // --- Input Phase ---
@@ -175,7 +173,7 @@ function gameLoop(timestamp) {
     const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get current enemy count
     UI.updateWaveInfo(waveInfo, livingEnemies); // Update left sidebar
     if (player) {
-        UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus()); // Update right sidebar
+        UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus() , player.getSpearStatus()); // Update right sidebar with more weapons
     }
     // Ensure restart button remains hidden during active gameplay
     UI.updateGameOverState(false); // Call this every frame when game is running
@@ -196,10 +194,8 @@ function init() {
         Renderer.init();
         Renderer.createGridCanvas(); // Create canvas for world render
         Input.init(); // Setup input listeners
-        // Initialize WorldData first, then WorldManager which uses it
         WorldData.initializeGrid(); // Ensures grid array is created
         World.init(); // Init world data and static render
-        // --- Log the generated grid AFTER generation ---
         logWorldGrid();
         ItemManager.init();
         EnemyManager.init();
@@ -215,6 +211,7 @@ function init() {
             player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
 // Pass player reference to UI for weapon switching etc.
             UI.setPlayerReference(player);
+            UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus());
         } catch (error) {
             console.error("FATAL: Player Creation Error:", error);
             initializationOk = false;

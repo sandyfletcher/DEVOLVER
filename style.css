@@ -169,9 +169,19 @@ body {
     /* line-height: 60px; */ /* Optional alternative centering */
 }
 
+/* Style for slots of weapons the player doesn't have */
+.weapon-slot-box.disabled {
+    opacity: 0.4;
+    cursor: default;
+    background-color: #2a2a2a !important; /* Darker background, !important might be needed */
+    border-color: #444;
+    box-shadow: none; /* Remove active shadow if present */
+}
+
 .weapon-slot-box.active {
     border-color: yellow; /* Highlight active weapon */
     box-shadow: 0 0 8px yellow;
+    opacity: 1;
 }
 
 #wave-status, #wave-timer, #enemy-count, #sword-status {

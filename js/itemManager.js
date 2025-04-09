@@ -2,65 +2,28 @@
 // itemManager.js - Manages Items in the World
 // -----------------------------------------------------------------------------
 
-// console.log("itemManager loaded");
-
 import * as Config from './config.js';
 import * as GridCollision from './utils/gridCollision.js';
 
-// --- Item Configuration Lookup ---
-// Centralizes item properties based on type string.
-// This makes adding new item types easier.
-const ITEM_CONFIG = {
-    'sword': {
-        width: Config.SWORD_WIDTH,
-        height: Config.SWORD_HEIGHT,
-        color: Config.SWORD_COLOR,
-        // Add other sword-specific properties if needed later (e.g., bobble amount modifier?)
-    },
-    'wood': {
-        width: Config.WOOD_ITEM_WIDTH,
-        height: Config.WOOD_ITEM_HEIGHT,
-        color: Config.WOOD_ITEM_COLOR,
-    },
-    // --- Add configurations for new item types here ---
-    /*
-    'enemy_part': {
-        width: Math.floor(0.8 * Config.BLOCK_WIDTH),
-        height: Math.floor(0.8 * Config.BLOCK_HEIGHT),
-        color: 'rgb(100, 50, 120)', // Example color
-    },
-    'health_potion': {
-        width: Math.floor(1.2 * Config.BLOCK_WIDTH),
-        height: Math.floor(1.2 * Config.BLOCK_HEIGHT),
-        color: 'rgb(255, 100, 100)',
-        // Maybe different bobble?
-        // bobbleAmount: Config.ITEM_BOBBLE_AMOUNT * 1.2,
-    }
-    */
-};
-
-
 // --- Internal Item Class ---
-// (No significant changes needed in the class itself, it uses properties passed to it)
 class Item {
-    constructor(x, y, type, config) { // Takes type and resolved config object
+    constructor(x, y, type, config) { // Config is passed in
         this.x = x;
         this.y = y;
-        this.type = type; // Store the type identifier (e.g., 'sword', 'wood')
+        this.type = type;
 
-        // Assign properties from the resolved config
-        this.width = config.width ?? Math.floor(Config.BLOCK_WIDTH); // Fallback size
-        this.height = config.height ?? Math.floor(Config.BLOCK_HEIGHT);
-        this.color = config.color ?? 'magenta'; // Fallback color
-        // Use specific bobble settings from config if provided, else use defaults
-        this.bobbleAmount = config.bobbleAmount ?? Config.ITEM_BOBBLE_AMOUNT;
-        this.bobbleSpeed = config.bobbleSpeed ?? Config.ITEM_BOBBLE_SPEED;
+        // Use passed config directly
+        this.width = config?.width ?? Math.floor(Config.BLOCK_WIDTH);
+        this.height = config?.height ?? Math.floor(Config.BLOCK_HEIGHT);
+        this.color = config?.color ?? 'magenta';
+        this.bobbleAmount = config?.bobbleAmount ?? Config.ITEM_BOBBLE_AMOUNT;
+        this.bobbleSpeed = config?.bobbleSpeed ?? Config.ITEM_BOBBLE_SPEED;
 
         // Physics and state
-        this.vx = 0; // Items generally don't move horizontally unless pushed
-        this.vy = 0; // Velocity pixels/sec
+        this.vx = 0;
+        this.vy = 0;
         this.isOnGround = false;
-        this.bobbleOffset = Math.random() * Math.PI * 2; // Start bobble at random point
+        this.bobbleOffset = Math.random() * Math.PI * 2;
         this.isActive = true;
     }
 
@@ -125,58 +88,51 @@ class Item {
             height: this.height
         };
     }
-} // --- End of Item Class ---
-
+}
 
 // --- Module State ---
 let items = []; // Array containing active Item instances
 
-
 // --- Public Functions ---
-
-/**
- * Initializes the Item Manager, clearing existing items and spawning the initial sword.
- */
+// Initializes the Item Manager, clearing existing items and spawning the initial sword.
 export function init() {
     items = [];
-    // Spawn initial sword (adjust Y position as needed based on world gen)
-    const startY = (Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT) - Config.SWORD_HEIGHT - (8 * Config.BLOCK_HEIGHT); // Place slightly higher
+// Spawn initial weapons (adjust positions as needed)
+    const startY = (Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT) - Config.SWORD_HEIGHT - (8 * Config.BLOCK_HEIGHT);
+    const startY2 = startY - Config.BLOCK_HEIGHT * 5; // Place spear slightly higher/different spot
+// Spawn Sword
     spawnItem(
-        Config.CANVAS_WIDTH / 2 - Config.SWORD_WIDTH / 2,
+        Config.CANVAS_WIDTH * 0.4 - Config.SWORD_WIDTH / 2, // Spawn left of center
         startY,
-        'sword' // Spawn using the type string
+        Config.WEAPON_TYPE_SWORD // Use constant
     );
-    // console.log("Item Manager initialized.");
+// Spawn Spear
+    spawnItem(
+        Config.CANVAS_WIDTH * 0.6 - Config.SPEAR_WIDTH / 2, // Spawn right of center
+        startY2,
+        Config.WEAPON_TYPE_SPEAR // Use constant
+    );
+    console.log("Item Manager initialized with Sword and Spear.");
 }
 
-/**
- * Spawns a new item in the world based on its type string.
- * Looks up configuration (size, color) from ITEM_CONFIG.
- * @param {number} x - Initial X position (pixels).
- * @param {number} y - Initial Y position (pixels).
- * @param {string} type - The type identifier string (e.g., 'sword', 'wood').
- */
+// Spawn a new item based on parameters passed in from ITEM_CONFIG.
 export function spawnItem(x, y, type) {
-    // Validate type and find configuration
-    const itemConfig = ITEM_CONFIG[type];
-
+// Use the centralized ITEM_CONFIG from Config
+    const itemConfig = Config.ITEM_CONFIG[type];
+// Validate type and find configuration
     if (!itemConfig) {
         console.warn(`ItemManager: Attempted to spawn unknown item type "${type}". Spawning skipped.`);
-        return; // Don't spawn if type is unknown
+        return;
     }
-
-    // Make sure initial coordinates are numbers
-    const spawnX = typeof x === 'number' && !isNaN(x) ? x : Config.CANVAS_WIDTH / 2; // Default fallback position
+// Determining location? uncertain 
+    const spawnX = typeof x === 'number' && !isNaN(x) ? x : Config.CANVAS_WIDTH / 2;
     const spawnY = typeof y === 'number' && !isNaN(y) ? y : 50;
-
-    // Create the new item instance using the resolved configuration
-    const newItem = new Item(spawnX, spawnY, type, itemConfig);
-
+// Pass the config
+    const newItem = new Item(spawnX, spawnY, type, itemConfig); 
+// Item spawns
     if (newItem) {
         items.push(newItem);
-        // console.log(`Spawned item: ${type} at ${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}`);
     }
-     // No else needed here because we check itemConfig at the start
 }
 
 /**

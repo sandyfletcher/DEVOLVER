@@ -2,10 +2,7 @@
 // root/js/collisionManager.js - Collision handling
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js'; // Still useful for things like PLAYER_ATTACK_DAMAGE
-// Enemy contact damage is now fetched from the enemy instance itself.
-
-// console.log("collisionManager loaded");
+import * as Config from './config.js';
 
 // --- Private Utility Function ---
 function checkRectOverlap(rect1, rect2) {
@@ -59,18 +56,20 @@ export function checkPlayerAttackEnemyCollisions(player, enemies) {
     if (!player || !enemies || !player.isAttacking || player.getCurrentHealth() <= 0) { return; }
 
     const attackHitbox = player.getAttackHitbox();
-    if (!attackHitbox) return; // No hitbox active
+    if (!attackHitbox) return;
+
+    // --- Get damage based on player's CURRENTLY EQUIPPED weapon ---
+    const currentDamage = player.getCurrentAttackDamage();
+    if (currentDamage <= 0) return; // Don't check collisions if attack does no damage
 
     for (const enemy of enemies) {
-        if (!enemy || !enemy.isActive) continue; // Skip inactive/invalid enemies
+        if (!enemy || !enemy.isActive) continue;
 
         if (checkRectOverlap(attackHitbox, enemy.getRect())) {
-            // Collision detected, check if already hit this swing
             if (!player.hasHitEnemyThisSwing(enemy)) {
-                // console.log(`CollisionManager: Player attack hit ${enemy.displayName}`);
-                // Use the globally defined player attack damage
-                enemy.takeDamage(Config.PLAYER_ATTACK_DAMAGE);
-                player.registerHitEnemy(enemy); // Mark enemy as hit for this swing
+                // Use the dynamically fetched damage amount
+                enemy.takeDamage(currentDamage);
+                player.registerHitEnemy(enemy);
             }
         }
     }

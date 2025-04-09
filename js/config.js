@@ -99,11 +99,13 @@ export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT)); // App
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
 export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // Spawn slightly above mean ground
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
-
-// --- Player Health & Combat ---
+// --- Health  ---
 export const PLAYER_INITIAL_HEALTH = 100;
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds (reduced slightly)
+// ---  Combat ---
+// NOTE: These generic attack stats remain but might not be directly used by player anymore
+//       They could be useful defaults or for other systems later.
 export const PLAYER_ATTACK_DURATION = 0.25; // seconds
 export const PLAYER_ATTACK_COOLDOWN = 0.4; // seconds
 export const PLAYER_ATTACK_DAMAGE = 10;
@@ -252,40 +254,65 @@ export const ENEMY_STATS = {
 // =============================================================================
 // --- Item Constants ---
 // =============================================================================
+export const WEAPON_TYPE_SWORD = 'sword'; // Define explicitly
+export const WEAPON_TYPE_SPEAR = 'spear';
+export const WEAPON_TYPE_UNARMED = 'unarmed';
 
+// --- Sword ---
 export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH);      // Approx 12px
 export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);     // Approx 4px
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
+export const PLAYER_SWORD_ATTACK_DAMAGE = 10; // Rename PLAYER_ATTACK_DAMAGE
+export const PLAYER_SWORD_ATTACK_REACH_X = Math.floor(2.25 * BLOCK_WIDTH); // Approx 9px reach horizontal offset from edge
+export const PLAYER_SWORD_ATTACK_REACH_Y = 0; // Vertical offset from player center
+export const PLAYER_SWORD_ATTACK_WIDTH = Math.floor(1.25 * BLOCK_WIDTH); // Approx 5px width
+export const PLAYER_SWORD_ATTACK_HEIGHT = PLAYER_HEIGHT; // Same height as player for now
+export const PLAYER_SWORD_ATTACK_DURATION = 0.25; // seconds
+export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.4; // seconds
+export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
+
+// --- Spear ---
+export const SPEAR_WIDTH = Math.floor(4 * BLOCK_WIDTH);      // Longer item ~16px
+export const SPEAR_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT);  // Thinner item ~3px
+export const SPEAR_COLOR = 'rgb(210, 180, 140)'; // Wood-like color
+export const PLAYER_SPEAR_ATTACK_DAMAGE = 8; // Slightly less damage?
+export const PLAYER_SPEAR_ATTACK_REACH_X = Math.floor(3.5 * BLOCK_WIDTH); // Longer reach ~14px
+export const PLAYER_SPEAR_ATTACK_REACH_Y = Math.floor(0.5 * BLOCK_HEIGHT); // Slight vertical offset? ~2px up from center
+export const PLAYER_SPEAR_ATTACK_WIDTH = Math.floor(0.75 * BLOCK_WIDTH); // Narrower hitbox ~3px
+export const PLAYER_SPEAR_ATTACK_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT); // Narrower hitbox ~3px
+export const PLAYER_SPEAR_ATTACK_DURATION = 0.35; // Slightly longer duration?
+export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5; // Slightly longer cooldown?
+export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)'; // Different color?
 
 // --- Centralized Item Configuration Object ---
 export const ITEM_CONFIG = {
-    'sword': {
-        // Optional: Can also define sword properties here if you want everything centralized
-        width: Math.floor(3 * BLOCK_WIDTH), // Reference existing constants or define directly
-        height: Math.floor(1 * BLOCK_HEIGHT),
-        color: 'rgb(180, 180, 190)',
-        // Add other properties like pickup behavior, stack size etc. later
+    [WEAPON_TYPE_SWORD]: { // Use constant
+        width: SWORD_WIDTH,
+        height: SWORD_HEIGHT,
+        color: SWORD_COLOR,
+    },
+    [WEAPON_TYPE_SPEAR]: { // Use constant
+        width: SPEAR_WIDTH,
+        height: SPEAR_HEIGHT,
+        color: SPEAR_COLOR,
     },
     'wood': {
-        width: Math.floor(1 * BLOCK_WIDTH),   // Approx 4px
-        height: Math.floor(1 * BLOCK_HEIGHT),  // Approx 4px
+        width: Math.floor(1 * BLOCK_WIDTH),
+        height: Math.floor(1 * BLOCK_HEIGHT),
         color: 'rgb(139, 69, 19)', // Brown
     },
     'stone': {
-        // Config for stone item (primarily for UI color)
         width: Math.floor(1 * BLOCK_WIDTH),
         height: Math.floor(1 * BLOCK_HEIGHT),
-        color: BLOCK_COLORS[BLOCK_STONE], // Use block color (No Config. prefix needed inside this file)
+        color: BLOCK_COLORS[BLOCK_STONE],
     },
     'metal': {
-        // Config for metal item (primarily for UI color)
         width: Math.floor(1 * BLOCK_WIDTH),
         height: Math.floor(1 * BLOCK_HEIGHT),
-        color: BLOCK_COLORS[BLOCK_METAL], // Use block color (No Config. prefix needed inside this file)
+        color: BLOCK_COLORS[BLOCK_METAL],
     },
-    // Add future items like 'coal', 'iron_ore', 'health_potion' here
+    // ... other items
 };
-
 export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob (relative to height)
 export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle
 
