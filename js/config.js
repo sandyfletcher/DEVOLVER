@@ -41,6 +41,14 @@ export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 10;                           
 export const ISLAND_CENTER_TAPER_WIDTH = 80;                                      // Width of taper from island edge inward
 
 // =============================================================================
+// --- Camera / Viewport Constants ---
+// =============================================================================
+
+export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (zoom out)
+export const MAX_CAMERA_SCALE = 3.0;  // Max zoom level (zoom in)
+export const ZOOM_SPEED_FACTOR = 0.001; // How fast scrolling zooms
+
+// =============================================================================
 // --- Block Parameters ---
 // =============================================================================
 

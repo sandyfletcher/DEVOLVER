@@ -3,10 +3,12 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
-import * as UI from './ui.js';
+import * as UI from './ui.js'; // not used currently
 
-// --- Input State ---
-// This object holds the current state of actionable inputs
+let canvas = null;
+let appContainer = null;
+
+// --- Input State, holds the current state of actionable inputs ---
 const state = {
     left: false,
     right: false,
@@ -36,13 +38,10 @@ const touchState = {
     buttons: {}
 };
 
-let canvas = null;
-
 // --- Touch Button Definitions ---
 const defineTouchButtons = () => {
     const btnSize = 80;
     const margin = 20;
-
     touchState.buttons = {
         left: {
             rect: { x: margin, y: Config.CANVAS_HEIGHT - btnSize - margin, width: btnSize, height: btnSize },
@@ -81,13 +80,11 @@ const handleKeyUp = (e) => {
         if (action === 'left' || action === 'right' || action === 'jump') {
             state[action] = false;
         }
-        // Do NOT set state.attack = false here
-        e.preventDefault();
+        e.preventDefault(); // Do NOT set state.attack = false here
     }
 };
 
 // --- MOUSE/TOUCH INPUT ---
-
 const handleMouseDown = (e) => {
     if (e.target === canvas) {
         if (e.button === 0 && !state.attack) { // Left click
@@ -196,6 +193,29 @@ const handleTouchMove = (e) => {
     }
 };
 
+// --- Wheel Handler ---
+const handleWheel = (e) => {
+    // Check if the event originated within the app container (or specifically canvas)
+    // This prevents zooming when scrolling elsewhere on the page.
+    if (!appContainer || !appContainer.contains(e.target)) {
+         return; // Ignore scroll events outside the container
+    }
+
+    e.preventDefault(); // Prevent default page scroll
+
+    // Calculate scale change (deltaY is usually +/- 100 or similar)
+    // Negative deltaY means scroll up (zoom in), Positive means scroll down (zoom out)
+    const deltaScale = -e.deltaY * Config.ZOOM_SPEED_FACTOR; // Use ZOOM_SPEED_FACTOR from Config
+
+    // Trigger a function in main.js or directly update a shared state
+    // For simplicity, let's assume we have access to update a global camera scale
+    // (A better approach might use callbacks or an event system)
+    // We'll define updateCameraScale in main.js later
+    if (typeof window.updateCameraScale === 'function') {
+        window.updateCameraScale(deltaScale);
+    }
+};
+
 // Consume attack flag
 export function consumeClick() {
     // This name is a bit misleading now, maybe rename to consumeAttackInput?
@@ -205,7 +225,9 @@ export function consumeClick() {
 // --- Public Interface ---
 export function init() {
     canvas = document.getElementById('game-canvas');
+    appContainer = document.getElementById('app-container');
     if (!canvas) { console.error("Input: Canvas element not found!"); return; }
+    if (!appContainer) { console.warn("Input: App container element not found for scroll bounds check."); }
     defineTouchButtons();
     // Keyboard Listeners
     window.addEventListener('keydown', handleKeyDown);
@@ -216,6 +238,12 @@ export function init() {
     canvas.addEventListener('touchend', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchcancel', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    // Listen on the container or window, but check target inside handler
+    window.addEventListener('wheel', handleWheel, { passive: false }); // Listen globally, check target
+    // Alternatively, listen only on the container:
+    // if (appContainer) {
+    //    appContainer.addEventListener('wheel', handleWheel, { passive: false });
+    // }
 }
 
 export function getState() {

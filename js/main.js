@@ -23,6 +23,21 @@ let gameRunning = true;
 let lastTime = 0;
 let restartBtnRef = null; // Variable to hold button reference
 
+// --- Camera State ---
+let cameraX = 0;
+let cameraY = 0;
+let cameraScale = 1.0; // 1.0 = normal zoom
+
+// --- Function to handle scale updates from input ---
+// Make it globally accessible IF input.js calls it directly (simplest way for now)
+window.updateCameraScale = function(deltaScale) {
+    const oldScale = cameraScale; // Store old scale if needed for centering adjustments (optional)
+    // Calculate and clamp new scale
+    let newScale = cameraScale + deltaScale;
+    newScale = Math.max(Config.MIN_CAMERA_SCALE, Math.min(newScale, Config.MAX_CAMERA_SCALE)); // Use Config limits
+    cameraScale = newScale;
+}
+
 // --- Function to log the world grid ---
 function logWorldGrid() {
     console.log("--- World Grid Debug Output ---");
@@ -152,6 +167,43 @@ function gameLoop(timestamp) {
     WaveManager.update(dt);
     World.update(dt); // World updates (e.g., block changes) - Placeholder
 
+    // --- Camera Calculation ---
+    const ctx = Renderer.getContext(); // Get context for dimensions if needed
+    const viewWidth = ctx.canvas.width;
+    const viewHeight = ctx.canvas.height;
+    const worldPixelWidth = Config.CANVAS_WIDTH;  // Total world size (potentially larger later)
+    const worldPixelHeight = Config.CANVAS_HEIGHT; // Total world size
+
+    if (player) {
+        // Calculate desired world coordinates visible at the edges of the screen
+        const visibleWorldWidth = viewWidth / cameraScale;
+        const visibleWorldHeight = viewHeight / cameraScale;
+
+        // Calculate the desired top-left camera corner position to center the player
+        // Target: (player center) - (half of visible world size)
+        cameraX = (player.x + player.width / 2) - (visibleWorldWidth / 2);
+        cameraY = (player.y + player.height / 2) - (visibleWorldHeight / 2);
+
+        // Clamp camera X
+        const maxCameraX = worldPixelWidth - visibleWorldWidth;
+        cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
+
+        // Clamp camera Y
+        const maxCameraY = worldPixelHeight - visibleWorldHeight;
+        cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
+
+        // Handle cases where world is smaller than viewport (prevent NaN/negative max)
+        if (worldPixelWidth < visibleWorldWidth) { cameraX = (worldPixelWidth - visibleWorldWidth) / 2; } // Center world horizontally
+        if (worldPixelHeight < visibleWorldHeight) { cameraY = (worldPixelHeight - visibleWorldHeight) / 2; } // Center world vertically
+    } else {
+        // Default camera position if no player (e.g., center of world)
+        cameraX = (worldPixelWidth - viewWidth / cameraScale) / 2;
+        cameraY = (worldPixelHeight - viewHeight / cameraScale) / 2;
+        // Apply clamping just in case
+        cameraX = Math.max(0, Math.min(cameraX, worldPixelWidth - viewWidth / cameraScale));
+        cameraY = Math.max(0, Math.min(cameraY, worldPixelHeight - viewHeight / cameraScale));
+    }
+
     // --- Collision Detection Phase ---
     if (player) {
         CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
@@ -162,10 +214,22 @@ function gameLoop(timestamp) {
 
     // --- Render Phase (Canvas) ---
     Renderer.clear(); // Clear canvas
-    World.draw(Renderer.getContext()); // Draw world background/tiles
-    ItemManager.draw(Renderer.getContext()); // Draw items
-    EnemyManager.draw(Renderer.getContext()); // Draw enemies
-    if (player) { player.draw(Renderer.getContext()); } // Draw player
+    const mainCtx = Renderer.getContext(); // Use mainCtx alias for clarity
+    mainCtx.save(); // Save context state
+    // Apply Camera Transformations (Scale THEN Translate)
+    mainCtx.scale(cameraScale, cameraScale);
+    mainCtx.translate(-cameraX, -cameraY);
+
+    // --- Draw World Elements (Relative to World Coords) ---
+    World.draw(mainCtx); // Draw static world (already translated/scaled)
+    ItemManager.draw(mainCtx); // Draw items
+    EnemyManager.draw(mainCtx); // Draw enemies
+    if (player) { player.draw(mainCtx); } // Draw player
+
+    mainCtx.restore(); // Restore context to un-scaled, un-translated state
+
+     // --- Draw Fixed UI Elements (Relative to Screen Coords) ---
+    Input.drawControls(mainCtx); // Draw touch controls *after* restore
 
     // --- Render Phase (HTML UI) ---
     // Update sidebar information
@@ -234,6 +298,26 @@ function init() {
     if (initializationOk) {
         Input.consumeClick(); // Clear any initial clicks
         lastTime = performance.now(); // Set start time for dt calculation
+        // --- Initial Camera Calculation ---
+        // Calculate initial camera pos based on player start AFTER player exists
+        if (player) {
+            const viewWidth = Renderer.getCanvas().width;
+            const viewHeight = Renderer.getCanvas().height;
+            const visibleWorldWidth = viewWidth / cameraScale;
+            const visibleWorldHeight = viewHeight / cameraScale;
+            cameraX = (player.x + player.width / 2) - (visibleWorldWidth / 2);
+            cameraY = (player.y + player.height / 2) - (visibleWorldHeight / 2);
+            // Clamp initial camera position too
+            const worldPixelWidth = Config.CANVAS_WIDTH;
+            const worldPixelHeight = Config.CANVAS_HEIGHT;
+            const maxCameraX = worldPixelWidth - visibleWorldWidth;
+            cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
+            const maxCameraY = worldPixelHeight - visibleWorldHeight;
+            cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
+             if (worldPixelWidth < visibleWorldWidth) { cameraX = (worldPixelWidth - visibleWorldWidth) / 2; }
+             if (worldPixelHeight < visibleWorldHeight) { cameraY = (worldPixelHeight - visibleWorldHeight) / 2; }
+       }
+       // --- End Initial Camera Calc ---
         // gameRunning = true; // Not strictly needed if relying on game over state
         requestAnimationFrame(gameLoop); // Start the main loop
         UI.updateGameOverState(false); // Ensure button is hidden initially
