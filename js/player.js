@@ -17,6 +17,7 @@ export class Player {
         this.vy = 0; // Velocity in pixels per second
         this.isOnGround = false;
         this.isInWater = false;
+        this.waterJumpCooldown = 0; // water jump cooldown state
         // --- Weapon & Inventory State ---
         this.hasSword = false;
         this.hasSpear = false;
@@ -42,8 +43,13 @@ export class Player {
      */
     update(dt, inputState) {
         // --- 1. Update Water Status ---
-        this.isInWater = GridCollision.isEntityInWater(this); // Call the detection function
-    
+        const wasInWater = this.isInWater; // Store previous state
+        this.isInWater = GridCollision.isEntityInWater(this);
+        // --- Reset water jump cooldown if just exited water ---
+        if (!this.isInWater && this.waterJumpCooldown > 0) {
+            this.waterJumpCooldown = 0;
+        }
+
         // --- Get Current Physics Params (modified if in water) ---
         const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
         const currentMaxSpeedX = this.isInWater ? Config.PLAYER_MAX_SPEED_X * Config.WATER_MAX_SPEED_FACTOR : Config.PLAYER_MAX_SPEED_X;
@@ -67,77 +73,81 @@ export class Player {
             }
         }
 
-    // --- Input Handling & Acceleration (Use modified params) ---
-    let targetVx = 0;
-    if (inputState.left && !inputState.right) {
-        targetVx = -currentMaxSpeedX; // Use water/air max speed
-        this.lastDirection = -1;
-    } else if (inputState.right && !inputState.left) {
-        targetVx = currentMaxSpeedX; // Use water/air max speed
-        this.lastDirection = 1;
-    }
+        if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt; // Decrement cooldown
 
-    // Apply acceleration towards target velocity
-    if (targetVx !== 0) {
-        this.vx += Math.sign(targetVx) * currentAcceleration * dt; // Use water/air accel
-        // Clamp to max speed, preserving direction
-        if (Math.abs(this.vx) > currentMaxSpeedX) {
-            this.vx = Math.sign(this.vx) * currentMaxSpeedX;
+        // --- Input Handling & Acceleration (Use modified params) ---
+        let targetVx = 0;
+        if (inputState.left && !inputState.right) {
+            targetVx = -currentMaxSpeedX; // Use water/air max speed
+            this.lastDirection = -1;
+        } else if (inputState.right && !inputState.left) {
+            targetVx = currentMaxSpeedX; // Use water/air max speed
+            this.lastDirection = 1;
         }
-    } else {
-        // Apply friction OR water damping
-        if (!this.isInWater && this.isOnGround) { // Air friction only on ground
-             const frictionFactor = Math.pow(Config.PLAYER_FRICTION_BASE, dt);
-             this.vx *= frictionFactor;
-        }
-        // Stop completely if velocity is very small (both air/water)
-        if (Math.abs(this.vx) < 1) {
-            this.vx = 0;
-        }
-    }
-    // Apply horizontal water damping regardless of input if in water
-    if (this.isInWater) {
-        this.vx *= horizontalDampingFactor;
-    }
 
-    // --- Jumping / Swimming ---
-    if (inputState.jump) { // Check jump press
-        if (this.isOnGround && !this.isInWater) { // Normal Jump from ground
-            this.vy = -Config.PLAYER_JUMP_VELOCITY;
-            this.isOnGround = false;
-        } else if (this.isInWater) { // Swim Stroke
-            this.vy = -Config.WATER_SWIM_VELOCITY; // Apply upward swim impulse
-            // Optional: If implementing hold-to-swim, don't consume jump input here
-        }
-        inputState.jump = false; // Consume jump press for impulse jump/swim
-    }
-
-    // ---  Continuous Swim ---
-
-    if (inputState.jumpHeld && this.isInWater) { // Assuming input.js provides jumpHeld
-        this.vy -= Config.WATER_CONTINUOUS_SWIM_ACCEL * dt; // Apply upward force
-    }
-
-                 // Attack Triggering
-        // Check if we *can* attack (i.e., not unarmed) before checking cooldown etc.
-        if (inputState.attack && this.canAttack() && this.attackCooldown <= 0 && !this.isAttacking) {
-            this.isAttacking = true;
-            // Set duration/cooldown based on SELECTED weapon
-            if (this.selectedWeapon === Config.WEAPON_TYPE_SWORD) {
-                this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
-                this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
-            } else if (this.selectedWeapon === Config.WEAPON_TYPE_SPEAR) {
-                this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
-                this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
+        // Apply acceleration towards target velocity
+        if (targetVx !== 0) {
+            this.vx += Math.sign(targetVx) * currentAcceleration * dt; // Use water/air accel
+            // Clamp to max speed, preserving direction
+            if (Math.abs(this.vx) > currentMaxSpeedX) {
+                this.vx = Math.sign(this.vx) * currentMaxSpeedX;
             }
-            // else: handle other weapons later
-
-            this.hitEnemiesThisSwing = [];
-            inputState.attack = false; // Consume attack input
-        } else if (inputState.attack) {
-            inputState.attack = false; // Consume attack input even if on cooldown/unarmed
+        } else {
+            // Apply friction OR water damping
+            if (!this.isInWater && this.isOnGround) { // Air friction only on ground
+                const frictionFactor = Math.pow(Config.PLAYER_FRICTION_BASE, dt);
+                this.vx *= frictionFactor;
+            }
+            // Stop completely if velocity is very small (both air/water)
+            if (Math.abs(this.vx) < 1) {
+                this.vx = 0;
+            }
+        }
+        // Apply horizontal water damping regardless of input if in water
+        if (this.isInWater) {
+            this.vx *= horizontalDampingFactor;
         }
 
+        // --- Jumping / Swimming (FIXED Logic) ---
+        if (inputState.jump) { // Check if jump input is currently active (button is down)
+            if (this.isInWater) {
+                // Water Swim Stroke
+                if (this.waterJumpCooldown <= 0) {
+                    this.vy = -Config.WATER_SWIM_VELOCITY; // Apply upward swim impulse
+                    this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION; // Start cooldown
+                    // *** REMOVED: inputState.jump = false; ***
+                }
+                // If cooldown is active, do nothing this frame even if jump is held
+            } else if (this.isOnGround) {
+                // Normal Jump from ground (only if not in water)
+                this.vy = -Config.PLAYER_JUMP_VELOCITY;
+                this.isOnGround = false; // Set to false *immediately* to prevent re-triggering next frame while still grounded
+                // *** REMOVED: inputState.jump = false; ***
+            }
+            // No 'else' needed for airborne: If player holds jump in air, inputState.jump remains true,
+            // but neither the isInWater nor isOnGround conditions are met, so no action happens.
+            // *** REMOVED the airborne else block that consumed input ***
+        }
+
+    // Attack Triggering
+    // Check if we *can* attack (i.e., not unarmed) before checking cooldown etc.
+    if (inputState.attack && this.canAttack() && this.attackCooldown <= 0 && !this.isAttacking) {
+        this.isAttacking = true;
+        // Set duration/cooldown based on SELECTED weapon
+        if (this.selectedWeapon === Config.WEAPON_TYPE_SWORD) {
+            this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
+            this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
+        } else if (this.selectedWeapon === Config.WEAPON_TYPE_SPEAR) {
+            this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
+            this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
+        }
+        // else: handle other weapons later
+
+        this.hitEnemiesThisSwing = [];
+        inputState.attack = false; // Consume attack input
+    } else if (inputState.attack) {
+        inputState.attack = false; // Consume attack input even if on cooldown/unarmed
+    }
 
     // --- Physics Step 1: Apply Forces (Gravity) ---
     // Only apply gravity if NOT on ground (standard)
@@ -279,6 +289,8 @@ export class Player {
         this.vx = 0;
         this.vy = 0;
         this.isOnGround = false;
+        this.isInWater = false; // Reset water state
+        this.waterJumpCooldown = 0; // Reset cooldown
         this.currentHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
@@ -288,25 +300,27 @@ export class Player {
         this.inventory = {};
         this.lastDirection = 1;
         this.hitEnemiesThisSwing = [];
-        // --- Reset Weapon State ---
-        this.hasSword = false;
-        this.hasSpear = false; // Reset spear possession
-        this.selectedWeapon = Config.WEAPON_TYPE_UNARMED; // Reset to unarmed
+        this.hasSword = false; // reset weapon possession
+        this.hasSpear = false;
+        this.selectedWeapon = Config.WEAPON_TYPE_UNARMED; // reset to unarmed
     }
 
     resetPosition() {
-         // Resets only the player's position and velocity, e.g., after falling out.
-         console.log("Player position reset (fell out).");
-         this.x = Config.PLAYER_START_X;
-         this.y = Config.PLAYER_START_Y;
-         this.vx = 0;
-         this.vy = 0;
-         this.isOnGround = false; // Recalculate ground state
-         // Keep health, inventory, etc. as they were
-         // Reset invulnerability briefly? Optional.
-         // this.isInvulnerable = true;
-         // this.invulnerabilityTimer = 0.5;
+        // Resets only the player's position and velocity, e.g., after falling out.
+        console.log("Player position reset (fell out).");
+        this.x = Config.PLAYER_START_X;
+        this.y = Config.PLAYER_START_Y;
+        this.vx = 0;
+        this.vy = 0;
+        this.isOnGround = false; // Recalculate ground state
+        this.isInWater = false; // Re-evaluate water state on next update
+        this.waterJumpCooldown = 0;
+        // Keep health, inventory, etc. as they were
+        // Reset invulnerability briefly? Optional.
+        // this.isInvulnerable = true;
+        // this.invulnerabilityTimer = 0.5;
     }
+
 // --- Calculates the position and size of the attack hitbox based on player state and selected weapon. ---
     getAttackHitbox() {
         if (!this.isAttacking || this.selectedWeapon === Config.WEAPON_TYPE_UNARMED) {

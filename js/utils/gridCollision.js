@@ -6,52 +6,36 @@
 import * as Config from '../config.js';
 import * as WorldData from './worldData.js';
 
-// --- Collision Helper Functions --- 
+// --- Collision Helpers --- 
 
-/**
- * Checks if an entity is significantly submerged in water.
- * @param {object} entity - Entity with x, y, width, height.
- * @returns {boolean} True if considered 'in water'.
- */
+// Checks if entity is significantly submerged, as a % from bottom edge
 export function isEntityInWater(entity) {
-    // Check multiple points: center of feet and center of body
-    const checkYFeet = entity.y + entity.height - 1; // Point just above the bottom edge
-    const checkYCenter = entity.y + entity.height * 0.5;
-    const checkXCenter = entity.x + entity.width * 0.5;
-
-    const { col: feetCol, row: feetRow } = worldToGridCoords(checkXCenter, checkYFeet);
-    const { col: centerCol, row: centerRow } = worldToGridCoords(checkXCenter, checkYCenter);
-
-    // Consider in water if either the feet or center point is in a water block
-    const feetInWater = WorldData.getBlockType(feetCol, feetRow) === Config.BLOCK_WATER;
-    const centerInWater = WorldData.getBlockType(centerCol, centerRow) === Config.BLOCK_WATER;
-
-    return feetInWater || centerInWater; // Adjust logic: maybe require both? or more points?
+    const submersionCheckFraction = 0.50;
+    // Calculate the Y coordinate to check, entity.y is top, entity.y + entity.height is bottom.
+    const checkY = entity.y + entity.height * (1.0 - submersionCheckFraction);
+    // horizontal center for X coordinate check
+    const checkX = entity.x + entity.width * 0.5;
+    // Convert world coordinates to grid coordinates
+    const { col, row } = worldToGridCoords(checkX, checkY);
+    // Check the block type at the calculated grid cell
+    const blockType = WorldData.getBlockType(col, row);
+    // Return true if the block at the check point is water
+    return blockType === Config.BLOCK_WATER;
 }
 
-
-/**
- * Checks if a block at given grid coordinates is solid for collision purposes.
- * Includes explicit boundary checks.
- * @param {number} col - Column index.
- * @param {number} row - Row index.
- * @returns {boolean} True if the block is solid, false otherwise.
- */
+// Checks if block at given grid coordinates is solid
 export function isSolid(col, row) {
     // Check if row/col is outside valid grid range defined in Config
     if (row < 0 || row >= Config.GRID_ROWS || col < 0 || col >= Config.GRID_COLS) {
         return false; // Treat out of bounds as not solid
     }
-
     const block = WorldData.getBlock(col, row);
-
     // Check if block data is null or air
     if (block === null || block === Config.BLOCK_AIR) {
         return false;
     }
     // Check specific non-solid types (assuming block is an object now)
     if (typeof block === 'object' && block.type === Config.BLOCK_WATER) {
-        // TODO: Water physics later
         return false; // Water is not solid for stopping purposes
     }
     // For now, any block object that exists and isn't air or water is considered solid.
@@ -62,19 +46,14 @@ export function isSolid(col, row) {
     return false;
 }
 
-/**
- * Converts world coordinates (pixels) to grid coordinates (column, row).
- * @param {number} worldX - X position in pixels.
- * @param {number} worldY - Y position in pixels.
- * @returns {{col: number, row: number}} Object containing column and row indices.
- */
+// Converts world coordinates (pixels) to grid coordinates (column, row)
 export function worldToGridCoords(worldX, worldY) {
     const col = Math.floor(worldX / Config.BLOCK_WIDTH);
     const row = Math.floor(worldY / Config.BLOCK_HEIGHT);
     return { col, row };
 }
 
-/** Finds the Y pixel coordinate of the highest solid block surface below a given point. (Optional helper) */
+// Finds the Y pixel coordinate of the highest solid block surface below a given point.
 export function getCollisionSurfaceYBelow(col, startRow) {
      if (col < 0 || col >= Config.GRID_COLS) return Config.CANVAS_HEIGHT * 2;
      const searchStartRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, Math.floor(startRow)));
@@ -88,17 +67,11 @@ export function getCollisionSurfaceYBelow(col, startRow) {
 
 // --- Main Collision Resolution Function ---
 
-/**
- * Performs swept AABB collision detection and resolution against the world grid.
- * Includes logic for stepping up 1-block high obstacles.
- * Updates the entity's position and velocity based on collisions.
- * Uses precise snapping on collision.
- *
- * @param {object} entity - The entity object (must have x, y, width, height, vx, vy).
- * @param {number} potentialMoveX - The intended horizontal movement distance for this frame (entity.vx * dt).
- * @param {number} potentialMoveY - The intended vertical movement distance for this frame (entity.vy * dt).
- * @returns {{collidedX: boolean, collidedY: boolean, isOnGround: boolean, didStepUp: boolean}} Collision results.
- */
+// Performs swept AABB collision detection and resolution against the world grid.
+// Includes logic for stepping up 1-block high obstacles.
+// Updates the entity's position and velocity based on collisions.
+// Uses precise snapping on collision.
+
 export function collideAndResolve(entity, potentialMoveX, potentialMoveY) {
     let moveX = potentialMoveX; // Use the passed-in movement amount
     let moveY = potentialMoveY; // Use the passed-in movement amount
@@ -106,12 +79,9 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) {
     let collidedY = false;
     let isOnGround = false; // Assume not on ground initially for this frame check
     let didStepUp = false;
-
     // Small value for floating point comparisons.
     const E_EPSILON = 1e-4; // Tiny offset to prevent floating point errors / sticking
-
-    // Determine if Step-Up is possible based on state
-    // Allow step-up only if vertical velocity isn't significantly upward (prevents jump-steps)
+    // Determine if Step-Up is possible based on if vertical velocity isn't significantly upward (prevents jump-steps)
     // Compare against gravity effect over one frame for a threshold
     const canAttemptStepUp = entity.vy <= Config.GRAVITY_ACCELERATION * (1 / 60); // Allow if falling or moving up slowly
 

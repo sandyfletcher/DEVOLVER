@@ -109,6 +109,8 @@ export const WATER_MAX_SWIM_UP_SPEED = 80;  // Max speed swimming up
 export const WATER_MAX_SINK_SPEED = 100;  // Max speed falling down in water
 export const WATER_CONTINUOUS_SWIM_ACCEL = 200; // Upward acceleration while holding jump
 export const ENEMY_WATER_BUOYANCY_ACCEL = 180;
+export const WATER_JUMP_COOLDOWN_DURATION = 0.2; // Define the cooldown duration for water jumps (strokes) in seconds
+
 
 // =============================================================================
 // --- Player Constants ---

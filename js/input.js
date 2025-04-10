@@ -66,8 +66,13 @@ const defineTouchButtons = () => {
 const handleKeyDown = (e) => {
     const action = keyMap[e.key];
     if (action) {
-        if (!state[action] || action === 'left' || action === 'right' || action === 'jump') { // Allow holding move/jump
-            state[action] = true;
+        // For continuous actions like move/jump, set to true on key down
+        if (action === 'left' || action === 'right' || action === 'jump') {
+             state[action] = true;
+        }
+        // For single-press actions like attack
+        if (action === 'attack' && !state.attack) {
+             state.attack = true;
         }
         e.preventDefault();
     }
@@ -76,11 +81,12 @@ const handleKeyDown = (e) => {
 const handleKeyUp = (e) => {
     const action = keyMap[e.key];
     if (action) {
-        // Only set continuous actions to false on keyup
+        // Set continuous actions to false on key up
         if (action === 'left' || action === 'right' || action === 'jump') {
             state[action] = false;
         }
-        e.preventDefault(); // Do NOT set state.attack = false here
+        // Do NOT set state.attack = false here
+        e.preventDefault();
     }
 };
 
@@ -99,7 +105,6 @@ const handleTouchStart = (e) => {
     e.preventDefault();
     const touches = e.changedTouches;
     const canvasRect = canvas.getBoundingClientRect();
-    // Handle gameplay buttons (attack, move, jump)
     for (let i = 0; i < touches.length; i++) {
         const touch = touches[i];
         const touchId = touch.identifier;
@@ -114,37 +119,38 @@ const handleTouchStart = (e) => {
                 buttonHit = true;
                 button.pressed = true;
                 touchState.activeTouches[touchId] = buttonName;
+
                 if (buttonName === 'attack') {
                     if (!state.attack) { state.attack = true; }
-                } else {
-                    state[buttonName] = true;
+                } else { // Covers jump, left, right
+                    state[buttonName] = true; // Simply set the state flag
                 }
                 break;
             }
         }
-   }
+    }
 }
+
 const handleTouchEndOrCancel = (e) => {
     e.preventDefault();
     const touches = e.changedTouches;
-
     for (let i = 0; i < touches.length; i++) {
         const touch = touches[i];
         const touchId = touch.identifier;
         const buttonName = touchState.activeTouches[touchId];
-
         if (buttonName && touchState.buttons[buttonName]) {
-            touchState.buttons[buttonName].pressed = false; // Always mark button visually as not pressed
-
+            touchState.buttons[buttonName].pressed = false;
+            // Set corresponding state to false (except attack)
             if (buttonName !== 'attack') {
-                state[buttonName] = false; // Stop moving/jumping
+                state[buttonName] = false;
             }
         }
         delete touchState.activeTouches[touchId];
     }
-    // Safety check (Good to keep)
+    // Safety check (ensure states match button states)
     for (const buttonName in touchState.buttons) {
         let stillPressedByAnotherTouch = false;
+        
         for(const id in touchState.activeTouches) {
             if(touchState.activeTouches[id] === buttonName) {
                 stillPressedByAnotherTouch = true;
@@ -153,11 +159,11 @@ const handleTouchEndOrCancel = (e) => {
         }
         if (!stillPressedByAnotherTouch) {
             touchState.buttons[buttonName].pressed = false;
-             // *** CHANGE HERE: Only set state false for non-attack buttons ***
             if (buttonName !== 'attack') {
-                 if (state[buttonName]) { // Only if it was true
-                     state[buttonName] = false;
-                 }
+                // Ensure state is false if button is no longer pressed by any touch
+                if (state[buttonName]) {
+                    state[buttonName] = false;
+                }
             }
         }
     }
@@ -167,29 +173,24 @@ const handleTouchMove = (e) => {
     e.preventDefault();
     const touches = e.changedTouches;
     const canvasRect = canvas.getBoundingClientRect();
-
     for (let i = 0; i < touches.length; i++) {
         const touch = touches[i];
         const touchId = touch.identifier;
         const buttonName = touchState.activeTouches[touchId];
-
         if (buttonName && touchState.buttons[buttonName]) {
             const button = touchState.buttons[buttonName];
             const touchX = touch.clientX - canvasRect.left;
             const touchY = touch.clientY - canvasRect.top;
-
             const isOutside = !(touchX >= button.rect.x && touchX <= button.rect.x + button.rect.width &&
                                 touchY >= button.rect.y && touchY <= button.rect.y + button.rect.height);
-
             if (isOutside) {
                 button.pressed = false;
                 if (buttonName !== 'attack') {
-                    state[buttonName] = false; // Stop moving/jumping if dragged off
+                    state[buttonName] = false; // Deactivate state if finger slides off
                 }
                 delete touchState.activeTouches[touchId]; // Stop tracking this touch for this button
             }
         }
-         // Optional: Check if touch moved INTO a button (less common need)
     }
 };
 
