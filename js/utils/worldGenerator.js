@@ -169,44 +169,69 @@ function generateLandmass() {
     } // End Pass 2
 
     // --- Pass 3: Place blocks based on final levels ---
-    console.log("Pass 3: Placing blocks...");
+    console.log("Pass 3: Placing blocks with controlled sand depth...");
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
-             let blockData = Config.BLOCK_AIR; // Default to AIR
-             const levels = worldLevels[c];
-             if (!levels) {
-                 console.warn(`Missing level data for column ${c}`);
-                 continue;
-             }
-
-             const finalSurfaceRow = levels.surface;
-             const finalStoneRow = levels.stone;
-
-             if (levels.isOcean) {
-                 // Ocean Block Placement (Sand surface)
-                 if (r >= finalStoneRow && finalStoneRow < Config.GRID_ROWS) {
-                     blockData = createBlock(Config.BLOCK_STONE);
-                 } else if (r >= finalSurfaceRow && r < finalStoneRow) {
-                     // Check if stone level is actually on the map before placing sand above it
-                     if(finalStoneRow < Config.GRID_ROWS) {
-                          blockData = createBlock(Config.BLOCK_SAND);
-                     } else if (r >= finalSurfaceRow) {
-                          // If stone is off map, just place sand from floor level down
-                          blockData = createBlock(Config.BLOCK_SAND);
+            let blockData = Config.BLOCK_AIR; // Default to AIR
+            const levels = worldLevels[c];
+            if (!levels) {
+                console.warn(`Missing level data for column ${c}`);
+                continue;
+            }
+    
+            const finalSurfaceRow = levels.surface;
+            const finalStoneRow = levels.stone;
+            // No need for isBelowWater check here, we evaluate based on finalSurfaceRow later
+            const surfaceIsBelowWater = finalSurfaceRow >= Config.WORLD_WATER_LEVEL_ROW_TARGET;
+    
+            if (r >= finalStoneRow && finalStoneRow < Config.GRID_ROWS) {
+                // Place Stone below the calculated stone level
+                blockData = createBlock(Config.BLOCK_STONE);
+    
+            } else if (r > finalSurfaceRow && r < finalStoneRow) {
+                // --- Between stone and surface level ---
+                if (surfaceIsBelowWater) {
+                    // Calculate desired max sand depth for this column based on surface depth
+                    // More submerged surface = potentially deeper sand, capped at 4, min 1.
+                    const distSurfaceBelowWater = finalSurfaceRow - Config.WORLD_WATER_LEVEL_ROW_TARGET;
+                    // Adjust the divisor: smaller number = faster increase in depth with surface drop
+                    // Example: divisor 1 means depth increases by 1 for every block surface is lower.
+                    let maxAllowedSandDepth = Math.max(1, Math.min(4, 1 + Math.floor(distSurfaceBelowWater / 1))); 
+    
+                    // Calculate current depth below the surface for this specific row 'r'
+                    const currentDepth = r - finalSurfaceRow;
+    
+                    if (currentDepth <= maxAllowedSandDepth) {
+                        // Within allowed sand depth range
+                        blockData = createBlock(Config.BLOCK_SAND);
+                    } else {
+                        // Exceeded allowed sand depth for this submerged column.
+                        // Place what would normally be here if surface was above water.
+                        blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT);
+                    }
+                } else {
+                    // Surface is above water - standard logic (Dirt for island, Sand for ocean floor)
+                    blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT);
+                }
+    
+            } else if (r === finalSurfaceRow) {
+                // --- At the calculated surface level ---
+                if (surfaceIsBelowWater) {
+                    // Surface itself is underwater, place Sand (minimum 1 layer)
+                     // Ensure stone isn't immediately below
+                     if (finalStoneRow > finalSurfaceRow) {
+                        blockData = createBlock(Config.BLOCK_SAND);
+                     } else {
+                         blockData = createBlock(Config.BLOCK_STONE); // Place stone if surface is right on top
                      }
-                 }
-             } else {
-                 // Island Block Placement (Grass/Dirt surface)
-                 if (r >= finalStoneRow) {
-                     blockData = createBlock(Config.BLOCK_STONE);
-                 } else if (r > finalSurfaceRow) {
-                     blockData = createBlock(Config.BLOCK_DIRT);
-                 } else if (r === finalSurfaceRow) {
-                     blockData = createBlock(Config.BLOCK_GRASS);
-                 }
-             }
-             // Set the block data using the direct, faster method
-             setBlockData(c, r, blockData);
+                } else {
+                    // Surface is above water - standard logic (Grass for island, Sand for ocean floor)
+                    blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_GRASS);
+                }
+            }
+    
+            // Set the block data using the direct, faster method
+            setBlockData(c, r, blockData);
         }
     }
     console.log("Landmass generation complete.");
@@ -218,212 +243,104 @@ function applyFloodFill(targetWaterRow) {
     const queue = [];
     const visited = new Set(); // Track visited cells: "c,r"
 
-    // --- Optimized Start Points for Flood Fill ---
-    // Start from the bottom row and the sides *at or below* the water level, assuming the generator leaves AIR where water should be
-
-    // Bottom Row
-    for (let c = 0; c < Config.GRID_COLS; c++) {
-        const r = Config.GRID_ROWS - 1;
-        const key = `${c},${r}`;
-        // Check if it's AIR and below the target water level (it always will be if r=GRID_ROWS-1)
-        if (getBlockType(c, r) === Config.BLOCK_AIR && r >= targetWaterRow && !visited.has(key)) {
-             queue.push({ c, r });
-             visited.add(key);
-        }
-    }
-
-    // Sides (at or below water level)
+    // --- MODIFIED SEEDING LOGIC ---
+    // Iterate through all cells at or below the target water row.
+    // Find AIR blocks that should initiate a fill (either at edge/bottom or bordering non-AIR).
+    console.log("Seeding flood fill points...");
     for (let r = targetWaterRow; r < Config.GRID_ROWS; r++) {
-        // Left Side
-        const keyLeft = `0,${r}`;
-        if (getBlockType(0, r) === Config.BLOCK_AIR && !visited.has(keyLeft)) {
-            queue.push({ c: 0, r });
-            visited.add(keyLeft);
-        }
-        // Right Side
-        const keyRight = `${Config.GRID_COLS - 1},${r}`;
-        if (getBlockType(Config.GRID_COLS - 1, r) === Config.BLOCK_AIR && !visited.has(keyRight)) {
-            queue.push({ c: Config.GRID_COLS - 1, r });
-            visited.add(keyRight);
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+            // Check only AIR blocks that haven't been visited/queued yet
+            if (getBlockType(c, r) === Config.BLOCK_AIR) {
+                const key = `${c},${r}`;
+                if (visited.has(key)) continue;
+
+                let isSeedPoint = false;
+
+                // Condition 1: Is it at the boundary of the grid? (Bottom or Sides)
+                if (r === Config.GRID_ROWS - 1 || c === 0 || c === Config.GRID_COLS - 1) {
+                    isSeedPoint = true;
+                } else {
+                    // Condition 2: Check cardinal neighbors. If any neighbor is NOT AIR,
+                    // this AIR block borders something solid (or already filled water)
+                    // and should be a seed point for this pocket.
+                    const neighborCoords = [
+                        { nc: c, nr: r - 1 }, // Check above (even above water level)
+                        { nc: c, nr: r + 1 }, // Check below
+                        { nc: c - 1, nr: r }, // Check left
+                        { nc: c + 1, nr: r }  // Check right
+                    ];
+
+                    for (const { nc, nr } of neighborCoords) {
+                        // Ensure neighbor is within *overall grid bounds*
+                        if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
+                            if (getBlockType(nc, nr) !== Config.BLOCK_AIR) {
+                                isSeedPoint = true;
+                                break; // Found a non-air neighbor, no need to check others
+                            }
+                        } else {
+                             // Neighbor is out of bounds (meaning current cell IS at an edge), treat as non-air border
+                             isSeedPoint = true;
+                             break;
+                        }
+                    }
+                }
+
+                // If it qualifies as a seed point, add to queue and mark visited
+                if (isSeedPoint) {
+                    queue.push({ c, r });
+                    visited.add(key);
+                }
+            }
         }
     }
+    console.log(`Flood fill seeded with ${queue.length} points.`);
+    // --- END MODIFIED SEEDING LOGIC ---
 
-    // Standard BFS
+
+    // Standard BFS continues from here...
     let processed = 0;
     while (queue.length > 0) {
-        // Optimization: Check queue length before potentially long operations
-        if (queue.length > 10000 && queue.length % 1000 === 0) { // Log progress occasionally for large fills
-            console.log(`Flood fill queue size: ${queue.length}`);
+        // Optimization log
+        if (queue.length > 10000 && queue.length % 5000 === 0) {
+            console.log(`Flood fill queue size: ${queue.length}, Processed: ${processed}`);
         }
 
         const { c, r } = queue.shift();
 
-        // Double check bounds and if it's still AIR (might have been filled by another path)
-        // Also ensure we only fill AT or BELOW target level
-        if (r < targetWaterRow || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS || getBlockType(c,r) !== Config.BLOCK_AIR) {
+        // Get current block type *again* inside the loop, as it might have been filled
+        // by another path if queue contains duplicates briefly.
+        const currentBlockType = getBlockType(c,r);
+
+        // Check bounds, ensure it's BELOW target water level, and is STILL AIR
+        if (r < targetWaterRow || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS || currentBlockType !== Config.BLOCK_AIR) {
              continue;
         }
 
-        // Fill with water - Use setBlock to create the water block object correctly
+        // Fill with water
         setBlock(c, r, Config.BLOCK_WATER); // Use imported setter
         processed++;
 
-
-        // Add valid AIR neighbors (below targetWaterRow) to the queue
+        // Add valid AIR neighbors (must be below targetWaterRow) to the queue
         const neighborCoords = [
+            // Only check neighbors that could potentially be filled (at or below water level)
             { nc: c, nr: r - 1 }, { nc: c, nr: r + 1 },
             { nc: c - 1, nr: r }, { nc: c + 1, nr: r }
         ];
 
         for (const { nc, nr } of neighborCoords) {
-            // Ensure neighbor is within bounds AND at or below water level
+            // Ensure neighbor is within grid bounds AND at or below water level
             if (nr >= targetWaterRow && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
                 const nKey = `${nc},${nr}`;
-                // Check if it's AIR and not visited
+                // Check if neighbor is AIR and not visited
                 if (getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) {
                     visited.add(nKey);
                     queue.push({ c: nc, r: nr });
                 }
             }
         }
-    }
+    } // End while loop
     console.log(`Flood fill complete. Filled ${processed} water blocks.`);
 }
-
-// --- Sand Pass Function  ---
-function applySandPass() {
-    console.log("Applying sand generation pass (thicker beaches)...");
-    const changes = []; // Store {r, c, type: Config.BLOCK_SAND}
-    const maxDepth = 3; // How many blocks deep sand replaces dirt/stone below the surface sand
-    const maxRaise = 1; // How far above water level sand can generate on slopes
-    const minCheckRow = Math.max(0, Config.WORLD_WATER_LEVEL_ROW_TARGET - maxRaise - 2);
-    const maxCheckRow = Math.min(Config.GRID_ROWS, Config.WORLD_WATER_LEVEL_ROW_TARGET + maxDepth + 5);
-
-    // Find initial sand candidates (Dirt/Stone/Grass next to Water)
-    for (let r = minCheckRow; r < maxCheckRow; r++) {
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-            const blockType = getBlockType(c, r);
-            if (blockType === Config.BLOCK_DIRT || blockType === Config.BLOCK_STONE || blockType === Config.BLOCK_GRASS) {
-                // Check 8 neighbors for water
-                let adjacentWater = false;
-                const neighborCoords = [
-                    { nc: c, nr: r - 1 }, { nc: c, nr: r + 1 }, { nc: c - 1, nr: r }, { nc: c + 1, nr: r },
-                    { nc: c - 1, nr: r - 1 }, { nc: c + 1, nr: r - 1 }, { nc: c - 1, nr: r + 1 }, { nc: c + 1, nr: r + 1 }
-                ];
-                for (const { nc, nr } of neighborCoords) {
-                    // Important: Check bounds for neighbors too!
-                    if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
-                        if (getBlockType(nc, nr) === Config.BLOCK_WATER) {
-                            adjacentWater = true;
-                            break;
-                        }
-                    }
-                }
-                // Only place if adjacent to water AND not too high above nominal water level
-                if (adjacentWater && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - maxRaise) {
-                    changes.push({ r, c, type: Config.BLOCK_SAND });
-                }
-            }
-        }
-    }
-
-    // Make changes unique and apply downward sand generation
-    const finalChanges = [];
-    const changedCoords = new Set(); // Keep track of coords already marked for sand: "r,c"
-
-    // Process initial candidates first to ensure surface sand is prioritized
-    for (const change of changes) {
-         const key = `${change.r},${change.c}`;
-         if (!changedCoords.has(key)) {
-              finalChanges.push(change);
-              changedCoords.add(key);
-         }
-    }
-
-    // Now iterate through the surface sand blocks and generate downwards
-    // Create a copy because we might add to finalChanges inside the loop
-    const surfaceSand = [...finalChanges];
-    for (const sandBlock of surfaceSand) {
-        for (let depth = 1; depth <= maxDepth; depth++) {
-            const below_r = sandBlock.r + depth;
-            const below_c = sandBlock.c;
-            const key = `${below_r},${below_c}`;
-
-            // Stop if already sand or out of bounds
-            if (changedCoords.has(key) || below_r >= Config.GRID_ROWS) continue;
-
-            const belowType = getBlockType(below_c, below_r);
-            // Only replace Dirt or Stone below
-            if (belowType === Config.BLOCK_DIRT || belowType === Config.BLOCK_STONE) {
-                 // Check if the block directly *above* this one is going to be sand (or already is)
-                 // This prevents sand forming under overhangs where water isn't directly above.
-                 const aboveKey = `${below_r - 1},${below_c}`;
-                 if (changedCoords.has(aboveKey)) {
-                     finalChanges.push({ r: below_r, c: below_c, type: Config.BLOCK_SAND });
-                     changedCoords.add(key);
-                 } else {
-                     break; // Stop going deeper if the block above isn't sand
-                 }
-            } else {
-                break; // Stop going deeper if it hits Air, Water, or something else
-            }
-        }
-    }
-
-    // Apply all collected changes using setBlock
-    finalChanges.forEach(change => {
-        // Double check bounds just in case, though logic should prevent OOB
-        if (change.r >= 0 && change.r < Config.GRID_ROWS && change.c >= 0 && change.c < Config.GRID_COLS) {
-           // Use setBlock to ensure correct block object creation
-           setBlock(change.c, change.r, change.type);
-        }
-    });
-    console.log(`Sand pass complete. ${finalChanges.length} blocks changed to sand.`);
-}
-
-// --- Function to fill remaining Dirt/Stone/Grass gaps below water near water ---
-function fillSubmergedSandGaps() {
-    console.log("Applying sand gap filling pass...");
-    const changesMade = []; // Optional: Track changes if needed
-    const waterLevelRow = Config.WORLD_WATER_LEVEL_ROW_TARGET;
-    const maxCheckRow = Config.GRID_ROWS; // Check all the way down
-
-    // Iterate rows from water level downwards
-    for (let r = waterLevelRow; r < maxCheckRow; r++) {
-        // Iterate columns
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-            const blockType = getBlockType(c, r);
-
-            // Is this a block that *should* potentially be sand?
-            if (blockType === Config.BLOCK_DIRT || blockType === Config.BLOCK_STONE || blockType === Config.BLOCK_GRASS) {
-                let isAdjacentToWater = false;
-                // Check 8 neighbors
-                const neighborCoords = [
-                    { nc: c, nr: r - 1 }, { nc: c, nr: r + 1 }, { nc: c - 1, nr: r }, { nc: c + 1, nr: r },
-                    { nc: c - 1, nr: r - 1 }, { nc: c + 1, nr: r - 1 }, { nc: c - 1, nr: r + 1 }, { nc: c + 1, nr: r + 1 }
-                ];
-
-                for (const { nc, nr } of neighborCoords) {
-                    // Check bounds for neighbor before getting type
-                    if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
-                        if (getBlockType(nc, nr) === Config.BLOCK_WATER) {
-                            isAdjacentToWater = true;
-                            break; // Found water, no need to check other neighbors
-                        }
-                    }
-                }
-
-                // If it was Dirt/Stone/Grass and next to Water, change it to Sand
-                if (isAdjacentToWater) {
-                    setBlock(c, r, Config.BLOCK_SAND); // Use the proper setter
-                    changesMade.push({r, c}); // Optional tracking
-                }
-            }
-        }
-    }
-    console.log(`Sand gap filling complete. ${changesMade.length} additional blocks changed to sand.`);
-}
-
 /**
  * Runs the entire world generation process, step-by-step.
  * Assumes the grid has been initialized by world-data.initializeGrid().
@@ -432,7 +349,5 @@ export function generateInitialWorld() {
     console.time("World generated in");
     generateLandmass(); // Uses the new multi-pass method
     applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
-    applySandPass(); // Original sand pass (handles thickness)
-    fillSubmergedSandGaps(); // Backup sand
     console.timeEnd("World generated in");
 }
