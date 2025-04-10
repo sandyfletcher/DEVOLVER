@@ -98,6 +98,18 @@ export const BLOCK_COLORS = {
     [BLOCK_METAL]: 'rgb(190, 190, 200)',
 };
 
+// --- Water Physics (NEW) ---
+export const WATER_GRAVITY_FACTOR = 0.4; // Reduce gravity effect
+export const WATER_HORIZONTAL_DAMPING = 0.1; // Strong horizontal drag (adjust base value, used with Math.pow)
+export const WATER_VERTICAL_DAMPING = 0.05;  // Stronger vertical drag
+export const WATER_MAX_SPEED_FACTOR = 0.6; // Reduce max horizontal speed
+export const WATER_ACCELERATION_FACTOR = 0.5; // Reduce horizontal acceleration
+export const WATER_SWIM_VELOCITY = 120;    // Initial upward speed from a swim 'stroke'
+export const WATER_MAX_SWIM_UP_SPEED = 80;  // Max speed swimming up
+export const WATER_MAX_SINK_SPEED = 100;  // Max speed falling down in water
+export const WATER_CONTINUOUS_SWIM_ACCEL = 200; // Upward acceleration while holding jump
+export const ENEMY_WATER_BUOYANCY_ACCEL = 180;
+
 // =============================================================================
 // --- Player Constants ---
 // =============================================================================

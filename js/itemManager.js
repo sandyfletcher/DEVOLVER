@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
-import * as GridCollision from './utils/gridCollision.js';
+import * as GridCollision from './utils/gridCollision.js'; // Make sure this is imported
 
 // --- Internal Item Class ---
 class Item {
@@ -25,6 +25,7 @@ class Item {
         this.isOnGround = false;
         this.bobbleOffset = Math.random() * Math.PI * 2;
         this.isActive = true;
+        this.isInWater = false; // Initialize water state flag
     }
 
     /**
@@ -33,44 +34,78 @@ class Item {
      */
     update(dt) {
         if (!this.isActive) return;
+        this.isInWater = GridCollision.isEntityInWater(this); // Detect water status first
 
-        // --- Physics Step 1: Apply Gravity ---
-        if (!this.isOnGround) {
-            this.vy += Config.GRAVITY_ACCELERATION * dt;
-            // Clamp fall speed (using general max fall speed)
-             this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
-        } else {
-            // If on ground, stop vertical velocity and apply bobbing
-            if (this.vy > 0) this.vy = 0;
-            // Use item's specific bobble speed
-            this.bobbleOffset += this.bobbleSpeed * dt;
+        // --- Get Current Physics Params ---
+        const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
+        const horizontalDampingFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : 1;
+        const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
+
+        // --- Apply Horizontal Damping (if item ever gets vx) ---
+        if (this.isInWater && Math.abs(this.vx) > 0.1) {
+            this.vx *= horizontalDampingFactor;
+            if (Math.abs(this.vx) < 1) this.vx = 0;
         }
 
-        // --- Calculate Potential Movement This Frame ---
-        const potentialMoveX = this.vx * dt; // Usually 0 for items
+        // --- Physics Step 1: Apply Gravity & Handle Bobbing ---
+        if (!this.isOnGround) {
+            // Apply potentially reduced gravity if not on ground
+            this.vy += currentGravity * dt;
+        } else {
+            // On ground logic: reset vy and handle bobbing
+            if (this.vy > 0) this.vy = 0;
+
+            // Only bob if NOT in water (Option 1 from previous discussion)
+            if (!this.isInWater) {
+                this.bobbleOffset += this.bobbleSpeed * dt;
+            } else {
+                // Optionally reset or freeze bobble offset if you want it static in water
+                 // this.bobbleOffset = 0; // Freeze bobble
+            }
+        }
+
+        // --- Apply Vertical Damping & Clamp Speed ---
+        if (this.isInWater) {
+            this.vy *= verticalDampingFactor;
+            this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED); // Clamp sink speed
+        } else {
+             // Clamp fall speed in air
+             this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
+        }
+
+
+        // --- Calculate Potential Movement ---
+        const potentialMoveX = this.vx * dt;
         const potentialMoveY = this.vy * dt;
 
         // --- Physics Step 2: Grid Collision Detection & Resolution ---
         const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
         this.isOnGround = collisionResult.isOnGround;
 
+        // Zero out velocity if collision occurred
+        if (collisionResult.collidedX) this.vx = 0;
+        if (collisionResult.collidedY) {
+            if (Math.abs(this.vy) > 0.1) {
+                this.vy = 0;
+            }
+         }
+
         // --- Despawn/Remove if falls out of world ---
         if (this.y > Config.CANVAS_HEIGHT + 100) {
-             // console.warn(`Item ${this.type} fell out of bounds.`);
              this.isActive = false;
         }
-    }
+    } // End of update method
 
     draw(ctx) {
         if (!this.isActive || !ctx) return;
         if (isNaN(this.x) || isNaN(this.y)) {
-             console.error(`>>> Item DRAW ERROR: NaN coordinates! type: ${this.type}, x: ${this.x}, y: ${this.y}`);
+             console.error(`>>> Item DRAW ERROR: NaN coordinates! type: ${this.type}`);
              return;
         }
 
         let drawY = this.y;
-        // Apply bobble effect only when on ground, using item's specific amount
-        if (this.isOnGround) {
+        // Apply bobble effect only when on ground AND not in water (using Option 1)
+        if (this.isOnGround && !this.isInWater) {
              drawY += Math.sin(this.bobbleOffset) * this.bobbleAmount * this.height;
         }
 
@@ -88,48 +123,30 @@ class Item {
             height: this.height
         };
     }
-}
+} // End of Item Class
 
 // --- Module State ---
 let items = []; // Array containing active Item instances
 
 // --- Public Functions ---
-// Initializes the Item Manager, clearing existing items and spawning the initial sword.
 export function init() {
     items = [];
-// Spawn initial weapons (adjust positions as needed)
     const startY = (Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT) - Config.SWORD_HEIGHT - (8 * Config.BLOCK_HEIGHT);
-    const startY2 = startY - Config.BLOCK_HEIGHT * 5; // Place spear slightly higher/different spot
-// Spawn Sword
-    spawnItem(
-        Config.CANVAS_WIDTH * 0.4 - Config.SWORD_WIDTH / 2, // Spawn left of center
-        startY,
-        Config.WEAPON_TYPE_SWORD // Use constant
-    );
-// Spawn Spear
-    spawnItem(
-        Config.CANVAS_WIDTH * 0.6 - Config.SPEAR_WIDTH / 2, // Spawn right of center
-        startY2,
-        Config.WEAPON_TYPE_SPEAR // Use constant
-    );
+    const startY2 = startY - Config.BLOCK_HEIGHT * 5;
+    spawnItem(Config.CANVAS_WIDTH * 0.4 - Config.SWORD_WIDTH / 2, startY, Config.WEAPON_TYPE_SWORD);
+    spawnItem(Config.CANVAS_WIDTH * 0.6 - Config.SPEAR_WIDTH / 2, startY2, Config.WEAPON_TYPE_SPEAR);
     console.log("Item Manager initialized with Sword and Spear.");
 }
 
-// Spawn a new item based on parameters passed in from ITEM_CONFIG.
 export function spawnItem(x, y, type) {
-// Use the centralized ITEM_CONFIG from Config
     const itemConfig = Config.ITEM_CONFIG[type];
-// Validate type and find configuration
     if (!itemConfig) {
-        console.warn(`ItemManager: Attempted to spawn unknown item type "${type}". Spawning skipped.`);
+        console.warn(`ItemManager: Attempted to spawn unknown item type "${type}".`);
         return;
     }
-// Determining location? uncertain 
     const spawnX = typeof x === 'number' && !isNaN(x) ? x : Config.CANVAS_WIDTH / 2;
     const spawnY = typeof y === 'number' && !isNaN(y) ? y : 50;
-// Pass the config
-    const newItem = new Item(spawnX, spawnY, type, itemConfig); 
-// Item spawns
+    const newItem = new Item(spawnX, spawnY, type, itemConfig);
     if (newItem) {
         items.push(newItem);
     }
@@ -137,18 +154,17 @@ export function spawnItem(x, y, type) {
 
 /**
  * Updates all active items' physics and state.
- * Removes items marked as inactive (e.g., fell out of world).
+ * Removes items marked as inactive.
  * @param {number} dt - Delta time.
  */
 export function update(dt) {
-    // Iterate backwards for safe removal during the loop
+    // The main update loop now just calls item.update()
     for (let i = items.length - 1; i >= 0; i--) {
         const item = items[i];
-        item.update(dt); // Update physics and check internal state
+        item.update(dt); // Item's own update handles water physics
 
-        // Remove inactive items
         if (!item.isActive) {
-            items.splice(i, 1); // Remove item from array
+            items.splice(i, 1);
         }
     }
 }
@@ -159,14 +175,12 @@ export function update(dt) {
  */
 export function draw(ctx) {
     items.forEach(item => {
-        // The item's draw method already checks isActive
-        item.draw(ctx);
+        item.draw(ctx); // Item's own draw method checks isActive
     });
 }
 
 /**
  * Returns the array of all current item instances.
- * Used by CollisionManager.
  * @returns {Array<Item>}
  */
 export function getItems() {
@@ -175,11 +189,8 @@ export function getItems() {
 
 /**
  * Removes a specific item instance from the manager.
- * Typically called by CollisionManager after a player picks up an item.
  * @param {Item} itemToRemove - The specific item instance to remove.
  */
 export function removeItem(itemToRemove) {
-    // Filter creates a new array excluding the itemToRemove
     items = items.filter(item => item !== itemToRemove);
-    // console.log(`Removed item: ${itemToRemove.type}`);
 }

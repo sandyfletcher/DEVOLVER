@@ -3,12 +3,32 @@
 // root/js/utils/gridCollision.js - Handles Entity vs World Grid Collision Logic
 // -----------------------------------------------------------------------------
 
-// console.log("utils/gridCollision loaded");
-
 import * as Config from '../config.js';
 import * as WorldData from './worldData.js';
 
 // --- Collision Helper Functions --- 
+
+/**
+ * Checks if an entity is significantly submerged in water.
+ * @param {object} entity - Entity with x, y, width, height.
+ * @returns {boolean} True if considered 'in water'.
+ */
+export function isEntityInWater(entity) {
+    // Check multiple points: center of feet and center of body
+    const checkYFeet = entity.y + entity.height - 1; // Point just above the bottom edge
+    const checkYCenter = entity.y + entity.height * 0.5;
+    const checkXCenter = entity.x + entity.width * 0.5;
+
+    const { col: feetCol, row: feetRow } = worldToGridCoords(checkXCenter, checkYFeet);
+    const { col: centerCol, row: centerRow } = worldToGridCoords(checkXCenter, checkYCenter);
+
+    // Consider in water if either the feet or center point is in a water block
+    const feetInWater = WorldData.getBlockType(feetCol, feetRow) === Config.BLOCK_WATER;
+    const centerInWater = WorldData.getBlockType(centerCol, centerRow) === Config.BLOCK_WATER;
+
+    return feetInWater || centerInWater; // Adjust logic: maybe require both? or more points?
+}
+
 
 /**
  * Checks if a block at given grid coordinates is solid for collision purposes.

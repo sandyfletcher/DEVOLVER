@@ -16,6 +16,7 @@ export class Player {
         this.vx = 0; // Velocity in pixels per second
         this.vy = 0; // Velocity in pixels per second
         this.isOnGround = false;
+        this.isInWater = false;
         // --- Weapon & Inventory State ---
         this.hasSword = false;
         this.hasSpear = false;
@@ -40,6 +41,15 @@ export class Player {
      * @param {object} inputState - Object containing input flags { left, right, jump, attack }.
      */
     update(dt, inputState) {
+        // --- 1. Update Water Status ---
+        this.isInWater = GridCollision.isEntityInWater(this); // Call the detection function
+    
+        // --- Get Current Physics Params (modified if in water) ---
+        const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
+        const currentMaxSpeedX = this.isInWater ? Config.PLAYER_MAX_SPEED_X * Config.WATER_MAX_SPEED_FACTOR : Config.PLAYER_MAX_SPEED_X;
+        const currentAcceleration = this.isInWater ? Config.PLAYER_MOVE_ACCELERATION * Config.WATER_ACCELERATION_FACTOR : Config.PLAYER_MOVE_ACCELERATION;
+        const horizontalDampingFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : 1; // 1 means no damping in air
+        const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
 
         // --- Update Timers (Attack, Invulnerability) ---
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
@@ -57,42 +67,58 @@ export class Player {
             }
         }
 
-        // --- Input Handling & Acceleration ---
-        let targetVx = 0;
-        if (inputState.left && !inputState.right) {
-            targetVx = -Config.PLAYER_MAX_SPEED_X;
-            this.lastDirection = -1;
-        } else if (inputState.right && !inputState.left) {
-            targetVx = Config.PLAYER_MAX_SPEED_X;
-            this.lastDirection = 1;
-        }
+    // --- Input Handling & Acceleration (Use modified params) ---
+    let targetVx = 0;
+    if (inputState.left && !inputState.right) {
+        targetVx = -currentMaxSpeedX; // Use water/air max speed
+        this.lastDirection = -1;
+    } else if (inputState.right && !inputState.left) {
+        targetVx = currentMaxSpeedX; // Use water/air max speed
+        this.lastDirection = 1;
+    }
 
-        // Apply acceleration towards target velocity
-        if (targetVx !== 0) {
-            // Accelerate
-            this.vx += Math.sign(targetVx) * Config.PLAYER_MOVE_ACCELERATION * dt;
-            // Clamp to max speed, preserving direction
-            if (Math.abs(this.vx) > Config.PLAYER_MAX_SPEED_X) {
-                this.vx = Math.sign(this.vx) * Config.PLAYER_MAX_SPEED_X;
-            }
-        } else {
-            // Apply friction when no movement input
-            const frictionFactor = Math.pow(Config.PLAYER_FRICTION_BASE, dt);
-            this.vx *= frictionFactor;
-            // Stop completely if velocity is very small
-            if (Math.abs(this.vx) < 1) {
-                this.vx = 0;
-            }
+    // Apply acceleration towards target velocity
+    if (targetVx !== 0) {
+        this.vx += Math.sign(targetVx) * currentAcceleration * dt; // Use water/air accel
+        // Clamp to max speed, preserving direction
+        if (Math.abs(this.vx) > currentMaxSpeedX) {
+            this.vx = Math.sign(this.vx) * currentMaxSpeedX;
         }
-
-        // Jumping (Apply initial velocity impulse)
-        if (inputState.jump && this.isOnGround) {
-            this.vy = -Config.PLAYER_JUMP_VELOCITY; // Use jump velocity directly
-            this.isOnGround = false; // Instantly airborne after jump press
-            // Optional: Add variable jump height logic here if desired
+    } else {
+        // Apply friction OR water damping
+        if (!this.isInWater && this.isOnGround) { // Air friction only on ground
+             const frictionFactor = Math.pow(Config.PLAYER_FRICTION_BASE, dt);
+             this.vx *= frictionFactor;
         }
+        // Stop completely if velocity is very small (both air/water)
+        if (Math.abs(this.vx) < 1) {
+            this.vx = 0;
+        }
+    }
+    // Apply horizontal water damping regardless of input if in water
+    if (this.isInWater) {
+        this.vx *= horizontalDampingFactor;
+    }
 
-        // Attack Triggering
+    // --- Jumping / Swimming ---
+    if (inputState.jump) { // Check jump press
+        if (this.isOnGround && !this.isInWater) { // Normal Jump from ground
+            this.vy = -Config.PLAYER_JUMP_VELOCITY;
+            this.isOnGround = false;
+        } else if (this.isInWater) { // Swim Stroke
+            this.vy = -Config.WATER_SWIM_VELOCITY; // Apply upward swim impulse
+            // Optional: If implementing hold-to-swim, don't consume jump input here
+        }
+        inputState.jump = false; // Consume jump press for impulse jump/swim
+    }
+
+    // ---  Continuous Swim ---
+
+    if (inputState.jumpHeld && this.isInWater) { // Assuming input.js provides jumpHeld
+        this.vy -= Config.WATER_CONTINUOUS_SWIM_ACCEL * dt; // Apply upward force
+    }
+
+                 // Attack Triggering
         // Check if we *can* attack (i.e., not unarmed) before checking cooldown etc.
         if (inputState.attack && this.canAttack() && this.attackCooldown <= 0 && !this.isAttacking) {
             this.isAttacking = true;
@@ -112,33 +138,46 @@ export class Player {
             inputState.attack = false; // Consume attack input even if on cooldown/unarmed
         }
 
-        // --- Physics Step 1: Apply Forces (Gravity) ---
-        // Apply gravity acceleration if airborne
-        if (!this.isOnGround) {
-            this.vy += Config.GRAVITY_ACCELERATION * dt;
-            // Clamp fall speed
-            if (this.vy > Config.MAX_FALL_SPEED) {
-                this.vy = Config.MAX_FALL_SPEED;
-            }
-        } else {
-            // If on ground and somehow moving down slightly (e.g., landed on slope), clamp vy
-            if (this.vy > 0) {
-                 this.vy = 0;
-            }
+
+    // --- Physics Step 1: Apply Forces (Gravity) ---
+    // Only apply gravity if NOT on ground (standard)
+    // Gravity value is already adjusted based on water state
+    if (!this.isOnGround) {
+        this.vy += currentGravity * dt;
+    } else if (this.vy > 0) {
+        // If on ground and moving down slightly, clamp vy
+        this.vy = 0;
+    }
+
+    // --- Apply Vertical Damping in Water ---
+    if (this.isInWater) {
+         this.vy *= verticalDampingFactor;
+         // Clamp vertical speed in water
+         this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED); // Max upward speed
+         this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);   // Max downward speed (sinking)
+    } else {
+        // Clamp fall speed in air
+        if (this.vy > Config.MAX_FALL_SPEED) {
+             this.vy = Config.MAX_FALL_SPEED;
         }
+    }
 
-        // --- Calculate maximum distance the player *would* move this frame if no collisions occurred  ---
-        const potentialMoveX = this.vx * dt;
-        const potentialMoveY = this.vy * dt;
+    // --- Calculate Potential Movement ---
+    const potentialMoveX = this.vx * dt;
+    const potentialMoveY = this.vy * dt;
 
-        // --- Physics Step 2: Grid Collision ---
-        // Pass the *potential* movement distances for THIS FRAME to the collision function.
-        // The collision function MUST be updated to use these values.
-        const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+    // --- Physics Step 2: Grid Collision (Unchanged - water isn't solid) ---
+    const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+    this.isOnGround = collisionResult.isOnGround; // Update ground status
 
-        // Update ground status based on the collision result for the *next* frame's logic
-        this.isOnGround = collisionResult.isOnGround;
-        // console.log(`AFTER Col -> x: ${this.x.toFixed(2)}, y: ${this.y.toFixed(2)}, vx: ${this.vx.toFixed(2)}, vy: ${this.vy.toFixed(2)}, collidedY: ${collisionResult.collidedY}, onGround: ${this.isOnGround}`);
+    // Zero out velocity if collision occurred (Standard logic)
+    if (collisionResult.collidedX) this.vx = 0;
+    if (collisionResult.collidedY) {
+        // Only zero vy if it wasn't already zeroed by damping/clamping
+        if (Math.abs(this.vy) > 0.1) { // Check magnitude
+           this.vy = 0;
+        }
+    }
 
         // --- Screen Boundary Checks ---
         if (this.x < 0) {
