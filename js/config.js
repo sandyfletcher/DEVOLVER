@@ -151,6 +151,11 @@ export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward 
 export const DEFAULT_ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);   // Approx 6px
 export const DEFAULT_ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT); // Approx 9px
 
+// --- General Enemy Config ---
+export const MAX_ENEMIES = 100;
+export const ENEMY_SPAWN_EDGE_MARGIN = 80; // Pixels away from screen edge to attempt spawning
+export const ENEMY_FLASH_DURATION = 0.15; // Seconds enemy flashes when hit
+
 // --- Enemy Type Identifiers ---
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
@@ -162,10 +167,6 @@ export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // How close before pushing (factor of width)
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 60;     // How hard they push (pixels/sec velocity boost)
 
-// --- General Enemy Config ---
-export const MAX_ENEMIES = 100;
-export const ENEMY_SPAWN_EDGE_MARGIN = 80; // Pixels away from screen edge to attempt spawning
-export const ENEMY_FLASH_DURATION = 0.15; // Seconds enemy flashes when hit
 
 // --- Detailed Enemy Stats ---
 // This structure allows adding many new enemy types easily by defining their properties here.
@@ -178,13 +179,15 @@ export const ENEMY_STATS = {
         color: 'rgb(100, 120, 80)',       // Muddy green/brown color
         width: DEFAULT_ENEMY_WIDTH,       // Use default size for now
         height: DEFAULT_ENEMY_HEIGHT,
-        maxSpeedX: 20,                    // Very slow horizontal movement during flops
         health: 1,                        // Very fragile
         contactDamage: 0,                 // <-- Minimal damage (0 for now, can adjust)
         applyGravity: true,
         gravityFactor: 1.0,
-        canJump: true,                    // Needs to jump to "flop"
+        maxSpeedX: 15, // Reduced land speed example
+        canJump: true, // Keep the land jump for flopping
         jumpVelocity: PLAYER_JUMP_VELOCITY * 0.4, // Weak jump/flop strength
+        canSwim: true, // Good in water
+        canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2, // Maybe slightly more space? Optional.
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.8, // Less pushy? Optional.
         dropTable: [],                    // No drops for the basic version
@@ -202,8 +205,10 @@ export const ENEMY_STATS = {
         contactDamage: 10,                 // Damage dealt on player collision
         applyGravity: true,               // Does gravity affect this enemy?
         gravityFactor: 1.0,               // Multiplier for gravity (1.0 = normal)
-        canJump: false,                   // Can this enemy initiate a jump?
-        jumpVelocity: 0,                  // Initial jump speed if canJump is true
+        canJump: true,                   // Can this enemy initiate a jump?
+        jumpVelocity: 0.4,                  // Initial jump speed if canJump is true
+        canSwim: false, // Default land creature
+        canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR, // Use default separation
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
         dropTable: [                      // Loot drops on death
@@ -234,6 +239,8 @@ export const ENEMY_STATS = {
         gravityFactor: 1.0,
         canJump: true,                   // Chasers can jump over small obstacles
         jumpVelocity: PLAYER_JUMP_VELOCITY * 0.75, // Jump strength relative to player
+        canSwim: false, // NEW: Becomes encumbered in water
+        canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
         dropTable: [
@@ -247,6 +254,22 @@ export const ENEMY_STATS = {
         // attackRange: 5, // Short melee range
         // attackCooldown: 1.5,
     },
+//     [ENEMY_TYPE_FLYER]: {
+//         displayName: "Flyer",
+//         aiType: 'flyPatrol', // A new AI strategy
+//         color: 'lightblue',
+//         width: DEFAULT_ENEMY_WIDTH,
+//         height: DEFAULT_ENEMY_HEIGHT * 0.8, // Shorter?
+//         maxSpeedX: 70,
+//         maxSpeedY: 50, // Flyers need vertical speed control
+//         health: 15,
+//         contactDamage: 5,
+//         applyGravity: false, // IMPORTANT for default state if canFly is true
+//         canJump: false,
+//         canSwim: false,
+//         canFly: true, // The key flag
+//         dropTable: [],
+//     }
     // --- Template for a new enemy type ---
     /*
     ['new_enemy_type_key']: {

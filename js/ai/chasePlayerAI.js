@@ -3,78 +3,89 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from '../config.js';
-// No direct collision checking needed here usually, relies on Enemy class physics
 
 export class ChasePlayerAI {
-    /**
-     * Constructor for the ChasePlayerAI strategy.
-     * @param {Enemy} enemy - A reference to the enemy instance using this strategy.
-     */
     constructor(enemy) {
-        this.enemy = enemy; // Store reference to the enemy owning this AI
-        this.wantsToJump = false; // Flag to signal jump intent after collision
+        this.enemy = enemy;
+        this.wantsToJumpFromCollision = false; // Flag for ground collision jumps
     }
 
-    /**
-     * Decides the enemy's movement intent based on player position.
-     * @param {object | null} playerPosition - Current player {x, y} or null.
-     * @param {Array<Enemy>} allEnemies - List of all active enemies (for potential future use).
-     * @param {number} dt - Delta time.
-     * @returns {object} Movement decision { targetVx: number, jump: boolean }.
-     */
     decideMovement(playerPosition, allEnemies, dt) {
         let targetVx = 0;
-        let jump = false; // Jump is usually triggered by reactToCollision
+        let targetVy = 0; // Initialize targetVy
+        let jumpRequest = false; // For non-swimmer jumps/strokes
 
-        // --- Target Selection ---
         if (!playerPosition) {
-            // If player doesn't exist or is dead, maybe default to center seeking or idle?
-            // For now, just stop horizontal movement if no player target.
+            // No player? Default behavior (e.g., stop, or could seek center)
             targetVx = 0;
+            targetVy = 0; // Stop vertical movement if swimming/flying
         } else {
-            // Target the center of the player
+            // --- Horizontal Targeting (Same as before) ---
             const playerCenterX = playerPosition.x + (Config.PLAYER_WIDTH / 2);
             const enemyCenterX = this.enemy.x + this.enemy.width / 2;
-            const directionToPlayer = Math.sign(playerCenterX - enemyCenterX);
+            targetVx = Math.sign(playerCenterX - enemyCenterX) * this.enemy.stats.maxSpeedX;
 
-            // Set target velocity based on direction and enemy's max speed
-            targetVx = directionToPlayer * this.enemy.maxSpeedX; // Use speed from enemy's stats
+            // --- Vertical Targeting & Jump Requests ---
+            const playerCenterY = playerPosition.y + (Config.PLAYER_HEIGHT / 2);
+            const enemyCenterY = this.enemy.y + this.enemy.height / 2;
+            const dy = playerCenterY - enemyCenterY;
 
-            // --- Predictive Jump (Optional - More Complex) ---
-            // Could check for obstacles ahead here, but reacting after collision is simpler.
+            if (this.enemy.canFly && !this.enemy.isOnGround) { // --- FLYING LOGIC ---
+                // Target player's vertical position directly
+                // Use a threshold to prevent jittering when aligned
+                if (Math.abs(dy) > this.enemy.height * 0.2) {
+                    targetVy = Math.sign(dy) * this.enemy.stats.maxSpeedY;
+                } else {
+                    targetVy = 0; // Hover vertically if close enough
+                }
+                jumpRequest = false; // Flyers don't use the 'jump' flag
+
+            } else if (this.enemy.canSwim && this.enemy.isInWater) { // --- SWIMMING LOGIC ---
+                 // Target player's vertical position directly
+                if (Math.abs(dy) > this.enemy.height * 0.3) { // Wider threshold in water?
+                    targetVy = Math.sign(dy) * this.enemy.stats.maxSpeedY; // Use maxSpeedY for swimming too
+                } else {
+                    targetVy = 0;
+                }
+                jumpRequest = false; // Swimmers don't use the 'jump' flag
+
+            } else { // --- STANDARD GROUND / NON-SWIMMER IN WATER LOGIC ---
+                targetVy = 0; // Let physics handle vertical unless jumping
+
+                // 1. Check for ground jump request triggered by collision reaction
+                if (this.wantsToJumpFromCollision && !this.enemy.isInWater && this.enemy.isOnGround && this.enemy.stats.canJump) {
+                    jumpRequest = true;
+                    this.wantsToJumpFromCollision = false; // Consume the flag
+                }
+                // 2. Check for water stroke request (for NON-swimmers that CAN jump)
+                else if (this.enemy.isInWater && !this.enemy.canSwim && this.enemy.stats.canJump) {
+                    const playerBottom = playerPosition.y + Config.PLAYER_HEIGHT;
+                    const enemyTop = this.enemy.y;
+                    const heightDifferenceThreshold = this.enemy.height * 0.75;
+                    if (playerBottom < enemyTop - heightDifferenceThreshold) {
+                        // Player is sufficiently above, request a water stroke
+                        jumpRequest = true;
+                    }
+                }
+            }
         }
 
-        // Check if we wanted to jump from the *last* frame's collision reaction
-        if (this.wantsToJump && this.enemy.isOnGround && this.enemy.stats.canJump) {
-            jump = true; // Signal the jump action to Enemy.update
-            this.wantsToJump = false; // Consume the flag
-        }
-
-        return { targetVx, jump }; // Return the calculated movement intent
+        // Return the calculated movement intent
+        // Swimmers/Flyers use targetVy, others use jump flag + physics
+        return { targetVx, targetVy, jump: jumpRequest };
     }
 
-    /**
-     * Allows the AI to react after physics collisions have been resolved for the frame.
-     * @param {object} collisionResult - The result from GridCollision.collideAndResolve.
-     *                                   { collidedX: boolean, collidedY: boolean, isOnGround: boolean, didStepUp: boolean }
-     */
     reactToCollision(collisionResult) {
-        // --- Jump Reaction ---
-        // If we hit a wall horizontally, are capable of jumping, and are on the ground,
-        // signal the desire to jump on the *next* frame.
-        if (collisionResult.collidedX && this.enemy.stats.canJump && this.enemy.isOnGround) {
-            // Set a flag indicating the desire to jump.
-            // The jump itself will be initiated in decideMovement() on the next frame
-            // if the enemy is still on the ground then.
-             this.wantsToJump = true;
-             // console.log(`${this.enemy.displayName} wants to jump after hitting wall.`);
+        // --- Ground Jump Reaction (Only for non-flyers/non-swimmers on ground) ---
+        if (collisionResult.collidedX && this.enemy.isOnGround &&
+            !this.enemy.isInWater && !this.enemy.canFly && this.enemy.stats.canJump) {
+           this.wantsToJumpFromCollision = true;
         } else if (!this.enemy.isOnGround) {
-             // If airborne, clear any previous jump intent (e.g., hit head mid-jump)
-             this.wantsToJump = false;
+           // If airborne or in water, clear the ground jump request flag
+           this.wantsToJumpFromCollision = false;
         }
 
-        // Other potential reactions:
-        // - If bumped head (collidedY=true, vy was < 0), maybe change state?
-        // - If landed (collidedY=true, vy was > 0), maybe trigger an attack or different behavior?
+        // Optional: Flyers/Swimmers could react to collisions differently
+        // e.g., if (this.enemy.canFly && collisionResult.collidedY) { /* adjust targetVy? */ }
     }
 }

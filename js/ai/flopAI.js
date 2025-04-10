@@ -5,88 +5,131 @@ import * as Config from '../config.js';
 export class FlopAI {
     constructor(enemy) {
         this.enemy = enemy;
+        // --- Land Flopping State ---
+        this.landJumpCooldown = 0;
+        this.landActionTimer = 0;
+        this.landTargetVx = 0;
+        // --- Water Swimming State (Example) ---
+        this.swimTargetChangeCooldown = 0; // Timer to change swim direction
+        this.swimTargetVx = 0;
+        this.swimTargetVy = 0;
 
-        // Timers and state for flopping behavior
-        this.jumpCooldown = 0; // Time until the next jump attempt
-        this.targetVx = 0;     // Horizontal velocity during the current flop/rest
-        this.actionTimer = 0;  // Duration of the current action (moving or resting after jump)
-
-        this.setRandomCooldown(); // Initialize first cooldown
+        this.setRandomLandCooldown();
     }
 
-    setRandomCooldown() {
-        // Set a random time until the next flop action (e.g., 1 to 3 seconds)
-        this.jumpCooldown = 1.0 + Math.random() * 2.0;
-        this.targetVx = 0; // Reset target velocity when waiting
-        this.actionTimer = 0; // Not currently performing an action
+    setRandomLandCooldown() {
+        this.landJumpCooldown = 1.0 + Math.random() * 2.0;
+        this.landTargetVx = 0;
+        this.landActionTimer = 0;
     }
+
+    setRandomSwimTarget(playerPosition) {
+         this.swimTargetChangeCooldown = 1.5 + Math.random() * 1.0; // Change target every 1.5-2.5s
+
+         // Example: Swim towards player or center? Bias towards horizontal?
+         let targetX = Config.CANVAS_WIDTH / 2;
+         let targetY = Config.WORLD_WATER_LEVEL_ROW_TARGET * Config.BLOCK_HEIGHT; // Aim for water level?
+
+         if (playerPosition) {
+             targetX = playerPosition.x + Config.PLAYER_WIDTH / 2;
+             // Aim slightly below player if player is also in water?
+             targetY = this.enemy.isInWater ? playerPosition.y + Config.PLAYER_HEIGHT * 0.8 : targetY;
+         }
+
+         const dx = targetX - (this.enemy.x + this.enemy.width / 2);
+         const dy = targetY - (this.enemy.y + this.enemy.height / 2);
+         const dist = Math.sqrt(dx*dx + dy*dy);
+
+         const swimSpeed = this.enemy.stats.maxSpeedX * 1.5; // Example: Swim faster than flop
+         const swimSpeedY = this.enemy.stats.maxSpeedY * 0.8;
+
+         if (dist > 5) {
+             this.swimTargetVx = (dx / dist) * swimSpeed;
+             this.swimTargetVy = (dy / dist) * swimSpeedY; // Use separate Y speed limit
+         } else {
+             this.swimTargetVx = 0;
+             this.swimTargetVy = 0;
+         }
+    }
+
 
     decideMovement(playerPosition, allEnemies, dt) {
-        this.jumpCooldown -= dt;
-        this.actionTimer -= dt;
-
+        let targetVx = 0;
+        let targetVy = 0;
         let jump = false;
-        let currentTargetVx = this.targetVx; // Maintain current flop direction if actionTimer > 0
 
-        // Time to try a new flop? Only if on the ground and previous action finished
-        if (this.jumpCooldown <= 0 && this.enemy.isOnGround && this.actionTimer <= 0) {
-            jump = true;
+        if (this.enemy.isInWater && this.enemy.canSwim) {
+            // --- SWIMMING LOGIC ---
+            this.swimTargetChangeCooldown -= dt;
+            if (this.swimTargetChangeCooldown <= 0) {
+                this.setRandomSwimTarget(playerPosition);
+            }
+            targetVx = this.swimTargetVx;
+            targetVy = this.swimTargetVy;
+            jump = false; // Don't use jump flag for swimming
 
-            // --- START: Biased Direction Logic ---
-            const enemyCenterX = this.enemy.x + this.enemy.width / 2;
-            const screenCenterX = Config.CANVAS_WIDTH / 2;
+            // Reset land timers if we just entered water
+            this.landJumpCooldown = 0.1;
+            this.landActionTimer = 0;
 
-            // Determine the direction towards the center
-            // 1 means move right (enemy is left of center)
-            // -1 means move left (enemy is right of center)
-            const directionToCenter = (enemyCenterX < screenCenterX) ? 1 : -1;
+        } else if (!this.enemy.isInWater && this.enemy.isOnGround) {
+            // --- LAND FLOPPING LOGIC ---
+            this.landJumpCooldown -= dt;
+            this.landActionTimer -= dt;
 
-            // Set the probability of moving towards the center (e.g., 0.75 = 75% chance)
-            const centerBiasProbability = 0.75;
+            if (this.landJumpCooldown <= 0 && this.landActionTimer <= 0) {
+                jump = true; // Signal flop jump
 
-            // Roll the dice
-            const roll = Math.random();
+                const enemyCenterX = this.enemy.x + this.enemy.width / 2;
+                const screenCenterX = Config.CANVAS_WIDTH / 2;
+                const directionToCenter = (enemyCenterX < screenCenterX) ? 1 : -1;
+                const centerBiasProbability = 0.75;
+                const roll = Math.random();
+                const chosenDirection = (roll < centerBiasProbability) ? directionToCenter : -directionToCenter;
+                const flopForce = this.enemy.stats.maxSpeedX * (0.3 + Math.random() * 0.7); // Use LAND speed
 
-            // Choose the final direction based on the probability roll
-            const chosenDirection = (roll < centerBiasProbability)
-                ? directionToCenter        // Go towards center
-                : -directionToCenter;      // Go away from center
+                this.landTargetVx = chosenDirection * flopForce;
+                targetVx = this.landTargetVx;
 
-            // --- END: Biased Direction Logic ---
+                this.setRandomLandCooldown();
+                this.landActionTimer = 0.3 + Math.random() * 0.4;
+
+            } else if (this.landActionTimer > 0) {
+                targetVx = this.landTargetVx; // Continue moving during flop action
+            } else {
+                targetVx = 0; // Waiting for cooldown
+            }
+
+            // Reset swim timers if we just landed
+            this.swimTargetChangeCooldown = 0.1;
 
 
-            // Decide the force/speed of this flop (same as before)
-            const flopForce = this.enemy.maxSpeedX * (0.3 + Math.random() * 0.7);
-
-            // Apply the chosen direction and force
-            currentTargetVx = chosenDirection * flopForce;
-
-
-            // Reset cooldown for the *next* flop
-            this.setRandomCooldown();
-            // Set how long this flop's horizontal movement should persist (short duration)
-            this.actionTimer = 0.3 + Math.random() * 0.4; // Flop lasts for 0.3-0.7 seconds
-            this.targetVx = currentTargetVx; // Store the target velocity for the duration
-
-        } else if (this.actionTimer <= 0) {
-            // If not jumping and action timer expired, stop moving horizontally
-            this.targetVx = 0;
-            currentTargetVx = 0;
+        } else {
+             // --- AIRBORNE LOGIC (Applies after flop jump) ---
+             // Let gravity handle vertical movement (Enemy.update)
+             // Maintain horizontal velocity from flop?
+             if (this.landActionTimer > 0) {
+                  this.landActionTimer -= dt;
+                  targetVx = this.landTargetVx;
+             } else {
+                 targetVx = 0;
+             }
+             jump = false;
         }
-        // If actionTimer is still > 0, currentTargetVx will retain the value from this.targetVx set during the jump
 
-        // Return the decision: target horizontal speed and jump command
-        return { targetVx: currentTargetVx, jump: jump };
+        return { targetVx, targetVy, jump };
     }
 
     reactToCollision(collisionResult) {
-        // If it hits a wall horizontally during a flop, maybe stop the horizontal motion early
-        if (collisionResult.collidedX && this.actionTimer > 0) {
-            this.actionTimer = 0; // Stop the flop action
-            this.targetVx = 0;
-            // Optional: Could trigger the jump cooldown sooner if it hits a wall?
-            // this.jumpCooldown = 0.5 + Math.random() * 0.5; // Start cooldown for next flop sooner
+        // Reset land flop horizontal movement if hitting wall on land
+        if (collisionResult.collidedX && !this.enemy.isInWater) {
+            this.landActionTimer = 0;
+            this.landTargetVx = 0;
         }
-        // No special reaction needed for vertical collision, physics handles landing.
+        // Swimming collision? Maybe change direction?
+        if (collisionResult.collidedX || collisionResult.collidedY && this.enemy.isInWater) {
+             // Hit something while swimming, pick new target sooner
+             this.swimTargetChangeCooldown = 0;
+        }
     }
 }
