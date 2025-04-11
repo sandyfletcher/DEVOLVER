@@ -72,7 +72,7 @@ function logWorldGrid() {
         [Config.BLOCK_DIRT]: '#', // Hash for dirt
         [Config.BLOCK_GRASS]: '"', // Double quote for grass tufts
         [Config.BLOCK_STONE]: 'R', // R for Rock/Stone
-        [Config.BLOCK_WOOD_WALL]: 'P', // P for Plank/Wood Wall
+        [Config.BLOCK_WOOD]: 'P', // P for Plank/Wood
         [Config.BLOCK_METAL]: 'M', // M for Metal
         // Add mappings for any other block types you have
     };

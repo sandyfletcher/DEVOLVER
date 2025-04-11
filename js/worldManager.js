@@ -185,7 +185,7 @@ export function damageBlock(col, row, damageAmount) {
             case Config.BLOCK_DIRT:  dropType = 'dirt'; break;
             case Config.BLOCK_STONE: dropType = 'stone'; break;
             case Config.BLOCK_SAND:  dropType = 'sand'; break;
-            case Config.BLOCK_WOOD_WALL: dropType = 'wood'; break; // Example if you add wood walls later
+            case Config.BLOCK_WOOD: dropType = 'wood'; break; // Example if you add wood walls later
             // Add cases for other breakable blocks that should drop items
         }
 

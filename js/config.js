@@ -63,10 +63,10 @@ export const BLOCK_SAND = 2;
 export const BLOCK_DIRT = 3;
 export const BLOCK_GRASS = 4;
 export const BLOCK_STONE = 5;
-export const BLOCK_WOOD_WALL = 6;
+export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
-// TODO: Glass, specific ores, etc. 
+// TODO: Glass, specific ores, etc.
 
 export const INVENTORY_MATERIALS = ['wood', 'stone', 'metal', 'dirt', 'sand', 'bone'];
 
@@ -85,7 +85,7 @@ export const BLOCK_HP = {
     [BLOCK_DIRT]: 50,
     [BLOCK_GRASS]: 50,
     [BLOCK_STONE]: 300,
-    [BLOCK_WOOD_WALL]: 100,
+    [BLOCK_WOOD]: 100,
     [BLOCK_METAL]: 500,
     [BLOCK_BONE]: 120,
 }; // TODO: Add HP for other types later
@@ -98,12 +98,12 @@ export const BLOCK_COLORS = {
     [BLOCK_DIRT]: 'rgb(130, 82, 45)',
     [BLOCK_GRASS]: 'rgb(80, 180, 80)',
     [BLOCK_STONE]: 'rgb(140, 140, 140)',
-    [BLOCK_WOOD_WALL]: 'rgb(160, 110, 70)',
+    [BLOCK_WOOD]: 'rgb(160, 110, 70)',
     [BLOCK_METAL]: 'rgb(190, 190, 200)',
     [BLOCK_BONE]: 'rgb(200, 190, 170)',
 };
 
-// --- Water Physics (NEW) ---
+// --- Water Physics ---
 export const WATER_GRAVITY_FACTOR = 0.4; // Reduce gravity effect
 export const WATER_HORIZONTAL_DAMPING = 0.1; // Strong horizontal drag (adjust base value, used with Math.pow)
 export const WATER_VERTICAL_DAMPING = 0.05;  // Stronger vertical drag
@@ -121,6 +121,7 @@ export const WATER_JUMP_COOLDOWN_DURATION = 0.2; // Define the cooldown duration
 // --- Player Constants ---
 // =============================================================================
 
+// --- Size and Coordinates  ---
 export const PLAYER_WIDTH = Math.max(5, Math.floor(1.25 * BLOCK_WIDTH)); // Approx 5px (adjust if block size changes)
 export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT)); // Approx 10px (adjust if block size changes)
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
@@ -130,25 +131,12 @@ export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 export const PLAYER_INITIAL_HEALTH = 100;
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds (reduced slightly)
-// ---  Combat ---
-// NOTE: These generic attack stats remain but might not be directly used by player anymore
-//       They could be useful defaults or for other systems later.
-export const PLAYER_ATTACK_DURATION = 0.25; // seconds
-export const PLAYER_ATTACK_COOLDOWN = 0.4; // seconds
-export const PLAYER_ATTACK_DAMAGE = 10;
-export const PLAYER_ATTACK_REACH_X = Math.floor(2.25 * BLOCK_WIDTH); // Approx 9px reach horizontal offset from edge
-export const PLAYER_ATTACK_REACH_Y = 0; // Vertical offset from player center
-export const PLAYER_ATTACK_WIDTH = Math.floor(1.25 * BLOCK_WIDTH); // Approx 5px width
-export const PLAYER_ATTACK_HEIGHT = PLAYER_HEIGHT; // Same height as player for now
-export const PLAYER_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
-
-// --- Delta-Time Based Player Physics ---
+// --- Delta-Time Physics ---
 export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second
 export const PLAYER_MAX_SPEED_X = 120;     // Pixels per second
 export const PLAYER_FRICTION_BASE = 0.04;  // Base friction multiplier (Lower = stronger friction)
 export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward velocity)
-
-// --- Player Interaction Range  ---
+// ---  Interaction Range  ---
 export const PLAYER_INTERACTION_RANGE = 100; // Player range for block interaction (digging/placing)
 export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE;
 
@@ -156,32 +144,26 @@ export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INT
 // --- Enemy Constants ---
 // =============================================================================
 
-// --- Default Enemy Size ---
-export const DEFAULT_ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);   // Approx 6px
-export const DEFAULT_ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT); // Approx 9px
-
-// --- General Enemy Config ---
+// --- General Config ---
 export const MAX_ENEMIES = 100;
 export const ENEMY_SPAWN_EDGE_MARGIN = 80; // Pixels away from screen edge to attempt spawning
 export const ENEMY_FLASH_DURATION = 0.15; // Seconds enemy flashes when hit
-
-// --- Enemy Type Identifiers ---
+// --- Default  Size ---
+export const DEFAULT_ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);
+export const DEFAULT_ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT);
+// --- Type Identifiers ---
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
 // Add new type constants here: export const ENEMY_TYPE_FLYER = 'flyer';
 
 // --- Default Separation Behavior ---
-// Can be overridden in ENEMY_STATS per type
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // How close before pushing (factor of width)
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 60;     // How hard they push (pixels/sec velocity boost)
+// Can be overridden in ENEMY_STATS per type
 
-
-// --- Detailed Enemy Stats ---
-// This structure allows adding many new enemy types easily by defining their properties here.
-// The Enemy class constructor and AI Strategies will read from this configuration.
-export const ENEMY_STATS = {
-
+// --- Detailed Stats ---
+export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read from this configuration.
     [ENEMY_TYPE_TETRAPOD]: {
         displayName: "Tetrapod",
         aiType: 'flopAI',                 // <-- Link to the new AI strategy
@@ -201,10 +183,8 @@ export const ENEMY_STATS = {
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.8, // Less pushy? Optional.
         dropTable: [
                 { type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }, // Change to drop bone
-            ],     
+            ],
     },
-
-
     [ENEMY_TYPE_CENTER_SEEKER]: {
         displayName: "Seeker",              // For potential UI/debugging
         aiType: 'seekCenter',             // Key to match an AI Strategy class (to be implemented)
@@ -224,7 +204,7 @@ export const ENEMY_STATS = {
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
         dropTable: [
             { type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }, // Change to drop bone
-        ],    
+        ],
         // --- Future properties ---
         // attackType: 'none', // 'melee', 'ranged', 'aura', 'special'
         // attackDamage: 0,
@@ -277,105 +257,80 @@ export const ENEMY_STATS = {
 //         canSwim: false,
 //         canFly: true, // The key flag
 //         dropTable: [],
-//     }
-    // --- Template for a new enemy type ---
-    /*
-    ['new_enemy_type_key']: {
-        displayName: "New Enemy Name",
-        aiType: 'newAiStrategyKey',
-        color: 'rgb(x, y, z)',
-        width: PIXELS or DEFAULT_ENEMY_WIDTH,
-        height: PIXELS or DEFAULT_ENEMY_HEIGHT,
-        maxSpeedX: PIXELS_PER_SECOND,
-        health: NUMBER,
-        contactDamage: NUMBER,
-        applyGravity: BOOLEAN,
-        gravityFactor: NUMBER, // Usually 1.0
-        canJump: BOOLEAN,
-        jumpVelocity: PIXELS_PER_SECOND,
-        separationFactor: NUMBER, // Usually DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR
-        separationStrength: NUMBER, // Usually DEFAULT_ENEMY_SEPARATION_STRENGTH
-        dropTable: [
-             { type: 'item_id', chance: 0.0-1.0, minAmount: N, maxAmount: M },
-             // ... more potential drops
-        ],
         // Add future properties as needed (attack, resistances etc.)
-    }
-    */
+//     }
 };
 
 // =============================================================================
-// --- Item Constants ---
+// --- Item & Weapon Constants ---
 // =============================================================================
 
 export const WEAPON_TYPE_UNARMED = 'unarmed';
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
-export const WEAPON_TYPE_SPEAR = 'spear';
-
+export const WEAPON_TYPE_SPEAR = 'spear'
 // --- Shovel ---
 export const SHOVEL_WIDTH = Math.floor(2.5 * BLOCK_WIDTH);   // ~10px
 export const SHOVEL_HEIGHT = Math.floor(1.5 * BLOCK_HEIGHT);  // ~6px
 export const SHOVEL_COLOR = 'rgb(160, 160, 160)'; // Grey color
-export const PLAYER_SHOVEL_ATTACK_DAMAGE = 10; // Damage to enemies
-export const PLAYER_SHOVEL_BLOCK_DAMAGE = 25; // Damage to blocks (Adjust as needed)
-export const PLAYER_SHOVEL_ATTACK_REACH_X = Math.floor(1.0 * BLOCK_WIDTH);  // Short reach forward ~4px
-export const PLAYER_SHOVEL_ATTACK_REACH_Y = Math.floor(1.5 * BLOCK_HEIGHT); // Downward offset ~6px (pushes hitbox down)
-export const PLAYER_SHOVEL_ATTACK_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);  // Width of hitbox ~6px
-export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(3 * BLOCK_HEIGHT); // Tall hitbox ~12px
-export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3; // Slightly slower than sword?
-export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.45;// Slightly slower than sword?
+export const PLAYER_SHOVEL_ATTACK_DAMAGE = 5; // Very low damage vs enemies
+export const PLAYER_SHOVEL_BLOCK_DAMAGE = 25; // High damage vs blocks
+export const PLAYER_SHOVEL_ATTACK_REACH_X = Math.floor(1 * BLOCK_WIDTH);  // Short reach forward ~2px
+export const PLAYER_SHOVEL_ATTACK_REACH_Y = Math.floor(1.5 * BLOCK_HEIGHT); // Slight downward offset ~3px
+export const PLAYER_SHOVEL_ATTACK_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);  // Moderate width hitbox ~6px
+export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(2.0 * BLOCK_HEIGHT); // Short height hitbox ~4px
+export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3; // Clunky duration
+export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.4; // Clunky cooldown
 export const PLAYER_SHOVEL_ATTACK_COLOR = 'rgba(180, 180, 180, 0.5)'; // Greyish color
-
 // --- Sword ---
 export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH);      // Approx 12px
 export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);     // Approx 4px
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
-export const PLAYER_SWORD_ATTACK_DAMAGE = 10; // Rename PLAYER_ATTACK_DAMAGE
-export const PLAYER_SWORD_ATTACK_REACH_X = Math.floor(2.25 * BLOCK_WIDTH); // Approx 9px reach horizontal offset from edge
+export const PLAYER_SWORD_ATTACK_DAMAGE = 10; // Good baseline damage
+export const PLAYER_SWORD_BLOCK_DAMAGE = 0; // NEW: Swords don't break blocks
+export const PLAYER_SWORD_ATTACK_REACH_X = Math.floor(2 * BLOCK_WIDTH); // Moderate reach ~7px
 export const PLAYER_SWORD_ATTACK_REACH_Y = 0; // Vertical offset from player center
-export const PLAYER_SWORD_ATTACK_WIDTH = Math.floor(1.25 * BLOCK_WIDTH); // Approx 5px width
-export const PLAYER_SWORD_ATTACK_HEIGHT = PLAYER_HEIGHT; // Same height as player for now
-export const PLAYER_SWORD_ATTACK_DURATION = 0.25; // seconds
-export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.4; // seconds
+export const PLAYER_SWORD_ATTACK_WIDTH = Math.floor(2.0 * BLOCK_WIDTH); // Wide hitbox ~8px (arc)
+export const PLAYER_SWORD_ATTACK_HEIGHT = Math.floor(PLAYER_HEIGHT * 1.1); // Tall hitbox ~11px (arc)
+export const PLAYER_SWORD_ATTACK_DURATION = 0.2; // Faster duration
+export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.3; // Faster cooldown
 export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
-
 // --- Spear ---
 export const SPEAR_WIDTH = Math.floor(4 * BLOCK_WIDTH);      // Longer item ~16px
 export const SPEAR_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT);  // Thinner item ~3px
 export const SPEAR_COLOR = 'rgb(210, 180, 140)'; // Wood-like color
-export const PLAYER_SPEAR_ATTACK_DAMAGE = 8; // Slightly less damage?
-export const PLAYER_SPEAR_ATTACK_REACH_X = Math.floor(3.5 * BLOCK_WIDTH); // Longer reach ~14px
-export const PLAYER_SPEAR_ATTACK_REACH_Y = Math.floor(0.5 * BLOCK_HEIGHT); // Slight vertical offset? ~2px up from center
-export const PLAYER_SPEAR_ATTACK_WIDTH = Math.floor(0.75 * BLOCK_WIDTH); // Narrower hitbox ~3px
-export const PLAYER_SPEAR_ATTACK_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT); // Narrower hitbox ~3px
-export const PLAYER_SPEAR_ATTACK_DURATION = 0.35; // Slightly longer duration?
-export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5; // Slightly longer cooldown?
+export const PLAYER_SPEAR_ATTACK_DAMAGE = 8; // Slightly less damage than sword
+export const PLAYER_SPEAR_BLOCK_DAMAGE = 0; // Spears don't break blocks
+export const PLAYER_SPEAR_ATTACK_REACH_X = Math.floor(3.5 * BLOCK_WIDTH); // Very Long reach ~14px
+export const PLAYER_SPEAR_ATTACK_REACH_Y = Math.floor(1 * BLOCK_HEIGHT);
+export const PLAYER_SPEAR_ATTACK_WIDTH = Math.floor(0.75 * BLOCK_WIDTH); // Narrow hitbox ~3px
+export const PLAYER_SPEAR_ATTACK_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT); // Narrow hitbox ~3px
+export const PLAYER_SPEAR_ATTACK_DURATION = 0.3; // Moderate duration (thrust lingers)
+export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5; // Moderate/Slow cooldown (recovery)
 export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)'; // Different color?
-
 // --- Centralized Item Configuration Object ---
 export const ITEM_CONFIG = {
-       [WEAPON_TYPE_SHOVEL]: { // Use constant
+    [WEAPON_TYPE_SHOVEL]: { // Use constant
             width: SHOVEL_WIDTH,
             height: SHOVEL_HEIGHT,
             color: SHOVEL_COLOR,
-        },
-    [WEAPON_TYPE_SWORD]: { // Use constant
+    },
+    [WEAPON_TYPE_SWORD]: {
         width: SWORD_WIDTH,
         height: SWORD_HEIGHT,
         color: SWORD_COLOR,
     },
-    [WEAPON_TYPE_SPEAR]: { // Use constant
+    [WEAPON_TYPE_SPEAR]: {
         width: SPEAR_WIDTH,
         height: SPEAR_HEIGHT,
         color: SPEAR_COLOR,
     },
-    'dirt': { // Add config for dirt drops
+    'dirt': { // Add config for material drops
         width: Math.floor(1 * BLOCK_WIDTH),
         height: Math.floor(1 * BLOCK_HEIGHT),
         color: BLOCK_COLORS[BLOCK_DIRT],
     },
-    'sand': { // Add config for sand drops
+    'sand': {
         width: Math.floor(1 * BLOCK_WIDTH),
         height: Math.floor(1 * BLOCK_HEIGHT),
         color: BLOCK_COLORS[BLOCK_SAND],
@@ -383,7 +338,7 @@ export const ITEM_CONFIG = {
     'wood': {
         width: Math.floor(1 * BLOCK_WIDTH),
         height: Math.floor(1 * BLOCK_HEIGHT),
-        color: 'rgb(139, 69, 19)', // Brown
+        color: BLOCK_COLORS[BLOCK_WOOD],
     },
     'stone': {
         width: Math.floor(1 * BLOCK_WIDTH),
