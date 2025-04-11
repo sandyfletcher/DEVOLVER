@@ -9,14 +9,11 @@
 // --- Canvas ---
 export const CANVAS_WIDTH = 800;
 export const CANVAS_HEIGHT = 800;
-
 // --- Grid ---
 export const GRID_COLS = 200;
 export const GRID_ROWS = 200;
-
 // --- Background ---
 export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
-
 // --- Procedural Generation Parameters ---
 export const WORLD_ISLAND_WIDTH = 0.8; // width of main island as a percentage
 export const WORLD_WATER_LEVEL = 0.15; // Water coverage: bottom 15%, can be raised for environmental chaos
@@ -27,7 +24,6 @@ export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELO
 export const WORLD_GROUND_VARIATION = 3; // variations and noise scale
 export const WORLD_STONE_VARIATION = 3; // Can adjust this noise amount if needed
 export const WORLD_NOISE_SCALE = 0.05;
-
 // --- Ocean Tapering Config ---
 export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5;      // Row 175
 export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;       // Row 183
@@ -52,11 +48,10 @@ export const ZOOM_SPEED_FACTOR = 0.001; // How fast scrolling zooms
 // --- Block Parameters ---
 // =============================================================================
 
-// --- Block ---
 export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;   // Calculated: 4
 export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS; // Calculated: 4
-
-// --- Block Type IDs ---
+export const INVENTORY_MATERIALS = ['wood', 'stone', 'metal', 'dirt', 'sand', 'bone'];
+// --- Type IDs ---
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
 export const BLOCK_SAND = 2;
@@ -68,9 +63,7 @@ export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 // TODO: Glass, specific ores, etc.
 
-export const INVENTORY_MATERIALS = ['wood', 'stone', 'metal', 'dirt', 'sand', 'bone'];
-
-// --- Block Orientation IDs ---
+// --- Orientation IDs ---
 export const ORIENTATION_FULL = 0;
 export const ORIENTATION_SLOPE_BL = 1; // Bottom-Left triangle solid
 export const ORIENTATION_SLOPE_BR = 2; // Bottom-Right triangle solid
@@ -78,7 +71,7 @@ export const ORIENTATION_SLOPE_TR = 3; // Top-Right triangle solid
 export const ORIENTATION_SLOPE_TL = 4; // Top-Left triangle solid
 // TODO: Implement drawing/collision later
 
-// --- Block Base HP ---
+// --- Base HP ---
 export const BLOCK_HP = {
     [BLOCK_WATER]: Infinity,
     [BLOCK_SAND]: 30,
@@ -102,7 +95,6 @@ export const BLOCK_COLORS = {
     [BLOCK_METAL]: 'rgb(190, 190, 200)',
     [BLOCK_BONE]: 'rgb(200, 190, 170)',
 };
-
 // --- Water Physics ---
 export const WATER_GRAVITY_FACTOR = 0.4; // Reduce gravity effect
 export const WATER_HORIZONTAL_DAMPING = 0.1; // Strong horizontal drag (adjust base value, used with Math.pow)
@@ -112,16 +104,13 @@ export const WATER_ACCELERATION_FACTOR = 0.5; // Reduce horizontal acceleration
 export const WATER_SWIM_VELOCITY = 120;    // Initial upward speed from a swim 'stroke'
 export const WATER_MAX_SWIM_UP_SPEED = 80;  // Max speed swimming up
 export const WATER_MAX_SINK_SPEED = 100;  // Max speed falling down in water
-export const WATER_CONTINUOUS_SWIM_ACCEL = 200; // Upward acceleration while holding jump
 export const ENEMY_WATER_BUOYANCY_ACCEL = 180;
-export const WATER_JUMP_COOLDOWN_DURATION = 0.2; // Define the cooldown duration for water jumps (strokes) in seconds
-
+export const WATER_JUMP_COOLDOWN_DURATION = 0.2;
 
 // =============================================================================
 // --- Player Constants ---
 // =============================================================================
 
-// --- Size and Coordinates  ---
 export const PLAYER_WIDTH = Math.max(5, Math.floor(1.25 * BLOCK_WIDTH)); // Approx 5px (adjust if block size changes)
 export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT)); // Approx 10px (adjust if block size changes)
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
@@ -144,7 +133,6 @@ export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INT
 // --- Enemy Constants ---
 // =============================================================================
 
-// --- General Config ---
 export const MAX_ENEMIES = 100;
 export const ENEMY_SPAWN_EDGE_MARGIN = 80; // Pixels away from screen edge to attempt spawning
 export const ENEMY_FLASH_DURATION = 0.15; // Seconds enemy flashes when hit
@@ -166,8 +154,8 @@ export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 60;     // How hard they push (
 export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read from this configuration.
     [ENEMY_TYPE_TETRAPOD]: {
         displayName: "Tetrapod",
-        aiType: 'flopAI',                 // <-- Link to the new AI strategy
-        color: 'rgb(100, 120, 80)',       // Muddy green/brown color
+        aiType: 'flopAI',
+        color: 'rgb(100, 120, 80)',
         width: DEFAULT_ENEMY_WIDTH,       // Use default size for now
         height: DEFAULT_ENEMY_HEIGHT,
         health: 1,                        // Very fragile
@@ -366,6 +354,7 @@ export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle
 
 export const GRAVITY_ACCELERATION = 700;   // Pixels per second per second
 export const MAX_FALL_SPEED = 450;         // Pixels per second - General max fall speed unless overridden
+export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
 
 // =============================================================================
 // --- Wave System Definitions ---
@@ -376,15 +365,8 @@ export const WAVE_INTERMISSION_DURATION = 15.0; // Seconds between *main* waves
 export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in group
 
 // =============================================================================
-// --- Game Loop ---
+// --- Touch Controls --- move to input.js?
 // =============================================================================
-
-export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
-
-// =============================================================================
-// --- Input Constants (Touch Controls) ---
-// =============================================================================
-// These could be moved to input.js if preferred, but keeping layout-related numbers here is okay too
 
 export const TOUCH_BUTTON_SIZE = 80; // Pixel size of touch buttons
 export const TOUCH_BUTTON_MARGIN = 20; // Pixel margin around buttons / from edge
