@@ -62,7 +62,6 @@ export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 // TODO: Glass, specific ores, etc.
-
 // --- Orientation IDs ---
 export const ORIENTATION_FULL = 0;
 export const ORIENTATION_SLOPE_BL = 1; // Bottom-Left triangle solid
@@ -70,7 +69,6 @@ export const ORIENTATION_SLOPE_BR = 2; // Bottom-Right triangle solid
 export const ORIENTATION_SLOPE_TR = 3; // Top-Right triangle solid
 export const ORIENTATION_SLOPE_TL = 4; // Top-Left triangle solid
 // TODO: Implement drawing/collision later
-
 // --- Base HP ---
 export const BLOCK_HP = {
     [BLOCK_WATER]: Infinity,
@@ -82,7 +80,6 @@ export const BLOCK_HP = {
     [BLOCK_METAL]: 500,
     [BLOCK_BONE]: 120,
 }; // TODO: Add HP for other types later
-
 // --- Block Colors ---
 export const BLOCK_COLORS = {
     // BLOCK_AIR is background color
@@ -95,6 +92,20 @@ export const BLOCK_COLORS = {
     [BLOCK_METAL]: 'rgb(190, 190, 200)',
     [BLOCK_BONE]: 'rgb(200, 190, 170)',
 };
+// --- Block Placement ---
+export const MATERIAL_TO_BLOCK_TYPE = { // Map inventory material strings to block type constants
+    'dirt': BLOCK_DIRT,
+    'stone': BLOCK_STONE,
+    'wood': BLOCK_WOOD,
+    'sand': BLOCK_SAND,
+    'metal': BLOCK_METAL,
+    'bone': BLOCK_BONE,
+    // Add other placeable materials here if needed
+};
+// --- Ghost and Future build options ---
+export const GHOST_BLOCK_ALPHA = 0.5; // Transparency for placement preview
+export const CAN_PLACE_IN_WATER = false; // Control if blocks can replace water (future enhancement?)
+
 // --- Water Physics ---
 export const WATER_GRAVITY_FACTOR = 0.4; // Reduce gravity effect
 export const WATER_HORIZONTAL_DAMPING = 0.1; // Strong horizontal drag (adjust base value, used with Math.pow)

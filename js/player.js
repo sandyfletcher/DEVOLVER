@@ -4,6 +4,8 @@
 
 import * as Config from './config.js';
 import * as GridCollision from './utils/gridCollision.js';
+import * as WorldManager from './worldManager.js'; // Needed to place blocks
+import * as WorldData from './utils/worldData.js'; // Needed to check target cell type
 
 export class Player {
     constructor(x, y, width, height, color) {
@@ -12,69 +14,57 @@ export class Player {
         this.width = width;
         this.height = height;
         this.color = color;
-        // Physics state (velocity)
+// Physics state (velocity)
         this.vx = 0; // Velocity in pixels per second
         this.vy = 0; // Velocity in pixels per second
         this.isOnGround = false;
         this.isInWater = false;
         this.waterJumpCooldown = 0; // water jump cooldown state
-        // --- Weapon & Inventory State ---
+// --- Weapon & Inventory State ---
         this.hasShovel = false;
         this.hasSword = false;
         this.hasSpear = false;
         this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Start unarmed
         this.inventory = {};
-        // --- Combat State ---
+// --- Combat State ---
         this.isAttacking = false;
         this.attackTimer = 0;
         this.attackCooldown = 0;
         this.hitEnemiesThisSwing = [];
         this.hitBlocksThisSwing = [];
-        // --- Health State ---
+// --- Health State ---
         this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
-        // --- Targeting State ---
+// --- Targeting State ---
         this.targetWorldPos = { x: 0, y: 0 };
         this.targetGridCell = { col: 0, row: 0 };
     }
-
-    /**
-     * Updates the player's state based on input, physics, and grid collisions.
-     * @param {number} dt - Delta time (time since last frame in seconds).
-     * @param {object} inputState - Object containing input flags { left, right, jump, attack }.
-     */
+// --- Update player state on input, physics, and grid collision ---
     update(dt, inputState, targetWorldPos, targetGridCell) {
-        // Update targeting state from input
+// Update targeting state from input
         this.targetWorldPos = targetWorldPos;
         this.targetGridCell = targetGridCell;
-
-        // Determine player direction for visual representation (still needed!)
-        // Maybe based on movement input or target pos? Let's keep it based on movement input for now
-        // If moving left, lastDirection = -1, if right, lastDirection = 1
+// TODO: Change this player direction code from movement direction to target position
         if (inputState.left && !inputState.right) {
             this.lastDirection = -1;
         } else if (inputState.right && !inputState.left) {
             this.lastDirection = 1;
         }
-        
-        // --- 1. Update Water Status ---
+// --- 1. Update Water Status ---
         const wasInWater = this.isInWater; // Store previous state
         this.isInWater = GridCollision.isEntityInWater(this);
-        // --- Reset water jump cooldown if just exited water ---
         if (!this.isInWater && this.waterJumpCooldown > 0) {
-            this.waterJumpCooldown = 0;
+            this.waterJumpCooldown = 0; // Reset jump cooldown if just exited water ---
         }
-
-        // --- Get Current Physics Params (modified if in water) ---
+// get current physics, modified against water parameters
         const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
         const currentMaxSpeedX = this.isInWater ? Config.PLAYER_MAX_SPEED_X * Config.WATER_MAX_SPEED_FACTOR : Config.PLAYER_MAX_SPEED_X;
         const currentAcceleration = this.isInWater ? Config.PLAYER_MOVE_ACCELERATION * Config.WATER_ACCELERATION_FACTOR : Config.PLAYER_MOVE_ACCELERATION;
         const horizontalDampingFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : 1; // 1 means no damping in air
         const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
-
-        // --- Update Timers (Attack, Invulnerability) ---
+// --- Update Timers (Attack, Invulnerability) ---
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         if (this.attackTimer > 0) {
             this.attackTimer -= dt;
@@ -91,8 +81,7 @@ export class Player {
             }
         }
         if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt; // Decrement cooldown
-
-        // --- Input Handling & Acceleration (Use modified params) ---
+// --- Input Handling & Acceleration (Use modified params) ---
         let targetVx = 0;
         if (inputState.left && !inputState.right) {
             targetVx = -currentMaxSpeedX; // Use water/air max speed
@@ -101,8 +90,7 @@ export class Player {
             targetVx = currentMaxSpeedX; // Use water/air max speed
             this.lastDirection = 1;
         }
-
-        // Apply acceleration towards target velocity
+// Apply acceleration towards target velocity
         if (targetVx !== 0) {
             this.vx += Math.sign(targetVx) * currentAcceleration * dt; // Use water/air accel
             // Clamp to max speed, preserving direction
@@ -124,7 +112,6 @@ export class Player {
         if (this.isInWater) {
             this.vx *= horizontalDampingFactor;
         }
-
         // --- Jumping / Swimming  ---
         if (inputState.jump) { // Check if jump input is currently active (button is down)
             if (this.isInWater) {
@@ -132,7 +119,6 @@ export class Player {
                 if (this.waterJumpCooldown <= 0) {
                     this.vy = -Config.WATER_SWIM_VELOCITY; // Apply upward swim impulse
                     this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION; // Start cooldown
-                    // *** REMOVED: inputState.jump = false; ***
                 }
                 // If cooldown is active, do nothing this frame even if jump is held
             } else if (this.isOnGround) {
@@ -140,73 +126,59 @@ export class Player {
                 this.vy = -Config.PLAYER_JUMP_VELOCITY;
                 this.isOnGround = false; // Set to false *immediately* to prevent re-triggering next frame while still grounded
             }
-            // No 'else' needed for airborne: If player holds jump in air, inputState.jump remains true,
-            // but neither the isInWater nor isOnGround conditions are met, so no action happens.
         }
-
-    // Attack Triggering
-    // Check if we *can* attack (i.e., not unarmed) before checking cooldown etc.
-    if (inputState.attack && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.attackCooldown <= 0 && !this.isAttacking) {
-        this.isAttacking = true;
-        // Set duration/cooldown based on SELECTED weapon
-            if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
-                this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
-                this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
-            } else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) {
-                this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
-                this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
-            } else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
-                    this.attackTimer = Config.PLAYER_SHOVEL_ATTACK_DURATION;
-                    this.attackCooldown = Config.PLAYER_SHOVEL_ATTACK_COOLDOWN;
-            }       // else: handle other weapons later
-            this.hitEnemiesThisSwing = [];
-            this.hitBlocksThisSwing = [];
-            inputState.attack = false; // Consume attack input
-        } else if (inputState.attack) {
-            inputState.attack = false; // Consume attack input even if on cooldown/unarmed
+        // --- Attack Triggering ---
+        if (inputState.attack && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.attackCooldown <= 0 && !this.isAttacking) { // Check if we *can* attack (i.e., not unarmed) before checking cooldown etc.
+            this.isAttacking = true;
+                if (this.selectedItem === Config.WEAPON_TYPE_SWORD) { // Set duration/cooldown based on SELECTED weapon
+                    this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
+                    this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
+                } else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) {
+                    this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
+                    this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
+                } else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
+                        this.attackTimer = Config.PLAYER_SHOVEL_ATTACK_DURATION;
+                        this.attackCooldown = Config.PLAYER_SHOVEL_ATTACK_COOLDOWN;
+                }       // else: handle other weapons later
+                this.hitEnemiesThisSwing = [];
+                this.hitBlocksThisSwing = [];
+                inputState.attack = false; // Consume attack input
+            } else if (inputState.attack) {
+                inputState.attack = false; // Consume attack input even if on cooldown/unarmed
+            }
+    // --- Physics Step 1: Apply Gravity if not on ground ---
+        if (!this.isOnGround) {
+            this.vy += currentGravity * dt;
+        } else if (this.vy > 0) {
+            this.vy = 0; // If on ground and moving down slightly, clamp vy
         }
-
-    // --- Physics Step 1: Apply Forces (Gravity) ---
-    // Only apply gravity if NOT on ground (standard)
-    // Gravity value is already adjusted based on water state
-    if (!this.isOnGround) {
-        this.vy += currentGravity * dt;
-    } else if (this.vy > 0) {
-        // If on ground and moving down slightly, clamp vy
-        this.vy = 0;
-    }
-
-    // --- Apply Vertical Damping in Water ---
-    if (this.isInWater) {
-         this.vy *= verticalDampingFactor;
-         // Clamp vertical speed in water
-         this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED); // Max upward speed
-         this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);   // Max downward speed (sinking)
-    } else {
-        // Clamp fall speed in air
-        if (this.vy > Config.MAX_FALL_SPEED) {
-             this.vy = Config.MAX_FALL_SPEED;
+        // --- Apply Vertical Damping in Water ---
+        if (this.isInWater) {
+            this.vy *= verticalDampingFactor;
+            // Clamp vertical speed in water
+            this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED); // Max upward speed
+            this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);   // Max downward speed (sinking)
+        } else {
+            // Clamp fall speed in air
+            if (this.vy > Config.MAX_FALL_SPEED) {
+                this.vy = Config.MAX_FALL_SPEED;
+            }
         }
-    }
-
-    // --- Calculate Potential Movement ---
-    const potentialMoveX = this.vx * dt;
-    const potentialMoveY = this.vy * dt;
-
-    // --- Physics Step 2: Grid Collision (Unchanged - water isn't solid) ---
-    const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
-    this.isOnGround = collisionResult.isOnGround; // Update ground status
-
-    // Zero out velocity if collision occurred (Standard logic)
-    if (collisionResult.collidedX) this.vx = 0;
-    if (collisionResult.collidedY) {
-        // Only zero vy if it wasn't already zeroed by damping/clamping
-        if (Math.abs(this.vy) > 0.1) { // Check magnitude
-           this.vy = 0;
+        // --- Calculate Potential Movement ---
+        const potentialMoveX = this.vx * dt;
+        const potentialMoveY = this.vy * dt;
+        // --- Physics Step 2: Grid Collision (Unchanged - water isn't solid) ---
+        const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+        this.isOnGround = collisionResult.isOnGround; // Update ground status
+        // Zero out velocity if collision occurred (Standard logic)
+        if (collisionResult.collidedX) this.vx = 0;
+        if (collisionResult.collidedY) {
+            // Only zero vy if it wasn't already zeroed by damping/clamping
+            if (Math.abs(this.vy) > 0.1) { // Check magnitude
+            this.vy = 0;
+            }
         }
-    }
-
-        // --- Screen Boundary Checks ---
+    // --- Screen Boundary Checks ---
         if (this.x < 0) {
             this.x = 0;
             if (this.vx < 0) this.vx = 0;
@@ -215,13 +187,13 @@ export class Player {
             this.x = Config.CANVAS_WIDTH - this.width;
             if (this.vx > 0) this.vx = 0;
         }
-
         // --- Reset if falling out of world ---
         if (this.y > Config.CANVAS_HEIGHT + 200) {
-           console.warn("Player fell out of world!");
-           this.resetPosition();
+            console.warn("Player fell out of world!");
+            this.resetPosition();
         }
     } 
+// --- draw function comment ---
     draw(ctx) {
         if (!ctx) {
             console.error("Player.draw: Rendering context not provided!");
@@ -259,7 +231,6 @@ export class Player {
                         : this.x - spearVisualWidth / 2;            // Left side
                     ctx.fillStyle = Config.SPEAR_COLOR; // Use weapon color
                     ctx.fillRect(spearVisualX, spearVisualY, spearVisualWidth, spearVisualHeight);
-        
                 } else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
                         // Simple visual representation of the shovel
                         const shovelVisualWidth = 5;
@@ -287,13 +258,11 @@ export class Player {
             }
         }
     }
-
+// --- takedamage function comment ---
     takeDamage(amount) {
         if (this.isInvulnerable || this.currentHealth <= 0) return; // Cannot take damage if invulnerable or already dead
-
         this.currentHealth -= amount;
         console.log(`Player took ${amount} damage. Health: ${this.currentHealth}/${this.maxHealth}`);
-
         if (this.currentHealth <= 0) {
             this.currentHealth = 0; // Don't go below zero
             this.die(); // Handle player death
@@ -310,6 +279,7 @@ export class Player {
         this.vy = 0;
         // Could trigger death animation, sound effects, etc. here
     }
+// --- ---
     reset() {
         console.log("Resetting player state...");
         this.x = Config.PLAYER_START_X;
@@ -334,7 +304,7 @@ export class Player {
         this.hasShovel = false;
         this.selectedWeapon = Config.WEAPON_TYPE_UNARMED; // reset to unarmed
     }
-
+// --- ---
     resetPosition() {
         // Resets only the player's position and velocity, e.g., after falling out.
         console.log("Player position reset (fell out).");
@@ -350,27 +320,20 @@ export class Player {
         // this.isInvulnerable = true;
         // this.invulnerabilityTimer = 0.5;
     }
-
 // --- Calculates the position and size of the attack hitbox based on player state and selected weapon. ---
     getAttackHitbox() {
         if (!this.isAttacking || this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
             return null;
         }
-
         const verticalCenter = this.y + this.height / 2;
-
-
-
        // --- Calculate based on target World Position ---
        const playerCenterX = this.x + this.width / 2;
        const playerCenterY = this.y + this.height / 2;
        const targetX = this.targetWorldPos.x;
        const targetY = this.targetWorldPos.y;
-
        const dx = targetX - playerCenterX;
        const dy = targetY - playerCenterY;
        const dist = Math.sqrt(dx * dx + dy * dy);
-
        // Determine hitbox properties based on selected item
        let hitboxWidth, hitboxHeight, reachX, reachY;
        if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
@@ -391,7 +354,6 @@ export class Player {
        } else {
            return null; // Should not happen if selectedItem is checked above
        }
-
        // Calculate position based on directional offset towards target
        let hitboxCenterX, hitboxCenterY;
        if (dist > 1e-6) { // Avoid division by zero if target is exactly player center
@@ -405,18 +367,14 @@ export class Player {
            hitboxCenterX = playerCenterX + this.lastDirection * reachX;
            hitboxCenterY = playerCenterY + reachY;
        }
-
        // Calculate top-left corner of hitbox from its center
        const hitboxX = hitboxCenterX - hitboxWidth / 2;
        const hitboxY = hitboxCenterY - hitboxHeight / 2;
-
        return { x: hitboxX, y: hitboxY, width: hitboxWidth, height: hitboxHeight };
     }
-
-    // --- Handles when player collides with item ---
+// --- Handles when player collides with item ---
     pickupItem(item) {
        if (!item || !item.type) return false;
-
        if (item.type === Config.WEAPON_TYPE_SWORD) {
            if (!this.hasSword) {
                this.hasSword = true;
@@ -442,11 +400,9 @@ export class Player {
             console.log(`Picked up ${item.type}! Total: ${this.inventory[item.type]}`);
             return true;
        }
-
        return false;
    }
-
-    // --- Add hasWeapon method to Player ---
+// --- Add hasWeapon method to Player ---
     hasWeapon(weaponType) {
         if (weaponType === Config.WEAPON_TYPE_SWORD) {
             return this.hasSword;
@@ -458,8 +414,7 @@ export class Player {
         // Add checks for future weapons
         return false;
     }
-
-    // --- Update equipWeapon() ---
+// --- Update equipitem ---
     equipItem(itemType) {
         let canEquip = false;
         if (itemType === Config.WEAPON_TYPE_SWORD && this.hasSword) {
@@ -487,8 +442,7 @@ export class Player {
             // console.log(`   INFO: Already equipped ${itemType}.`);
         }
     }
-
-    // --- Helper methods for attack collision ---
+// --- Helper methods for attack collision ---
     hasHitEnemyThisSwing(enemy) { // Checks if a specific enemy has already been hit during the current attack
         return this.hitEnemiesThisSwing.includes(enemy);
     }
@@ -497,21 +451,18 @@ export class Player {
             this.hitEnemiesThisSwing.push(enemy);
         }
     }
-
-       // --- Helpers for block collision ---
-       hasHitBlockThisSwing(col, row) {
-           // Create a unique key for the block position
-           const blockKey = `${col},${row}`;
-           return this.hitBlocksThisSwing.includes(blockKey);
-       }
-       registerHitBlock(col, row) {
-           const blockKey = `${col},${row}`;
-           if (!this.hasHitBlockThisSwing(col, row)) {
-               this.hitBlocksThisSwing.push(blockKey);
-           }
-       }
-
-
+// --- Helpers for block collision ---
+    hasHitBlockThisSwing(col, row) {
+        // Create a unique key for the block position
+        const blockKey = `${col},${row}`;
+        return this.hitBlocksThisSwing.includes(blockKey);
+    }
+    registerHitBlock(col, row) {
+        const blockKey = `${col},${row}`;
+        if (!this.hasHitBlockThisSwing(col, row)) {
+            this.hitBlocksThisSwing.push(blockKey);
+        }
+    }
     // --- Simple Getters ---
     getRect() { // Returns player's bounding box
         return { x: this.x, y: this.y, width: this.width, height: this.height };
@@ -528,21 +479,19 @@ export class Player {
     getInventory() {
         return this.inventory;
     }
-       getShovelStatus() { // New getter
-                return this.hasShovel;
-           }
+    getShovelStatus() {
+        return this.hasShovel;
+    }
     getSwordStatus() {
         return this.hasSword;
     }
-    getSpearStatus() { // New getter
+    getSpearStatus() {
          return this.hasSpear;
     }
-    getCurrentlySelectedItem() { // Added getter for selected item type
+    getCurrentlySelectedItem() {
         return this.selectedItem;
     }
-    // --- get attack damage based on equipped weapon ---
-    getCurrentAttackDamage() {
-        // Returns damage intended for ENEMIES
+    getCurrentAttackDamage() { // Returns damage intended for ENEMIES
         if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
         return Config.PLAYER_SWORD_ATTACK_DAMAGE;
         } else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) {
@@ -552,9 +501,7 @@ export class Player {
         }
         return 0; // No damage if unarmed or unknown weapon
     }
-        
-    // --- get block damage based on equipped weapon ---
-    getCurrentBlockDamage() {
+    getCurrentBlockDamage() { // get block damage based on equipped weapon
         // Returns damage intended for BLOCKS
         if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
             return Config.PLAYER_SHOVEL_BLOCK_DAMAGE;
@@ -562,7 +509,6 @@ export class Player {
         // Sword, Spear, Unarmed do 0 block damage
         return 0;
     }
-
     // --- Check if the selected item is a weapon ---
     isItemSelectedWeapon() {
         const weapons = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
