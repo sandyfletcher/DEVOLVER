@@ -2,8 +2,6 @@
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
 
-// console.log("main loaded");
-
 // --- Module Imports ---
 import * as UI from './ui.js';
 import { Player } from './player.js';
@@ -16,6 +14,7 @@ import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
 import * as WaveManager from './waveManager.js';
 import * as WorldData from './utils/worldData.js';
+import * as GridCollision from './utils/gridCollision.js'; // Needed for worldToGridCoords
 
 // --- Global Game Variables ---
 let player = null;
@@ -36,6 +35,29 @@ window.updateCameraScale = function(deltaScale) {
     let newScale = cameraScale + deltaScale;
     newScale = Math.max(Config.MIN_CAMERA_SCALE, Math.min(newScale, Config.MAX_CAMERA_SCALE)); // Use Config limits
     cameraScale = newScale;
+}
+
+// --- Coordinate Conversion Helpers ---
+function getMouseWorldCoords(canvasX, canvasY) {
+    // Convert canvas coordinates to world coordinates
+    const worldX = cameraX + (canvasX / cameraScale);
+    const worldY = cameraY + (canvasY / cameraScale);
+    return { x: worldX, y: worldY };
+}
+
+function getMouseGridCoords(canvasX, canvasY) {
+    const { x: worldX, y: worldY } = getMouseWorldCoords(canvasX, canvasY);
+    // Convert world coordinates to grid coordinates
+    return GridCollision.worldToGridCoords(worldX, worldY);
+}
+
+function isTargetWithinRange(player, targetWorldPos) {
+    if (!player || !targetWorldPos) return false;
+    const playerCenterX = player.x + player.width / 2;
+    const playerCenterY = player.y + player.height / 2;
+    const dx = targetWorldPos.x - playerCenterX;
+    const dy = targetWorldPos.y - playerCenterY;
+    return (dx * dx + dy * dy) <= Config.PLAYER_INTERACTION_RANGE_SQ;
 }
 
 // --- Function to log the world grid ---
@@ -101,7 +123,7 @@ function restartGame() {
     const waveInfo = WaveManager.getWaveInfo();
     const livingEnemies = EnemyManager.getLivingEnemyCount();
     UI.updateWaveInfo(waveInfo, livingEnemies);
-    UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus()); // remember to add new weapons here
+    UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus(), player.getShovelStatus()); // remember to add new weapons here
     UI.updateGameOverState(false);
 
     // Console log depiction of generated world
@@ -138,7 +160,7 @@ function gameLoop(timestamp) {
         const livingEnemies = EnemyManager.getLivingEnemyCount();
         UI.updateWaveInfo(waveInfo, livingEnemies);
          if (player) {
-            UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus());
+            UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus(), player.getShovelStatus());
          }
 
         // Draw touch controls
@@ -153,7 +175,15 @@ function gameLoop(timestamp) {
 
     // --- Input Phase ---
     const inputState = Input.getState();
+    const mousePos = Input.getMousePosition(); // Get canvas mouse coords
+    let targetWorldPos = getMouseWorldCoords(mousePos.x, mousePos.y); // Convert to world coords
+    let targetGridCell = getMouseGridCoords(mousePos.x, mousePos.y); // Convert to grid coords
 
+    // Clamp target to interaction range if needed
+    if (player && !isTargetWithinRange(player, targetWorldPos)) {
+        // You could potentially clamp the target to the max range, or just null it out
+        // For now, let's keep the target but player logic will need to check range
+    }
     // --- Get Player Position for AI ---
     let currentPlayerPosition = null;
     if (player && player.getCurrentHealth() > 0) {
@@ -161,7 +191,9 @@ function gameLoop(timestamp) {
     }
 
     // --- Update Phase (Game Logic) ---
-    if (player) { player.update(dt, inputState); }
+    if (player) {
+        player.update(dt, inputState, targetWorldPos, targetGridCell); // Pass target info
+    }
     ItemManager.update(dt);
     EnemyManager.update(dt, currentPlayerPosition); // Pass player pos to enemies
     WaveManager.update(dt);
@@ -208,6 +240,7 @@ function gameLoop(timestamp) {
     if (player) {
         CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
         CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
+        CollisionManager.checkPlayerAttackBlockCollisions(player); // Add block collision check
         CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
     }
     // Other collision checks (e.g., enemy projectiles - future)
@@ -237,7 +270,7 @@ function gameLoop(timestamp) {
     const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get current enemy count
     UI.updateWaveInfo(waveInfo, livingEnemies); // Update left sidebar
     if (player) {
-        UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus() , player.getSpearStatus()); // Update right sidebar with more weapons
+        UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus(), player.getShovelStatus()); // Update right sidebar with more weapons
     }
     // Ensure restart button remains hidden during active gameplay
     UI.updateGameOverState(false); // Call this every frame when game is running
@@ -275,7 +308,7 @@ function init() {
             player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
 // Pass player reference to UI for weapon switching etc.
             UI.setPlayerReference(player);
-            UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus());
+            UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus(), player.getShovelStatus()); // Initial UI update, might have to add new weapons
         } catch (error) {
             console.error("FATAL: Player Creation Error:", error);
             initializationOk = false;

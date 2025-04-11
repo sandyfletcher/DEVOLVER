@@ -3,6 +3,8 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
+import * as WorldManager from './worldManager.js'; // Needed to damage blocks
+import * as GridCollision from './utils/gridCollision.js'; // Needed for coordinate conversion
 
 // --- Private Utility Function ---
 function checkRectOverlap(rect1, rect2) {
@@ -53,27 +55,68 @@ export function checkPlayerItemCollisions(player, items, itemManager) {
  * @param {Array<Enemy>} enemies - An array of active enemy objects.
  */
 export function checkPlayerAttackEnemyCollisions(player, enemies) {
-    if (!player || !enemies || !player.isAttacking || player.getCurrentHealth() <= 0) { return; }
-
+       // Check if player is alive, attacking, and capable of damaging enemies
+       const currentEnemyDamage = player.getCurrentAttackDamage(); // Damage vs enemies
+       if (!player || !enemies || !player.isAttacking || player.getCurrentHealth() <= 0 || currentEnemyDamage <= 0) {
+           return; // Exit if not attacking, dead, or weapon does 0 enemy damage
+       }
     const attackHitbox = player.getAttackHitbox();
     if (!attackHitbox) return;
-
-    // --- Get damage based on player's CURRENTLY EQUIPPED weapon ---
-    const currentDamage = player.getCurrentAttackDamage();
-    if (currentDamage <= 0) return; // Don't check collisions if attack does no damage
 
     for (const enemy of enemies) {
         if (!enemy || !enemy.isActive) continue;
 
         if (checkRectOverlap(attackHitbox, enemy.getRect())) {
             if (!player.hasHitEnemyThisSwing(enemy)) {
-                // Use the dynamically fetched damage amount
-                enemy.takeDamage(currentDamage);
+                               // Use the enemy-specific damage amount
+                               enemy.takeDamage(currentEnemyDamage);
                 player.registerHitEnemy(enemy);
             }
         }
     }
 }
+
+/**
+ * Checks for collisions between the player's attack hitbox and world blocks.
+ * If a collision occurs and the equipped weapon can damage blocks (e.g., Shovel),
+ * damages the block(s) using the weapon's specific block damage value.
+ * @param {Player} player - The player object.
+ */
+export function checkPlayerAttackBlockCollisions(player) {
+        // Check if player is alive, attacking, and capable of damaging blocks
+        const currentBlockDamage = player.getCurrentBlockDamage(); // Damage vs blocks
+        if (!player || !player.isAttacking || player.getCurrentHealth() <= 0 || currentBlockDamage <= 0) {
+            return; // Exit if not attacking, dead, or weapon does 0 block damage (e.g., sword/spear)
+        }
+    
+        const attackHitbox = player.getAttackHitbox();
+        if (!attackHitbox) return;
+    
+        // Determine the range of grid cells overlapped by the hitbox
+        const minCol = Math.max(0, Math.floor(attackHitbox.x / Config.BLOCK_WIDTH));
+        const maxCol = Math.min(Config.GRID_COLS - 1, Math.floor((attackHitbox.x + attackHitbox.width) / Config.BLOCK_WIDTH));
+        const minRow = Math.max(0, Math.floor(attackHitbox.y / Config.BLOCK_HEIGHT));
+        const maxRow = Math.min(Config.GRID_ROWS - 1, Math.floor((attackHitbox.y + attackHitbox.height) / Config.BLOCK_HEIGHT));
+    
+        // Iterate through the overlapped grid cells
+        for (let r = minRow; r <= maxRow; r++) {
+            for (let c = minCol; c <= maxCol; c++) {
+                // Avoid hitting the same block multiple times in one swing
+                if (!player.hasHitBlockThisSwing(c, r)) {
+                    // Attempt to damage the block using WorldManager
+                    const damaged = WorldManager.damageBlock(c, r, currentBlockDamage);
+                    if (damaged) {
+                        player.registerHitBlock(c, r); // Register hit only if damage was applied/block broken
+                        // Optional: Break here if you only want to damage ONE block per swing?
+                        // break; // Uncomment to damage only the first block hit in a column
+                    }
+                }
+            }
+            // if (/* break condition from inner loop */) break; // Uncomment if breaking inner loop
+        }
+    }
+    
+
 
 /**
  * Checks for collisions between the player and enemies (contact damage).

@@ -2,12 +2,11 @@
 // root/js/worldManager.js - Manages world state, drawing, and interactions
 // -----------------------------------------------------------------------------
 
-// console.log("worldManager loaded");
-
 import * as Config from './config.js';
 import * as Renderer from './renderer.js'; // Needs access to the grid canvas/context
 import * as GridRenderer from './utils/grid.js'; // For drawing grid lines on static canvas
 import * as WorldData from './utils/worldData.js';
+import * as ItemManager from './itemManager.js'; // Needed for block drops
 import { generateInitialWorld } from './utils/worldGenerator.js';
 
 // --- Draw the entire static world to the off-screen canvas ---
@@ -148,6 +147,72 @@ export function setBlock(col, row, blockType, orientation = Config.ORIENTATION_F
     // else { console.warn(`WorldManager: Failed to set block data at ${col}, ${row}`); } // Optional warning
     return success;
 }
+
+// --- Block Interaction ---
+
+/**
+ * Applies damage to a block at the given coordinates.
+ * If block HP drops to 0, it's replaced with air and drops an item.
+ * @param {number} col - Column index.
+ * @param {number} row - Row index.
+ * @param {number} damageAmount - Amount of damage to apply.
+ * @returns {boolean} True if damage was applied or block was destroyed, false otherwise (e.g., unbreakable block).
+ */
+export function damageBlock(col, row, damageAmount) {
+    if (damageAmount <= 0) return false; // No damage dealt
+
+    const block = WorldData.getBlock(col, row); // Get the block data object
+
+    // Check if block is valid, breakable, and not already air/water
+    if (!block || typeof block !== 'object' || block.type === Config.BLOCK_AIR || block.type === Config.BLOCK_WATER || !block.hasOwnProperty('hp') || block.hp === Infinity) {
+        // console.log(`Block at [${col}, ${row}] is unbreakable or invalid.`);
+        return false; // Cannot damage air, water, out-of-bounds, or blocks without finite HP
+    }
+
+    // Apply damage
+    block.hp -= damageAmount;
+    // console.log(`Damaged block [${col}, ${row}] (${Config.BLOCK_TYPE_NAMES[block.type]}). New HP: ${block.hp}/${block.maxHp}`); // Add BLOCK_TYPE_NAMES to config if needed
+
+    // Check for destruction
+    if (block.hp <= 0) {
+        // console.log(`Block [${col}, ${row}] destroyed!`);
+        const blockTypeDestroyed = block.type; // Store type before replacing
+
+        // --- Determine Drop Type ---
+        let dropType = null;
+        switch (blockTypeDestroyed) {
+            case Config.BLOCK_GRASS: dropType = 'dirt'; break; // Grass drops dirt
+            case Config.BLOCK_DIRT:  dropType = 'dirt'; break;
+            case Config.BLOCK_STONE: dropType = 'stone'; break;
+            case Config.BLOCK_SAND:  dropType = 'sand'; break;
+            case Config.BLOCK_WOOD_WALL: dropType = 'wood'; break; // Example if you add wood walls later
+            // Add cases for other breakable blocks that should drop items
+        }
+
+        // --- Spawn Drop Item (if any) ---
+        if (dropType) {
+            const dropX = col * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2) - (Config.ITEM_CONFIG[dropType]?.width / 2 || Config.BLOCK_WIDTH / 2); // Center item
+            const dropY = row * Config.BLOCK_HEIGHT + (Config.BLOCK_HEIGHT / 2) - (Config.ITEM_CONFIG[dropType]?.height / 2 || Config.BLOCK_HEIGHT / 2); // Center item
+            // Add small random offset?
+            const offsetX = (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.5;
+            const offsetY = (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.5;
+            ItemManager.spawnItem(dropX + offsetX, dropY + offsetY, dropType);
+            // console.log(` > Spawning ${dropType} at ~${dropX.toFixed(1)}, ${dropY.toFixed(1)}`);
+        }
+
+        // --- Replace Block with Air ---
+        // Use the worldManager's setBlock to ensure the visual cache is updated
+        setBlock(col, row, Config.BLOCK_AIR);
+
+    } else {
+        // Block was damaged but not destroyed, might need visual feedback later (cracks?)
+        // For now, just need to ensure the HP change is saved if block objects are structs/copied
+        // (JavaScript passes objects by reference, so modifying block.hp modifies the one in worldGrid)
+    }
+
+    return true; // Damage was applied or block was destroyed
+}
+
 
 // --- Draw the pre-rendered static world onto  main canvas  ---
 export function draw(ctx) {

@@ -19,21 +19,25 @@ export class Player {
         this.isInWater = false;
         this.waterJumpCooldown = 0; // water jump cooldown state
         // --- Weapon & Inventory State ---
+        this.hasShovel = false;
         this.hasSword = false;
         this.hasSpear = false;
-        this.selectedWeapon = Config.WEAPON_TYPE_UNARMED; // Start unarmed
+        this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Start unarmed
         this.inventory = {};
         // --- Combat State ---
         this.isAttacking = false;
         this.attackTimer = 0;
         this.attackCooldown = 0;
-        this.lastDirection = 1; // 1=right, -1=left
         this.hitEnemiesThisSwing = [];
+        this.hitBlocksThisSwing = [];
         // --- Health State ---
         this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
+        // --- Targeting State ---
+        this.targetWorldPos = { x: 0, y: 0 };
+        this.targetGridCell = { col: 0, row: 0 };
     }
 
     /**
@@ -41,7 +45,20 @@ export class Player {
      * @param {number} dt - Delta time (time since last frame in seconds).
      * @param {object} inputState - Object containing input flags { left, right, jump, attack }.
      */
-    update(dt, inputState) {
+    update(dt, inputState, targetWorldPos, targetGridCell) {
+        // Update targeting state from input
+        this.targetWorldPos = targetWorldPos;
+        this.targetGridCell = targetGridCell;
+
+        // Determine player direction for visual representation (still needed!)
+        // Maybe based on movement input or target pos? Let's keep it based on movement input for now
+        // If moving left, lastDirection = -1, if right, lastDirection = 1
+        if (inputState.left && !inputState.right) {
+            this.lastDirection = -1;
+        } else if (inputState.right && !inputState.left) {
+            this.lastDirection = 1;
+        }
+        
         // --- 1. Update Water Status ---
         const wasInWater = this.isInWater; // Store previous state
         this.isInWater = GridCollision.isEntityInWater(this);
@@ -64,6 +81,7 @@ export class Player {
             if (this.attackTimer <= 0) {
                 this.isAttacking = false;
                 this.hitEnemiesThisSwing = [];
+                this.hitBlocksThisSwing = []; // Reset block hits too
             }
         }
         if (this.invulnerabilityTimer > 0) {
@@ -72,7 +90,6 @@ export class Player {
                 this.isInvulnerable = false;
             }
         }
-
         if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt; // Decrement cooldown
 
         // --- Input Handling & Acceleration (Use modified params) ---
@@ -108,7 +125,7 @@ export class Player {
             this.vx *= horizontalDampingFactor;
         }
 
-        // --- Jumping / Swimming (FIXED Logic) ---
+        // --- Jumping / Swimming  ---
         if (inputState.jump) { // Check if jump input is currently active (button is down)
             if (this.isInWater) {
                 // Water Swim Stroke
@@ -122,32 +139,32 @@ export class Player {
                 // Normal Jump from ground (only if not in water)
                 this.vy = -Config.PLAYER_JUMP_VELOCITY;
                 this.isOnGround = false; // Set to false *immediately* to prevent re-triggering next frame while still grounded
-                // *** REMOVED: inputState.jump = false; ***
             }
             // No 'else' needed for airborne: If player holds jump in air, inputState.jump remains true,
             // but neither the isInWater nor isOnGround conditions are met, so no action happens.
-            // *** REMOVED the airborne else block that consumed input ***
         }
 
     // Attack Triggering
     // Check if we *can* attack (i.e., not unarmed) before checking cooldown etc.
-    if (inputState.attack && this.canAttack() && this.attackCooldown <= 0 && !this.isAttacking) {
+    if (inputState.attack && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.attackCooldown <= 0 && !this.isAttacking) {
         this.isAttacking = true;
         // Set duration/cooldown based on SELECTED weapon
-        if (this.selectedWeapon === Config.WEAPON_TYPE_SWORD) {
-            this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
-            this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
-        } else if (this.selectedWeapon === Config.WEAPON_TYPE_SPEAR) {
-            this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
-            this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
+            if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
+                this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
+                this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
+            } else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) {
+                this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
+                this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
+            } else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
+                    this.attackTimer = Config.PLAYER_SHOVEL_ATTACK_DURATION;
+                    this.attackCooldown = Config.PLAYER_SHOVEL_ATTACK_COOLDOWN;
+            }       // else: handle other weapons later
+            this.hitEnemiesThisSwing = [];
+            this.hitBlocksThisSwing = [];
+            inputState.attack = false; // Consume attack input
+        } else if (inputState.attack) {
+            inputState.attack = false; // Consume attack input even if on cooldown/unarmed
         }
-        // else: handle other weapons later
-
-        this.hitEnemiesThisSwing = [];
-        inputState.attack = false; // Consume attack input
-    } else if (inputState.attack) {
-        inputState.attack = false; // Consume attack input even if on cooldown/unarmed
-    }
 
     // --- Physics Step 1: Apply Forces (Gravity) ---
     // Only apply gravity if NOT on ground (standard)
@@ -222,7 +239,7 @@ export class Player {
             ctx.fillRect(this.x, this.y, this.width, this.height);
             // Draw Weapon visual cue if selected and not attacking
             if (!this.isAttacking) {
-                if (this.selectedWeapon === Config.WEAPON_TYPE_SWORD) {
+                if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
                     // Simple visual representation of the sword at the side
                     const swordVisualWidth = 4;
                     const swordVisualHeight = 10;
@@ -232,7 +249,7 @@ export class Player {
                         : this.x - swordVisualWidth / 2;            // Left side
                     ctx.fillStyle = Config.SWORD_COLOR; // Use weapon color
                     ctx.fillRect(swordVisualX, swordVisualY, swordVisualWidth, swordVisualHeight);
-                } else if (this.selectedWeapon === Config.WEAPON_TYPE_SPEAR) {
+                } else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) {
                     // Simple visual representation of the spear
                     const spearVisualWidth = 3;
                     const spearVisualHeight = 14; // Longer
@@ -242,16 +259,27 @@ export class Player {
                         : this.x - spearVisualWidth / 2;            // Left side
                     ctx.fillStyle = Config.SPEAR_COLOR; // Use weapon color
                     ctx.fillRect(spearVisualX, spearVisualY, spearVisualWidth, spearVisualHeight);
+        
+                } else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
+                        // Simple visual representation of the shovel
+                        const shovelVisualWidth = 5;
+                        const shovelVisualHeight = 8;
+                        const shovelVisualY = this.y + this.height * 0.4;
+                        const shovelVisualX = this.lastDirection > 0
+                            ? this.x + this.width - shovelVisualWidth / 2 // Right side
+                            : this.x - shovelVisualWidth / 2;            // Left side
+                        ctx.fillStyle = Config.SHOVEL_COLOR; // Use weapon color
+                        ctx.fillRect(shovelVisualX, shovelVisualY, shovelVisualWidth, shovelVisualHeight);
                 }
             }
         }
         // Draw Attack Hitbox visual if attacking with a weapon
-        if (this.isAttacking && this.selectedWeapon !== Config.WEAPON_TYPE_UNARMED) {
+        if (this.isAttacking && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             const hitbox = this.getAttackHitbox();
             if (hitbox) {
             // Use weapon-specific color for hitbox visualization
                 let hitboxColor = Config.PLAYER_SWORD_ATTACK_COLOR; // Default to sword
-                if (this.selectedWeapon === Config.WEAPON_TYPE_SPEAR) {
+                if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) {
                     hitboxColor = Config.PLAYER_SPEAR_ATTACK_COLOR;
                 }
             ctx.fillStyle = hitboxColor;
@@ -300,8 +328,10 @@ export class Player {
         this.inventory = {};
         this.lastDirection = 1;
         this.hitEnemiesThisSwing = [];
+        this.hitBlocksThisSwing = [];
         this.hasSword = false; // reset weapon possession
         this.hasSpear = false;
+        this.hasShovel = false;
         this.selectedWeapon = Config.WEAPON_TYPE_UNARMED; // reset to unarmed
     }
 
@@ -323,72 +353,98 @@ export class Player {
 
 // --- Calculates the position and size of the attack hitbox based on player state and selected weapon. ---
     getAttackHitbox() {
-        if (!this.isAttacking || this.selectedWeapon === Config.WEAPON_TYPE_UNARMED) {
+        if (!this.isAttacking || this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
             return null;
         }
 
         const verticalCenter = this.y + this.height / 2;
-        let hitboxX, hitboxY, hitboxWidth, hitboxHeight;
 
-        if (this.selectedWeapon === Config.WEAPON_TYPE_SWORD) {
-            hitboxY = verticalCenter - (Config.PLAYER_SWORD_ATTACK_HEIGHT / 2) + Config.PLAYER_SWORD_ATTACK_REACH_Y;
-            hitboxWidth = Config.PLAYER_SWORD_ATTACK_WIDTH;
-            hitboxHeight = Config.PLAYER_SWORD_ATTACK_HEIGHT;
-            if (this.lastDirection > 0) { // Facing right
-                hitboxX = this.x + this.width + Config.PLAYER_SWORD_ATTACK_REACH_X - (hitboxWidth / 2);
-            } else { // Facing left
-                hitboxX = this.x - Config.PLAYER_SWORD_ATTACK_REACH_X - (hitboxWidth / 2);
-            }
-        } else if (this.selectedWeapon === Config.WEAPON_TYPE_SPEAR) {
-            // Use SPEAR constants
-            hitboxY = verticalCenter - (Config.PLAYER_SPEAR_ATTACK_HEIGHT / 2) + Config.PLAYER_SPEAR_ATTACK_REACH_Y;
-            hitboxWidth = Config.PLAYER_SPEAR_ATTACK_WIDTH;
-            hitboxHeight = Config.PLAYER_SPEAR_ATTACK_HEIGHT;
-            if (this.lastDirection > 0) { // Facing right
-                hitboxX = this.x + this.width + Config.PLAYER_SPEAR_ATTACK_REACH_X - (hitboxWidth / 2);
-            } else { // Facing left
-                hitboxX = this.x - Config.PLAYER_SPEAR_ATTACK_REACH_X - (hitboxWidth / 2);
-            }
-        } else {
-            // Future weapons
-            return null;
-        }
 
-        return { x: hitboxX, y: hitboxY, width: hitboxWidth, height: hitboxHeight };
+
+       // --- Calculate based on target World Position ---
+       const playerCenterX = this.x + this.width / 2;
+       const playerCenterY = this.y + this.height / 2;
+       const targetX = this.targetWorldPos.x;
+       const targetY = this.targetWorldPos.y;
+
+       const dx = targetX - playerCenterX;
+       const dy = targetY - playerCenterY;
+       const dist = Math.sqrt(dx * dx + dy * dy);
+
+       // Determine hitbox properties based on selected item
+       let hitboxWidth, hitboxHeight, reachX, reachY;
+       if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
+           hitboxWidth = Config.PLAYER_SWORD_ATTACK_WIDTH;
+           hitboxHeight = Config.PLAYER_SWORD_ATTACK_HEIGHT;
+           reachX = Config.PLAYER_SWORD_ATTACK_REACH_X;
+           reachY = Config.PLAYER_SWORD_ATTACK_REACH_Y;
+       } else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) {
+           hitboxWidth = Config.PLAYER_SPEAR_ATTACK_WIDTH;
+           hitboxHeight = Config.PLAYER_SPEAR_ATTACK_HEIGHT;
+           reachX = Config.PLAYER_SPEAR_ATTACK_REACH_X;
+           reachY = Config.PLAYER_SPEAR_ATTACK_REACH_Y;
+       } else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
+           hitboxWidth = Config.PLAYER_SHOVEL_ATTACK_WIDTH;
+           hitboxHeight = Config.PLAYER_SHOVEL_ATTACK_HEIGHT;
+           reachX = Config.PLAYER_SHOVEL_ATTACK_REACH_X;
+           reachY = Config.PLAYER_SHOVEL_ATTACK_REACH_Y;
+       } else {
+           return null; // Should not happen if selectedItem is checked above
+       }
+
+       // Calculate position based on directional offset towards target
+       let hitboxCenterX, hitboxCenterY;
+       if (dist > 1e-6) { // Avoid division by zero if target is exactly player center
+           const normX = dx / dist;
+           const normY = dy / dist;
+           // Calculate center of hitbox based on offset vector
+           hitboxCenterX = playerCenterX + normX * reachX;
+           hitboxCenterY = playerCenterY + normY * reachY;
+       } else {
+           // If target is too close, default to facing direction logic
+           hitboxCenterX = playerCenterX + this.lastDirection * reachX;
+           hitboxCenterY = playerCenterY + reachY;
+       }
+
+       // Calculate top-left corner of hitbox from its center
+       const hitboxX = hitboxCenterX - hitboxWidth / 2;
+       const hitboxY = hitboxCenterY - hitboxHeight / 2;
+
+       return { x: hitboxX, y: hitboxY, width: hitboxWidth, height: hitboxHeight };
     }
 
     // --- Handles when player collides with item ---
     pickupItem(item) {
-        if (!item || !item.type) return false;
+       if (!item || !item.type) return false;
 
-        if (item.type === Config.WEAPON_TYPE_SWORD) { // Use constant
-            if (!this.hasSword) {
-                this.hasSword = true;
-                // DO NOT auto-equip: this.equipWeapon(Config.WEAPON_TYPE_SWORD);
-                console.log("Player picked up the sword!");
+       if (item.type === Config.WEAPON_TYPE_SWORD) {
+           if (!this.hasSword) {
+               this.hasSword = true;
+               console.log("Player picked up the sword!");
+               return true;
+           } else { return false; }
+       } else if (item.type === Config.WEAPON_TYPE_SPEAR) {
+            if (!this.hasSpear) {
+                this.hasSpear = true;
+                console.log("Player picked up the spear!");
                 return true;
-            } else {
-                return false;
-            }
-        } else if (item.type === Config.WEAPON_TYPE_SPEAR) { // Use constant
-             if (!this.hasSpear) {
-                 this.hasSpear = true;
-                 // DO NOT auto-equip
-                 console.log("Player picked up the spear!");
-                 return true;
-             } else {
-                 return false;
-             }
-        }
-        // Resource Pickup Logic
-        else if (item.type === 'wood' || item.type === 'stone' || item.type === 'metal') { // Add stone/metal here too, more?
-             this.inventory[item.type] = (this.inventory[item.type] || 0) + 1;
-             console.log(`Picked up ${item.type}! Total: ${this.inventory[item.type]}`);
-             return true;
-        }
+            } else { return false; }
+       } else if (item.type === Config.WEAPON_TYPE_SHOVEL) {
+            if (!this.hasShovel) {
+                this.hasShovel = true;
+                console.log("Player picked up the shovel!");
+                return true;
+            } else { return false; }
+       }
+       // Resource Pickup Logic
+       else if (Config.INVENTORY_MATERIALS.includes(item.type)) { // Check against the Config list
+            this.inventory[item.type] = (this.inventory[item.type] || 0) + 1;
+            console.log(`Picked up ${item.type}! Total: ${this.inventory[item.type]}`);
+            return true;
+       }
 
-        return false;
-    }
+       return false;
+   }
 
     // --- Add hasWeapon method to Player ---
     hasWeapon(weaponType) {
@@ -396,34 +452,39 @@ export class Player {
             return this.hasSword;
         } else if (weaponType === Config.WEAPON_TYPE_SPEAR) {
             return this.hasSpear;
+        } else if (weaponType === Config.WEAPON_TYPE_SHOVEL) {
+                return this.hasShovel;
         }
         // Add checks for future weapons
         return false;
     }
 
     // --- Update equipWeapon() ---
-    equipWeapon(weaponType) {
-        // console.log(`EQUIP ATTEMPT: Trying to equip "${weaponType}". HasSword=${this.hasSword}, HasSpear=${this.hasSpear}`);
+    equipItem(itemType) {
         let canEquip = false;
-        if (weaponType === Config.WEAPON_TYPE_SWORD && this.hasSword) {
-            canEquip = true;
-        } else if (weaponType === Config.WEAPON_TYPE_SPEAR && this.hasSpear) { // Add spear check
-             canEquip = true;
-        } else if (weaponType === Config.WEAPON_TYPE_UNARMED) {
-            canEquip = true; // Can always equip unarmed
-        }
-
-        if (canEquip && this.selectedWeapon !== weaponType) {
-            this.selectedWeapon = weaponType;
-            // console.log(`   SUCCESS: Player equipped ${weaponType}.`);
+        if (itemType === Config.WEAPON_TYPE_SWORD && this.hasSword) {
+                canEquip = true;
+            } else if (itemType === Config.WEAPON_TYPE_SPEAR && this.hasSpear) {
+                canEquip = true;
+            } else if (itemType === Config.WEAPON_TYPE_SHOVEL && this.hasShovel) {
+                canEquip = true;
+            } else if (Config.INVENTORY_MATERIALS.includes(itemType)) { // Check if it's a placeable material
+                canEquip = this.inventory[itemType] > 0;
+            } else if (itemType === Config.WEAPON_TYPE_UNARMED) {
+                canEquip = true;
+            }
+            if (canEquip && this.selectedItem !== itemType) {
+                    this.selectedItem = itemType;
+                    // console.log(`   SUCCESS: Player equipped ${itemType}.`);
+                    
             // Reset attack state when switching weapons? Optional, but maybe good.
             this.isAttacking = false;
             this.attackTimer = 0;
             // Keep cooldown running? Or reset? Let's keep it running for now.
         } else if (!canEquip) {
-            // console.log(`   FAILED: Cannot equip ${weaponType}. Possession check failed.`);
+            // console.log(`   FAILED: Cannot equip ${itemType}. Possession/Count check failed.`);
         } else {
-            // console.log(`   INFO: Already equipped ${weaponType}.`);
+            // console.log(`   INFO: Already equipped ${itemType}.`);
         }
     }
 
@@ -436,6 +497,21 @@ export class Player {
             this.hitEnemiesThisSwing.push(enemy);
         }
     }
+
+       // --- Helpers for block collision ---
+       hasHitBlockThisSwing(col, row) {
+           // Create a unique key for the block position
+           const blockKey = `${col},${row}`;
+           return this.hitBlocksThisSwing.includes(blockKey);
+       }
+       registerHitBlock(col, row) {
+           const blockKey = `${col},${row}`;
+           if (!this.hasHitBlockThisSwing(col, row)) {
+               this.hitBlocksThisSwing.push(blockKey);
+           }
+       }
+
+
     // --- Simple Getters ---
     getRect() { // Returns player's bounding box
         return { x: this.x, y: this.y, width: this.width, height: this.height };
@@ -452,23 +528,44 @@ export class Player {
     getInventory() {
         return this.inventory;
     }
+       getShovelStatus() { // New getter
+                return this.hasShovel;
+           }
     getSwordStatus() {
         return this.hasSword;
     }
     getSpearStatus() { // New getter
          return this.hasSpear;
     }
-    canAttack() {
-        // Player can attack if they have *any* weapon equipped (not unarmed)
-        return this.selectedWeapon !== Config.WEAPON_TYPE_UNARMED;
+    getCurrentlySelectedItem() { // Added getter for selected item type
+        return this.selectedItem;
     }
     // --- get attack damage based on equipped weapon ---
     getCurrentAttackDamage() {
-        if (this.selectedWeapon === Config.WEAPON_TYPE_SWORD) {
-            return Config.PLAYER_SWORD_ATTACK_DAMAGE;
-        } else if (this.selectedWeapon === Config.WEAPON_TYPE_SPEAR) {
-             return Config.PLAYER_SPEAR_ATTACK_DAMAGE;
+        // Returns damage intended for ENEMIES
+        if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
+        return Config.PLAYER_SWORD_ATTACK_DAMAGE;
+        } else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) {
+                return Config.PLAYER_SPEAR_ATTACK_DAMAGE;
+        } else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
+                return Config.PLAYER_SHOVEL_ATTACK_DAMAGE;
         }
         return 0; // No damage if unarmed or unknown weapon
+    }
+        
+    // --- get block damage based on equipped weapon ---
+    getCurrentBlockDamage() {
+        // Returns damage intended for BLOCKS
+        if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
+            return Config.PLAYER_SHOVEL_BLOCK_DAMAGE;
+        }
+        // Sword, Spear, Unarmed do 0 block damage
+        return 0;
+    }
+
+    // --- Check if the selected item is a weapon ---
+    isItemSelectedWeapon() {
+        const weapons = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
+        return weapons.includes(this.selectedItem);
     }
 }

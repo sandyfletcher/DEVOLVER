@@ -3,7 +3,6 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
-import * as UI from './ui.js'; // not used currently
 
 let canvas = null;
 let appContainer = null;
@@ -14,6 +13,8 @@ const state = {
     right: false,
     jump: false,
     attack: false, // Player component consumes this once triggered
+    mouseX: 0, // Current mouse X position relative to canvas
+    mouseY: 0, // Current mouse Y position relative to canvas
 };
 
 // --- Keyboard Mapping ---
@@ -92,11 +93,21 @@ const handleKeyUp = (e) => {
 
 // --- MOUSE/TOUCH INPUT ---
 const handleMouseDown = (e) => {
+    // Only trigger attack if it's a left click (button 0) and on the canvas
     if (e.target === canvas) {
         if (e.button === 0 && !state.attack) { // Left click
             state.attack = true; // Set attack flag for player update check
             e.preventDefault();
         }
+    }
+};
+
+// --- Mouse Move Handler ---
+const handleMouseMove = (e) => {
+    if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        state.mouseX = e.clientX - rect.left;
+        state.mouseY = e.clientY - rect.top;
     }
 };
 
@@ -233,8 +244,10 @@ export function init() {
     // Keyboard Listeners
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    // Touch Listeners
+    // Mouse Listeners
     canvas.addEventListener('mousedown', handleMouseDown); // Keep for attack
+    canvas.addEventListener('mousemove', handleMouseMove); // Track mouse position
+    // Touch Listeners
     canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
     canvas.addEventListener('touchend', handleTouchEndOrCancel, { passive: false });
     canvas.addEventListener('touchcancel', handleTouchEndOrCancel, { passive: false });
@@ -249,6 +262,10 @@ export function init() {
 
 export function getState() {
     return state;
+}
+
+export function getMousePosition() {
+    return { x: state.mouseX, y: state.mouseY };
 }
 
 export function drawControls(ctx) {

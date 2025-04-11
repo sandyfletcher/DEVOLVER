@@ -15,11 +15,8 @@ let playerRef = null; // Store player reference for weapon switching
 let itemManagerRef = null; // Store item manager reference if needed
 
 // --- Store references to the weapon slot divs ---
-const weaponSlotDivs = {}; // Use an object: { sword: divElement, spear: divElement }
-
-// --- Configuration for UI elements ---
-const INVENTORY_MATERIALS = ['wood', 'stone', 'metal']; // Materials to display
-const WEAPON_SLOTS = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR]; // Weapons to display slots for
+const weaponSlotDivs = {}; // Use an object: { sword: divElement, spear: divElement, shovel: divElement }
+const WEAPON_SLOTS = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL]; // Weapons to display slots for
 
 // --- Initialize UI module references ---
 export function init() {
@@ -45,25 +42,29 @@ export function init() {
             slotDiv.classList.add('weapon-slot-box');
             slotDiv.dataset.weapon = weaponType;
             slotDiv.title = weaponType.toUpperCase();
-            slotDiv.textContent = '?'; // Initial placeholder icon
-            // Add initial disabled state styling
-            slotDiv.classList.add('disabled');
-            slotDiv.style.backgroundColor = '#444';
-            weaponSlotsEl.appendChild(slotDiv);
-            // Store the reference
-            weaponSlotDivs[weaponType] = slotDiv;
-
-            // --- Add the click listener HERE, ONCE ---
-            // It's okay to add it even when disabled initially. The logic inside
-            // equipWeapon will prevent equipping if the player doesn't have it.
-            slotDiv.addEventListener('click', () => {
-                console.log(`--- CLICKED on ${weaponType} slot! ---`); // Keep this log
-                if (playerRef && playerRef.hasWeapon(weaponType)) { // Add a check in the listener too!
-                    playerRef.equipWeapon(weaponType);
+                // Assign initial icons based on type
+                if (weaponType === Config.WEAPON_TYPE_SWORD) slotDiv.textContent = '⚔️';
+                else if (weaponType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑';
+                else if (weaponType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️'; // Shovel icon
+                else slotDiv.textContent = '?';            // Add initial disabled state styling
+                slotDiv.classList.add('disabled');
+                slotDiv.style.backgroundColor = '#444';
+                slotDiv.style.opacity = '0.4'; // Make disabled more obvious
+                slotDiv.style.cursor = 'default';
+                weaponSlotsEl.appendChild(slotDiv);
+                // Store the reference
+                weaponSlotDivs[weaponType] = slotDiv;
+                slotDiv.addEventListener('click', () => {
+                console.log(`--- CLICKED on ${weaponType} slot! ---`); 
+                // Call the renamed equipItem function, checking if it's a weapon OR if it's a material the player has
+                const isWeapon = WEAPON_SLOTS.includes(weaponType);
+                const hasMaterial = !isWeapon && playerRef && playerRef.inventory[weaponType] > 0;
+                if (playerRef && ( (isWeapon && playerRef.hasWeapon(weaponType)) || hasMaterial) ) {
+                    playerRef.equipItem(weaponType);
                 } else if (!playerRef) {
-                    console.error("UI Click: playerRef is null!");
+                        console.error("UI Click: playerRef is null!");
                 } else {
-                    console.log(`UI Click: Player does not have ${weaponType}. Cannot equip.`);
+                    console.log(`UI Click: Player cannot equip ${weaponType}. Possession/Inventory check failed.`);
                 }
             });
         }
@@ -113,7 +114,7 @@ export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
  * @param {object} inventory - Player's inventory object { itemType: count }.
  * @param {boolean} hasSword - Whether the player currently has the sword.
  */
-export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear) {
+export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
 // Update Health Bar
     if (healthBarFillEl && healthTextEl) {
 // Clamp health between 0 and maxHealth
@@ -122,33 +123,29 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
         healthBarFillEl.style.width = `${healthPercent}%`;
         healthTextEl.textContent = `${Math.round(clampedHealth)}/${maxHealth}`; // Show rounded current health
-            }
+    }
 // Update Inventory List
     if (inventoryBoxesEl) {
-            let inventoryHTML = '';
-            for (const materialType of INVENTORY_MATERIALS) {
-            const count = inventory[materialType] || 0;
-            const maxDisplayCount = 999;
-            const displayCount = Math.min(count, maxDisplayCount);
-// Fetch color from ITEM_CONFIG (requires basic configs added earlier)
-            const itemConfig = Config.ITEM_CONFIG[materialType];
-            const bgColor = itemConfig?.color || '#444'; // Fallback color
+        let inventoryHTML = '';
+        for (const materialType of Config.INVENTORY_MATERIALS) { // Uses the updated list
+        const count = inventory[materialType] || 0;
+        const maxDisplayCount = 999;
+        const displayCount = Math.min(count, maxDisplayCount);
+        const itemConfig = Config.ITEM_CONFIG[materialType];
+        const bgColor = itemConfig?.color || '#444'; // Fallback color
 
-            inventoryHTML += `
-                <div class="inventory-item-box" style="background-color: ${bgColor};" title="${materialType.toUpperCase()}">
-                    <span class="inventory-item-count">${displayCount}</span>
-                </div>
-            `;
-        }
+        inventoryHTML += `
+            <div class="inventory-item-box" style="background-color: ${bgColor};" title="${materialType.toUpperCase()}">
+                <span class="inventory-item-count">${displayCount}</span>
+            </div>
+        `;}
         inventoryBoxesEl.innerHTML = inventoryHTML;
     }
-    // --- Update EXISTING Weapon Slots ---
+    // ---  Weapon Slots ---
     if (!playerRef) {
         // console.warn("UI Update: playerRef is not set yet, skipping weapon slots.");
         return; // Can't update slots without player reference
     }
-    // console.log(`UI Update Check - HasSword: ${hasSword}, HasSpear: ${hasSpear}, Currently Selected: ${playerRef?.selectedWeapon}`);
-
 
     for (const weaponType of WEAPON_SLOTS) {
         const slotDiv = weaponSlotDivs[weaponType]; // Get the existing div reference
@@ -167,22 +164,24 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         } else if (weaponType === Config.WEAPON_TYPE_SPEAR) {
             playerHasWeapon = hasSpear;
             if (playerHasWeapon) icon = '↑';
+        } else if (weaponType === Config.WEAPON_TYPE_SHOVEL) {
+             playerHasWeapon = hasShovel;
+            if (playerHasWeapon) icon = '⛏️'; // Shovel icon
         }
          // console.log(` > Updating Slot: ${weaponType}, PlayerHasWeapon: ${playerHasWeapon}`);
 
         // Update content and styles based on possession and selection
-        slotDiv.textContent = icon;
-
         if (playerHasWeapon) {
             // Player HAS the weapon - remove disabled state, manage active state
             slotDiv.classList.remove('disabled');
             slotDiv.style.backgroundColor = ''; // Reset background (or set to default empty)
             slotDiv.style.opacity = '1';
-             slotDiv.style.cursor = 'pointer'; // Ensure cursor is pointer
+            slotDiv.style.cursor = 'pointer'; // Ensure cursor is pointer
             slotDiv.title = weaponType.toUpperCase();
+            slotDiv.textContent = icon; // Set icon only if possessed
 
             // Check if it's the active/selected weapon
-            if (playerRef.selectedWeapon === weaponType) {
+            if (playerRef.getCurrentlySelectedItem() === weaponType) {
                  // console.log(`   >>> Adding .active class to ${weaponType}`);
                 slotDiv.classList.add('active');
             } else {
@@ -196,7 +195,7 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             slotDiv.style.backgroundColor = '#444';
             slotDiv.style.opacity = '0.4';
             slotDiv.style.cursor = 'default'; // Change cursor back
-            slotDiv.textContent = ''; // Clear icon when disabled
+            slotDiv.textContent = ''; // Keep icon clear when disabled
             slotDiv.title = `${weaponType.toUpperCase()} (Not Found)`;
         }
     }

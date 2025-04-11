@@ -65,7 +65,10 @@ export const BLOCK_GRASS = 4;
 export const BLOCK_STONE = 5;
 export const BLOCK_WOOD_WALL = 6;
 export const BLOCK_METAL = 7;
+export const BLOCK_BONE = 8;
 // TODO: Glass, specific ores, etc. 
+
+export const INVENTORY_MATERIALS = ['wood', 'stone', 'metal', 'dirt', 'sand', 'bone'];
 
 // --- Block Orientation IDs ---
 export const ORIENTATION_FULL = 0;
@@ -84,6 +87,7 @@ export const BLOCK_HP = {
     [BLOCK_STONE]: 300,
     [BLOCK_WOOD_WALL]: 100,
     [BLOCK_METAL]: 500,
+    [BLOCK_BONE]: 120,
 }; // TODO: Add HP for other types later
 
 // --- Block Colors ---
@@ -96,6 +100,7 @@ export const BLOCK_COLORS = {
     [BLOCK_STONE]: 'rgb(140, 140, 140)',
     [BLOCK_WOOD_WALL]: 'rgb(160, 110, 70)',
     [BLOCK_METAL]: 'rgb(190, 190, 200)',
+    [BLOCK_BONE]: 'rgb(200, 190, 170)',
 };
 
 // --- Water Physics (NEW) ---
@@ -142,6 +147,10 @@ export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second
 export const PLAYER_MAX_SPEED_X = 120;     // Pixels per second
 export const PLAYER_FRICTION_BASE = 0.04;  // Base friction multiplier (Lower = stronger friction)
 export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward velocity)
+
+// --- Player Interaction Range  ---
+export const PLAYER_INTERACTION_RANGE = 100; // Player range for block interaction (digging/placing)
+export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE;
 
 // =============================================================================
 // --- Enemy Constants ---
@@ -190,7 +199,9 @@ export const ENEMY_STATS = {
         canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2, // Maybe slightly more space? Optional.
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.8, // Less pushy? Optional.
-        dropTable: [],                    // No drops for the basic version
+        dropTable: [
+                { type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }, // Change to drop bone
+            ],     
     },
 
 
@@ -211,10 +222,9 @@ export const ENEMY_STATS = {
         canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR, // Use default separation
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
-        dropTable: [                      // Loot drops on death
-            // { type: 'item_id', chance: 0.0 to 1.0, minAmount: N, maxAmount: M }
-            { type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 },
-        ],
+        dropTable: [
+            { type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }, // Change to drop bone
+        ],    
         // --- Future properties ---
         // attackType: 'none', // 'melee', 'ranged', 'aura', 'special'
         // attackDamage: 0,
@@ -244,9 +254,7 @@ export const ENEMY_STATS = {
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
         dropTable: [
-            { type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 },
-            // Example: Maybe a small chance for something else?
-            // { type: 'enemy_part', chance: 0.05, minAmount: 1, maxAmount: 1 },
+            { type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }, // Change to drop bone
         ],
          // --- Future properties ---
         // attackType: 'melee', // Could have a bite attack later
@@ -299,9 +307,25 @@ export const ENEMY_STATS = {
 // =============================================================================
 // --- Item Constants ---
 // =============================================================================
-export const WEAPON_TYPE_SWORD = 'sword'; // Define explicitly
-export const WEAPON_TYPE_SPEAR = 'spear';
+
 export const WEAPON_TYPE_UNARMED = 'unarmed';
+export const WEAPON_TYPE_SHOVEL = 'shovel';
+export const WEAPON_TYPE_SWORD = 'sword';
+export const WEAPON_TYPE_SPEAR = 'spear';
+
+// --- Shovel ---
+export const SHOVEL_WIDTH = Math.floor(2.5 * BLOCK_WIDTH);   // ~10px
+export const SHOVEL_HEIGHT = Math.floor(1.5 * BLOCK_HEIGHT);  // ~6px
+export const SHOVEL_COLOR = 'rgb(160, 160, 160)'; // Grey color
+export const PLAYER_SHOVEL_ATTACK_DAMAGE = 10; // Damage to enemies
+export const PLAYER_SHOVEL_BLOCK_DAMAGE = 25; // Damage to blocks (Adjust as needed)
+export const PLAYER_SHOVEL_ATTACK_REACH_X = Math.floor(1.0 * BLOCK_WIDTH);  // Short reach forward ~4px
+export const PLAYER_SHOVEL_ATTACK_REACH_Y = Math.floor(1.5 * BLOCK_HEIGHT); // Downward offset ~6px (pushes hitbox down)
+export const PLAYER_SHOVEL_ATTACK_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);  // Width of hitbox ~6px
+export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(3 * BLOCK_HEIGHT); // Tall hitbox ~12px
+export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3; // Slightly slower than sword?
+export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.45;// Slightly slower than sword?
+export const PLAYER_SHOVEL_ATTACK_COLOR = 'rgba(180, 180, 180, 0.5)'; // Greyish color
 
 // --- Sword ---
 export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH);      // Approx 12px
@@ -331,6 +355,11 @@ export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)'; // Differen
 
 // --- Centralized Item Configuration Object ---
 export const ITEM_CONFIG = {
+       [WEAPON_TYPE_SHOVEL]: { // Use constant
+            width: SHOVEL_WIDTH,
+            height: SHOVEL_HEIGHT,
+            color: SHOVEL_COLOR,
+        },
     [WEAPON_TYPE_SWORD]: { // Use constant
         width: SWORD_WIDTH,
         height: SWORD_HEIGHT,
@@ -340,6 +369,16 @@ export const ITEM_CONFIG = {
         width: SPEAR_WIDTH,
         height: SPEAR_HEIGHT,
         color: SPEAR_COLOR,
+    },
+    'dirt': { // Add config for dirt drops
+        width: Math.floor(1 * BLOCK_WIDTH),
+        height: Math.floor(1 * BLOCK_HEIGHT),
+        color: BLOCK_COLORS[BLOCK_DIRT],
+    },
+    'sand': { // Add config for sand drops
+        width: Math.floor(1 * BLOCK_WIDTH),
+        height: Math.floor(1 * BLOCK_HEIGHT),
+        color: BLOCK_COLORS[BLOCK_SAND],
     },
     'wood': {
         width: Math.floor(1 * BLOCK_WIDTH),
@@ -356,6 +395,11 @@ export const ITEM_CONFIG = {
         height: Math.floor(1 * BLOCK_HEIGHT),
         color: BLOCK_COLORS[BLOCK_METAL],
     },
+    'bone': { // Add config for bone item
+            width: Math.floor(1 * BLOCK_WIDTH),
+            height: Math.floor(1 * BLOCK_HEIGHT),
+            color: BLOCK_COLORS[BLOCK_BONE],
+        },
     // ... other items
 };
 export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob (relative to height)
