@@ -9,46 +9,158 @@ html, body {
     font-family: sans-serif;
     color: white;
 }
-
 body {
     display: flex;
     justify-content: center;
     align-items: center;
 }
-
 #app-container {
     display: flex;
-    flex-direction: row;
-    height: 90vh; /* Base size on viewport height */
-    width: calc(90vh * 2); /* Calculate width based on height and desired aspect ratio (2:1) */
-    max-width: 95vw;     /* Add max-width to prevent excessive size on ultra-wide screens but ensure height remains the primary driver */
+    flex-direction: column;
+    /* Removed aspect-ratio: 2 / 1; for better vertical layout flexibility */
+    max-width: 95vw;     /* Maximum width allowed */
+    max-height: 90vh;    /* Maximum height allowed */
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
     gap: 1rem;
     padding: 1rem;
     box-sizing: border-box; /* Include padding in size */
+    margin: auto;
+    position: relative; /* Crucial for positioning the absolute overlay */
+    transition: filter 0.3s ease;
 }
 
-#left-sidebar, #right-sidebar {
-    flex-basis: 25%; /* take 1/4 of available space */
+/* --- Game Overlay --- */
+#game-overlay {
+    position: absolute; /* Position relative to #app-container */
+    top: 0;
+    left: 0;
+    width: 100%;
     height: 100%;
+    background-color: rgba(0, 0, 0, 0.75); /* Semi-transparent background */
+    color: white;
+    z-index: 100; /* Ensure it's on top */
+
+    display: flex; /* Use flex to center content */
+    justify-content: center;
+    align-items: center;
+    flex-direction: column; /* Stack content vertically */
+    text-align: center;
+
+    /* --- Visibility Control --- */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s; /* Fade opacity, snap visibility */
+}
+
+#game-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, visibility 0s linear 0s; /* Snap visibility immediately */
+}
+
+/* --- Overlay Content Sections --- */
+.overlay-content {
+    display: none; /* Hide all content sections by default */
+    flex-direction: column;
+    align-items: center;
+    width: 80%; /* Example width for content */
+    max-width: 500px;
+}
+
+/* Show specific content based on overlay class */
+#game-overlay.show-title #overlay-title-content,
+#game-overlay.show-pause #overlay-pause-content,
+#game-overlay.show-gameover #overlay-gameover-content {
+    display: flex; /* Or block, depending on internal layout needs */
+}
+
+/* --- Styling for Content Elements --- */
+#game-overlay h1 {
+    font-size: 3.5em;
+    margin-bottom: 1.5rem;
+    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
+}
+#game-overlay h2 {
+    font-size: 2.5em;
+    margin-bottom: 1.5rem;
+}
+#game-overlay p {
+    font-size: 1.2em;
+    margin-bottom: 1.5rem;
+}
+#game-overlay button {
+    padding: 12px 25px;
+    font-size: 1.3em;
+    margin-top: 1rem;
+    min-width: 150px;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background-color: #eee;
+    color: #333;
+    font-weight: bold;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+#game-overlay button:hover {
+    background-color: #fff;
+}
+#game-overlay button:active {
+    transform: scale(0.97);
+}
+/* Style specific buttons if needed */
+#restart-button-overlay {
+    background-color: darkred;
+    color: white;
+    border-color: #ffaaaa;
+}
+#restart-button-overlay:hover {
+    background-color: red;
+}
+
+
+/* --- Optional: Dim/Blur Background --- */
+#app-container.overlay-active > #top-sidebar,
+#app-container.overlay-active > #game-wrapper,
+#app-container.overlay-active > #bottom-sidebar {
+    filter: blur(4px) brightness(0.6); /* Adjust values as needed */
+    pointer-events: none; /* Prevent interaction with dimmed elements */
+    /* Transition should match the overlay fade */
+    transition: filter 0.3s ease;
+}
+/* Default state (no filter) */
+#app-container > #top-sidebar,
+#app-container > #game-wrapper,
+#app-container > #bottom-sidebar {
+    filter: none;
+    pointer-events: auto;
+    transition: filter 0.3s ease;
+}
+
+/* --- Sidebars --- */
+#top-sidebar, #bottom-sidebar {
+    flex-basis: auto; /* Let content determine initial size */
+    flex-shrink: 0;   /* Prevent sidebars from shrinking */
+    width: 100%; /* Should fill the column width */
     padding: 15px;
     box-sizing: border-box;
-    overflow-y: auto;
+    overflow-y: auto; /* Still allow vertical scroll if content overflows */
+    overflow-x: hidden; /* Hide horizontal overflow */
     display: flex;
     flex-direction: column;
     border: 0.2rem solid white;
-    position: relative;
+    position: relative; /* Keep for positioning internal elements like counts */
+    /* Optional: Add max-height if sidebars can get too tall */
+    /* max-height: 25vh; */
 }
-
-#left-sidebar > *, #right-sidebar > * {
-    margin-bottom: 15px; /* Add margin to elements inside sidebar for spacing TO BE FIXED ONCE ALL ELEMENTS ARE SET IN PLACE */
+#top-sidebar > *, #bottom-sidebar > * {
+    margin-bottom: 15px;
 }
-
-#left-sidebar > *:last-child, #right-sidebar > *:last-child {
+#top-sidebar > *:last-child, #bottom-sidebar > *:last-child {
     margin-bottom: 0; /* Remove margin from last element */
 }
-
-#left-sidebar h2, #right-sidebar h2, #right-sidebar h3 {
+#top-sidebar h2, #bottom-sidebar h2, #bottom-sidebar h3 {
     margin: 0 0 10px 0;
     padding-bottom: 5px;
     border-bottom: 1px solid #555;
@@ -57,171 +169,141 @@ body {
     flex-shrink: 0; /* Prevent titles from shrinking */
 }
 
-/* Game Area Wrapper Styling */
+/* --- Game Area --- */
 #game-wrapper {
-    flex-basis: 50%; /* Game takes 1/2 of available space */
-    height: 100%;
+    flex-basis: auto; /* Let it start auto */
+    flex-grow: 1;     /* Allow game area to take remaining vertical space */
+    width: 100%; /* Fill the column width */
+    min-height: 0; /* Important for flex-grow in some scenarios */
     position: relative;
     border: 0.2rem solid white;
     box-sizing: border-box;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* Prevent canvas from spilling out */
+    overflow: hidden; /* Keep canvas contained */
 }
 
-/* Canvas Styling */
+/* --- Canvas --- */
 #game-canvas {
     display: block;
     max-width: 100%;
     max-height: 100%;
-    object-fit: contain;
+    object-fit: contain; /* Key for scaling canvas within wrapper */
     image-rendering: pixelated;
     image-rendering: crisp-edges;
 }
 
-/* UI Element Styles */
+/* --- UI Elements in Sidebars --- */
 #health-display {
     margin-bottom: 15px;
-    display: flex; /* Arrange label, bar, text horizontally */
-    align-items: center; /* Vertically align items */
-    gap: 8px; /* Space between elements */
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
-
 #health-label {
-    flex-shrink: 0; /* Prevent label from shrinking */
+    flex-shrink: 0;
 }
-
 #health-bar-container {
-    flex-grow: 1; /* Allow bar to take available space */
+    flex-grow: 1;
     height: 18px;
-    background-color: rgb(80, 80, 80); /* Config.UI_HEALTH_BAR_COLOR_EMPTY */
+    background-color: rgb(80, 80, 80);
     border: 1px solid #ccc;
     border-radius: 3px;
-    overflow: hidden; /* Hide fill overflow */
+    overflow: hidden;
 }
-
 #health-bar-fill {
     height: 100%;
     width: 100%; /* Start full */
-    background-color: rgb(220, 40, 40); /* Config.UI_HEALTH_BAR_COLOR_FULL */
-    transition: width 0.2s ease-out; /* Smooth transition */
+    background-color: rgb(220, 40, 40);
+    transition: width 0.2s ease-out;
 }
 
 #inventory-boxes {
-        display: flex;
-        flex-direction: row; /* Arrange boxes horizontally */
-        flex-wrap: wrap; /* Allow wrapping if space is tight */
-        gap: 6px; /* Space between boxes */
-    }
-    
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+}
 .inventory-item-box {
-        width: 3rem; /* Adjust size as needed */
-        height: 3rem;
-        border: 1px solid white;
-        border-radius: 4px;
-        position: relative; /* For positioning the count text */
-        background-color: #333; /* Default background */
-        box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+    width: 3rem;
+    height: 3rem;
+    border: 1px solid white;
+    border-radius: 4px;
+    position: relative;
+    background-color: #333;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
+    cursor: pointer; /* Default cursor */
 }
 .inventory-item-box.active {
-    border-color: yellow; /* Match weapon slot highlight */
-    box-shadow: 0 0 8px yellow; /* Optional glow */
-    /* Add other styles if needed */
-}   
+    border-color: yellow;
+    box-shadow: 0 0 8px yellow;
+}
+.inventory-item-box.disabled { /* Added style for 0-count items */
+     opacity: 0.5;
+     cursor: default;
+     box-shadow: inset 0 0 5px rgba(0,0,0,0.8); /* Darker inset */
+}
 .inventory-item-count {
-        position: absolute;
-        bottom: 2px;
-        right: 3px;
-        font-size: 0.9em;
-        font-weight: bold;
-        color: white;
-        text-shadow: 1px 1px 2px black;
+    position: absolute;
+    bottom: 2px;
+    right: 3px;
+    font-size: 0.9em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px black;
 }
 
 #inventory-display h3 {
-    margin: 0 0 8px 0; /* Adjust margin */
+    margin: 0 0 8px 0;
     padding-bottom: 5px;
     text-align: center;
 }
 
 #weapon-display {
-    margin-top: 20px; /* Space above weapon section */
-    /* border-top: 1px solid #555;
-    padding-top: 15px; */
+    margin-top: 20px;
 }
-
 #weapon-slots {
     display: flex;
     flex-direction: row;
     gap: 8px;
 }
-
 .weapon-slot-box {
-    width: 60px; /* Larger than inventory items */
+    width: 60px;
     height: 60px;
-    border: 2px solid #555; /* Default border */
+    border: 2px solid #555;
     border-radius: 5px;
-    background-color: #111; /* Empty slot color */
+    background-color: #111;
     display: flex;
     justify-content: center;
     align-items: center;
-    cursor: pointer; /* Indicate clickable */
-    transition: border-color 0.2s ease;
-    font-size: 24px; /* Sets size for content like the emoji */
-    /* text-align: center; */ /* Already likely handled by flex */
-    /* line-height: 60px; */ /* Optional alternative centering */
+    cursor: pointer; /* Default state */
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease; /* Added transitions */
+    font-size: 24px;
 }
-
-/* Style for slots of weapons the player doesn't have */
 .weapon-slot-box.disabled {
     opacity: 0.4;
     cursor: default;
-    background-color: #2a2a2a !important; /* Darker background, !important might be needed */
+    background-color: #2a2a2a; /* Removed !important, not needed */
     border-color: #444;
-    box-shadow: none; /* Remove active shadow if present */
+    box-shadow: none;
 }
-
 .weapon-slot-box.active {
-    border-color: yellow; /* Highlight active weapon */
+    border-color: yellow;
     box-shadow: 0 0 8px yellow;
-    opacity: 1;
+    opacity: 1; /* Ensure active overrides disabled opacity */
 }
 
-#wave-status, #wave-timer, #enemy-count, #sword-status {
+#wave-status, #wave-timer, #enemy-count { /* Removed #sword-status, seems unused */
      font-size: 1em;
      color: #ccc;
 }
 
-/*  Controls Area Styling */
-#controls-area {
-    margin-top: auto; /* Push to the bottom */
-    padding-top: 15px; /* Space above controls */
-    border-top: 1px solid #555;
-    flex-shrink: 0; /* Prevent shrinking */
-    text-align: center; /* Center button */
-}
+/* Removed #controls-area and #restart-button styles as they are handled by overlay */
 
-#restart-button {
-    padding: 10px 20px;
-    font-size: 1.1em;
-    font-weight: bold;
-    color: white;
-    background-color: darkred; /* Match old style */
-    border: 1px solid #ffaaaa;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    display: none; /* Hidden by default, shown only on game over */
-}
-
-#restart-button:hover {
-    background-color: red;
-}
-
-/* Landscape Orientation Enforcement */
+/* --- Landscape Warning --- */
 #landscape-warning {
-    display: none; /* Hidden by default */
+    display: none;
     position: fixed;
     top: 0;
     left: 0;
@@ -229,19 +311,17 @@ body {
     height: 100%;
     background-color: rgba(0, 0, 0, 0.9);
     color: white;
-    z-index: 100;
+    z-index: 100; /* Should be below game-overlay (z-index 100) */
     justify-content: center;
     align-items: center;
     text-align: center;
     font-size: 1.5em;
 }
-
-noscript p { /* I might not need this if I set default fonts properly */
+noscript p {
     color: white;
     text-align: center;
     padding: 20px;
 }
-
 @media (orientation: portrait) {
     #app-container {
         display: none; /* Hide the game layout */
@@ -251,12 +331,12 @@ noscript p { /* I might not need this if I set default fonts properly */
     }
 }
 
-/* Hide scrollbars on sidebars */
-#left-sidebar::-webkit-scrollbar,
-#right-sidebar::-webkit-scrollbar {
+/* --- Scrollbar Hiding --- */
+#top-sidebar::-webkit-scrollbar,
+#bottom-sidebar::-webkit-scrollbar {
     display: none;
 }
-#left-sidebar, #right-sidebar {
+#top-sidebar, #bottom-sidebar {
     -ms-overflow-style: none;
     scrollbar-width: none;
 }

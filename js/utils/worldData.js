@@ -10,7 +10,7 @@ let worldGrid = []; // The single source of truth for world block data
 
 // --- Initialize world grid array structure with default values (air) ---
 export function initializeGrid() {
-    console.log(`Initializing world grid (${Config.GRID_ROWS}x${Config.GRID_COLS})...`);
+    // console.log(`Initializing world grid (${Config.GRID_ROWS}x${Config.GRID_COLS})...`);
     worldGrid = new Array(Config.GRID_ROWS);
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         // Initialize each row with BLOCK_AIR
