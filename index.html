@@ -9,76 +9,91 @@
         <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
     </head>
     <body>
-        <!-- App container now always holds the game layout -->
         <div id="app-container">
-
-            <!-- Top Sidebar Content -->
+            <!-- Top Sidebar -->
             <aside id="top-sidebar">
-                <h2>PORTAL READOUT</h2>
-                <div id="wave-status">Loading...</div>
-                <div id="wave-timer"></div>
-                <div id="enemy-count"></div>
-                <!-- Removed controls-area as restart is on overlay -->
+                <!-- Player -->
+                <div id="player-column">
+                    <h2>PLAYER</h2>
+                    <div id="health-display">
+                        <span id="health-label">HEALTH:</span>
+                        <div id="health-bar-container">
+                            <div id="health-bar-fill"></div>
+                        </div>
+                        <span id="health-text">Loading...</span>
+                    </div>
+                </div>
+                <!-- Portal -->
+                <div id="portal-column">
+                    <h2>PORTAL READOUT</h2>
+                    <div id="wave-status">Loading...</div>
+                    <div id="wave-timer"></div>
+                    <div id="enemy-count"></div>
+                </div>
             </aside>
-
             <!-- Game Wrapper with Canvas -->
             <main id="game-wrapper">
                  <canvas id="game-canvas" width="800" height="800">
                      Your browser does not support the HTML canvas.
                  </canvas>
-                 <!-- ******************************* -->
             </main>
-
-            <!-- Bottom Sidebar Content -->
-            <aside id="bottom-sidebar">
-                 <h2>SOLDIER</h2>
-                 <!-- Health Display -->
-                 <div id="health-display">
-                     <span id="health-label">HEALTH:</span>
-                     <div id="health-bar-container">
-                         <div id="health-bar-fill"></div>
-                     </div>
-                     <span id="health-text">Loading...</span>
-                 </div>
-                 <!-- Inventory Display -->
-                 <div id="inventory-display">
-                     <h3>INVENTORY</h3>
-                     <div id="inventory-boxes">Loading...</div> <!-- Populated by JS -->
-                     <!-- Weapon Display -->
-                     <div id="weapon-display">
-                         <h3>WEAPONS</h3>
-                         <div id="weapon-slots">Loading...</div> <!-- Populated by JS -->
-                     </div>
-                 </div>
-                 <!-- Removed controls-area as restart is on overlay -->
+            <!-- Bottom Sidebar -->
+            <aside id="bottom-sidebar" class="controls-hidden">
+                <!-- Inventory Selection Area -->
+                <div id="item-selection-area">
+                    <!-- Materials -->
+                    <div id="inventory-boxes-container">Loading...</div>
+                    <!-- Title In Between -->
+                    <h2>INVENTORY</h2>
+                    <!-- Weapons -->
+                    <div id="weapon-slots-container">Loading...</div>
+                </div>
+                <!-- Toggle Button for Controls -->
+                <button id="toggle-controls-button" title="Show Controls">▲ TOUCH CONTROLS ▲</button>
+                <!-- Action Buttons Area -->
+                <div id="action-buttons-area">
+                    <!-- Left Buttons -->
+                    <div class="action-button-group">
+                        <button id="btn-move-left" class="action-button" title="Move Left (A/←)">◀</button>
+                        <button id="btn-move-right" class="action-button" title="Move Right (D/→)">▶</button>
+                    </div>
+                    <!-- Center Button -->
+                    <button id="btn-pause" class="action-button" title="Pause (Esc)">⏸️</button>
+                    <!-- Right Buttons -->
+                    <div class="action-button-group">
+                        <button id="btn-jump" class="action-button" title="Jump (W/↑/Space)">▲</button>
+                        <button id="btn-attack" class="action-button" title="Attack/Use (F/Click)">⚔️</button>
+                    </div>
+                </div>
             </aside>
-
-            <!-- Game Overlay (Structure looks correct) -->
+            <!-- Game Overlay -->
             <div id="game-overlay">
                 <!-- Content Sections -->
                 <div id="overlay-title-content" class="overlay-content">
                     <h1>DEVOLVER</h1>
                     <button id="start-game-button">START GAME</button>
                 </div>
-                <div id="overlay-pause-content" class="overlay-content">
-                    <h2>PAUSED</h2>
-                    <button id="resume-button">RESUME</button>
-                </div>
+                 <div id="overlay-pause-content" class="overlay-content">
+                     <h2>PAUSED</h2>
+                     <button id="resume-button">RESUME</button>
+                     <!-- Maybe add Quit/Restart here later? -->
+                 </div>
                 <div id="overlay-gameover-content" class="overlay-content">
                     <h2>GAME OVER</h2>
                     <p id="gameover-stats">You survived X waves!</p>
                     <button id="restart-button-overlay">TRY AGAIN</button>
                 </div>
             </div>
-            <!-- End #game-overlay -->
-
-        </div> <!-- End #app-container -->
-
+        </div>
         <!-- Warnings/Fallbacks -->
         <div id="landscape-warning"><p>Rotate device to landscape mode.</p></div>
         <noscript><p>This game requires JavaScript to run.</p></noscript>
-
         <!-- Script Loading -->
         <script type="module" src="js/main.js" defer></script>
+        <!-- Expose pauseGame globally for the button -->
+        <script>
+             // Simple global exposure - consider event bus for larger apps
+             var pauseGameCallback = null;
+        </script>
     </body>
 </html>

@@ -6,158 +6,298 @@ import * as Config from './config.js';
 
 // --- Cache DOM Element References ---
 
-// Initialized Early (Overlay + Containers)
-let gameOverlay = null; // Found by initOverlay
-let appContainer = null; // Technically found in main.js, but useful if ui needs it
-// References to overlay content sections (optional, found by initOverlay)
-// let overlayTitleContent, overlayPauseContent, overlayGameOverContent;
-
-// Initialized Later (Game UI Elements - found by initGameUI)
-let waveStatusEl, waveTimerEl, enemyCountEl;
+// Top Sidebar
+let playerColumnEl, portalColumnEl;
 let healthLabelEl, healthBarContainerEl, healthBarFillEl, healthTextEl;
-let inventoryBoxesEl; // Container for inventory items
-let weaponSlotsEl;    // Container for weapon slots
-// No need for restartButtonEl here, it's on the overlay now.
+let waveStatusEl, waveTimerEl, enemyCountEl;
+
+// Bottom Sidebar
+let bottomSidebarEl;
+let itemSelectionAreaEl;
+let inventoryBoxesContainerEl, weaponSlotsContainerEl;
+let actionButtonsAreaEl;
+let toggleControlsButtonEl;
+let actionButtons = {}; // { left: btnEl, right: btnEl, ... }
+
+// Overlay
+let gameOverlay = null;
 
 // --- Internal State ---
-let playerRef = null; // Store player reference
-// Store references to dynamically created/managed slots
-const weaponSlotDivs = {}; // Use object: { [WEAPON_TYPE_SWORD]: divElement, ... }
-const inventorySlotDivs = {}; // Use object: { 'dirt': divElement, 'stone': divElement, ... }
+let playerRef = null;
+const itemSlotDivs = {}; // Unified store: { 'dirt': div, 'sword': div, ... }
+let buttonIlluminationTimers = {};
+const ILLUMINATION_DURATION = 150; // ms
 
-const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL]; // Define order
+const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
+const ALL_SELECTABLE_ITEMS = [...Config.INVENTORY_MATERIALS, ...WEAPON_SLOTS_ORDER];
 
 // --- Initialization ---
 
-/**
- * Initializes references to overlay elements. Called early during main page load.
- * @returns {boolean} True if successful, false otherwise.
- */
 export function initOverlay() {
-    // console.log("UI: Initializing Overlay Elements...");
     gameOverlay = document.getElementById('game-overlay');
-    // Optionally get references to overlay content sections if needed elsewhere in UI
-    // overlayTitleContent = document.getElementById('overlay-title-content');
-    // overlayPauseContent = document.getElementById('overlay-pause-content');
-    // overlayGameOverContent = document.getElementById('overlay-gameover-content');
-
-    if (!gameOverlay /* || !overlayTitleContent || ... */) {
+    if (!gameOverlay) {
         console.error("UI InitOverlay: Could not find core overlay elements!");
         return false;
     }
-    // console.log("UI: Overlay Elements Initialized.");
     return true;
 }
 
-/**
- * Initializes references to game-specific UI elements (sidebars, etc.)
- * AND creates the static parts of the game UI (like weapon slots).
- * Called when the game actually starts (e.g., startGame in main.js).
- * @returns {boolean} True if successful, false otherwise.
- */
 export function initGameUI() {
-    // console.log("UI: Initializing Game UI Elements...");
     let success = true;
 
-    // --- Find Game-Specific Elements ---
-    waveStatusEl = document.getElementById('wave-status');
-    waveTimerEl = document.getElementById('wave-timer');
-    enemyCountEl = document.getElementById('enemy-count');
+    // --- Find Top Sidebar Elements ---
+    playerColumnEl = document.getElementById('player-column');
+    portalColumnEl = document.getElementById('portal-column');
     healthBarContainerEl = document.getElementById('health-bar-container');
     healthBarFillEl = document.getElementById('health-bar-fill');
     healthTextEl = document.getElementById('health-text');
-    inventoryBoxesEl = document.getElementById('inventory-boxes'); // Container
-    weaponSlotsEl = document.getElementById('weapon-slots');       // Container
     healthLabelEl = document.getElementById('health-label');
+    waveStatusEl = document.getElementById('wave-status');
+    waveTimerEl = document.getElementById('wave-timer');
+    enemyCountEl = document.getElementById('enemy-count');
+
+    // --- Find Bottom Sidebar Elements ---
+    bottomSidebarEl = document.getElementById('bottom-sidebar');
+    itemSelectionAreaEl = document.getElementById('item-selection-area');
+    inventoryBoxesContainerEl = document.getElementById('inventory-boxes-container');
+    weaponSlotsContainerEl = document.getElementById('weapon-slots-container');
+    actionButtonsAreaEl = document.getElementById('action-buttons-area');
+    toggleControlsButtonEl = document.getElementById('toggle-controls-button');
+
+    // Find Action Buttons
+    actionButtons.left = document.getElementById('btn-move-left');
+    actionButtons.right = document.getElementById('btn-move-right');
+    actionButtons.pause = document.getElementById('btn-pause');
+    actionButtons.jump = document.getElementById('btn-jump');
+    actionButtons.attack = document.getElementById('btn-attack');
 
     // --- Verification ---
-    if (!waveStatusEl || !waveTimerEl || !enemyCountEl || !healthBarContainerEl ||
-        !healthBarFillEl || !healthTextEl || !inventoryBoxesEl || !weaponSlotsEl) {
-        console.warn("UI InitGameUI: Could not find all expected game UI elements!");
-        success = false;
+    const requiredElements = [
+        playerColumnEl, portalColumnEl, healthBarContainerEl, healthBarFillEl, healthTextEl, healthLabelEl,
+        waveStatusEl, waveTimerEl, enemyCountEl, bottomSidebarEl, itemSelectionAreaEl,
+        inventoryBoxesContainerEl, weaponSlotsContainerEl, actionButtonsAreaEl, toggleControlsButtonEl,
+        actionButtons.left, actionButtons.right, actionButtons.pause, actionButtons.jump, actionButtons.attack
+    ];
 
-        // Log specifics
-        if (!weaponSlotsEl) console.error("UI InitGameUI: Failed to find #weapon-slots container");
-        if (!inventoryBoxesEl) console.error("UI InitGameUI: Failed to find #inventory-boxes container");
-        // Add more specific logs if needed
+    if (requiredElements.some(el => !el)) {
+        console.error("UI InitGameUI: Could not find all expected game UI elements!");
+        // Log specific missing elements if needed
+        success = false;
     }
 
-    // --- Create Static UI Parts (like weapon slots) ---
-    // Clear previous slots if any (e.g., from a restart)
-    if (weaponSlotsEl) {
-        weaponSlotsEl.innerHTML = ''; // Clear placeholder/previous content
-        // Clear stored references from previous game instance
-        for (const key in weaponSlotDivs) delete weaponSlotDivs[key];
+    // --- Clear previous dynamic content and listeners ---
+    if (inventoryBoxesContainerEl) inventoryBoxesContainerEl.innerHTML = 'Loading...';
+    if (weaponSlotsContainerEl) weaponSlotsContainerEl.innerHTML = '';
+    for (const key in itemSlotDivs) delete itemSlotDivs[key];
+    for (const key in buttonIlluminationTimers) clearTimeout(buttonIlluminationTimers[key]);
+    buttonIlluminationTimers = {};
 
+    // --- Create Item/Weapon Selection Boxes Dynamically ---
+    if (inventoryBoxesContainerEl && weaponSlotsContainerEl) {
+        inventoryBoxesContainerEl.innerHTML = ''; // Clear loading text
+        weaponSlotsContainerEl.innerHTML = '';    // Clear loading text
+
+        // Create Material Boxes
+        for (const materialType of Config.INVENTORY_MATERIALS) {
+            createItemSlot(materialType, inventoryBoxesContainerEl, 'material');
+        }
+        // Create Weapon Boxes
         for (const weaponType of WEAPON_SLOTS_ORDER) {
-            const slotDiv = document.createElement('div');
-            slotDiv.classList.add('weapon-slot-box');
-            slotDiv.dataset.weapon = weaponType;
-            slotDiv.title = weaponType.toUpperCase();
-
-            // Assign initial icons/content
-            if (weaponType === Config.WEAPON_TYPE_SWORD) slotDiv.textContent = '⚔️';
-            else if (weaponType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑'; // Consider better spear icon maybe
-            else if (weaponType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️';
-            else slotDiv.textContent = '?';
-
-            slotDiv.classList.add('disabled'); // Start disabled
-            slotDiv.style.cursor = 'default';
-
-            weaponSlotsEl.appendChild(slotDiv);
-            weaponSlotDivs[weaponType] = slotDiv; // Store reference for updates
-
-            // Add click listener - checks playerRef *inside* the handler
-            slotDiv.addEventListener('click', () => {
-                if (playerRef && playerRef.hasWeapon(weaponType)) {
-                    playerRef.equipItem(weaponType); // Use equipItem which handles logic
-                } else if (!playerRef) {
-                    console.error("UI Weapon Click: playerRef is null!");
-                } else {
-                     console.log(`UI Weapon Click: Player cannot equip ${weaponType}. Not possessed.`);
-                     // Maybe add a visual cue like shaking the icon?
-                }
-            });
+            createItemSlot(weaponType, weaponSlotsContainerEl, 'weapon');
         }
     } else {
-         // This case should be caught by the verification above, but double-check
-         console.error("UI InitGameUI: Could not create weapon slots - #weapon-slots container missing.");
-         success = false;
-    }
-
-    // --- Clear Inventory Placeholder & References ---
-    if (inventoryBoxesEl) {
-        inventoryBoxesEl.innerHTML = '';
-        // Clear stored references from previous game instance
-        for (const key in inventorySlotDivs) delete inventorySlotDivs[key];
-    } else {
-        console.error("UI InitGameUI: Could not clear inventory - #inventory-boxes container missing.");
         success = false;
     }
 
+    // --- Add Event Listeners and Set Initial State ---
     if (success) {
-        // console.log("UI: Game UI Elements Initialized.");
-    } else {
+        setupActionButtons();
+        toggleControlsButtonEl.addEventListener('click', toggleActionControls);
+    }
+
+    if (!success) {
         console.error("UI: Failed to initialize some critical Game UI elements.");
     }
     return success;
 }
 
-// --- Player Reference ---
-export function setPlayerReference(playerObject) {
-    playerRef = playerObject;
-    // console.log("UI: Player reference set.");
+// Helper to create and setup a single item/weapon slot
+function createItemSlot(itemType, container, category) {
+    const slotDiv = document.createElement('div');
+    slotDiv.classList.add('item-box');
+    slotDiv.dataset.item = itemType;
+    slotDiv.classList.add('disabled');
+
+    const itemConfig = Config.ITEM_CONFIG[itemType];
+
+    if (category === 'material') {
+        slotDiv.style.backgroundColor = itemConfig?.color || '#444';
+        slotDiv.title = `${itemType.toUpperCase()} (0)`;
+        const countSpan = document.createElement('span');
+        countSpan.classList.add('item-count');
+        countSpan.textContent = '';
+        slotDiv.appendChild(countSpan);
+    } else if (category === 'weapon') {
+        if (itemType === Config.WEAPON_TYPE_SWORD) slotDiv.textContent = '⚔️';
+        else if (itemType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑';
+        else if (itemType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️';
+        else slotDiv.textContent = '?';
+        slotDiv.title = `${itemType.toUpperCase()} (Not Found)`;
+        slotDiv.style.backgroundColor = itemConfig?.color ? `${itemConfig.color}40` : '#111';
+    }
+
+    slotDiv.addEventListener('click', () => {
+        handleItemSlotClick(itemType, category);
+    });
+
+    container.appendChild(slotDiv);
+    itemSlotDivs[itemType] = slotDiv;
 }
 
-// --- Update Functions (Mostly Unchanged, but rely on elements found in initGameUI) ---
-
-export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
-    // Check elements exist before using
-    if (!waveStatusEl || !waveTimerEl || !enemyCountEl) {
-        // console.warn("UI: Cannot update wave info, elements not found.");
+// Helper to handle clicks on item/weapon slots
+function handleItemSlotClick(itemType, category) {
+     if (!playerRef) {
+        console.error("UI Item Click: playerRef is null!");
         return;
     }
-    // ... (rest of the logic remains the same) ...
+
+    let canSelect = false;
+    if (category === 'material') {
+        canSelect = (playerRef.inventory[itemType] || 0) > 0;
+    } else if (category === 'weapon') {
+        canSelect = playerRef.hasWeapon(itemType);
+    }
+
+    if (canSelect) {
+        playerRef.equipItem(itemType);
+    } else {
+        // console.log(`UI Click: Cannot select ${itemType}.`);
+        const slotDiv = itemSlotDivs[itemType];
+        if(slotDiv && typeof slotDiv.animate === 'function') {
+            slotDiv.animate([
+                { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' },
+                { transform: 'translateX(-3px)' }, { transform: 'translateX(0px)' }
+            ], { duration: 200, easing: 'ease-in-out' });
+        }
+    }
+}
+
+// Helper to setup action button listeners
+function setupActionButtons() {
+    // Movement Buttons (Holdable)
+    ['left', 'right', 'jump'].forEach(action => {
+        const button = actionButtons[action];
+        if (!button) return;
+
+        const handlePress = (e) => {
+            e.preventDefault();
+            if (window.Input && window.Input.state) {
+                if (!window.Input.state[action]) illuminateButton(action);
+                window.Input.state[action] = true;
+            }
+        };
+        const handleRelease = (e) => {
+             e.preventDefault();
+             if (window.Input && window.Input.state) {
+                 window.Input.state[action] = false;
+            }
+        };
+
+        button.addEventListener('mousedown', handlePress);
+        button.addEventListener('mouseup', handleRelease);
+        button.addEventListener('mouseleave', handleRelease);
+        button.addEventListener('touchstart', handlePress, { passive: false });
+        button.addEventListener('touchend', handleRelease, { passive: false });
+        button.addEventListener('touchcancel', handleRelease, { passive: false });
+    });
+
+    // Attack Button (Single Trigger)
+    const attackButton = actionButtons.attack;
+    if (attackButton) {
+        const handleAttackPress = (e) => {
+            e.preventDefault();
+             if (window.Input && window.Input.state && !window.Input.state.attack) {
+                 window.Input.state.attack = true;
+                 illuminateButton('attack');
+            }
+        };
+        attackButton.addEventListener('mousedown', handleAttackPress);
+        attackButton.addEventListener('touchstart', handleAttackPress, { passive: false });
+    }
+
+    // Pause Button (Direct action)
+    const pauseButton = actionButtons.pause;
+    if (pauseButton) {
+        pauseButton.addEventListener('click', (e) => {
+            e.preventDefault();
+             illuminateButton('pause');
+            if (typeof window.pauseGameCallback === 'function') {
+                window.pauseGameCallback();
+            } else {
+                console.warn("UI: Pause callback (window.pauseGameCallback) not found!");
+            }
+        });
+    }
+}
+
+// Toggles the visibility of the action buttons area
+function toggleActionControls() {
+    if (bottomSidebarEl && actionButtonsAreaEl && toggleControlsButtonEl) {
+        bottomSidebarEl.classList.toggle('controls-hidden');
+        const isHidden = bottomSidebarEl.classList.contains('controls-hidden');
+        // Update the button text to reflect the new state
+        toggleControlsButtonEl.textContent = isHidden ? '▲ TOUCH CONTROLS ▲' : '▼ TOUCH CONTROLS ▼';
+        toggleControlsButtonEl.title = isHidden ? 'Show Controls' : 'Hide Controls';
+    }
+}
+
+
+// Sets the reference to the player object
+export function setPlayerReference(playerObject) {
+    playerRef = playerObject;
+    if (playerRef && healthBarFillEl) {
+         requestAnimationFrame(() => {
+             updatePlayerInfo(
+                 playerRef.getCurrentHealth(), playerRef.getMaxHealth(),
+                 playerRef.getInventory(), playerRef.getSwordStatus(),
+                 playerRef.getSpearStatus(), playerRef.getShovelStatus()
+             );
+         });
+    } else if (!playerRef && healthBarFillEl) {
+        // Clear UI if player is removed (restart)
+        healthBarFillEl.style.width = '0%';
+        healthTextEl.textContent = '---';
+        for(const key in itemSlotDivs){
+            itemSlotDivs[key]?.classList.remove('active');
+            itemSlotDivs[key]?.classList.add('disabled');
+            const countSpan = itemSlotDivs[key]?.querySelector('.item-count');
+            if (countSpan) countSpan.textContent = '';
+        }
+    }
+}
+
+// Briefly illuminates a specific action button
+export function illuminateButton(actionName) {
+    const button = actionButtons[actionName];
+    if (!button) return;
+
+    if (buttonIlluminationTimers[actionName]) {
+        clearTimeout(buttonIlluminationTimers[actionName]);
+    }
+    button.classList.add('illuminated');
+
+    buttonIlluminationTimers[actionName] = setTimeout(() => {
+        button.classList.remove('illuminated');
+        delete buttonIlluminationTimers[actionName];
+    }, ILLUMINATION_DURATION);
+}
+
+// --- Update Functions ---
+
+// Updates the wave information display
+export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
+    if (!waveStatusEl || !waveTimerEl || !enemyCountEl) return;
+
     let statusText = '';
     let timerText = '';
     let enemyText = '';
@@ -165,9 +305,11 @@ export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
     if (waveInfo.isGameOver) {
         statusText = 'GAME OVER';
         timerText = `Survived ${waveInfo.mainWaveNumber > 0 ? waveInfo.mainWaveNumber - 1 : 0} Waves`;
+        enemyText = '';
     } else if (waveInfo.allWavesCleared) {
         statusText = 'VICTORY!';
         timerText = 'All Waves Cleared!';
+        enemyText = '';
     } else {
         statusText = `Wave ${waveInfo.mainWaveNumber || 1}`;
         if (waveInfo.timerLabel && waveInfo.timer > 0) {
@@ -177,6 +319,8 @@ export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
         }
         if (waveInfo.state === 'ACTIVE' || waveInfo.state === 'SPAWNING') {
             enemyText = `Enemies Remaining: ${livingEnemies}`;
+        } else {
+            enemyText = '';
         }
     }
 
@@ -185,114 +329,58 @@ export function updateWaveInfo(waveInfo = {}, livingEnemies = 0) {
     enemyCountEl.textContent = enemyText;
 }
 
+// Updates player health bar and inventory/weapon slots
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
-    // Check required elements exist
-    if (!healthBarFillEl || !healthTextEl || !inventoryBoxesEl || !weaponSlotsEl) {
-         // console.warn("UI: Cannot update player info, critical elements missing.");
-         return;
-    }
+    if (!healthBarFillEl || !healthTextEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) return;
     if (!playerRef) {
-        // console.warn("UI Update: playerRef is not set yet.");
+        // Update health bar even if playerRef is missing temporarily
+        const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
+        const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
+        if(healthBarFillEl) healthBarFillEl.style.width = `${healthPercent}%`;
+        if(healthTextEl) healthTextEl.textContent = `${Math.round(clampedHealth)}/${maxHealth}`;
         return;
     }
 
-    // --- Update Health Bar ---
+    // Update Health Bar (Top Sidebar)
     const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
     const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
     healthBarFillEl.style.width = `${healthPercent}%`;
     healthTextEl.textContent = `${Math.round(clampedHealth)}/${maxHealth}`;
 
+    // Update Item/Weapon Selection Boxes (Bottom Sidebar)
     const selectedItem = playerRef.getCurrentlySelectedItem();
 
-    // --- Update Inventory Slots (Create/Update) ---
-    // (Logic remains largely the same as provided in your file, ensuring elements exist now)
+    // Update Material Boxes
     for (const materialType of Config.INVENTORY_MATERIALS) {
+        const slotDiv = itemSlotDivs[materialType];
+        if (!slotDiv) continue;
         const count = inventory[materialType] || 0;
-        let invSlotDiv = inventorySlotDivs[materialType];
-
-        if (!invSlotDiv) {
-            invSlotDiv = document.createElement('div');
-            invSlotDiv.classList.add('inventory-item-box');
-            invSlotDiv.dataset.material = materialType;
-
-            const itemConfig = Config.ITEM_CONFIG[materialType];
-            invSlotDiv.style.backgroundColor = itemConfig?.color || '#444';
-
-            const countSpan = document.createElement('span');
-            countSpan.classList.add('inventory-item-count');
-            invSlotDiv.appendChild(countSpan);
-
-            invSlotDiv.addEventListener('click', () => {
-                const currentCount = playerRef?.inventory[materialType] || 0;
-                if (playerRef && currentCount > 0) {
-                    playerRef.equipItem(materialType);
-                }
-            });
-
-            inventoryBoxesEl.appendChild(invSlotDiv);
-            inventorySlotDivs[materialType] = invSlotDiv;
-        }
-
-        const countSpan = invSlotDiv.querySelector('.inventory-item-count');
-        countSpan.textContent = count > 0 ? Math.min(count, 999) : ''; // Max display count
-        invSlotDiv.title = `${materialType.toUpperCase()} (Count: ${count})`;
-
-        if (count === 0) {
-            invSlotDiv.classList.add('disabled');
-            invSlotDiv.style.cursor = 'default';
-            invSlotDiv.style.opacity = '0.5';
-        } else {
-            invSlotDiv.classList.remove('disabled');
-            invSlotDiv.style.cursor = 'pointer';
-            invSlotDiv.style.opacity = '1';
-        }
-
-        invSlotDiv.classList.toggle('active', selectedItem === materialType);
+        const countSpan = slotDiv.querySelector('.item-count');
+        if (countSpan) countSpan.textContent = count > 0 ? Math.min(count, 999) : '';
+        const isDisabled = count === 0;
+        slotDiv.classList.toggle('disabled', isDisabled);
+        slotDiv.classList.toggle('active', selectedItem === materialType);
+        slotDiv.title = `${materialType.toUpperCase()} (${count})`;
     }
 
-    // --- Update Weapon Slots (Possession & Active State) ---
+    // Update Weapon Boxes
     const playerPossession = {
         [Config.WEAPON_TYPE_SWORD]: hasSword,
         [Config.WEAPON_TYPE_SPEAR]: hasSpear,
         [Config.WEAPON_TYPE_SHOVEL]: hasShovel,
     };
-
     for (const weaponType of WEAPON_SLOTS_ORDER) {
-        const slotDiv = weaponSlotDivs[weaponType];
-        if (!slotDiv) {
-             console.warn(`UI Update: Weapon slot div not found for ${weaponType}`);
-             continue;
-        }
-
+        const slotDiv = itemSlotDivs[weaponType];
+        if (!slotDiv) continue;
         const possessed = playerPossession[weaponType];
-
-        slotDiv.classList.toggle('disabled', !possessed);
+        const isDisabled = !possessed;
+        slotDiv.classList.toggle('disabled', isDisabled);
         slotDiv.classList.toggle('active', possessed && selectedItem === weaponType);
-        slotDiv.style.cursor = possessed ? 'pointer' : 'default';
-        slotDiv.style.opacity = possessed ? '1' : '0.4';
         slotDiv.title = possessed ? weaponType.toUpperCase() : `${weaponType.toUpperCase()} (Not Found)`;
-        // Icon textContent should remain as set during initGameUI
     }
 }
 
-
-/**
- * Handles showing/hiding the correct UI elements based on game over state.
- * NOTE: This is now mostly handled by the Overlay system in main.js.
- * This function might become obsolete or only handle minor sidebar tweaks.
- * @param {boolean} isGameOver - True if the game is over.
- * @param {number} [wavesSurvived=0] - The number of waves survived (optional).
- */
+// Likely obsolete function now
 export function updateGameOverState(isGameOver, wavesSurvived = 0) {
-    // Example: If you had a specific "Game Over" message area in a sidebar
-    // const gameOverMessageEl = document.getElementById('sidebar-gameover-message');
-    // if (gameOverMessageEl) {
-    //     gameOverMessageEl.style.display = isGameOver ? 'block' : 'none';
-    //     if (isGameOver) gameOverMessageEl.textContent = `Game Over! Waves: ${wavesSurvived}`;
-    // }
-
-    // The overlay restart button is handled in main.js by showing/hiding the overlay itself.
-    console.log("UI: updateGameOverState called (now likely handled by overlay). State:", isGameOver);
+    // console.log("UI: updateGameOverState called (now likely handled by overlay). State:", isGameOver);
 }
-
-// --- Add functions to update other UI elements as needed ---

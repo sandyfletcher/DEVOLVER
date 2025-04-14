@@ -17,119 +17,73 @@ body {
 #app-container {
     display: flex;
     flex-direction: column;
-    /* Removed aspect-ratio: 2 / 1; for better vertical layout flexibility */
-    max-width: 95vw;     /* Maximum width allowed */
-    max-height: 90vh;    /* Maximum height allowed */
+    max-width: 98vw;
+    max-height: 95vh;
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-    gap: 1rem;
-    padding: 1rem;
-    box-sizing: border-box; /* Include padding in size */
+    gap: 0.5rem;
+    padding: 0.5rem;
+    box-sizing: border-box;
     margin: auto;
-    position: relative; /* Crucial for positioning the absolute overlay */
+    position: relative;
     transition: filter 0.3s ease;
 }
 
 /* --- Game Overlay --- */
 #game-overlay {
-    position: absolute; /* Position relative to #app-container */
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.75); /* Semi-transparent background */
+    background-color: rgba(0, 0, 0, 0.75);
     color: white;
-    z-index: 100; /* Ensure it's on top */
-
-    display: flex; /* Use flex to center content */
+    z-index: 100;
+    display: flex;
     justify-content: center;
     align-items: center;
-    flex-direction: column; /* Stack content vertically */
+    flex-direction: column;
     text-align: center;
-
-    /* --- Visibility Control --- */
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.3s ease, visibility 0s linear 0.3s; /* Fade opacity, snap visibility */
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
 }
-
 #game-overlay.active {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s; /* Snap visibility immediately */
+    transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
-
-/* --- Overlay Content Sections --- */
 .overlay-content {
-    display: none; /* Hide all content sections by default */
+    display: none;
     flex-direction: column;
     align-items: center;
-    width: 80%; /* Example width for content */
+    width: 80%;
     max-width: 500px;
 }
-
-/* Show specific content based on overlay class */
 #game-overlay.show-title #overlay-title-content,
 #game-overlay.show-pause #overlay-pause-content,
 #game-overlay.show-gameover #overlay-gameover-content {
-    display: flex; /* Or block, depending on internal layout needs */
+    display: flex;
 }
-
-/* --- Styling for Content Elements --- */
-#game-overlay h1 {
-    font-size: 3.5em;
-    margin-bottom: 1.5rem;
-    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
-}
-#game-overlay h2 {
-    font-size: 2.5em;
-    margin-bottom: 1.5rem;
-}
-#game-overlay p {
-    font-size: 1.2em;
-    margin-bottom: 1.5rem;
-}
-#game-overlay button {
-    padding: 12px 25px;
-    font-size: 1.3em;
-    margin-top: 1rem;
-    min-width: 150px;
-    cursor: pointer;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    background-color: #eee;
-    color: #333;
-    font-weight: bold;
-    transition: background-color 0.2s ease, transform 0.1s ease;
-}
-#game-overlay button:hover {
-    background-color: #fff;
-}
-#game-overlay button:active {
-    transform: scale(0.97);
-}
-/* Style specific buttons if needed */
-#restart-button-overlay {
-    background-color: darkred;
-    color: white;
-    border-color: #ffaaaa;
-}
-#restart-button-overlay:hover {
-    background-color: red;
-}
+#game-overlay h1 { font-size: 3.5em; margin-bottom: 1.5rem; text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4); }
+#game-overlay h2 { font-size: 2.5em; margin-bottom: 1.5rem; }
+#game-overlay p { font-size: 1.2em; margin-bottom: 1.5rem; }
+#game-overlay button { padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background-color: #eee; color: #333; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s ease; }
+#game-overlay button:hover { background-color: #fff; }
+#game-overlay button:active { transform: scale(0.97); }
+#restart-button-overlay { background-color: darkred; color: white; border-color: #ffaaaa; }
+#restart-button-overlay:hover { background-color: red; }
 
 
 /* --- Optional: Dim/Blur Background --- */
 #app-container.overlay-active > #top-sidebar,
 #app-container.overlay-active > #game-wrapper,
 #app-container.overlay-active > #bottom-sidebar {
-    filter: blur(4px) brightness(0.6); /* Adjust values as needed */
-    pointer-events: none; /* Prevent interaction with dimmed elements */
-    /* Transition should match the overlay fade */
+    filter: blur(4px) brightness(0.6);
+    pointer-events: none;
     transition: filter 0.3s ease;
 }
-/* Default state (no filter) */
 #app-container > #top-sidebar,
 #app-container > #game-wrapper,
 #app-container > #bottom-sidebar {
@@ -140,203 +94,197 @@ body {
 
 /* --- Sidebars --- */
 #top-sidebar, #bottom-sidebar {
-    flex-basis: auto; /* Let content determine initial size */
-    flex-shrink: 0;   /* Prevent sidebars from shrinking */
-    width: 100%; /* Should fill the column width */
-    padding: 15px;
+    flex-basis: auto;
+    flex-shrink: 0;
+    width: 100%;
+    padding: 10px 15px;
     box-sizing: border-box;
-    overflow-y: auto; /* Still allow vertical scroll if content overflows */
-    overflow-x: hidden; /* Hide horizontal overflow */
+    border: 0.2rem solid white;
+    position: relative;
+    display: flex;
+}
+
+/* --- Top Sidebar Specifics --- */
+#top-sidebar {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+    min-height: 60px;
+}
+#player-column, #portal-column {
+    flex-basis: 48%;
     display: flex;
     flex-direction: column;
-    border: 0.2rem solid white;
-    position: relative; /* Keep for positioning internal elements like counts */
-    /* Optional: Add max-height if sidebars can get too tall */
-    /* max-height: 25vh; */
+    gap: 5px;
 }
-#top-sidebar > *, #bottom-sidebar > * {
-    margin-bottom: 15px;
-}
-#top-sidebar > *:last-child, #bottom-sidebar > *:last-child {
-    margin-bottom: 0; /* Remove margin from last element */
-}
-#top-sidebar h2, #bottom-sidebar h2, #bottom-sidebar h3 {
-    margin: 0 0 10px 0;
-    padding-bottom: 5px;
+#top-sidebar h2 {
+    margin: 0 0 5px 0;
+    padding-bottom: 3px;
     border-bottom: 1px solid #555;
     color: #eee;
     text-align: center;
-    flex-shrink: 0; /* Prevent titles from shrinking */
+    width: 100%;
+    font-size: 1.1em;
 }
+#health-display { display: flex; align-items: center; gap: 5px; margin-bottom: 0; }
+#health-label { flex-shrink: 0; font-size: 0.9em; }
+#health-bar-container { flex-grow: 1; height: 15px; background-color: rgb(80, 80, 80); border: 1px solid #ccc; border-radius: 3px; overflow: hidden; }
+#health-bar-fill { height: 100%; width: 100%; background-color: rgb(220, 40, 40); transition: width 0.2s ease-out; }
+#health-text { font-size: 0.9em; flex-shrink: 0; }
+#wave-status, #wave-timer, #enemy-count { font-size: 0.9em; color: #ccc; text-align: center; }
+
 
 /* --- Game Area --- */
 #game-wrapper {
-    flex-basis: auto; /* Let it start auto */
-    flex-grow: 1;     /* Allow game area to take remaining vertical space */
-    width: 100%; /* Fill the column width */
-    min-height: 0; /* Important for flex-grow in some scenarios */
+    flex-basis: auto;
+    flex-grow: 1;
+    width: 100%;
+    min-height: 0;
     position: relative;
     border: 0.2rem solid white;
     box-sizing: border-box;
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* Keep canvas contained */
-}
-
-/* --- Canvas --- */
-#game-canvas {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain; /* Key for scaling canvas within wrapper */
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-}
-
-/* --- UI Elements in Sidebars --- */
-#health-display {
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-#health-label {
-    flex-shrink: 0;
-}
-#health-bar-container {
-    flex-grow: 1;
-    height: 18px;
-    background-color: rgb(80, 80, 80);
-    border: 1px solid #ccc;
-    border-radius: 3px;
     overflow: hidden;
 }
-#health-bar-fill {
-    height: 100%;
-    width: 100%; /* Start full */
-    background-color: rgb(220, 40, 40);
-    transition: width 0.2s ease-out;
+#game-canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }
+
+/* --- Bottom Sidebar Specifics --- */
+#bottom-sidebar {
+    flex-direction: column;
+    padding: 0.5rem 0.5rem 1.5rem 0.5rem;
+    transition: max-height 0.3s ease-in-out;
+    position: relative;
+}
+#bottom-sidebar h2 { /* Main "INVENTORY" title */
+    margin: 0;
+    text-align: center;
+    font-size: 1.1em;
+    flex-shrink: 0;
 }
 
-#inventory-boxes {
+/* Item Selection Area */
+#item-selection-area {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+#inventory-boxes-container { /* Material boxes */
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 6px;
+    gap: 5px;
+    justify-content: center;
 }
-.inventory-item-box {
-    width: 3rem;
-    height: 3rem;
+#weapon-slots-container { /* Weapon boxes */
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: center;
+}
+
+/* Individual Item/Weapon Boxes (Unified Style) */
+.item-box {
+    width: 40px;
+    height: 40px;
     border: 1px solid white;
     border-radius: 4px;
     position: relative;
     background-color: #333;
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.5);
-    cursor: pointer; /* Default cursor */
-}
-.inventory-item-box.active {
-    border-color: yellow;
-    box-shadow: 0 0 8px yellow;
-}
-.inventory-item-box.disabled { /* Added style for 0-count items */
-     opacity: 0.5;
-     cursor: default;
-     box-shadow: inset 0 0 5px rgba(0,0,0,0.8); /* Darker inset */
-}
-.inventory-item-count {
-    position: absolute;
-    bottom: 2px;
-    right: 3px;
-    font-size: 0.9em;
-    font-weight: bold;
-    color: white;
-    text-shadow: 1px 1px 2px black;
-}
-
-#inventory-display h3 {
-    margin: 0 0 8px 0;
-    padding-bottom: 5px;
-    text-align: center;
-}
-
-#weapon-display {
-    margin-top: 20px;
-}
-#weapon-slots {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-}
-.weapon-slot-box {
-    width: 60px;
-    height: 60px;
-    border: 2px solid #555;
-    border-radius: 5px;
-    background-color: #111;
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.4);
+    cursor: pointer;
     display: flex;
     justify-content: center;
     align-items: center;
-    cursor: pointer; /* Default state */
-    transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease; /* Added transitions */
-    font-size: 24px;
+    font-size: 18px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
-.weapon-slot-box.disabled {
-    opacity: 0.4;
-    cursor: default;
-    background-color: #2a2a2a; /* Removed !important, not needed */
-    border-color: #444;
-    box-shadow: none;
+.item-box.active { border-color: yellow; box-shadow: 0 0 6px yellow; opacity: 1 !important; }
+.item-box.disabled { opacity: 0.45; cursor: default; box-shadow: inset 0 0 5px rgba(0,0,0,0.8); border-color: #666; }
+.item-box .item-count { position: absolute; bottom: 1px; right: 2px; font-size: 0.8em; font-weight: bold; color: white; text-shadow: 1px 1px 1px black; pointer-events: none; }
+
+/* Action Buttons Area */
+#action-buttons-area {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease, border 0.3s ease, visibility 0.3s ease;
+    max-height: 100px;
+    overflow: hidden;
+    margin-top: 0.5rem;
 }
-.weapon-slot-box.active {
-    border-color: yellow;
-    box-shadow: 0 0 8px yellow;
-    opacity: 1; /* Ensure active overrides disabled opacity */
+.action-button-group { display: flex; gap: 10px; }
+.action-button {
+    width: 45px;
+    height: 45px;
+    background-color: #111;
+    color: white;
+    border: 2px solid white;
+    border-radius: 5px;
+    font-size: 22px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease, transform 0.05s ease;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.action-button:active { transform: scale(0.95); }
+.action-button.illuminated { background-color: white; color: black; border-color: black; }
+
+/* Toggle Button */
+#toggle-controls-button {
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: auto; /* Allow width to fit text */
+    padding: 0 15px; /* Horizontal padding for text */
+    height: 15px;
+    background-color: #444;
+    color: white;
+    border: 1px solid white;
+    border-bottom: none;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    cursor: pointer;
+    font-size: 10px;
+    font-weight: bold;
+    line-height: 14px;
+    text-align: center;
+    z-index: 5;
+    transition: background-color 0.2s ease;
+}
+#toggle-controls-button:hover { background-color: #666; }
+
+/* Tucking Behavior */
+#bottom-sidebar.controls-hidden #action-buttons-area {
+    opacity: 0;
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    /* border-top: none; */ /* Already removed border */
+    visibility: hidden;
+    margin-top: 0; /* Remove margin when hidden */
 }
 
-#wave-status, #wave-timer, #enemy-count { /* Removed #sword-status, seems unused */
-     font-size: 1em;
-     color: #ccc;
-}
-
-/* Removed #controls-area and #restart-button styles as they are handled by overlay */
 
 /* --- Landscape Warning --- */
-#landscape-warning {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
-    color: white;
-    z-index: 100; /* Should be below game-overlay (z-index 100) */
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    font-size: 1.5em;
-}
-noscript p {
-    color: white;
-    text-align: center;
-    padding: 20px;
-}
+#landscape-warning { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); color: white; z-index: 101; justify-content: center; align-items: center; text-align: center; font-size: 1.5em; }
+noscript p { color: white; text-align: center; padding: 20px; }
 @media (orientation: portrait) {
-    #app-container {
-        display: none; /* Hide the game layout */
-    }
-    #landscape-warning {
-        display: flex; /* Show the warning message */
-    }
+    #app-container { display: none; }
+    #landscape-warning { display: flex; }
 }
 
 /* --- Scrollbar Hiding --- */
-#top-sidebar::-webkit-scrollbar,
-#bottom-sidebar::-webkit-scrollbar {
-    display: none;
-}
-#top-sidebar, #bottom-sidebar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-}
+#top-sidebar::-webkit-scrollbar, #bottom-sidebar::-webkit-scrollbar { display: none; }
+#top-sidebar, #bottom-sidebar { -ms-overflow-style: none; scrollbar-width: none; }

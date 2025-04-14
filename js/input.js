@@ -3,292 +3,201 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
+import * as UI from './ui.js'; // Import UI module for button illumination
 
 let canvas = null;
 let appContainer = null;
 
-// --- Input State, holds the current state of actionable inputs ---
-const state = {
+// --- Input State ---
+// This object holds the *current* state of actions.
+// It's modified by keyboard events and the UI action buttons.
+// It's read by the main game loop (main.js) and passed to the player.
+export const state = {
     left: false,
     right: false,
     jump: false,
-    attack: false, // Player component consumes this once triggered
-    mouseX: 0, // Current mouse X position relative to canvas
-    mouseY: 0, // Current mouse Y position relative to canvas
+    attack: false, // This is a trigger flag, consumed by main.js after processing
+    mouseX: 0, // Current mouse X relative to canvas
+    mouseY: 0, // Current mouse Y relative to canvas
 };
 
 // --- Keyboard Mapping ---
+// Maps keyboard keys to action names used in the `state` object.
 const keyMap = {
-    ArrowLeft: 'left',
-    a: 'left',
-    A: 'left',
-    ArrowRight: 'right',
-    d: 'right',
-    D: 'right',
-    ArrowUp: 'jump',
-    w: 'jump',
-    W: 'jump',
-    ' ': 'jump',
-    'f': 'attack',
-    'F': 'attack',
+    // Movement
+    ArrowLeft: 'left', a: 'left', A: 'left',
+    ArrowRight: 'right', d: 'right', D: 'right',
+    // Jump
+    ArrowUp: 'jump', w: 'jump', W: 'jump', ' ': 'jump',
+    // Attack / Use
+    f: 'attack', F: 'attack',
+    // Pause
+    Escape: 'pause',
 };
 
-// --- Touch Control State ---
-const touchState = {
-    activeTouches: {},
-    buttons: {}
-};
+// --- Keyboard Event Handlers ---
 
-// --- Touch Button Definitions ---
-const defineTouchButtons = () => {
-    const btnSize = 80;
-    const margin = 20;
-    touchState.buttons = {
-        left: {
-            rect: { x: margin, y: Config.CANVAS_HEIGHT - btnSize - margin, width: btnSize, height: btnSize },
-            pressed: false
-        },
-        right: {
-            rect: { x: margin + btnSize + margin / 2, y: Config.CANVAS_HEIGHT - btnSize - margin, width: btnSize, height: btnSize },
-            pressed: false
-        },
-        jump: {
-            rect: { x: Config.CANVAS_WIDTH - btnSize - margin, y: Config.CANVAS_HEIGHT - btnSize - margin, width: btnSize, height: btnSize },
-            pressed: false
-        },
-        attack: {
-            rect: { x: Config.CANVAS_WIDTH - btnSize * 2 - margin * 1.5, y: Config.CANVAS_HEIGHT - btnSize - margin, width: btnSize, height: btnSize },
-            pressed: false
-        }
-    };
-};
-
-// --- Keyboard Handlers ---
+/** Handles keydown events for mapped keys. */
 const handleKeyDown = (e) => {
     const action = keyMap[e.key];
     if (action) {
-        // For continuous actions like move/jump, set to true on key down
-        if (action === 'left' || action === 'right' || action === 'jump') {
-             state[action] = true;
-        }
-        // For single-press actions like attack
-        if (action === 'attack' && !state.attack) {
-             state.attack = true;
-        }
+        // Prevent default browser behavior for game keys (like scrolling with arrows/space)
         e.preventDefault();
+
+        // Handle continuous actions (movement, jump - potentially holdable)
+        if (action === 'left' || action === 'right' || action === 'jump') {
+             // Only set state and illuminate if not already pressed
+             if (!state[action]) {
+                 state[action] = true;
+                 UI.illuminateButton(action); // Illuminate corresponding UI button
+             }
+        }
+        // Handle single-trigger actions (attack)
+        else if (action === 'attack') {
+            // Only set state and illuminate if not already attacking (to prevent multi-trigger)
+            if (!state.attack) {
+                state.attack = true;
+                 UI.illuminateButton('attack'); // Illuminate UI button
+            }
+        }
+        // Handle immediate actions (pause)
+        else if (action === 'pause') {
+            // Pause doesn't use the `state` object, it calls the callback directly.
+            if (typeof window.pauseGameCallback === 'function') {
+                UI.illuminateButton('pause'); // Illuminate UI button
+                window.pauseGameCallback(); // Call the pause function exposed by main.js
+            } else {
+                 console.warn("Input: Pause callback not found or not a function!");
+            }
+        }
     }
 };
 
+/** Handles keyup events for mapped keys. */
 const handleKeyUp = (e) => {
     const action = keyMap[e.key];
     if (action) {
-        // Set continuous actions to false on key up
+        // Set continuous actions back to false
         if (action === 'left' || action === 'right' || action === 'jump') {
             state[action] = false;
         }
-        // Do NOT set state.attack = false here
-        e.preventDefault();
+        // Do NOT set state.attack = false here; it's consumed by the game loop.
+        // Pause is handled instantly on keydown.
+        // No need to prevent default on keyup usually.
     }
 };
 
-// --- MOUSE/TOUCH INPUT ---
+// --- MOUSE/TOUCH INPUT (Primarily for Canvas interaction: aiming & attacking) ---
+
+/** Handles mousedown events ON THE CANVAS for triggering attacks. */
 const handleMouseDown = (e) => {
-    // Only trigger attack if it's a left click (button 0) and on the canvas
+    // Ensure the click originated on the game canvas
     if (e.target === canvas) {
-        if (e.button === 0 && !state.attack) { // Left click
-            state.attack = true; // Set attack flag for player update check
+        // Check for left mouse button (button 0)
+        if (e.button === 0) {
+             // Only set state and illuminate if not already attacking
+             if (!state.attack) {
+                 state.attack = true; // Set the attack trigger flag
+                 UI.illuminateButton('attack'); // Illuminate the UI attack button
+            }
+            // Prevent default browser actions like text selection drag
             e.preventDefault();
         }
     }
 };
 
-// --- Mouse Move Handler ---
+/** Handles mousemove events over the canvas to update aiming coordinates. */
 const handleMouseMove = (e) => {
     if (canvas) {
         const rect = canvas.getBoundingClientRect();
+        // Calculate mouse position relative to the canvas element
         state.mouseX = e.clientX - rect.left;
         state.mouseY = e.clientY - rect.top;
     }
 };
 
-// --- Touch Handlers ---
-const handleTouchStart = (e) => {
-    e.preventDefault();
-    const touches = e.changedTouches;
-    const canvasRect = canvas.getBoundingClientRect();
-    for (let i = 0; i < touches.length; i++) {
-        const touch = touches[i];
-        const touchId = touch.identifier;
-        const touchX = touch.clientX - canvasRect.left;
-        const touchY = touch.clientY - canvasRect.top;
-        let buttonHit = false;
-        for (const buttonName in touchState.buttons) {
-            const button = touchState.buttons[buttonName];
-            if (touchX >= button.rect.x && touchX <= button.rect.x + button.rect.width &&
-                touchY >= button.rect.y && touchY <= button.rect.y + button.rect.height)
-            {
-                buttonHit = true;
-                button.pressed = true;
-                touchState.activeTouches[touchId] = buttonName;
+// --- Mouse Wheel Handler ---
 
-                if (buttonName === 'attack') {
-                    if (!state.attack) { state.attack = true; }
-                } else { // Covers jump, left, right
-                    state[buttonName] = true; // Simply set the state flag
-                }
-                break;
-            }
-        }
-    }
-}
-
-const handleTouchEndOrCancel = (e) => {
-    e.preventDefault();
-    const touches = e.changedTouches;
-    for (let i = 0; i < touches.length; i++) {
-        const touch = touches[i];
-        const touchId = touch.identifier;
-        const buttonName = touchState.activeTouches[touchId];
-        if (buttonName && touchState.buttons[buttonName]) {
-            touchState.buttons[buttonName].pressed = false;
-            // Set corresponding state to false (except attack)
-            if (buttonName !== 'attack') {
-                state[buttonName] = false;
-            }
-        }
-        delete touchState.activeTouches[touchId];
-    }
-    // Safety check (ensure states match button states)
-    for (const buttonName in touchState.buttons) {
-        let stillPressedByAnotherTouch = false;
-        
-        for(const id in touchState.activeTouches) {
-            if(touchState.activeTouches[id] === buttonName) {
-                stillPressedByAnotherTouch = true;
-                break;
-            }
-        }
-        if (!stillPressedByAnotherTouch) {
-            touchState.buttons[buttonName].pressed = false;
-            if (buttonName !== 'attack') {
-                // Ensure state is false if button is no longer pressed by any touch
-                if (state[buttonName]) {
-                    state[buttonName] = false;
-                }
-            }
-        }
-    }
-};
-
-const handleTouchMove = (e) => {
-    e.preventDefault();
-    const touches = e.changedTouches;
-    const canvasRect = canvas.getBoundingClientRect();
-    for (let i = 0; i < touches.length; i++) {
-        const touch = touches[i];
-        const touchId = touch.identifier;
-        const buttonName = touchState.activeTouches[touchId];
-        if (buttonName && touchState.buttons[buttonName]) {
-            const button = touchState.buttons[buttonName];
-            const touchX = touch.clientX - canvasRect.left;
-            const touchY = touch.clientY - canvasRect.top;
-            const isOutside = !(touchX >= button.rect.x && touchX <= button.rect.x + button.rect.width &&
-                                touchY >= button.rect.y && touchY <= button.rect.y + button.rect.height);
-            if (isOutside) {
-                button.pressed = false;
-                if (buttonName !== 'attack') {
-                    state[buttonName] = false; // Deactivate state if finger slides off
-                }
-                delete touchState.activeTouches[touchId]; // Stop tracking this touch for this button
-            }
-        }
-    }
-};
-
-// --- Wheel Handler ---
+/** Handles wheel events for zooming (delegates scale update). */
 const handleWheel = (e) => {
-    // Check if the event originated within the app container (or specifically canvas)
-    // This prevents zooming when scrolling elsewhere on the page.
+    // Check if the scroll event target is within the app container to avoid hijacking page scroll
     if (!appContainer || !appContainer.contains(e.target)) {
-         return; // Ignore scroll events outside the container
+         return; // Ignore scroll events outside the designated game area
     }
 
-    e.preventDefault(); // Prevent default page scroll
+    e.preventDefault(); // Prevent default page scroll behavior
 
-    // Calculate scale change (deltaY is usually +/- 100 or similar)
-    // Negative deltaY means scroll up (zoom in), Positive means scroll down (zoom out)
-    const deltaScale = -e.deltaY * Config.ZOOM_SPEED_FACTOR; // Use ZOOM_SPEED_FACTOR from Config
+    // Calculate the change in scale based on scroll direction and speed factor
+    const deltaScale = -e.deltaY * Config.ZOOM_SPEED_FACTOR;
 
-    // Trigger a function in main.js or directly update a shared state
-    // For simplicity, let's assume we have access to update a global camera scale
-    // (A better approach might use callbacks or an event system)
-    // We'll define updateCameraScale in main.js later
+    // Call the globally exposed function (from main.js) to update camera scale
     if (typeof window.updateCameraScale === 'function') {
         window.updateCameraScale(deltaScale);
+    } else {
+        console.warn("Input: window.updateCameraScale function not found!");
     }
 };
 
-// Consume attack flag
+/**
+ * Consumes the attack trigger flag. Called by the main game loop
+ * after the attack input has been processed for a frame.
+ */
 export function consumeClick() {
-    // This name is a bit misleading now, maybe rename to consumeAttackInput?
+    // Renamed from consumeClick, but maybe keep name for now.
+    // This resets the attack flag so it needs to be triggered again.
     state.attack = false;
 }
 
 // --- Public Interface ---
+
+/** Initializes input handlers and sets up listeners. */
 export function init() {
     canvas = document.getElementById('game-canvas');
-    appContainer = document.getElementById('app-container');
-    if (!canvas) { console.error("Input: Canvas element not found!"); return; }
-    if (!appContainer) { console.warn("Input: App container element not found for scroll bounds check."); }
-    defineTouchButtons();
-    // Keyboard Listeners
+    appContainer = document.getElementById('app-container'); // Used for wheel event bounds check
+
+    if (!canvas) {
+        console.error("Input Initialization Error: Canvas element 'game-canvas' not found!");
+        return; // Stop initialization if canvas is missing
+    }
+    if (!appContainer) {
+        // Warn but continue if app container isn't found (wheel check might be less precise)
+        console.warn("Input Initialization Warning: App container element 'app-container' not found. Scroll zoom might occur outside game area.");
+    }
+
+    // Add Keyboard Listeners to the window
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-    // Mouse Listeners
-    canvas.addEventListener('mousedown', handleMouseDown); // Keep for attack
-    canvas.addEventListener('mousemove', handleMouseMove); // Track mouse position
-    // Touch Listeners
-    canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
-    canvas.addEventListener('touchend', handleTouchEndOrCancel, { passive: false });
-    canvas.addEventListener('touchcancel', handleTouchEndOrCancel, { passive: false });
-    canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
-    // Listen on the container or window, but check target inside handler
-    window.addEventListener('wheel', handleWheel, { passive: false }); // Listen globally, check target
-    // Alternatively, listen only on the container:
-    // if (appContainer) {
-    //    appContainer.addEventListener('wheel', handleWheel, { passive: false });
-    // }
+
+    // Add Mouse Listeners specifically to the canvas
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove); // Tracks mouse position for aiming
+
+    // Add Wheel Listener to the window (handler checks if inside appContainer)
+    window.addEventListener('wheel', handleWheel, { passive: false }); // Need passive: false to allow preventDefault
+
+    // --- Touch controls are now handled by UI buttons in ui.js ---
+    // Old canvas touch listeners for overlay buttons should be removed if they existed.
+
+    // Expose the state object globally so UI button handlers can modify it directly.
+    // This is simpler than callbacks for this specific case.
+    window.Input = { state: state };
+
+    console.log("Input Initialized: Listening for Keyboard, Mouse (on Canvas), Wheel.");
 }
 
+/**
+ * Returns the current input state object.
+ * This state reflects combined input from keyboard and UI buttons.
+ * @returns {object} The input state object.
+ */
 export function getState() {
     return state;
 }
 
+/**
+ * Returns the current mouse position relative to the canvas.
+ * @returns {{x: number, y: number}} Mouse coordinates.
+ */
 export function getMousePosition() {
     return { x: state.mouseX, y: state.mouseY };
-}
-
-export function drawControls(ctx) {
-    const touchSupported = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-    if (!touchSupported) return;
-    ctx.save();
-    for (const buttonName in touchState.buttons) {
-        const button = touchState.buttons[buttonName];
-        const rect = button.rect;
-        ctx.fillStyle = button.pressed ? 'rgba(255, 255, 255, 0.6)' : 'rgba(128, 128, 128, 0.4)';
-        ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
-        let label = '';
-        switch (buttonName) {
-             case 'left': label = '◀'; break;
-             case 'right': label = '▶'; break;
-             case 'jump': label = '▲'; break;
-             case 'attack': label = '⚔'; break;
-        }
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-         ctx.font = 'bold 24px sans-serif'; // Make sure font is set before fillText
-         ctx.textAlign = 'center';
-         ctx.textBaseline = 'middle';
-        ctx.fillText(label, rect.x + rect.width / 2, rect.y + rect.height / 2);
-    }
-    ctx.restore();
 }
