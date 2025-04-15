@@ -45,18 +45,48 @@ let restartButtonOverlay = null;
 // Other Overlay Elements
 let gameOverStatsP = null; // Reference for game over stats text
 
+// --- Helper function to get world dimensions in pixels ---
+// (These correctly return the internal canvas size, which matches the world size)
+function getWorldPixelWidth() {
+    return Config.CANVAS_WIDTH; // Use the internal canvas width from config
+}
+function getWorldPixelHeight() {
+    return Config.CANVAS_HEIGHT; // Use the internal canvas height from config
+}
+
 // --- Global Function Exposure ---
 // Expose pauseGame globally via window object for the UI button callback
 window.pauseGameCallback = pauseGame;
+
 // Expose updateCameraScale globally for the input wheel handler
 window.updateCameraScale = function(deltaScale) {
     const oldScale = cameraScale;
     let newScale = cameraScale + deltaScale;
-    // Clamp scale within defined limits
-    newScale = Math.max(Config.MIN_CAMERA_SCALE, Math.min(newScale, Config.MAX_CAMERA_SCALE));
+
+    // --- Calculate the minimum scale required to fill the viewport ---
+    const internalCanvasWidth = Config.CANVAS_WIDTH;
+    const internalCanvasHeight = Config.CANVAS_HEIGHT;
+    const worldPixelWidth = getWorldPixelWidth();
+    const worldPixelHeight = getWorldPixelHeight();
+
+    // Avoid division by zero, default to 1 if dimensions are invalid
+    const scaleToFitWidth = (worldPixelWidth > 0) ? internalCanvasWidth / worldPixelWidth : 1;
+    const scaleToFitHeight = (worldPixelHeight > 0) ? internalCanvasHeight / worldPixelHeight : 1;
+
+    // Minimum scale required to ensure the world fills the view horizontally AND vertically
+    const minScaleRequired = Math.max(scaleToFitWidth, scaleToFitHeight);
+
+    // The effective minimum scale is the LARGER of the configured limit and the required limit
+    const effectiveMinScale = Math.max(Config.MIN_CAMERA_SCALE, minScaleRequired);
+
+    // --- Clamp the new scale ---
+    // Apply effective minimum and user-defined maximum
+    newScale = Math.max(effectiveMinScale, Math.min(newScale, Config.MAX_CAMERA_SCALE));
+
+    // Apply the final clamped scale
     cameraScale = newScale;
-    // Note: Camera position clamping needs to account for new scale,
-    // this happens naturally in calculateCameraPosition if called after scale update.
+
+    // Camera position will be re-clamped in the next game loop by calculateCameraPosition
 }
 
 // --- Coordinate Conversion Helpers ---
@@ -348,7 +378,7 @@ function gameLoop(timestamp) {
         player.drawGhostBlock(mainCtx); // Draw placement preview
     }
 
-    mainCtx.restore(); // Restore context state (removes transformations) <<< CORRECT PLACEMENT
+    mainCtx.restore(); // Restore context state (removes transformations)
 
     // --- Draw Screen-Relative UI Elements (AFTER restore) ---
     // Currently none drawn directly on canvas
@@ -373,14 +403,6 @@ function gameLoop(timestamp) {
      } else {
          gameLoopId = null; // Ensure ID is cleared if state changed mid-frame
      }
-}
-
-// --- Helper function to get world dimensions in pixels ---
-function getWorldPixelWidth() {
-    return Config.CANVAS_WIDTH; // Use the internal canvas width from config
-}
-function getWorldPixelHeight() {
-    return Config.CANVAS_HEIGHT; // Use the internal canvas height from config
 }
 
 
