@@ -60,17 +60,18 @@ window.updateCameraScale = function(deltaScale) {
 }
 
 // --- Coordinate Conversion Helpers ---
-function getMouseWorldCoords(canvasX, canvasY) {
-    // Convert canvas pixel coordinates to world coordinates, considering camera position and scale
-    const worldX = cameraX + (canvasX / cameraScale);
-    const worldY = cameraY + (canvasY / cameraScale);
+// These should now work correctly as inputMousePos provides internal coords
+function getMouseWorldCoords(inputMousePos) {
+    // Convert INTERNAL canvas pixel coordinates to world coordinates
+    const worldX = cameraX + (inputMousePos.x / cameraScale);
+    const worldY = cameraY + (inputMousePos.y / cameraScale);
     return { x: worldX, y: worldY };
 }
 
-function getMouseGridCoords(canvasX, canvasY) {
-    // Convert canvas pixel coordinates directly to grid coordinates
-    const { x: worldX, y: worldY } = getMouseWorldCoords(canvasX, canvasY);
-    return GridCollision.worldToGridCoords(worldX, worldY);
+function getMouseGridCoords(inputMousePos) {
+    // Convert INTERNAL canvas pixel coordinates directly to grid coordinates
+    const { x: worldX, y: worldY } = getMouseWorldCoords(inputMousePos);
+    return GridCollision.worldToGridCoords(worldX, worldY); // worldToGridCoords uses BLOCK_WIDTH/HEIGHT
 }
 
 // Helper to check range (already exists in player.js, keep here for potential other uses?)
@@ -169,7 +170,6 @@ function startGame() {
     hideOverlay(); // Hide overlay AFTER UI init succeeds
 
     // 4. Initialize Game Logic Systems
-    // WorldData.initializeGrid(); // REMOVED - WorldManager.init() handles this now.
     World.init(); // Generates world, creates static canvas, calls WorldData.initializeGrid() internally.
     // logWorldGrid(); // Optional: Log the generated grid for debugging
 
@@ -184,9 +184,6 @@ function startGame() {
 
         // 6. Set Player Reference in UI *after* player is created
         UI.setPlayerReference(player); // UI can now access player data for updates and button clicks
-
-        // Initial UI updates will now happen within the first game loop frame
-        // or triggered by setPlayerReference if implemented there.
 
     } catch (error) {
         console.error("FATAL: Player Creation/Init Error Message:", error.message);
@@ -306,24 +303,21 @@ function gameLoop(timestamp) {
     }
 
     // --- Input Phase ---
-    // Get combined state from keyboard and UI buttons
     const inputState = Input.getState();
-    // Get mouse position for aiming/interaction
-    const mousePos = Input.getMousePosition();
-    let targetWorldPos = getMouseWorldCoords(mousePos.x, mousePos.y);
-    let targetGridCell = getMouseGridCoords(mousePos.x, mousePos.y);
-    // Range check is handled within player update/actions
+    const internalMousePos = Input.getMousePosition();
+    let targetWorldPos = getMouseWorldCoords(internalMousePos);
+    let targetGridCell = getMouseGridCoords(internalMousePos);
 
     // --- Update Phase ---
-    let currentPlayerPosition = null;
+    let currentPlayerPosition = null; // <<< DECLARED HERE
     if (player) {
-        player.update(dt, inputState, targetWorldPos, targetGridCell); // Pass full input state and target info
-        currentPlayerPosition = player.getPosition(); // Get updated position for AI
+        player.update(dt, inputState, targetWorldPos, targetGridCell);
+        currentPlayerPosition = player.getPosition(); // <<< Assigned here
     }
-    ItemManager.update(dt); // Update item physics (bobbing, falling)
-    EnemyManager.update(dt, currentPlayerPosition); // Update enemies, passing player position
-    WaveManager.update(dt); // Update wave timing, spawning logic
-    World.update(dt); // Update world effects (e.g., water flow - currently placeholder)
+    ItemManager.update(dt);
+    EnemyManager.update(dt, currentPlayerPosition); // <<< Pass potentially null position
+    WaveManager.update(dt);
+    World.update(dt);
 
     // --- Camera Calculation ---
     calculateCameraPosition(); // Update camera position based on player movement and scale
@@ -332,22 +326,21 @@ function gameLoop(timestamp) {
     if (player) {
         CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
         CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
-        CollisionManager.checkPlayerAttackBlockCollisions(player); // Check attacks vs world blocks
-        CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies()); // Player taking contact damage
+        CollisionManager.checkPlayerAttackBlockCollisions(player);
+        CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
     }
-    // Add other collision checks as needed (enemy-enemy, projectile-world, etc.)
 
     // --- Render Phase ---
-    Renderer.clear(); // Clear main canvas
+    Renderer.clear();
     const mainCtx = Renderer.getContext();
-    mainCtx.save(); // Save context state (important before transformations)
+    mainCtx.save(); // Save context state before transformations
 
     // Apply Camera Transformations (Scale and Translate)
     mainCtx.scale(cameraScale, cameraScale);
     mainCtx.translate(-cameraX, -cameraY);
 
     // --- Draw World Elements (Relative to World Coordinates) ---
-    World.draw(mainCtx); // Draw static world background (pre-rendered blocks)
+    World.draw(mainCtx); // Draw static world background
     ItemManager.draw(mainCtx); // Draw items
     EnemyManager.draw(mainCtx); // Draw enemies
     if (player) {
@@ -355,10 +348,10 @@ function gameLoop(timestamp) {
         player.drawGhostBlock(mainCtx); // Draw placement preview
     }
 
-    mainCtx.restore(); // Restore context to un-scaled, un-translated state
+    mainCtx.restore(); // Restore context state (removes transformations) <<< CORRECT PLACEMENT
 
-     // --- Draw Screen-Relative UI Elements (AFTER restore) ---
-    // Input.drawControls(mainCtx); // REMOVED - Controls are now HTML elements
+    // --- Draw Screen-Relative UI Elements (AFTER restore) ---
+    // Currently none drawn directly on canvas
 
     // --- Update Sidebar UI ---
     // This updates the HTML elements outside the canvas every frame while running
@@ -382,6 +375,80 @@ function gameLoop(timestamp) {
      }
 }
 
+// --- Helper function to get world dimensions in pixels ---
+function getWorldPixelWidth() {
+    return Config.CANVAS_WIDTH; // Use the internal canvas width from config
+}
+function getWorldPixelHeight() {
+    return Config.CANVAS_HEIGHT; // Use the internal canvas height from config
+}
+
+
+// --- Camera Calculation Helpers ---
+/** Calculates the initial camera position and scale when starting a game. */
+function calculateInitialCamera() {
+     if (player) {
+        const viewWidth = Config.CANVAS_WIDTH; // Use internal canvas dimensions
+        const viewHeight = Config.CANVAS_HEIGHT;
+        cameraScale = 1.0; // Reset zoom on new game
+        const visibleWorldWidth = viewWidth / cameraScale;
+        const visibleWorldHeight = viewHeight / cameraScale;
+
+        // Center camera X and Y on the player's center
+        cameraX = (player.x + player.width / 2) - (visibleWorldWidth / 2);
+        cameraY = (player.y + player.height / 2) - (visibleWorldHeight / 2);
+
+        // Clamp camera position to world boundaries
+        const worldPixelWidth = getWorldPixelWidth(); // Gets internal world width (1600)
+        const worldPixelHeight = getWorldPixelHeight(); // Gets internal world height (800)
+
+        // Calculate max scroll positions based on current scale and ACTUAL world size
+        const maxCameraX = Math.max(0, worldPixelWidth - visibleWorldWidth);
+        cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
+        const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
+        cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
+
+        // Center camera if world is smaller than viewport (zoomed out too far)
+         if (worldPixelWidth <= visibleWorldWidth) { cameraX = (worldPixelWidth - visibleWorldWidth) / 2; }
+         if (worldPixelHeight <= visibleWorldHeight) { cameraY = (worldPixelHeight - visibleWorldHeight) / 2; }
+    }
+     else {
+         cameraX = 0; cameraY = 0; cameraScale = 1.0;
+     }
+}
+
+/** Updates the camera position during gameplay, typically following the player. */
+function calculateCameraPosition() {
+     if (player) {
+        const viewWidth = Config.CANVAS_WIDTH; // Use internal canvas dimensions
+        const viewHeight = Config.CANVAS_HEIGHT;
+        const visibleWorldWidth = viewWidth / cameraScale;
+        const visibleWorldHeight = viewHeight / cameraScale;
+
+        // Target camera position to center on player
+        let targetX = (player.x + player.width / 2) - (visibleWorldWidth / 2);
+        let targetY = (player.y + player.height / 2) - (visibleWorldHeight / 2);
+
+        // Direct follow for now:
+        cameraX = targetX;
+        cameraY = targetY;
+
+        // Clamp camera position to world boundaries based on current scale and ACTUAL world size
+        const worldPixelWidth = getWorldPixelWidth(); // Gets internal world width (1600)
+        const worldPixelHeight = getWorldPixelHeight(); // Gets internal world height (800)
+        const maxCameraX = Math.max(0, worldPixelWidth - visibleWorldWidth);
+        cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
+        const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
+        cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
+
+        // Center if world smaller than viewport
+        if (worldPixelWidth <= visibleWorldWidth) { cameraX = (worldPixelWidth - visibleWorldWidth) / 2; }
+        if (worldPixelHeight <= visibleWorldHeight) { cameraY = (worldPixelHeight - visibleWorldHeight) / 2; }
+    }
+    // Don't update camera if no player (e.g., during game over screen)
+}
+
+
 // --- Initialization ---
 /** Initializes the game application on page load. */
 function init() {
@@ -391,30 +458,27 @@ function init() {
     try {
         // --- Get Essential Container Refs FIRST ---
         appContainer = document.getElementById('app-container');
-        gameOverlay = document.getElementById('game-overlay'); // Needed for UI.initOverlay potentially
+        gameOverlay = document.getElementById('game-overlay');
 
         if (!appContainer || !gameOverlay) {
              throw new Error("Essential container elements (#app-container or #game-overlay) not found!");
         }
 
         // --- Initialize Core Systems that DON'T depend on specific game elements ---
-        // Renderer needs canvas, check if it exists structurally FIRST
         const canvas = document.getElementById('game-canvas');
          if (!canvas) {
              throw new Error("Renderer Init Check: Canvas element 'game-canvas' not found in HTML structure!");
          }
-        // NOW it's safe to initialize renderer and create offscreen canvas
-        Renderer.init();
-        Renderer.createGridCanvas(); // Create the off-screen canvas for the world background
-        Input.init(); // Setup keyboard/mouse listeners and expose Input.state
+        Renderer.init(); // Sets internal canvas resolution (1600x800)
+        Renderer.createGridCanvas(); // Creates off-screen canvas (1600x800)
+        Input.init(); // Setup listeners, calculates internal mouse coords
 
         // --- Initialize ONLY the Overlay UI ---
-        // Finds overlay elements needed for showing/hiding states
         if (!UI.initOverlay()) {
              throw new Error("Failed to initialize overlay UI elements!");
         }
 
-        // --- Get Overlay Button/Stats References (needed for listeners below) ---
+        // --- Get Overlay Button/Stats References ---
         startGameButton = document.getElementById('start-game-button');
         resumeButton = document.getElementById('resume-button');
         restartButtonOverlay = document.getElementById('restart-button-overlay');
@@ -428,90 +492,21 @@ function init() {
         startGameButton.addEventListener('click', startGame);
         resumeButton.addEventListener('click', resumeGame);
         restartButtonOverlay.addEventListener('click', restartGame);
-        // Pause via keyboard (Esc) is handled in input.js
-        // Pause via UI button is handled in ui.js calling the global callback
 
         // --- Show Initial State ---
         showOverlay(GameState.PRE_GAME); // Display the title screen overlay
-        // console.log("Base initialization complete. Showing title screen.");
 
     } catch (error) {
         console.error("FATAL: Initialization Error:", error);
         // Display error message in the overlay if possible
         if (gameOverlay) {
             gameOverlay.innerHTML = `<div class="overlay-content" style="display: flex; flex-direction: column; align-items: center; color: red;"><h1>Initialization Error</h1><p>${error.message}</p><p>Please check the console (F12) and refresh.</p></div>`;
-            gameOverlay.classList.add('active', 'show-title'); // Ensure visible
-            if(appContainer) appContainer.classList.add('overlay-active'); // Dim background if possible
+            gameOverlay.classList.add('active', 'show-title');
+            if(appContainer) appContainer.classList.add('overlay-active');
         } else {
-            // Fallback if even overlay isn't found
             alert(`FATAL Initialization Error:\n${error.message}\nPlease check console (F12) and refresh.`);
         }
     }
-}
-
-// --- Camera Calculation Helper ---
-/** Calculates the initial camera position and scale when starting a game. */
-function calculateInitialCamera() {
-     if (player) {
-        const viewWidth = Renderer.getCanvas().width;
-        const viewHeight = Renderer.getCanvas().height;
-        // Reset camera scale to default on new game
-        cameraScale = 1.0;
-        // Calculate the world area visible through the viewport
-        const visibleWorldWidth = viewWidth / cameraScale;
-        const visibleWorldHeight = viewHeight / cameraScale;
-        // Center camera X and Y on the player's center
-        cameraX = (player.x + player.width / 2) - (visibleWorldWidth / 2);
-        cameraY = (player.y + player.height / 2) - (visibleWorldHeight / 2);
-
-        // Clamp camera position to world boundaries
-        const worldPixelWidth = Config.CANVAS_WIDTH;
-        const worldPixelHeight = Config.CANVAS_HEIGHT;
-        // Calculate max scroll positions based on current scale
-        const maxCameraX = Math.max(0, worldPixelWidth - visibleWorldWidth); // Ensure max is not negative
-        cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
-        const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
-        cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
-        // Center camera if world is smaller than viewport (zoomed out too far)
-         if (worldPixelWidth <= visibleWorldWidth) { cameraX = (worldPixelWidth - visibleWorldWidth) / 2; }
-         if (worldPixelHeight <= visibleWorldHeight) { cameraY = (worldPixelHeight - visibleWorldHeight) / 2; }
-    }
-     else {
-         // Default camera position if somehow no player (shouldn't happen in startGame)
-         cameraX = 0; cameraY = 0; cameraScale = 1.0;
-     }
-}
-
-/** Updates the camera position during gameplay, typically following the player. */
-function calculateCameraPosition() {
-     if (player) {
-        const viewWidth = Renderer.getCanvas().width;
-        const viewHeight = Renderer.getCanvas().height;
-        // Calculate visible world dimensions based on current scale
-        const visibleWorldWidth = viewWidth / cameraScale;
-        const visibleWorldHeight = viewHeight / cameraScale;
-
-        // Target camera position to center on player
-        // (Could add smoothing/lerping here later for smoother follow)
-        let targetX = (player.x + player.width / 2) - (visibleWorldWidth / 2);
-        let targetY = (player.y + player.height / 2) - (visibleWorldHeight / 2);
-
-        // Direct follow for now:
-        cameraX = targetX;
-        cameraY = targetY;
-
-        // Clamp camera position to world boundaries based on current scale
-        const worldPixelWidth = Config.CANVAS_WIDTH;
-        const worldPixelHeight = Config.CANVAS_HEIGHT;
-        const maxCameraX = Math.max(0, worldPixelWidth - visibleWorldWidth);
-        cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
-        const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
-        cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
-        // Center if world smaller than viewport
-        if (worldPixelWidth <= visibleWorldWidth) { cameraX = (worldPixelWidth - visibleWorldWidth) / 2; }
-        if (worldPixelHeight <= visibleWorldHeight) { cameraY = (worldPixelHeight - visibleWorldHeight) / 2; }
-    }
-     // Don't update camera if no player (e.g., during game over screen)
 }
 
 

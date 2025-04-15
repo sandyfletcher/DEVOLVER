@@ -6,12 +6,13 @@
 // --- World Parameters ---
 // =============================================================================
 
-// --- Canvas ---
-export const CANVAS_WIDTH = 800;
-export const CANVAS_HEIGHT = 800;
 // --- Grid ---
-export const GRID_COLS = 200;
+export const GRID_COLS = 400;
 export const GRID_ROWS = 200;
+export const BASE_BLOCK_PIXEL_SIZE = 4; // Set desired square block size
+// --- Canvas (INTERNAL RESOLUTION based on grid and block size) ---
+export const CANVAS_WIDTH = GRID_COLS * BASE_BLOCK_PIXEL_SIZE;   // Calculated: 400 * 4 = 1600
+export const CANVAS_HEIGHT = GRID_ROWS * BASE_BLOCK_PIXEL_SIZE;  // Calculated: 200 * 4 = 800
 // --- Background ---
 export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
 // --- Procedural Generation Parameters ---
@@ -48,8 +49,9 @@ export const ZOOM_SPEED_FACTOR = 0.001; // How fast scrolling zooms
 // --- Block Parameters ---
 // =============================================================================
 
-export const BLOCK_WIDTH = CANVAS_WIDTH / GRID_COLS;   // Calculated: 4
-export const BLOCK_HEIGHT = CANVAS_HEIGHT / GRID_ROWS; // Calculated: 4
+// --- Block Calculated Size (derived from above) ---
+export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE;   // Should be 4
+export const BLOCK_HEIGHT = BASE_BLOCK_PIXEL_SIZE; // Should be 4
 export const INVENTORY_MATERIALS = ['wood', 'stone', 'metal', 'dirt', 'sand', 'bone'];
 // --- Type IDs ---
 export const BLOCK_AIR = 0;

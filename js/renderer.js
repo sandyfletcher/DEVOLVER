@@ -2,8 +2,6 @@
 // js/renderer.js - Handles Canvas Setup and Drawing Operations
 // -----------------------------------------------------------------------------
 
-// console.log("renderer loaded");
-
 import * as Config from './config.js';
 
 // --- Module State ---
@@ -18,22 +16,31 @@ let gridCtx = null;    // The context for the off-screen canvas
 export function init() {
     canvas = document.getElementById('game-canvas');
     if (!canvas) { throw new Error("Renderer: Canvas element 'game-canvas' not found!"); }
-    canvas.width = Config.CANVAS_WIDTH;
-    canvas.height = Config.CANVAS_HEIGHT;
+
+    // *** SET INTERNAL RESOLUTION ***
+    canvas.width = Config.CANVAS_WIDTH;   // Use 1600 from config
+    canvas.height = Config.CANVAS_HEIGHT; // Use 800 from config
+
     ctx = canvas.getContext('2d');
     if (!ctx) { throw new Error("Renderer: Failed to get 2D context!"); }
-    // console.log("Renderer initialized successfully.");
+    // Disable image smoothing for pixel art
+    ctx.imageSmoothingEnabled = false;
+
+    // console.log(`Renderer initialized. Internal Canvas Size: ${canvas.width}x${canvas.height}`);
 }
 
-/** Creates and initializes the off-screen canvas for the static grid layer. */
 export function createGridCanvas() {
-    // Check if it already exists maybe? For now, just create.
     gridCanvas = document.createElement('canvas');
-    gridCanvas.width = Config.CANVAS_WIDTH;
+
+    // *** SET OFF-SCREEN CANVAS RESOLUTION ***
+    gridCanvas.width = Config.CANVAS_WIDTH;  // Match main canvas internal resolution
     gridCanvas.height = Config.CANVAS_HEIGHT;
+
     gridCtx = gridCanvas.getContext('2d');
     if (!gridCtx) { throw new Error("Renderer: Failed to get 2D context for grid canvas!"); }
-    // console.log("Renderer: Grid canvas created.");
+    // Disable image smoothing for pixel art on grid canvas too
+    gridCtx.imageSmoothingEnabled = false;
+    // console.log(`Renderer: Grid canvas created (${gridCanvas.width}x${gridCanvas.height}).`);
 }
 
 /** Returns the main rendering context. */

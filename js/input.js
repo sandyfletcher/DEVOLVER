@@ -16,9 +16,13 @@ export const state = {
     left: false,
     right: false,
     jump: false,
-    attack: false, // This is a trigger flag, consumed by main.js after processing
-    mouseX: 0, // Current mouse X relative to canvas
-    mouseY: 0, // Current mouse Y relative to canvas
+    attack: false,
+    // Store mouse coordinates relative to the INTERNAL canvas resolution
+    internalMouseX: 0,
+    internalMouseY: 0,
+    // Keep mouseX/Y perhaps for legacy reasons or debug, but internalMouseX/Y are primary
+    mouseX: 0, // <<< Could potentially remove these if unused elsewhere
+    mouseY: 0, // <<< Could potentially remove these if unused elsewhere
 };
 
 // --- Keyboard Mapping ---
@@ -87,20 +91,45 @@ const handleKeyUp = (e) => {
     }
 };
 
-// --- MOUSE/TOUCH INPUT (Primarily for Canvas interaction: aiming & attacking) ---
+// --- MOUSE/TOUCH INPUT ---
+
+/** Gets mouse coordinates relative to the internal canvas resolution */
+function getInternalMouseCoords(e) {
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect(); // Gets the *displayed* size/pos
+    // Check for zero dimensions to prevent division by zero if canvas isn't visible yet
+    if (rect.width === 0 || rect.height === 0) {
+        return { x: state.internalMouseX, y: state.internalMouseY }; // Return last known coords
+    }
+    const displayMouseX = e.clientX - rect.left;
+    const displayMouseY = e.clientY - rect.top;
+
+    // Scale display coordinates to internal coordinates
+    const internalX = displayMouseX * (canvas.width / rect.width);
+    const internalY = displayMouseY * (canvas.height / rect.height);
+
+    // Clamp to internal bounds just in case
+    const clampedX = Math.max(0, Math.min(internalX, canvas.width));
+    const clampedY = Math.max(0, Math.min(internalY, canvas.height));
+
+    return { x: clampedX, y: clampedY };
+}
 
 /** Handles mousedown events ON THE CANVAS for triggering attacks. */
 const handleMouseDown = (e) => {
-    // Ensure the click originated on the game canvas
     if (e.target === canvas) {
-        // Check for left mouse button (button 0)
-        if (e.button === 0) {
-             // Only set state and illuminate if not already attacking
+        // Update internal mouse coordinates on click
+        const coords = getInternalMouseCoords(e);
+        state.internalMouseX = coords.x;
+        state.internalMouseY = coords.y;
+        state.mouseX = e.clientX - canvas.getBoundingClientRect().left; // Update legacy values if needed
+        state.mouseY = e.clientY - canvas.getBoundingClientRect().top;  // Update legacy values if needed
+
+        if (e.button === 0) { // Left click
              if (!state.attack) {
-                 state.attack = true; // Set the attack trigger flag
-                 UI.illuminateButton('attack'); // Illuminate the UI attack button
+                 state.attack = true;
+                 UI.illuminateButton('attack');
             }
-            // Prevent default browser actions like text selection drag
             e.preventDefault();
         }
     }
@@ -109,10 +138,11 @@ const handleMouseDown = (e) => {
 /** Handles mousemove events over the canvas to update aiming coordinates. */
 const handleMouseMove = (e) => {
     if (canvas) {
-        const rect = canvas.getBoundingClientRect();
-        // Calculate mouse position relative to the canvas element
-        state.mouseX = e.clientX - rect.left;
-        state.mouseY = e.clientY - rect.top;
+        const coords = getInternalMouseCoords(e);
+        state.internalMouseX = coords.x;
+        state.internalMouseY = coords.y;
+        state.mouseX = e.clientX - canvas.getBoundingClientRect().left; // Update legacy values if needed
+        state.mouseY = e.clientY - canvas.getBoundingClientRect().top;  // Update legacy values if needed
     }
 };
 
@@ -143,8 +173,6 @@ const handleWheel = (e) => {
  * after the attack input has been processed for a frame.
  */
 export function consumeClick() {
-    // Renamed from consumeClick, but maybe keep name for now.
-    // This resets the attack flag so it needs to be triggered again.
     state.attack = false;
 }
 
@@ -176,10 +204,8 @@ export function init() {
     window.addEventListener('wheel', handleWheel, { passive: false }); // Need passive: false to allow preventDefault
 
     // --- Touch controls are now handled by UI buttons in ui.js ---
-    // Old canvas touch listeners for overlay buttons should be removed if they existed.
 
     // Expose the state object globally so UI button handlers can modify it directly.
-    // This is simpler than callbacks for this specific case.
     window.Input = { state: state };
 
     console.log("Input Initialized: Listening for Keyboard, Mouse (on Canvas), Wheel.");
@@ -195,9 +221,11 @@ export function getState() {
 }
 
 /**
- * Returns the current mouse position relative to the canvas.
+ * Returns the current mouse position relative to the INTERNAL canvas resolution.
+ * THIS IS THE CRITICAL FIX.
  * @returns {{x: number, y: number}} Mouse coordinates.
  */
 export function getMousePosition() {
-    return { x: state.mouseX, y: state.mouseY };
+    // *** FIX: Return the internal coordinates ***
+    return { x: state.internalMouseX, y: state.internalMouseY };
 }
