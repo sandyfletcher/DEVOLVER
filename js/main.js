@@ -2,25 +2,27 @@
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
 
+// --- Module Imports ---
 import * as UI from './ui.js';
 import { Player, isTargetWithinRange } from './player.js';
 import * as Input from './input.js';
 import * as Config from './config.js';
 import * as Renderer from './renderer.js';
 import * as CollisionManager from './collisionManager.js';
-import * as World from './worldManager.js';
+import * as World from './worldManager.js'; // WorldManager now handles dynamic world updates and draw coordination
 import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
-import * as WaveManager from './waveManager.js';
-import * as WorldData from './utils/worldData.js';
-import * as GridCollision from './utils/gridCollision.js';
+import * as WaveManager from './waveManager.js'; // Updated WaveManager
+import * as WorldData from './utils/worldData.js'; // May not be needed directly here anymore
+import * as GridCollision from './utils/gridCollision.js'; // Needed for worldToGridCoords
 
 // --- Game State Enum ---
 const GameState = Object.freeze({
-    PRE_GAME: 'PRE_GAME',
+    PRE_GAME: 'PRE_GAME', // Before first game starts (Title Screen)
     RUNNING: 'RUNNING',
     PAUSED: 'PAUSED',
-    GAME_OVER: 'GAME_OVER'
+    GAME_OVER: 'GAME_OVER', // Player died
+    VICTORY: 'VICTORY' // All waves cleared
 });
 let currentGameState = GameState.PRE_GAME;
 
@@ -28,6 +30,7 @@ let currentGameState = GameState.PRE_GAME;
 let player = null;
 let gameLoopId = null; // To store requestAnimationFrame ID for pausing/stopping
 let lastTime = 0;
+let gameStartTime = 0; // Track when the current game started (for total playtime/stats)
 
 // --- Camera State ---
 let cameraX = 0;
@@ -104,28 +107,29 @@ function getMouseGridCoords(inputMousePos) {
 }
 
 // --- Function to log the world grid (for debugging) ---
-function logWorldGrid() {
-    // console.log("--- World Grid Debug Output ---");
-    // console.time("GridLog Generation");
-    const blockToChar = {
-        [Config.BLOCK_AIR]: ' ', [Config.BLOCK_WATER]: '~', [Config.BLOCK_SAND]: '.',
-        [Config.BLOCK_DIRT]: '#', [Config.BLOCK_GRASS]: '"', [Config.BLOCK_STONE]: 'R',
-        [Config.BLOCK_WOOD]: 'P', [Config.BLOCK_METAL]: 'M', [Config.BLOCK_BONE]: 'B'
-    };
-    const defaultChar = '?';
-    let gridString = "";
-    for (let r = 0; r < Config.GRID_ROWS; r++) {
-        let rowString = "";
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-            // Use WorldData.getBlockType which handles the object/number distinction
-            rowString += blockToChar[WorldData.getBlockType(c, r)] ?? defaultChar;
-        }
-        gridString += rowString + "\n";
-    }
-    // console.log(gridString);
-    // console.timeEnd("GridLog Generation");
-    // console.log("--- End World Grid Debug Output ---");
-}
+// Kept for potential future use if needed
+// function logWorldGrid() {
+//     console.log("--- World Grid Debug Output ---");
+//     console.time("GridLog Generation");
+//     const blockToChar = {
+//         [Config.BLOCK_AIR]: ' ', [Config.BLOCK_WATER]: '~', [Config.BLOCK_SAND]: '.',
+//         [Config.BLOCK_DIRT]: '#', [Config.BLOCK_GRASS]: '"', [Config.BLOCK_STONE]: 'R',
+//         [Config.BLOCK_WOOD]: 'P', [Config.BLOCK_METAL]: 'M', [Config.BLOCK_BONE]: 'B'
+//     };
+//     const defaultChar = '?';
+//     let gridString = "";
+//     for (let r = 0; r < Config.GRID_ROWS; r++) {
+//         let rowString = "";
+//         for (let c = 0; c < Config.GRID_COLS; c++) {
+//             // Use WorldData.getBlockType which handles the object/number distinction
+//             rowString += blockToChar[WorldData.getBlockType(c, r)] ?? defaultChar;
+//         }
+//         gridString += rowString + "\n";
+//     }
+//     console.log(gridString);
+//     console.timeEnd("GridLog Generation");
+//     console.log("--- End World Grid Debug Output ---");
+// }
 
 // --- Overlay Management ---
 function showOverlay(stateToShow) {
@@ -135,7 +139,7 @@ function showOverlay(stateToShow) {
     }
 
     // Remove previous state classes
-    gameOverlay.classList.remove('show-title', 'show-pause', 'show-gameover');
+    gameOverlay.classList.remove('show-title', 'show-pause', 'show-gameover', 'show-victory'); // Add 'show-victory'
 
     // Add class for the current state
     switch (stateToShow) {
@@ -149,10 +153,19 @@ function showOverlay(stateToShow) {
             gameOverlay.classList.add('show-gameover');
             // Update game over stats text if element exists
             if (gameOverStatsP) {
-                 const finalWave = WaveManager.getCurrentWaveNumber() > 0 ? WaveManager.getCurrentWaveNumber() : 1; // Use wave number
+                 const finalWave = WaveManager.getCurrentWaveNumber(); // Get wave number reached
                  gameOverStatsP.textContent = `You reached Wave ${finalWave}.`;
             } else {
                 console.warn("ShowOverlay: gameOverStatsP element not found for GAME_OVER state.");
+            }
+            break;
+        case GameState.VICTORY:
+            gameOverlay.classList.add('show-victory');
+            // Add victory text/stats here if desired
+            if (gameOverStatsP) { // Re-use gameover stats element for simplicity, or add a new one
+                 gameOverStatsP.textContent = `You cleared all ${Config.WAVES.length} waves!`;
+            } else {
+                 console.warn("ShowOverlay: gameOverStatsP element not found for VICTORY state.");
             }
             break;
     }
@@ -165,51 +178,69 @@ function hideOverlay() {
     if (!gameOverlay || !appContainer) return;
     gameOverlay.classList.remove('active');
     appContainer.classList.remove('overlay-active');
+    // Ensure background interaction is re-enabled
+     appContainer.classList.remove('overlay-active'); // Redundant, but safe
 }
 
 // --- Game State Control ---
-// Starts a new game or restarts after game over/pause.
+
+/** Starts a new game or restarts after game over/pause/victory. */
 function startGame() {
-    if (currentGameState === GameState.RUNNING) return; // Prevent starting if already running
+    // Allow starting from PRE_GAME, PAUSED (effectively restarting), GAME_OVER, VICTORY
+    if (currentGameState === GameState.RUNNING) {
+        console.warn("startGame called but game already RUNNING.");
+        return; // Prevent starting if already running
+    }
     console.log(">>> Starting Game <<<");
 
     // 1. Initialize Game UI Elements FIRST (Finds elements, creates dynamic slots, adds listeners)
+    // UI.initGameUI clears old slots and listeners internally.
     if (!UI.initGameUI()) {
         console.error("FATAL: Failed to initialize critical game UI elements. Aborting start.");
-        showOverlay(GameState.PRE_GAME); // Stay on title screen
+        currentGameState = GameState.PRE_GAME; // Stay on title screen state
+        showOverlay(GameState.PRE_GAME); // Show title screen
         alert("Error: Could not initialize game UI. Please check console and refresh.");
         return;
     }
-    // 2. Reset player reference in UI *before* creating new player (important for restarts)
+
+    // 2. Reset player reference in UI *before* creating new player
     UI.setPlayerReference(null);
-    // 3. Set game state and hide overlay
-    currentGameState = GameState.RUNNING;
-    hideOverlay(); // Hide overlay AFTER UI init succeeds
-    // 4. Initialize Game Logic Systems
+
+    // 3. Initialize Game Logic Systems (State reset happens inside their init/reset)
     World.init(); // Generates world, creates static canvas, calls WorldData.initializeGrid() internally.
-    // logWorldGrid(); // Optional: Log the generated grid for debugging
     ItemManager.init(); // Clear/initialize items, spawn starting weapons
     EnemyManager.init(); // Clear/initialize enemy list
-    WaveManager.init(); // Reset/initialize wave manager to Wave 1 start
-    // 5. Create Player Instance
+    WaveManager.init(); // Reset/initialize wave manager to PRE_WAVE start state
+
+    // 4. Create Player Instance
     try {
         player = null; // Ensure old reference is cleared
+        // Player reset is handled by the Player constructor and init sequence
         player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
-        // 6. Set Player Reference in UI *after* player is created
+
+        // 5. Set Player Reference in UI *after* player is created
         UI.setPlayerReference(player); // UI can now access player data for updates and button clicks
+
     } catch (error) {
         console.error("FATAL: Player Creation/Init Error Message:", error.message);
         console.error("Error Stack:", error.stack);
         currentGameState = GameState.PRE_GAME; // Revert state
-        showOverlay(GameState.PRE_GAME);
+        showOverlay(GameState.PRE_GAME); // Show title screen again
         alert("Error creating player. Please check console and refresh.");
         return;
     }
-    // 7. Calculate Initial Camera Position
+
+    // 6. Calculate Initial Camera Position
     calculateInitialCamera(); // Center camera on player
+
+    // 7. Set game state and hide overlay
+    currentGameState = GameState.RUNNING;
+    hideOverlay(); // Hide overlay AFTER UI init succeeds and player is ready
+
     // 8. Start Game Loop
     Input.consumeClick(); // Clear any clicks during transition/load
     lastTime = performance.now(); // Set start time for delta time calculation
+    gameStartTime = performance.now(); // Record game start time
     if (gameLoopId) {
         cancelAnimationFrame(gameLoopId); // Clear any potentially orphaned loop
     }
@@ -244,12 +275,15 @@ function resumeGame() {
     }
 }
 
-/** Handles the transition to the game over state. */
+/** Handles the transition to the game over state (player died). */
 function handleGameOver() {
     if (currentGameState === GameState.GAME_OVER) return; // Prevent multiple calls
     console.log(">>> Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER;
     showOverlay(GameState.GAME_OVER); // Show game over overlay (updates stats text internally)
+
+    // Inform WaveManager about Game Over state (clears timers/enemies)
+    WaveManager.setGameOver();
 
     // Stop the game loop
     if (gameLoopId) {
@@ -258,21 +292,46 @@ function handleGameOver() {
     }
 
     // Perform a final UI update to show the end-game state
-    const waveInfo = WaveManager.getWaveInfo(); // Get final info
-    const livingEnemies = EnemyManager.getLivingEnemyCount(); // Should be 0 or low
+    const waveInfo = WaveManager.getWaveInfo(); // Get final info (state should be GAME_OVER)
+    const livingEnemies = EnemyManager.getLivingEnemyCount(); // Should be 0 after WaveManager.setGameOver()
     UI.updateWaveInfo(waveInfo, livingEnemies);
     if (player) {
          // Update health (likely 0), inventory, weapon status one last time
-         UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus(), player.getShovelStatus());
+         UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.hasWeapon(Config.WEAPON_TYPE_SWORD), player.hasWeapon(Config.WEAPON_TYPE_SPEAR), player.hasWeapon(Config.WEAPON_TYPE_SHOVEL));
     }
 }
 
-/** Restarts the game from the game over screen or potentially pause menu. */
+/** Handles the transition to the victory state (all waves cleared). */
+function handleVictory() {
+     if (currentGameState === GameState.VICTORY) return; // Prevent multiple calls
+     console.log(">>> Handling Victory <<<");
+     currentGameState = GameState.VICTORY;
+     showOverlay(GameState.VICTORY); // Show victory overlay
+
+     // WaveManager is already in VICTORY state
+
+     // Stop the game loop
+     if (gameLoopId) {
+         cancelAnimationFrame(gameLoopId);
+         gameLoopId = null;
+     }
+
+     // Final UI Update
+     const waveInfo = WaveManager.getWaveInfo(); // State should be VICTORY
+     const livingEnemies = EnemyManager.getLivingEnemyCount(); // Should be 0
+     UI.updateWaveInfo(waveInfo, livingEnemies);
+     if (player) {
+         UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.hasWeapon(Config.WEAPON_TYPE_SWORD), player.hasWeapon(Config.WEAPON_TYPE_SPEAR), player.hasWeapon(Config.WEAPON_TYPE_SHOVEL));
+     }
+}
+
+
+/** Restarts the game from the game over, victory, or pause screen. */
 function restartGame() {
-    // Allow restart from GAME_OVER or PAUSED state
-    if (currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.PAUSED) {
-        console.warn("Restart called but game not in GAME_OVER or PAUSED state.");
-        // Optionally return if you only want restart from Game Over
+    // Allow restart from GAME_OVER, VICTORY, or PAUSED state
+    if (currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY && currentGameState !== GameState.PAUSED) {
+        console.warn("Restart called but game not in a restartable state.");
+        return; // Prevent restarting from RUNNING or PRE_GAME states via this button
     }
     console.log(">>> Restarting Game <<<");
     // No need to hide overlay explicitly, startGame will handle it.
@@ -286,7 +345,7 @@ function gameLoop(timestamp) {
     // Ensure loop doesn't run if game state is not RUNNING
     if (currentGameState !== GameState.RUNNING) {
         if (gameLoopId) {
-             console.warn("Game loop called unexpectedly while not running. State:", currentGameState);
+             // console.warn("Game loop called unexpectedly while not running. State:", currentGameState);
              cancelAnimationFrame(gameLoopId);
              gameLoopId = null;
         }
@@ -299,18 +358,21 @@ function gameLoop(timestamp) {
     // Clamp delta time to prevent physics glitches if frame rate drops significantly
     const dt = Math.min(deltaTime, Config.MAX_DELTA_TIME);
 
-    // --- Game Over Checks ---
-    // Check conditions that trigger game over (WaveManager might have specific loss conditions)
-    if (WaveManager.isGameOver()) {
-        handleGameOver(); // Transition to game over state
-        return; // Stop processing this frame
-    }
-    // Check Player health
+    // --- Game State Checks (Player Death & Victory) ---
+    // Check Player health FIRST
     if (player && player.getCurrentHealth() <= 0) {
-        WaveManager.setGameOver(); // Inform wave manager (might be redundant)
-        handleGameOver(); // Transition to game over state
+        // Player died, transition to game over
+        handleGameOver();
         return; // Stop processing this frame
     }
+
+    // Check if WaveManager signals victory (all waves cleared)
+    const waveInfoBeforeUpdate = WaveManager.getWaveInfo(); // Get state before update
+    if (waveInfoBeforeUpdate.state === 'VICTORY') {
+         handleVictory(); // Transition to victory state
+         return; // Stop processing this frame
+    }
+
 
     // --- Input Phase ---
     const inputState = Input.getState();
@@ -324,10 +386,12 @@ function gameLoop(timestamp) {
         player.update(dt, inputState, targetWorldPos, targetGridCell);
         currentPlayerPosition = player.getPosition(); // <<< Assigned here
     }
+
+    // Update game logic systems
     ItemManager.update(dt);
     EnemyManager.update(dt, currentPlayerPosition); // <<< Pass potentially null position
-    WaveManager.update(dt);
-    World.update(dt);
+    WaveManager.update(dt); // Update WaveManager (handles timers and spawning)
+    World.update(dt); // Update dynamic world elements like water
 
     // --- Camera Calculation ---
     calculateCameraPosition(); // Update camera position based on player movement and scale
@@ -350,7 +414,7 @@ function gameLoop(timestamp) {
     mainCtx.translate(-cameraX, -cameraY);
 
     // --- Draw World Elements (Relative to World Coordinates) ---
-    World.draw(mainCtx); // Draw static world background
+    World.draw(mainCtx); // Draw static world background (handled by WorldManager/Renderer)
     ItemManager.draw(mainCtx); // Draw items
     EnemyManager.draw(mainCtx); // Draw enemies
     if (player) {
@@ -365,16 +429,17 @@ function gameLoop(timestamp) {
 
     // --- Update Sidebar UI ---
     // This updates the HTML elements outside the canvas every frame while running
-    const waveInfo = WaveManager.getWaveInfo();
-    const livingEnemies = EnemyManager.getLivingEnemyCount();
+    const waveInfo = WaveManager.getWaveInfo(); // Get updated wave info AFTER WaveManager update
+    const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get current enemy count
     UI.updateWaveInfo(waveInfo, livingEnemies); // Update top sidebar portal info
     if (player) {
         // Update top sidebar health AND bottom sidebar inventory/weapon states
-        UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.getSwordStatus(), player.getSpearStatus(), player.getShovelStatus());
+        UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.hasWeapon(Config.WEAPON_TYPE_SWORD), player.hasWeapon(Config.WEAPON_TYPE_SPEAR), player.hasWeapon(Config.WEAPON_TYPE_SHOVEL));
     }
 
     // Consume attack input state AFTER all updates and rendering for the frame
-    Input.consumeClick(); // Resets the Input.state.attack flag
+    // The player's update method now consumes it immediately on successful placement/attack start.
+    // Input.consumeClick(); // This line can likely be removed now, as consumption is in player.js
 
     // --- Loop Continuation ---
     // Schedule the next frame *only* if still running
@@ -415,13 +480,13 @@ function calculateInitialCamera() {
          if (worldPixelHeight <= visibleWorldHeight) { cameraY = (worldPixelHeight - visibleWorldHeight) / 2; }
     }
      else {
-         cameraX = 0; cameraY = 0; cameraScale = 1.0;
+         cameraX = 0; cameraY = 0; cameraScale = 1.0; // Default camera state if no player
      }
 }
 
 /** Updates the camera position during gameplay, typically following the player. */
 function calculateCameraPosition() {
-     if (player) {
+     if (player) { // Only update camera if the player exists (game is running/paused)
         const viewWidth = Config.CANVAS_WIDTH; // Use internal canvas dimensions
         const viewHeight = Config.CANVAS_HEIGHT;
         const visibleWorldWidth = viewWidth / cameraScale;
@@ -443,8 +508,9 @@ function calculateCameraPosition() {
         const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
         cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
 
-        // Center if world smaller than viewport
+        // Center if world smaller than viewport horizontally
         if (worldPixelWidth <= visibleWorldWidth) { cameraX = (worldPixelWidth - visibleWorldWidth) / 2; }
+        // Center if world smaller than viewport vertically
         if (worldPixelHeight <= visibleWorldHeight) { cameraY = (worldPixelHeight - visibleWorldHeight) / 2; }
     }
     // Don't update camera if no player (e.g., during game over screen)
@@ -461,10 +527,21 @@ function init() {
         // --- Get Essential Container Refs FIRST ---
         appContainer = document.getElementById('app-container');
         gameOverlay = document.getElementById('game-overlay');
+        // Get Overlay Button/Stats References (early so they can get listeners)
+        startGameButton = document.getElementById('start-game-button');
+        resumeButton = document.getElementById('resume-button');
+        restartButtonOverlay = document.getElementById('restart-button-overlay');
+        gameOverStatsP = document.getElementById('gameover-stats'); // Re-used for victory stats
 
-        if (!appContainer || !gameOverlay) {
-             throw new Error("Essential container elements (#app-container or #game-overlay) not found!");
+        if (!appContainer || !gameOverlay || !startGameButton || !resumeButton || !restartButtonOverlay || !gameOverStatsP) {
+             throw new Error("Essential container or overlay elements not found! Check index.html.");
         }
+
+        // --- Setup Event Listeners (Overlay buttons) ---
+        startGameButton.addEventListener('click', startGame);
+        resumeButton.addEventListener('click', resumeGame);
+        restartButtonOverlay.addEventListener('click', restartGame);
+
 
         // --- Initialize Core Systems that DON'T depend on specific game elements ---
         const canvas = document.getElementById('game-canvas');
@@ -475,25 +552,12 @@ function init() {
         Renderer.createGridCanvas(); // Creates off-screen canvas (1600x800)
         Input.init(); // Setup listeners, calculates internal mouse coords
 
-        // --- Initialize ONLY the Overlay UI ---
-        if (!UI.initOverlay()) {
-             throw new Error("Failed to initialize overlay UI elements!");
-        }
-
-        // --- Get Overlay Button/Stats References ---
-        startGameButton = document.getElementById('start-game-button');
-        resumeButton = document.getElementById('resume-button');
-        restartButtonOverlay = document.getElementById('restart-button-overlay');
-        gameOverStatsP = document.getElementById('gameover-stats');
-
-         if (!startGameButton || !resumeButton || !restartButtonOverlay || !gameOverStatsP) {
-             throw new Error("Essential Overlay Button/Stats elements not found!");
-         }
-
-        // --- Setup Event Listeners (Overlay buttons) ---
-        startGameButton.addEventListener('click', startGame);
-        resumeButton.addEventListener('click', resumeGame);
-        restartButtonOverlay.addEventListener('click', restartGame);
+        // --- Initialize ONLY the Overlay UI (elements already found) ---
+        // No separate initOverlay needed if elements are found directly here.
+        // UI.initOverlay(); // This function can be removed if not doing anything else.
+        // Let's keep UI.initOverlay() if it finds other elements not listed above, or rename it.
+        // Re-checking ui.js, initOverlay only gets game-overlay ref, which is already done here.
+        // Let's just remove the UI.initOverlay() call and the function itself.
 
         // --- Show Initial State ---
         showOverlay(GameState.PRE_GAME); // Display the title screen overlay
@@ -502,8 +566,14 @@ function init() {
         console.error("FATAL: Initialization Error:", error);
         // Display error message in the overlay if possible
         if (gameOverlay) {
-            gameOverlay.innerHTML = `<div class="overlay-content" style="display: flex; flex-direction: column; align-items: center; color: red;"><h1>Initialization Error</h1><p>${error.message}</p><p>Please check the console (F12) and refresh.</p></div>`;
-            gameOverlay.classList.add('active', 'show-title');
+            // Clear overlay content and show error
+            gameOverlay.innerHTML = `
+                <div class="overlay-content" id="overlay-error-content" style="display: flex; flex-direction: column; align-items: center; color: red;">
+                    <h1>Initialization Error</h1>
+                    <p>${error.message}</p>
+                    <p>Please check the console (F12) for more details and refresh.</p>
+                </div>`;
+            gameOverlay.classList.add('active', 'show-title'); // Show using 'show-title' styling
             if(appContainer) appContainer.classList.add('overlay-active');
         } else {
             alert(`FATAL Initialization Error:\n${error.message}\nPlease check console (F12) and refresh.`);
