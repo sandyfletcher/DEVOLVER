@@ -379,8 +379,3 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         slotDiv.title = possessed ? weaponType.toUpperCase() : `${weaponType.toUpperCase()} (Not Found)`;
     }
 }
-
-// Likely obsolete function now
-export function updateGameOverState(isGameOver, wavesSurvived = 0) {
-    // console.log("UI: updateGameOverState called (now likely handled by overlay). State:", isGameOver);
-}

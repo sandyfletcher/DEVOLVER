@@ -14,7 +14,7 @@ let enemiesSpawnedThisGroup = 0;// Count for the current group being spawned
 let groupSpawnTimer = 0;       // Timer for delay *between* enemies in the current group
 let groupStartDelayTimer = 0;  // Timer for the delay *before* the current group starts
 
-// Wave States: PRE_WAVE, SPAWNING, ACTIVE, INTERMISSION, GAME_OVER, (Optional: ALL_WAVES_CLEARED)
+// Wave States: PRE_WAVE, SPAWNING, ACTIVE, INTERMISSION, GAME_OVER, ALL_WAVES_CLEARED)
 let state = 'PRE_WAVE';
 let preWaveTimer = Config.WAVE_START_DELAY; // Timer before the very first wave
 let intermissionTimer = 0; // Timer between main waves
