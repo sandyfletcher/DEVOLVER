@@ -44,9 +44,10 @@ let gameOverlay = null;
 // Button References (Overlay only)
 let startGameButton = null;
 let resumeButton = null;
-let restartButtonOverlay = null;
+let restartButtonGameOver = null; // Renamed for clarity
+let restartButtonVictory = null; // <-- NEW REFERENCE
 // Other Overlay Elements
-let gameOverStatsP = null; // Reference for game over stats text
+let gameOverStatsP = null; // Reference for game over stats text (reused for victory)
 
 // --- Helper function to get world dimensions in pixels ---
 // (These correctly return the internal canvas size, which matches the world size)
@@ -140,7 +141,7 @@ function showOverlay(stateToShow) {
     }
 
     // Remove previous state classes
-    gameOverlay.classList.remove('show-title', 'show-pause', 'show-gameover', 'show-victory'); // Add 'show-victory'
+    gameOverlay.classList.remove('show-title', 'show-pause', 'show-gameover', 'show-victory');
 
     // Add class for the current state
     switch (stateToShow) {
@@ -166,7 +167,10 @@ function showOverlay(stateToShow) {
         case GameState.VICTORY:
             gameOverlay.classList.add('show-victory');
             // Add victory text/stats here if desired
-            if (gameOverStatsP) { // Re-use gameover stats element for simplicity, or add a new one
+            // Using gameOverStatsP for simplicity based on index.html structure
+            if (gameOverStatsP) {
+                 // Assuming index.html has <p id="gameover-stats"> inside the victory content
+                 // If you used a different ID like <p id="victory-stats">, get that ref here.
                  gameOverStatsP.textContent = `You cleared all ${Config.WAVES.length} waves!`;
             } else {
                  console.warn("ShowOverlay: gameOverStatsP element not found for VICTORY state.");
@@ -211,10 +215,6 @@ function startGame() {
         alert("Error: Could not initialize game UI. Please check console and refresh.");
         return;
     }
-
-    // --- Attempt to unlock browser audio on this user gesture ---
-    AudioManager.unlockAudio(); // This is the primary place to call unlock
-
 
     // 2. Reset player reference in UI *before* creating new player
     UI.setPlayerReference(null);
@@ -295,7 +295,7 @@ function handleGameOver() {
     currentGameState = GameState.GAME_OVER;
     showOverlay(GameState.GAME_OVER); // Show game over overlay (updates stats text internally, stops music)
 
-    // Inform WaveManager about Game Over state (clears timers/enemies, stops music)
+    // Inform WaveManager about Game Over state (clears timers/enemies)
     WaveManager.setGameOver();
 
     // Stop the game loop
@@ -546,20 +546,36 @@ function init() {
         // --- Get Essential Container Refs FIRST ---
         appContainer = document.getElementById('app-container');
         gameOverlay = document.getElementById('game-overlay');
-        // Get Overlay Button/Stats References (early so they can get listeners)
+
+        // Get Overlay Button References
         startGameButton = document.getElementById('start-game-button');
         resumeButton = document.getElementById('resume-button');
-        restartButtonOverlay = document.getElementById('restart-button-overlay');
-        gameOverStatsP = document.getElementById('gameover-stats'); // Re-used for victory stats
+        restartButtonGameOver = document.getElementById('restart-button-overlay'); // Original Game Over button
+        restartButtonVictory = document.getElementById('restart-button-overlay-victory'); // <-- NEW Victory button
 
-        if (!appContainer || !gameOverlay || !startGameButton || !resumeButton || !restartButtonOverlay || !gameOverStatsP) {
-             throw new Error("Essential container or overlay elements not found! Check index.html.");
+        // Get Overlay Stats Reference (used by both Game Over and Victory, check index.html structure)
+        // If using a different ID like #victory-stats, get that reference here as well.
+        gameOverStatsP = document.getElementById('gameover-stats');
+
+
+        // --- Check if all essential elements were found ---
+        const essentialElements = [
+            appContainer, gameOverlay, startGameButton, resumeButton,
+            restartButtonGameOver, restartButtonVictory, gameOverStatsP // <-- Include NEW button in check
+        ];
+        if (essentialElements.some(el => !el)) {
+             // Find out which specific elements are missing for better debugging
+             const missing = essentialElements.map((el, i) => el ? null : ['appContainer', 'gameOverlay', 'startGameButton', 'resumeButton', 'restartButtonGameOver', 'restartButtonVictory', 'gameOverStatsP'][i]).filter(id => id !== null);
+             throw new Error(`Essential overlay elements not found: ${missing.join(', ')}! Check index.html.`);
         }
+
 
         // --- Setup Event Listeners (Overlay buttons) ---
         startGameButton.addEventListener('click', startGame);
         resumeButton.addEventListener('click', resumeGame);
-        restartButtonOverlay.addEventListener('click', restartGame);
+        // Add listener to BOTH restart buttons, they call the same function
+        restartButtonGameOver.addEventListener('click', restartGame);
+        restartButtonVictory.addEventListener('click', restartGame); // <-- ADD LISTENER FOR VICTORY BUTTON
 
 
         // --- Initialize Core Systems that DON'T depend on specific game elements ---
@@ -573,8 +589,8 @@ function init() {
         AudioManager.init(); // <-- Initialize Audio Manager
 
         // --- Initialize ONLY the Overlay UI (elements already found) ---
-        // No separate initOverlay needed if elements are found directly here.
         // UI.initOverlay(); // This function can be removed if not doing anything else.
+        // Let's just remove the UI.initOverlay() call and the function itself.
 
 
         // --- Show Initial State ---
@@ -591,7 +607,13 @@ function init() {
                     <p>${error.message}</p>
                     <p>Please check the console (F12) for more details and refresh.</p>
                 </div>`;
-            gameOverlay.classList.add('active', 'show-title'); // Show using 'show-title' styling
+            // Add a CSS rule for #overlay-error-content if not already handled by .overlay-content base style
+            const style = document.createElement('style');
+            style.textContent = '#game-overlay #overlay-error-content { display: flex !important; }';
+            document.head.appendChild(style);
+
+
+            gameOverlay.classList.add('active', 'show-title'); // Show using 'show-title' styling for layout
             if(appContainer) appContainer.classList.add('overlay-active');
              AudioManager.stopMusic(); // Ensure music is stopped if an init error occurs
         } else {

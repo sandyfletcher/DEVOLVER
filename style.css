@@ -59,15 +59,17 @@ body {
     transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 .overlay-content {
-    display: none;
+    display: none; /* All content divs are hidden by default */
     flex-direction: column;
     align-items: center;
     width: 80%;
     max-width: 500px;
 }
+/* Show specific content based on overlay class */
 #game-overlay.show-title #overlay-title-content,
 #game-overlay.show-pause #overlay-pause-content,
-#game-overlay.show-gameover #overlay-gameover-content {
+#game-overlay.show-gameover #overlay-gameover-content,
+#game-overlay.show-victory #overlay-victory-content { /* NEW RULE FOR VICTORY */
     display: flex;
 }
 #game-overlay h1 { font-size: 3.5em; margin-bottom: 1.5rem; text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4); }
@@ -78,6 +80,9 @@ body {
 #game-overlay button:active { transform: scale(0.97); }
 #restart-button-overlay { background-color: darkred; color: white; border-color: #ffaaaa; }
 #restart-button-overlay:hover { background-color: red; }
+/* Optional: Style victory button differently if desired */
+#restart-button-overlay-victory { background-color: darkgreen; color: white; border-color: #aaffaa; }
+#restart-button-overlay-victory:hover { background-color: green; }
 
 
 /* --- Optional: Dim/Blur Background --- */

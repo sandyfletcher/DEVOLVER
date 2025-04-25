@@ -126,20 +126,3 @@ export function resumeMusic() {
         }
     }
 }
-
-// Optional: A function called on user interaction to potentially unlock audio
-// (More relevant for Web Audio API, but doesn't hurt for <audio>)
-export function unlockAudio() {
-    if (currentAudio && currentAudio.paused && !currentTrackPath) {
-         // If paused and no track loaded (e.g. after init), try playing a tiny silent sound
-         // or just try to play/pause immediately to get the browser to unlock.
-         currentAudio.src = 'data:audio/mpeg;base64,...'; // Tiny silent mp3 data URL
-         currentAudio.play().then(() => {
-            currentAudio.pause();
-            console.log("Audio unlocked via user gesture.");
-         }).catch(e => console.warn("Audio unlock attempt failed:", e));
-    } else if (currentAudio && currentAudio.paused && currentTrackPath) {
-         // If paused with a track loaded (e.g. after pause menu), try resuming
-         resumeMusic();
-    }
-}
