@@ -4,7 +4,7 @@
 
 // --- Module Imports ---
 import * as UI from './ui.js';
-import { Player } from './player.js';
+import { Player, isTargetWithinRange } from './player.js';
 import * as Input from './input.js';
 import * as Config from './config.js';
 import * as Renderer from './renderer.js';
@@ -102,16 +102,6 @@ function getMouseGridCoords(inputMousePos) {
     // Convert INTERNAL canvas pixel coordinates directly to grid coordinates
     const { x: worldX, y: worldY } = getMouseWorldCoords(inputMousePos);
     return GridCollision.worldToGridCoords(worldX, worldY); // worldToGridCoords uses BLOCK_WIDTH/HEIGHT
-}
-
-// Helper to check range (already exists in player.js, keep here for potential other uses?)
-function isTargetWithinRange(player, targetWorldPos) {
-    if (!player || !targetWorldPos) return false;
-    const playerCenterX = player.x + player.width / 2;
-    const playerCenterY = player.y + player.height / 2;
-    const dx = targetWorldPos.x - playerCenterX;
-    const dy = targetWorldPos.y - playerCenterY;
-    return (dx * dx + dy * dy) <= Config.PLAYER_INTERACTION_RANGE_SQ;
 }
 
 // --- Function to log the world grid (for debugging) ---

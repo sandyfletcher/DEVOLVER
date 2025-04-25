@@ -13,8 +13,8 @@ export function initializeGrid() {
     // console.log(`Initializing world grid (${Config.GRID_ROWS}x${Config.GRID_COLS})...`);
     worldGrid = new Array(Config.GRID_ROWS);
     for (let r = 0; r < Config.GRID_ROWS; r++) {
-        // Initialize each row with BLOCK_AIR
-        worldGrid[r] = new Array(Config.GRID_COLS).fill(Config.BLOCK_AIR);
+        // Initialize each row with BLOCK_AIR using createBlock
+        worldGrid[r] = new Array(Config.GRID_COLS).fill(createBlock(Config.BLOCK_AIR, Config.ORIENTATION_FULL, false)); // Explicitly set isPlayerPlaced: false
     }
     // console.log("World grid initialized.");
 }
@@ -29,7 +29,9 @@ export function initializeGrid() {
 export function getBlock(col, row) {
     if (row >= 0 && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
         // Ensure row exists before accessing column (should exist after initializeGrid)
-        return worldGrid[row]?.[col] ?? Config.BLOCK_AIR;
+        // Return BLOCK_AIR (0) if the cell is explicitly 0 or undefined/null for some reason
+        const block = worldGrid[row]?.[col];
+        return (block === undefined || block === null) ? Config.BLOCK_AIR : block;
     }
     return null; // Out of bounds
 }
@@ -56,20 +58,21 @@ export function getBlockType(col, row) {
  * @param {number} row - Row index.
  * @param {number} blockType - The type ID of the block to place (e.g., Config.BLOCK_STONE).
  * @param {number} [orientation=Config.ORIENTATION_FULL] - The orientation for the new block.
+ * @param {boolean} [isPlayerPlaced=false] - True if placed by the player.
  * @returns {boolean} True if the block was set successfully, false otherwise (e.g., out of bounds).
  */
-export function setBlock(col, row, blockType, orientation = Config.ORIENTATION_FULL) {
+export function setBlock(col, row, blockType, orientation = Config.ORIENTATION_FULL, isPlayerPlaced = false) {
     if (row >= 0 && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
         // Ensure the row exists (should after init)
         if (!worldGrid[row]) {
              console.error(`Row ${row} does not exist in worldGrid! Initialization error?`);
              return false; // Cannot set block
         }
-        // Use the imported createBlock function to generate the data structure
-        worldGrid[row][col] = createBlock(blockType, orientation);
+        // Use the imported createBlock function to generate the data structure, passing the new flag
+        worldGrid[row][col] = createBlock(blockType, orientation, isPlayerPlaced);
         return true;
     } else {
-        console.warn(`Set block out of bounds: ${row}, ${col}`);
+        // console.warn(`Set block out of bounds: ${row}, ${col}`); // Commented out for less console noise
         return false; // Out of bounds
     }
 }
@@ -89,9 +92,16 @@ export function setBlockData(col, row, blockData) {
               console.error(`Row ${row} does not exist in worldGrid! Initialization error?`);
               return false;
          }
-         worldGrid[row][col] = blockData;
-         return true;
+         // Ensure blockData is a valid object or the AIR constant before setting
+         if (blockData === Config.BLOCK_AIR || (typeof blockData === 'object' && blockData !== null && typeof blockData.type === 'number')) {
+             worldGrid[row][col] = blockData;
+             return true;
+         } else {
+             console.error(`Attempted to set invalid block data at [${col}, ${row}]`, blockData);
+             return false;
+         }
      }
+     // console.warn(`Set block data out of bounds: ${row}, ${col}`); // Commented out for less console noise
      return false;
 }
 

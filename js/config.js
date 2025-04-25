@@ -107,8 +107,10 @@ export const MATERIAL_TO_BLOCK_TYPE = { // Map inventory material strings to blo
 // --- Ghost and Future build options ---
 export const GHOST_BLOCK_ALPHA = 0.5; // Transparency for placement preview
 export const CAN_PLACE_IN_WATER = false; // Control if blocks can replace water (future enhancement?)
+export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)'; // White outline for player blocks
+export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // 1 pixel thickness
 
-// --- Water Physics ---
+// --- Water Physics & Flow --- // Added or modified
 export const WATER_GRAVITY_FACTOR = 0.4; // Reduce gravity effect
 export const WATER_HORIZONTAL_DAMPING = 0.1; // Strong horizontal drag (adjust base value, used with Math.pow)
 export const WATER_VERTICAL_DAMPING = 0.05;  // Stronger vertical drag
@@ -119,6 +121,8 @@ export const WATER_MAX_SWIM_UP_SPEED = 80;  // Max speed swimming up
 export const WATER_MAX_SINK_SPEED = 100;  // Max speed falling down in water
 export const ENEMY_WATER_BUOYANCY_ACCEL = 180;
 export const WATER_JUMP_COOLDOWN_DURATION = 0.2;
+export const WATER_PROPAGATION_DELAY = 0.05; // Delay between water spreading/falling updates (lower = faster flow)
+export const WATER_UPDATES_PER_FRAME = 10; // Max number of water cells to process per frame
 
 // =============================================================================
 // --- Player Constants ---

@@ -122,8 +122,6 @@ const handleMouseDown = (e) => {
         const coords = getInternalMouseCoords(e);
         state.internalMouseX = coords.x;
         state.internalMouseY = coords.y;
-        state.mouseX = e.clientX - canvas.getBoundingClientRect().left; // Update legacy values if needed
-        state.mouseY = e.clientY - canvas.getBoundingClientRect().top;  // Update legacy values if needed
 
         if (e.button === 0) { // Left click
              if (!state.attack) {
@@ -141,8 +139,6 @@ const handleMouseMove = (e) => {
         const coords = getInternalMouseCoords(e);
         state.internalMouseX = coords.x;
         state.internalMouseY = coords.y;
-        state.mouseX = e.clientX - canvas.getBoundingClientRect().left; // Update legacy values if needed
-        state.mouseY = e.clientY - canvas.getBoundingClientRect().top;  // Update legacy values if needed
     }
 };
 

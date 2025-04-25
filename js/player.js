@@ -8,7 +8,7 @@ import * as WorldManager from './worldManager.js';
 import * as WorldData from './utils/worldData.js';
 
 // Helper function to check if a target world position is within the player's interaction range.
-function isTargetWithinRange(player, targetWorldPos) {
+export function isTargetWithinRange(player, targetWorldPos) {
     if (!player || !targetWorldPos) return false;
     const playerCenterX = player.x + player.width / 2;
     const playerCenterY = player.y + player.height / 2;
@@ -181,52 +181,55 @@ export class Player {
         }
 
         // --- Block Placement Logic ---
-        // Check if attack input is active AND a placeable material is selected
-        if (inputState.attack && this.isMaterialSelected()) {
-            const materialType = this.selectedItem; // Get the selected material
+// Check if attack input is active AND a placeable material is selected
+if (inputState.attack && this.isMaterialSelected()) {
+    const materialType = this.selectedItem; // Get the selected material
 
-            // 1. Check if player has the material in inventory
-            if ((this.inventory[materialType] || 0) > 0) {
-                // 2. Check if the target location is within interaction range
-                if (isTargetWithinRange(this, targetWorldPos)) {
-                    // 3. Check if the target grid cell is valid for placement
-                    const targetCol = targetGridCell.col;
-                    const targetRow = targetGridCell.row;
-                    const targetBlockType = WorldData.getBlockType(targetCol, targetRow);
-                    // Can place in Air, or in Water if config allows
-                    const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
+    // 1. Check if player has the material in inventory
+    if ((this.inventory[materialType] || 0) > 0) {
+        // 2. Check if the target location is within interaction range
+        if (isTargetWithinRange(this, targetWorldPos)) { // isTargetWithinRange helper is local, ok.
+            // 3. Check if the target grid cell is valid for placement
+            const targetCol = targetGridCell.col;
+            const targetRow = targetGridCell.row;
+            const targetBlockType = WorldData.getBlockType(targetCol, targetRow);
+            // Can place in Air, or in Water if config allows
+            const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
 
-                    if (canPlaceHere) {
-                        // 4. Check if placing the block would overlap the player
-                        if (!this.checkPlacementOverlap(targetCol, targetRow)) {
-                            // 5. Check if the target cell has an adjacent solid block for support
-                            if (hasSolidNeighbor(targetCol, targetRow)) {
-                                // ALL CHECKS PASSED - PLACE THE BLOCK!
-                                const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType];
-                                if (blockTypeToPlace !== undefined) {
-                                    // Attempt to place the block using WorldManager
-                                    if (WorldManager.setBlock(targetCol, targetRow, blockTypeToPlace)) {
-                                        this.decrementInventory(materialType); // Reduce inventory count
-                                        inputState.attack = false; // Consume the attack input *only on successful placement*
-                                        // Optional: Add a short cooldown after placing?
-                                        // this.attackCooldown = 0.1;
-                                    } else {
-                                        // Placement failed at the WorldManager level (should be rare if checks passed)
-                                        // console.warn(`WorldManager failed to set block ${materialType} at [${targetCol}, ${targetRow}]`);
-                                    }
-                                } else {
-                                    // console.warn(`No block type mapping found for material ${materialType}`);
-                                }
-                            } // else: No adjacent support. Log commented out for performance.
-                        } // else: Player overlap. Log commented out.
-                    } // else: Target cell not empty/placeable. Log commented out.
-                } // else: Out of range. Log commented out.
-            } // else: Not enough material. Log commented out.
+            if (canPlaceHere) {
+                // 4. Check if placing the block would overlap the player
+                if (!this.checkPlacementOverlap(targetCol, targetRow)) {
+                    // 5. Check if the target cell has an adjacent solid block for support
+                    if (hasSolidNeighbor(targetCol, targetRow)) { // hasSolidNeighbor helper is local, ok.
+                        // ALL CHECKS PASSED - PLACE THE BLOCK!
+                        const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType];
+                        if (blockTypeToPlace !== undefined) {
+                            // *** CHANGE THIS LINE ***
+                            // Attempt to place the block using WorldManager's player-specific method
+                            // if (WorldManager.setBlock(targetCol, targetRow, blockTypeToPlace)) { // Old line
+                            if (WorldManager.placePlayerBlock(targetCol, targetRow, blockTypeToPlace)) { // New line, marks block as player placed
+                                this.decrementInventory(materialType); // Reduce inventory count
+                                inputState.attack = false; // Consume the attack input *only on successful placement*
+                                // Optional: Add a short cooldown after placing?
+                                // this.attackCooldown = 0.1;
+                            } else {
+                                // Placement failed at the WorldManager level (should be rare if checks passed)
+                                // console.warn(`WorldManager failed to place player block ${materialType} at [${targetCol}, ${targetRow}]`);
+                            }
+                        } else {
+                            // console.warn(`No block type mapping found for material ${materialType}`);
+                        }
+                    } // else: No adjacent support. Log commented out for performance.
+                } // else: Player overlap. Log commented out.
+            } // else: Target cell not empty/placeable. Log commented out.
+        } // else: Out of range. Log commented out.
+    } // else: Not enough material. Log commented out.
 
-            // Consume attack input if a material was selected, even if placement failed,
-            // to prevent accidentally swinging a weapon immediately after a failed placement attempt.
-            if (inputState.attack) { inputState.attack = false; }
-        }
+    // Consume attack input if a material was selected, even if placement failed,
+    // to prevent accidentally swinging a weapon immediately after a failed placement attempt.
+    // Keep this consumption logic.
+    if (inputState.attack) { inputState.attack = false; }
+}
 
         // --- Attack Triggering (Weapon Only) ---
         // Execute only if:

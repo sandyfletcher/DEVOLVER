@@ -18,7 +18,7 @@ import * as Config from '../config.js';
  *                            or returns Config.BLOCK_AIR (which is typically 0) directly
  *                            if type is Config.BLOCK_AIR.
  */
-export function createBlock(type, orientation = Config.ORIENTATION_FULL) {
+export function createBlock(type, orientation = Config.ORIENTATION_FULL, isPlayerPlaced = false) {
     // Handle the special case for Air blocks - they are represented directly by the constant value.
     if (type === Config.BLOCK_AIR) {
         return Config.BLOCK_AIR;
@@ -37,7 +37,8 @@ export function createBlock(type, orientation = Config.ORIENTATION_FULL) {
         type: type,
         orientation: orientation,
         hp: currentHp,
-        maxHp: baseHp
+        maxHp: baseHp,
+        isPlayerPlaced: isPlayerPlaced // Add the new property
         // --- Future extension point ---
         // Add other shared block properties here if needed later, e.g.:
         // lightEmitted: 0,
