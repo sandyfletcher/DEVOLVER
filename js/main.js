@@ -2,7 +2,6 @@
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
 
-// --- Module Imports ---
 import * as UI from './ui.js';
 import { Player, isTargetWithinRange } from './player.js';
 import * as Input from './input.js';
@@ -13,8 +12,8 @@ import * as World from './worldManager.js';
 import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
 import * as WaveManager from './waveManager.js';
-import * as WorldData from './utils/worldData.js'; // May not be needed directly here anymore
-import * as GridCollision from './utils/gridCollision.js'; // Needed for worldToGridCoords
+import * as WorldData from './utils/worldData.js';
+import * as GridCollision from './utils/gridCollision.js';
 
 // --- Game State Enum ---
 const GameState = Object.freeze({
@@ -169,8 +168,7 @@ function hideOverlay() {
 }
 
 // --- Game State Control ---
-
-/** Starts a new game or restarts after game over/pause. */
+// Starts a new game or restarts after game over/pause.
 function startGame() {
     if (currentGameState === GameState.RUNNING) return; // Prevent starting if already running
     console.log(">>> Starting Game <<<");
@@ -184,27 +182,21 @@ function startGame() {
     }
     // 2. Reset player reference in UI *before* creating new player (important for restarts)
     UI.setPlayerReference(null);
-
     // 3. Set game state and hide overlay
     currentGameState = GameState.RUNNING;
     hideOverlay(); // Hide overlay AFTER UI init succeeds
-
     // 4. Initialize Game Logic Systems
     World.init(); // Generates world, creates static canvas, calls WorldData.initializeGrid() internally.
     // logWorldGrid(); // Optional: Log the generated grid for debugging
-
     ItemManager.init(); // Clear/initialize items, spawn starting weapons
     EnemyManager.init(); // Clear/initialize enemy list
     WaveManager.init(); // Reset/initialize wave manager to Wave 1 start
-
     // 5. Create Player Instance
     try {
         player = null; // Ensure old reference is cleared
         player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
-
         // 6. Set Player Reference in UI *after* player is created
         UI.setPlayerReference(player); // UI can now access player data for updates and button clicks
-
     } catch (error) {
         console.error("FATAL: Player Creation/Init Error Message:", error.message);
         console.error("Error Stack:", error.stack);
@@ -213,10 +205,8 @@ function startGame() {
         alert("Error creating player. Please check console and refresh.");
         return;
     }
-
     // 7. Calculate Initial Camera Position
     calculateInitialCamera(); // Center camera on player
-
     // 8. Start Game Loop
     Input.consumeClick(); // Clear any clicks during transition/load
     lastTime = performance.now(); // Set start time for delta time calculation

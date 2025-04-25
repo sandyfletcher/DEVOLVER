@@ -11,15 +11,13 @@ class Item {
         this.x = x;
         this.y = y;
         this.type = type;
-
-        // Use passed config directly
+// Use passed config directly
         this.width = config?.width ?? Math.floor(Config.BLOCK_WIDTH);
         this.height = config?.height ?? Math.floor(Config.BLOCK_HEIGHT);
         this.color = config?.color ?? 'magenta';
         this.bobbleAmount = config?.bobbleAmount ?? Config.ITEM_BOBBLE_AMOUNT;
         this.bobbleSpeed = config?.bobbleSpeed ?? Config.ITEM_BOBBLE_SPEED;
-
-        // Physics and state
+// Physics and state
         this.vx = 0;
         this.vy = 0;
         this.isOnGround = false;
@@ -28,43 +26,38 @@ class Item {
         this.isInWater = false; // Initialize water state flag
     }
 
-    /**
-     * Updates the item's physics and state using grid collision.
-     * @param {number} dt - Delta time.
-     */
+// --- Physics and state ---
+
+// Updates the item's physics and state using grid collision
     update(dt) {
         if (!this.isActive) return;
         this.isInWater = GridCollision.isEntityInWater(this); // Detect water status first
-
-        // --- Get Current Physics Params ---
+// --- Get Current Physics Params ---
         const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
         const horizontalDampingFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : 1;
         const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
-
-        // --- Apply Horizontal Damping (if item ever gets vx) ---
+// --- Apply Horizontal Damping (if item ever gets vx) ---
         if (this.isInWater && Math.abs(this.vx) > 0.1) {
             this.vx *= horizontalDampingFactor;
             if (Math.abs(this.vx) < 1) this.vx = 0;
         }
-
-        // --- Physics Step 1: Apply Gravity & Handle Bobbing ---
+// --- Physics Step 1: Apply Gravity & Handle Bobbing ---
         if (!this.isOnGround) {
-            // Apply potentially reduced gravity if not on ground
+// Apply potentially reduced gravity if not on ground
             this.vy += currentGravity * dt;
         } else {
-            // On ground logic: reset vy and handle bobbing
+// On ground logic: reset vy and handle bobbing
             if (this.vy > 0) this.vy = 0;
-
-            // Only bob if NOT in water (Option 1 from previous discussion)
+// Only bob if NOT in water
             if (!this.isInWater) {
                 this.bobbleOffset += this.bobbleSpeed * dt;
             } else {
-                // Optionally reset or freeze bobble offset if you want it static in water
+// Optionally reset or freeze bobble offset if you want it static in water
                  // this.bobbleOffset = 0; // Freeze bobble
             }
         }
 
-        // --- Apply Vertical Damping & Clamp Speed ---
+// --- Apply Vertical Damping & Clamp Speed ---
         if (this.isInWater) {
             this.vy *= verticalDampingFactor;
             this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED); // Clamp sink speed
@@ -73,16 +66,15 @@ class Item {
              this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
         }
 
-
-        // --- Calculate Potential Movement ---
+// --- Calculate Potential Movement ---
         const potentialMoveX = this.vx * dt;
         const potentialMoveY = this.vy * dt;
 
-        // --- Physics Step 2: Grid Collision Detection & Resolution ---
+// --- Physics Step 2: Grid Collision Detection & Resolution ---
         const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
         this.isOnGround = collisionResult.isOnGround;
 
-        // Zero out velocity if collision occurred
+// Zero out velocity if collision occurred
         if (collisionResult.collidedX) this.vx = 0;
         if (collisionResult.collidedY) {
             if (Math.abs(this.vy) > 0.1) {
@@ -90,11 +82,11 @@ class Item {
             }
          }
 
-        // --- Despawn/Remove if falls out of world ---
+// --- Despawn/Remove if falls out of world ---
         if (this.y > Config.CANVAS_HEIGHT + 100) {
              this.isActive = false;
         }
-    } // End of update method
+    }
 
     draw(ctx) {
         if (!this.isActive || !ctx) return;
@@ -104,7 +96,7 @@ class Item {
         }
 
         let drawY = this.y;
-        // Apply bobble effect only when on ground AND not in water (using Option 1)
+// Apply bobble effect only when on ground AND not in water
         if (this.isOnGround && !this.isInWater) {
              drawY += Math.sin(this.bobbleOffset) * this.bobbleAmount * this.height;
         }
@@ -123,7 +115,7 @@ class Item {
             height: this.height
         };
     }
-} // End of Item Class
+}
 
 // --- Module State ---
 let items = []; // Array containing active Item instances
@@ -154,45 +146,31 @@ export function spawnItem(x, y, type) {
     }
 }
 
-/**
- * Updates all active items' physics and state.
- * Removes items marked as inactive.
- * @param {number} dt - Delta time.
- */
+
+// Updates all active items' physics and state, removes items marked as inactive
 export function update(dt) {
     // The main update loop now just calls item.update()
     for (let i = items.length - 1; i >= 0; i--) {
         const item = items[i];
         item.update(dt); // Item's own update handles water physics
-
         if (!item.isActive) {
             items.splice(i, 1);
         }
     }
 }
-
-/**
- * Draws all active items onto the canvas.
- * @param {CanvasRenderingContext2D} ctx - The drawing context.
- */
+// Draws all active items onto the canvas.
 export function draw(ctx) {
     items.forEach(item => {
         item.draw(ctx); // Item's own draw method checks isActive
     });
 }
 
-/**
- * Returns the array of all current item instances.
- * @returns {Array<Item>}
- */
+// Returns the array of all current item instances
 export function getItems() {
     return items;
 }
 
-/**
- * Removes a specific item instance from the manager.
- * @param {Item} itemToRemove - The specific item instance to remove.
- */
+// Removes a specific item instance from the manager
 export function removeItem(itemToRemove) {
     items = items.filter(item => item !== itemToRemove);
 }
