@@ -13,8 +13,9 @@ import * as World from './worldManager.js'; // WorldManager now handles dynamic 
 import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
 import * as WaveManager from './waveManager.js'; // Updated WaveManager
-import * as WorldData from './utils/worldData.js'; // May not be needed directly here anymore
+// import * as WorldData from './utils/worldData.js'; // May not be needed directly here anymore
 import * as GridCollision from './utils/gridCollision.js'; // Needed for worldToGridCoords
+import * as AudioManager from './audioManager.js'; // <-- IMPORT AUDIO MANAGER
 
 // --- Game State Enum ---
 const GameState = Object.freeze({
@@ -145,9 +146,11 @@ function showOverlay(stateToShow) {
     switch (stateToShow) {
         case GameState.PRE_GAME:
             gameOverlay.classList.add('show-title');
+            AudioManager.stopMusic(); // Ensure music is stopped on title screen
             break;
         case GameState.PAUSED:
             gameOverlay.classList.add('show-pause');
+            AudioManager.pauseMusic(); // Pause music when game is paused
             break;
         case GameState.GAME_OVER:
             gameOverlay.classList.add('show-gameover');
@@ -158,6 +161,7 @@ function showOverlay(stateToShow) {
             } else {
                 console.warn("ShowOverlay: gameOverStatsP element not found for GAME_OVER state.");
             }
+            AudioManager.stopMusic(); // Stop music on game over (WaveManager also does this, but redundancy is ok)
             break;
         case GameState.VICTORY:
             gameOverlay.classList.add('show-victory');
@@ -167,6 +171,7 @@ function showOverlay(stateToShow) {
             } else {
                  console.warn("ShowOverlay: gameOverStatsP element not found for VICTORY state.");
             }
+            AudioManager.stopMusic(); // Stop music on victory (WaveManager also does this)
             break;
     }
     // Make overlay visible and dim background
@@ -177,9 +182,13 @@ function showOverlay(stateToShow) {
 function hideOverlay() {
     if (!gameOverlay || !appContainer) return;
     gameOverlay.classList.remove('active');
-    appContainer.classList.remove('overlay-active');
     // Ensure background interaction is re-enabled
      appContainer.classList.remove('overlay-active'); // Redundant, but safe
+
+     // Resume music if transitioning from PAUSED to RUNNING
+     if (currentGameState === GameState.RUNNING) {
+         AudioManager.resumeMusic();
+     }
 }
 
 // --- Game State Control ---
@@ -202,6 +211,10 @@ function startGame() {
         alert("Error: Could not initialize game UI. Please check console and refresh.");
         return;
     }
+
+    // --- Attempt to unlock browser audio on this user gesture ---
+    AudioManager.unlockAudio(); // This is the primary place to call unlock
+
 
     // 2. Reset player reference in UI *before* creating new player
     UI.setPlayerReference(null);
@@ -253,7 +266,7 @@ function pauseGame() { // This function is exposed via window.pauseGameCallback
     if (currentGameState !== GameState.RUNNING) return; // Can only pause if running
     console.log(">>> Pausing Game <<<");
     currentGameState = GameState.PAUSED;
-    showOverlay(GameState.PAUSED); // Show the pause menu overlay
+    showOverlay(GameState.PAUSED); // Show the pause menu overlay (also pauses music)
     // Stop the game loop
     if (gameLoopId) {
         cancelAnimationFrame(gameLoopId);
@@ -266,7 +279,7 @@ function resumeGame() {
     if (currentGameState !== GameState.PAUSED) return; // Can only resume if paused
     console.log(">>> Resuming Game <<<");
     currentGameState = GameState.RUNNING;
-    hideOverlay(); // Hide the pause overlay
+    hideOverlay(); // Hide the pause overlay (also resumes music)
 
     // Restart the game loop
     lastTime = performance.now(); // IMPORTANT: Reset time to avoid huge dt jump after pause
@@ -280,9 +293,9 @@ function handleGameOver() {
     if (currentGameState === GameState.GAME_OVER) return; // Prevent multiple calls
     console.log(">>> Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER;
-    showOverlay(GameState.GAME_OVER); // Show game over overlay (updates stats text internally)
+    showOverlay(GameState.GAME_OVER); // Show game over overlay (updates stats text internally, stops music)
 
-    // Inform WaveManager about Game Over state (clears timers/enemies)
+    // Inform WaveManager about Game Over state (clears timers/enemies, stops music)
     WaveManager.setGameOver();
 
     // Stop the game loop
@@ -306,7 +319,7 @@ function handleVictory() {
      if (currentGameState === GameState.VICTORY) return; // Prevent multiple calls
      console.log(">>> Handling Victory <<<");
      currentGameState = GameState.VICTORY;
-     showOverlay(GameState.VICTORY); // Show victory overlay
+     showOverlay(GameState.VICTORY); // Show victory overlay (stops music)
 
      // WaveManager is already in VICTORY state
 
@@ -367,12 +380,11 @@ function gameLoop(timestamp) {
     }
 
     // Check if WaveManager signals victory (all waves cleared)
-    const waveInfoBeforeUpdate = WaveManager.getWaveInfo(); // Get state before update
-    if (waveInfoBeforeUpdate.state === 'VICTORY') {
-         handleVictory(); // Transition to victory state
-         return; // Stop processing this frame
-    }
-
+    // This check needs to happen *before* WaveManager.update this frame
+    // if WaveManager.update might transition to VICTORY.
+    // A safer approach is to check the state *after* the update, or have WaveManager
+    // return a flag when it *just* transitioned to VICTORY this frame.
+    // For now, let's check AFTER update.
 
     // --- Input Phase ---
     const inputState = Input.getState();
@@ -392,6 +404,13 @@ function gameLoop(timestamp) {
     EnemyManager.update(dt, currentPlayerPosition); // <<< Pass potentially null position
     WaveManager.update(dt); // Update WaveManager (handles timers and spawning)
     World.update(dt); // Update dynamic world elements like water
+
+    // --- Check Wave Manager state AFTER update ---
+    const waveInfo = WaveManager.getWaveInfo(); // Get updated wave info AFTER WaveManager update
+    if (waveInfo.state === 'VICTORY') {
+         handleVictory(); // Transition to victory state
+         return; // Stop processing this frame
+    }
 
     // --- Camera Calculation ---
     calculateCameraPosition(); // Update camera position based on player movement and scale
@@ -429,7 +448,7 @@ function gameLoop(timestamp) {
 
     // --- Update Sidebar UI ---
     // This updates the HTML elements outside the canvas every frame while running
-    const waveInfo = WaveManager.getWaveInfo(); // Get updated wave info AFTER WaveManager update
+    // waveInfo is already retrieved after WaveManager.update
     const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get current enemy count
     UI.updateWaveInfo(waveInfo, livingEnemies); // Update top sidebar portal info
     if (player) {
@@ -551,16 +570,15 @@ function init() {
         Renderer.init(); // Sets internal canvas resolution (1600x800)
         Renderer.createGridCanvas(); // Creates off-screen canvas (1600x800)
         Input.init(); // Setup listeners, calculates internal mouse coords
+        AudioManager.init(); // <-- Initialize Audio Manager
 
         // --- Initialize ONLY the Overlay UI (elements already found) ---
         // No separate initOverlay needed if elements are found directly here.
         // UI.initOverlay(); // This function can be removed if not doing anything else.
-        // Let's keep UI.initOverlay() if it finds other elements not listed above, or rename it.
-        // Re-checking ui.js, initOverlay only gets game-overlay ref, which is already done here.
-        // Let's just remove the UI.initOverlay() call and the function itself.
+
 
         // --- Show Initial State ---
-        showOverlay(GameState.PRE_GAME); // Display the title screen overlay
+        showOverlay(GameState.PRE_GAME); // Display the title screen overlay (also stops music)
 
     } catch (error) {
         console.error("FATAL: Initialization Error:", error);
@@ -575,6 +593,7 @@ function init() {
                 </div>`;
             gameOverlay.classList.add('active', 'show-title'); // Show using 'show-title' styling
             if(appContainer) appContainer.classList.add('overlay-active');
+             AudioManager.stopMusic(); // Ensure music is stopped if an init error occurs
         } else {
             alert(`FATAL Initialization Error:\n${error.message}\nPlease check console (F12) and refresh.`);
         }

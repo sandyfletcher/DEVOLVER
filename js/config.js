@@ -382,37 +382,29 @@ export const WAVE_INTERMISSION_DURATION = 60.0; // Seconds between *main* waves 
 export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in group
 
 
-// --- Wave Scripts --- // Moved from utils/waveScripts.js
+// --- Wave Scripts --- //
 export const WAVES = [
     { // ==================== Main Wave 1 ====================
         mainWaveNumber: 1, // For reference/UI
         duration: 117, // Total duration of Wave 1 in seconds (for music)
-        subWaves: [ // Sub-waves define *what* groups spawn, *when* they start relative to the WAVE_COUNTDOWN start, and delays *between* enemies in a group.
+        audioTrack: 'assets/audio/Wave1-350.mp3',
+        subWaves: [
             { // --- Sub-Wave 1.1 ---
                 enemyGroups: [
-                    // Group 1: Spawn 10 Tetrapods, slowly, starting immediately
                     { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
-                    // Group 2: Original Seeker group 1, delayed slightly to appear after tetrapods start
                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
-                    // Group 3: Original Seeker group 2, delayed further
                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
                 ]
             },
             { // --- Sub-Wave 1.2 ---
-                // description: "Introducing Chasers", // Add descriptions if needed elsewhere
                 enemyGroups: [
-                    // Group 1: Spawn 4 Seekers - starts 1 second after the *previous sub-wave's groups finish spawning*
                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
-                    // Group 2: Spawn 2 Chasers, slower spawn rate, starting later (relative to THIS sub-wave's start)
                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
                 ]
             },
             { // --- Sub-Wave 1.3 ---
-                // description: "Mixed Finish",
                 enemyGroups: [
-                    // Group 1: Quick burst of Seekers
                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
-                     // Group 2: A single tougher Chaser
                      { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
                 ]
             }
@@ -421,27 +413,25 @@ export const WAVES = [
     { // ==================== Main Wave 2 ====================
         mainWaveNumber: 2,
         duration: 137, // Total duration of Wave 2 in seconds (for music)
+        audioTrack: 'assets/audio/Wave2-300.mp3', // <-- Add the path to your wave 2 music file
         subWaves: [
             { // --- Sub-Wave 2.1 ---
-                 // description: "Chaser Focus",
                  enemyGroups: [
                      { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 }, // Support seekers
+                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
                  ]
             },
             { // --- Sub-Wave 2.2 ---
-                 // description: "Dense Pack",
                  enemyGroups: [
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 }, // Tightly packed
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 }, // Late chasers
+                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
+                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
                  ]
             },
             { // --- Sub-Wave 2.3 ---
-                // description: "Final Push",
                  enemyGroups: [
                      { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
                      { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 }, // Elite chasers
+                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
                  ]
             }
         ]
@@ -450,6 +440,7 @@ export const WAVES = [
     { // Example of a potentially shorter/different wave
         mainWaveNumber: 3,
         duration: 90,
+        audioTrack: 'assets/audio/wave3.mp3', // <-- Add path for wave 3 music
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
