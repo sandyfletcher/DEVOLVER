@@ -108,6 +108,20 @@ function getMouseGridCoords(inputMousePos) {
     return GridCollision.worldToGridCoords(worldX, worldY);
 }
 
+// NEW: Callback function to handle the start of a new wave, triggered by WaveManager
+function handleWaveStart(waveNumber) {
+    console.log(`Main: Wave ${waveNumber} officially starting. Triggering epoch display.`);
+    const epochYear = Config.EPOCH_MAP[waveNumber];
+    if (epochYear !== undefined) {
+        UI.showEpochText(epochYear);
+    } else {
+        console.warn(`Main: No epoch defined in Config.EPOCH_MAP for wave ${waveNumber}.`);
+        // Optional: Show default text like "Wave {waveNumber} Starting"
+        // UI.showEpochText(`Wave ${waveNumber} Starting`);
+    }
+}
+
+
 // =============================================================================
 // --- Overlay Management ---
 // =============================================================================
@@ -125,27 +139,39 @@ function showOverlay(stateToShow) {
             gameOverlay.classList.add('show-title');
 // stop all music for a clean start on title screen
             AudioManager.stopAllMusic();
-// play title music
-            AudioManager.playUIMusic(Config.AUDIO_TRACKS.title);
+// play title music (if defined)
+            if (Config.AUDIO_TRACKS.title) {
+                AudioManager.playUIMusic(Config.AUDIO_TRACKS.title);
+            } else {
+                AudioManager.stopUIMusic(); // Ensure UI music is stopped if no title track
+            }
             break;
         case GameState.PAUSED:
             gameOverlay.classList.add('show-pause');
 // stop gamemusic and start pausemusic
-            AudioManager.pauseGameMusic();
-            AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
+            AudioManager.pauseGameMusic(); // Pause game music
+            if (Config.AUDIO_TRACKS.pause) { // Play pause music if defined
+                AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
+            } else {
+                AudioManager.stopUIMusic(); // Ensure UI music is stopped if no pause track
+            }
             break;
         case GameState.GAME_OVER:
             gameOverlay.classList.add('show-gameover');
 // update game over stats if element exists
             if (gameOverStatsTextP) {
                  const finalWave = WaveManager.getCurrentWaveNumber(); // wave reached stat
-                 gameOverStatsTextP.textContent = `You reached Wave ${finalWave}.`;
+                 gameOverStatsTextP.textContent = `You reached Wave ${finalWave}!`; // Adjusted text
             } else {
                 console.warn("ShowOverlay: gameover-stats-text element not found for GAME_OVER state.");
             }
 // stop gamemusic and start gameovermusic
-            AudioManager.stopGameMusic();
-            AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver);
+            AudioManager.stopGameMusic(); // Stop game music
+            if (Config.AUDIO_TRACKS.gameOver) { // Play game over music if defined
+                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver);
+            } else {
+                 AudioManager.stopUIMusic(); // Ensure UI music is stopped if no game over track
+            }
             break;
         case GameState.VICTORY:
             gameOverlay.classList.add('show-victory');
@@ -156,8 +182,12 @@ function showOverlay(stateToShow) {
                 console.warn("ShowOverlay: victory-stats-text element not found for VICTORY state.");
             }
 // stop gamemusic and start victorymusic
-             AudioManager.stopGameMusic();
-            AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory);
+             AudioManager.stopGameMusic(); // Stop game music
+            if (Config.AUDIO_TRACKS.victory) { // Play victory music if defined
+                AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory);
+            } else {
+                 AudioManager.stopUIMusic(); // Ensure UI music is stopped if no victory track
+            }
             break;
     }
 // make overlay visible and dim background
@@ -189,12 +219,11 @@ function startGame() {
     }
     console.log(">>> Starting Game <<<");
 // 1. Initialize Game UI Elements (find elements, create dynamic slots, add listeners)
-    if (!UI.initGameUI()) {
-        console.error("FATAL: Failed to initialize critical game UI elements. Aborting start.");
-        currentGameState = GameState.PRE_GAME;
-        showOverlay(GameState.PRE_GAME);
-        alert("Error: Could not initialize game UI. Please check console and refresh.");
-        return;
+    // UI initialization moved to init(), ensure it succeeded before continuing
+    if (!UI.isInitialized()) { // Check if UI.initGameUI() was successful during init()
+         console.error("FATAL: UI was not initialized correctly. Aborting game start.");
+         // Stay in PRE_GAME state and show overlay (should already be showing due to init failure)
+         return;
     }
 // 2. Reset player reference in UI before creating new player
     UI.setPlayerReference(null);
@@ -202,7 +231,8 @@ function startGame() {
     World.init();
     ItemManager.init();
     EnemyManager.init();
-    WaveManager.init();
+    // NEW: Use reset and pass the wave start callback
+    WaveManager.reset(handleWaveStart);
 // 4. Create Player Instance
     try {
         player = null; // Ensure old reference is cleared
@@ -223,7 +253,7 @@ function startGame() {
    currentGameState = GameState.RUNNING;
    hideOverlay();
 // 8. Start Game Loop
-   Input.consumeClick();
+   Input.consumeClick(); // Consume any lingering click from the start button
    gameStartTime = performance.now();
    if (gameLoopId) {
        cancelAnimationFrame(gameLoopId);
@@ -298,7 +328,7 @@ function restartGame() {
         return; // Prevent restarting from RUNNING or PRE_GAME states via this button
     }
     console.log(">>> Restarting Game <<<");
-    currentGameState = GameState.PRE_GAME;
+    // No need to explicitly set state to PRE_GAME here; startGame handles the full reset cycle
     startGame(); // Re-run the full start sequence (clear state, reset managers, create player, start loop)
 }
 
@@ -345,8 +375,8 @@ function gameLoop(timestamp) {
     }
     ItemManager.update(dt);
     EnemyManager.update(dt, currentPlayerPosition);
+    // Pass the current game state to WaveManager.update so it knows whether to decrement timers
     WaveManager.update(dt, currentGameState);
-    World.update(dt);
 // --- Check Wave Manager state AFTER update ---
     const waveInfo = WaveManager.getWaveInfo();
     if (waveInfo.state === 'VICTORY') {
@@ -461,13 +491,13 @@ function init() {
         restartButtonVictory = document.getElementById('restart-button-overlay-victory');
         gameOverStatsTextP = document.getElementById('gameover-stats-text');
         victoryStatsTextP = document.getElementById('victory-stats-text');
-        // check if all essential elements were found
-        const essentialElements = [
+        // check if all essential elements were found (these are the overlay ones)
+        const essentialOverlayElements = [
             appContainer, gameOverlay, startGameButton, resumeButton,
             restartButtonGameOver, restartButtonVictory, gameOverStatsTextP, victoryStatsTextP
         ];
-        if (essentialElements.some(el => !el)) { // find out which specific elements are missing for better debugging
-             const missing = essentialElements.map((el, i) => el ? null : ['appContainer', 'gameOverlay', 'startGameButton', 'resumeButton', 'restartButtonGameOver', 'restartButtonVictory', 'gameover-stats-text', 'victory-stats-text'][i]).filter(id => id !== null);
+        if (essentialOverlayElements.some(el => !el)) { // find out which specific elements are missing for better debugging
+             const missing = essentialOverlayElements.map((el, i) => el ? null : ['appContainer', 'gameOverlay', 'startGameButton', 'resumeButton', 'restartButtonGameOver', 'restartButtonVictory', 'gameover-stats-text', 'victory-stats-text'][i]).filter(id => id !== null);
              throw new Error(`Essential overlay elements not found: ${missing.join(', ')}! Check index.html.`);
         }
 // --- Setup Event Listeners (Overlay buttons) ---
@@ -484,21 +514,41 @@ function init() {
         Renderer.createGridCanvas(); // create off-screen canvas (1600x800)
         Input.init();
         AudioManager.init();
-        showOverlay(GameState.PRE_GAME); // display title screen overlay and stop music
+        // Initialize Game UI *after* core rendering elements are ready
+        if (!UI.initGameUI()) { // initGameUI now also finds the epoch overlay element
+             throw new Error("UI initialization failed. Check console for missing elements.");
+        }
+
+        // Initialize WaveManager, passing the callback function
+        WaveManager.init(handleWaveStart);
+
+        // Show initial title screen overlay
+        showOverlay(GameState.PRE_GAME);
     } catch (error) {
         console.error("FATAL: Initialization Error:", error);
         if (gameOverlay) { // Clear overlay content and show error
+            // Ensure gameOverlay has a height/width to be visible if init fails early
+            gameOverlay.style.width = '100%';
+            gameOverlay.style.height = '100%';
+            gameOverlay.style.position = 'fixed'; // Ensure it covers the screen
+            gameOverlay.style.top = '0';
+            gameOverlay.style.left = '0';
+            gameOverlay.style.display = 'flex'; // Make it a flex container
+            gameOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+            gameOverlay.style.color = 'red';
+            gameOverlay.style.zIndex = '1000'; // Ensure it's on top
+            gameOverlay.style.justifyContent = 'center';
+            gameOverlay.style.alignItems = 'center';
+            gameOverlay.style.flexDirection = 'column';
+            gameOverlay.style.textAlign = 'center';
+
             gameOverlay.innerHTML = `
-                <div class="overlay-content" id="overlay-error-content" style="display: flex; flex-direction: column; align-items: center; color: red;">
-                    <h1>Initialization Error</h1>
-                    <p>${error.message}</p>
-                    <p>Please check the console (F12) for more details and refresh.</p>
+                <div id="overlay-error-content" style="display: flex; flex-direction: column; align-items: center;">
+                    <h1 style="font-size: 2em; margin-bottom: 1rem;">Initialization Error</h1>
+                    <p style="font-size: 1.2em; margin-bottom: 1rem;">${error.message}</p>
+                    <p style="font-size: 1em;">Please check the console (F12) for more details and refresh.</p>
                 </div>`;
-            // TODO: add a CSS rule for #overlay-error-content if not already handled by .overlay-content base style
-            const style = document.createElement('style');
-            style.textContent = '#game-overlay #overlay-error-content { display: flex !important; }';
-            document.head.appendChild(style);
-            gameOverlay.classList.add('active', 'show-title');
+            gameOverlay.classList.add('active'); // Ensure opacity is 1 if CSS transition applied
             if(appContainer) appContainer.classList.add('overlay-active');
              AudioManager.stopAllMusic(); // ensure music is stopped if an init error occurs
         } else {

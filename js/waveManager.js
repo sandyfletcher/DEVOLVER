@@ -20,6 +20,10 @@ let preWaveTimer = Config.WAVE_START_DELAY; // Timer before the very first wave
 let mainWaveTimer = 0; // Timer for the total duration of the current main wave
 let intermissionTimer = 0; // Timer between main waves
 
+// NEW: Callback function to notify caller when a wave starts
+let waveStartCallback = null;
+
+
 // --- Internal Helper Functions ---
 
 function getCurrentWaveData() {
@@ -112,6 +116,7 @@ function startNextWave() {
         EnemyManager.clearAllEnemies(); // Clear any remaining enemies on victory
         AudioManager.stopAllMusic(); // <-- Stop ALL music on victory
         console.log("[WaveMgr] Transitioned to VICTORY state.");
+        // No callback needed for victory state transition here, main.js handles victory overlay
         return false; // Indicates no wave was started
     }
 
@@ -119,6 +124,15 @@ function startNextWave() {
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration; // Set timer to the wave's total duration
     console.log(`[WaveMgr] Starting Main Wave ${waveData.mainWaveNumber}. Duration: ${mainWaveTimer}s`);
+
+    // NEW: Call the callback to notify the main loop (e.g., to show epoch text)
+    if (typeof waveStartCallback === 'function') {
+        console.log(`[WaveMgr] Calling waveStartCallback for wave ${waveData.mainWaveNumber}.`);
+        waveStartCallback(waveData.mainWaveNumber);
+    } else {
+        console.warn("[WaveMgr] No waveStartCallback function registered.");
+    }
+
 
     // --- Trigger game music playback for the new wave ---
     if (waveData.audioTrack) {
@@ -166,12 +180,12 @@ function endWave() {
         // There is a next wave, transition to intermission
         state = 'INTERMISSION';
         intermissionTimer = Config.WAVE_INTERMISSION_DURATION;
-        AudioManager.stopGameMusic(); // <-- Stop wave music for intermission (intermission music handled by UI if overlay is shown?)
+        AudioManager.stopGameMusic(); // <-- Stop wave music for intermission
         console.log(`[WaveMgr] Transitioned to INTERMISSION. Next wave (${currentMainWaveIndex + 2}) starts in ${intermissionTimer}s.`);
     } else {
         // No more waves, transition to victory
         state = 'VICTORY';
-        AudioManager.stopAllMusic(); // <-- Stop ALL music on victory
+        // AudioManager.stopAllMusic() is handled by main.js when it transitions to VICTORY overlay
         console.log("[WaveMgr] All waves completed! Transitioned to VICTORY state.");
     }
 
@@ -186,7 +200,9 @@ function endWave() {
 // --- Exported Functions ---
 
 /** Initializes the wave manager to its default state. */
-export function init() {
+// NEW: Accept an optional callback
+export function init(callback = null) {
+    console.log("[WaveManager] Initializing...");
     currentMainWaveIndex = -1; // Start before the first wave
     currentSubWaveIndex = 0;
     currentGroupIndex = 0;
@@ -197,13 +213,17 @@ export function init() {
     preWaveTimer = Config.WAVE_START_DELAY; // Use config value for first delay
     mainWaveTimer = 0; // No main wave active yet
     intermissionTimer = 0; // No intermission active yet
-    console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s`);
+    // Store the callback
+    waveStartCallback = callback;
+    console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s. Callback ${callback ? 'provided' : 'not provided'}.`);
 }
 
 /** Resets the wave manager, typically for restarting the game. */
-export function reset() {
+// NEW: Accept an optional callback
+export function reset(callback = null) {
     console.log("[WaveManager] Resetting...");
-    init(); // Re-initialize to default state
+    // Pass the callback during reset as well
+    init(callback); // Re-initialize using the init function
 }
 
 /**
@@ -305,6 +325,7 @@ export function setGameOver() {
         groupSpawnTimer = 0;
         groupStartDelayTimer = 0;
         EnemyManager.clearAllEnemies(); // Clear enemies on player death
+        // No callback needed for game over state transition here, main.js handles game over overlay
     }
 }
 
@@ -319,7 +340,7 @@ export function setVictory() {
         groupSpawnTimer = 0;
         groupStartDelayTimer = 0;
         EnemyManager.clearAllEnemies();
-        // DO NOT call AudioManager.stopAllMusic() here.
+        // DO NOT call AudioManager.stopAllMusic() here. Main.js handles music on overlay show.
     }
 }
 
@@ -364,7 +385,7 @@ export function getWaveInfo() {
              }
             // Append living enemy count below progress text or if no progress text
              const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get live count directly
-             if (livingEnemies > 0 || !progressText) {
+             if (livingEnemies > 0 || (!progressText && livingEnemies === 0)) { // Condition adjusted for clarity
                  if (progressText && progressText !== "Spawning complete.") progressText += ' | '; // Add separator if needed, but not if just "Spawning complete"
                  else if (!progressText) progressText = ''; // Ensure progressText is at least empty string if it was null/undefined
                  progressText += `Alive: ${livingEnemies}`;

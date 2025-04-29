@@ -65,15 +65,15 @@ export const WATER_UPDATES_PER_FRAME = 10; // Max number of water cells to proce
 export const AUDIO_SFX_POOL_SIZE = 8; // Number of simultaneous sound effects allowed
 export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // Default volume for game music (TODO: make adjustable)
 export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // Default volume for UI music
-export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects 
+export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects
 export const AUDIO_TRACKS = {
 // --- Music ---
-    // title: 'assets/audio/title_music.mp3',
+    // title: 'assets/audio/title_music.mp3', // TODO: Add title music
     pause: 'assets/audio/music/Pause.mp3',
-    // gameOver: 'assets/audio/gameover_music.mp3',
+    // gameOver: 'assets/audio/gameover_music.mp3', // TODO: Add game over music
     victory: 'assets/audio/music/Victory.mp3',
 // ---Sound Effects ---
-    // player_hit: 'assets/audio/sfx/player_hit.wav',
+    // player_hit: 'assets/audio/sfx/player_hit.wav', // TODO: Add sfx
     // enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
     // enemy_death: 'assets/audio/sfx/enemy_death.wav',
     // block_break_dirt: 'assets/audio/sfx/block_break_dirt.wav',
@@ -189,7 +189,7 @@ export const WEAPON_TYPE_UNARMED = 'unarmed';
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
 export const WEAPON_TYPE_SPEAR = 'spear'
-// --- Shovel --- 
+// --- Shovel ---
 export const SHOVEL_WIDTH = Math.floor(2.5 * BLOCK_WIDTH);   // Visual size: Keep factors as is for now ~10px (Matches new player width)
 export const SHOVEL_HEIGHT = Math.floor(1.5 * BLOCK_HEIGHT);  // ~6px
 export const SHOVEL_COLOR = 'rgb(160, 160, 160)'; // Grey color
@@ -232,7 +232,7 @@ export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)'; // Differen
 export const ITEM_CONFIG = {
     [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
     [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
-    [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },     
+    [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
     'dirt': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_DIRT] },
     'sand': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_SAND] },
     'wood': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_WOOD] },
@@ -350,7 +350,7 @@ export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read f
         // resistances: { 'physical': 0.1 }, // e.g., 10% physical resistance (0.0 to 1.0)
         // vulnerabilities: { 'fire': 1.5 }, // e.g., 50% extra fire damage
         // specialFlags: [], // e.g., ['explodes_on_death', 'teleports']
-        // attackType: 'melee', 
+        // attackType: 'melee',
         //     }
 };
 
@@ -427,3 +427,34 @@ export const WAVES = [
     }
     // ===  ... 7ish more waves afterwards ===
 ];
+
+// =============================================================================
+// --- Epoch Mapping & Display ---
+// =============================================================================
+// Map wave number (1-based) to the epoch year (in millions of years)
+export const EPOCH_MAP = {
+    1: 350, // Wave 1 corresponds to 350 Million Years Ago
+    2: 300, // Wave 2 corresponds to 300 Million Years Ago
+    3: 90,  // Wave 3 corresponds to 90 Million Years Ago
+    // Add mappings for subsequent waves as needed
+};
+
+// Duration the epoch text is displayed for each wave start (in seconds)
+export const EPOCH_DISPLAY_DURATION = 4.0;
+
+
+// =============================================================================
+// --- Projectile Parameters (Future Use) ---
+// =============================================================================
+// Example:
+// export const PROJECTILE_TYPES = {
+//     ENEMY_SPIT: {
+//         speed: 200,
+//         damage: 5,
+//         color: 'green',
+//         width: 5,
+//         height: 5,
+//         lifetime: 3, // seconds
+//         applyGravity: true,
+//     }
+// };

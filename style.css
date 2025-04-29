@@ -197,6 +197,25 @@ body {
      image-rendering: pixelated;
      image-rendering: crisp-edges;
 }
+/* NEW: Style for the epoch overlay text */
+#epoch-overlay {
+    position: absolute;
+    top: 20%; /* Adjust vertical position as desired */
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-family: 'RubikIso', sans-serif; /* Match title font? Or a different one? */
+    font-size: 3em; /* Large size */
+    color: white; /* White text */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6); /* Add shadow for readability */
+    z-index: 50; /* Make sure it's above the game canvas */
+    opacity: 0; /* Start invisible */
+    visibility: hidden; /* Start hidden to prevent interaction */
+    transition: opacity 0.5s ease-in-out; /* Fade in/out effect */
+    pointer-events: none; /* Crucial: Allows clicks/mouse events to pass through to canvas/buttons below */
+}
+
+
 #bottom-sidebar {
     flex-shrink: 0; /* Don't shrink below content/min-height */
     width: 100%;
@@ -282,7 +301,7 @@ body {
     margin-top: 0.5rem;
     opacity: 1;
     visibility: visible;
-    padding-top: 0.5rem; 
+    padding-top: 0.5rem;
     padding-bottom: 0.5rem;
     transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease, margin-top 0.3s ease, visibility 0s linear 0s;
 }

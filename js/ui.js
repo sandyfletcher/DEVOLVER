@@ -18,6 +18,9 @@ let toggleControlsButtonEl;
 let actionButtons = {};
 // Overlay
 let gameOverlay = null;
+// NEW: Epoch Overlay
+let epochOverlayEl = null;
+
 
 // --- Internal State ---
 let playerRef = null;
@@ -25,6 +28,10 @@ const itemSlotDivs = {};
 let buttonIlluminationTimers = {};
 const ILLUMINATION_DURATION = 150; // ms
 const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
+
+// Add a flag to track if UI init was successful
+let isUIReady = false;
+
 
 // --- Initialization ---
 export function initOverlay() {
@@ -55,6 +62,9 @@ export function initGameUI() {
     weaponSlotsContainerEl = document.getElementById('weapon-slots-container');
     actionButtonsAreaEl = document.getElementById('action-buttons-area');
     toggleControlsButtonEl = document.getElementById('toggle-controls-button');
+    // NEW: Find Epoch Overlay Element
+    epochOverlayEl = document.getElementById('epoch-overlay');
+
     // Find Action Buttons
     actionButtons.left = document.getElementById('btn-move-left');
     actionButtons.right = document.getElementById('btn-move-right');
@@ -66,11 +76,15 @@ export function initGameUI() {
         playerColumnEl, portalColumnEl, healthBarContainerEl, healthBarFillEl, healthTextEl, healthLabelEl,
         waveStatusEl, waveTimerEl, enemyCountEl, bottomSidebarEl, itemSelectionAreaEl,
         inventoryBoxesContainerEl, weaponSlotsContainerEl, actionButtonsAreaEl, toggleControlsButtonEl,
-        actionButtons.left, actionButtons.right, actionButtons.pause, actionButtons.jump, actionButtons.attack
+        actionButtons.left, actionButtons.right, actionButtons.pause, actionButtons.jump, actionButtons.attack,
+        epochOverlayEl // NEW: Add epoch overlay element to the required list
     ];
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
         // Log specific missing elements if needed
+        requiredElements.forEach(el => {
+            if (!el) console.error(`Missing element: ${el?.id || 'Unknown (null)'}`);
+        });
         success = false;
     }
     // --- Clear previous dynamic content and listeners ---
@@ -101,8 +115,10 @@ export function initGameUI() {
         // Set initial state for health/inventory on init
         updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // Set initial empty state
         updateWaveInfo(); // Set initial loading state for wave info
-    }
-    if (!success) {
+        isUIReady = true; // Mark UI as ready if all steps succeeded
+        console.log("UI: Game UI initialized successfully.");
+    } else {
+        isUIReady = false; // Mark UI as not ready on failure
         console.error("UI: Failed to initialize some critical Game UI elements.");
     }
     return success;
@@ -411,4 +427,43 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         slotDiv.classList.toggle('active', playerRef && possessed && selectedItem === weaponType); // Only mark as active if the playerRef exists and has this item selected AND possesses it
         slotDiv.title = possessed ? weaponType.toUpperCase() : `${weaponType.toUpperCase()} (Not Found)`;
     }
+}
+
+// NEW: Function to display the epoch text overlay
+// Clears any pending hide timer and sets a new one
+export function showEpochText(epochYear) {
+    if (!epochOverlayEl || typeof epochYear !== 'number' || isNaN(epochYear)) {
+        console.warn("UI showEpochText: Element not found or invalid year.", epochOverlayEl, epochYear);
+        return;
+    }
+
+    // Build the text string
+    epochOverlayEl.textContent = `${epochYear} Million Years Ago`;
+
+    // Clear any previous hide timer to prevent overlaps if waves transition quickly
+    if (epochOverlayEl._hideTimer) {
+        clearTimeout(epochOverlayEl._hideTimer);
+    }
+
+    // Show the element by making it visible and fading in
+    epochOverlayEl.style.visibility = 'visible';
+    epochOverlayEl.style.opacity = '1';
+
+    // Set a timer to start the fade-out after the display duration
+    epochOverlayEl._hideTimer = setTimeout(() => {
+        epochOverlayEl.style.opacity = '0'; // Start fade-out
+
+        // Set another timer to hide the element completely after the fade-out transition finishes
+        // The transition duration is 0.5s in CSS
+        epochOverlayEl._hideTimer = setTimeout(() => {
+             epochOverlayEl.style.visibility = 'hidden';
+        }, 500); // Match CSS transition duration
+
+    }, Config.EPOCH_DISPLAY_DURATION * 1000); // Convert duration from seconds to milliseconds
+}
+
+
+// Add a getter for the initialization status
+export function isInitialized() {
+    return isUIReady;
 }
