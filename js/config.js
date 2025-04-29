@@ -63,10 +63,9 @@ export const WATER_UPDATES_PER_FRAME = 10; // Max number of water cells to proce
 // --- Audio Constants ---
 // =============================================================================
 export const AUDIO_SFX_POOL_SIZE = 8; // Number of simultaneous sound effects allowed
-export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // Default volume for game music (adjust as needed)
-export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // Default volume for UI music (adjust as needed)
-export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects (adjust as needed)
-
+export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // Default volume for game music (TODO: make adjustable)
+export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // Default volume for UI music
+export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects 
 export const AUDIO_TRACKS = {
 // --- Music ---
     // title: 'assets/audio/title_music.mp3',
