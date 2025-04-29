@@ -257,8 +257,7 @@ function handleGameOver() {
     if (currentGameState === GameState.GAME_OVER) return; // Prevent multiple calls
     console.log(">>> Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER;
-    // Inform WaveManager about Game Over state (clears timers/enemies, stops game music)
-    WaveManager.setGameOver(); // WaveManager should call AudioManager.stopAllMusic()
+    WaveManager.setGameOver(); // Inform WaveManager about Game Over state (clears timers/enemies, stops game music)
     showOverlay(GameState.GAME_OVER); // Show game over overlay (updates stats text internally, plays game over music)
     if (gameLoopId) {
         cancelAnimationFrame(gameLoopId); // Stop the game loop
@@ -501,7 +500,7 @@ function init() {
             document.head.appendChild(style);
             gameOverlay.classList.add('active', 'show-title');
             if(appContainer) appContainer.classList.add('overlay-active');
-             AudioManager.stopMusic(); // ensure music is stopped if an init error occurs
+             AudioManager.stopAllMusic(); // ensure music is stopped if an init error occurs
         } else {
             alert(`FATAL Initialization Error:\n${error.message}\nPlease check console (F12) and refresh.`);
         }
