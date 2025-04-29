@@ -46,48 +46,6 @@ export const MAX_CAMERA_SCALE = 3.0;  // Max zoom level (zoom in)
 export const ZOOM_SPEED_FACTOR = 0.001; // How fast scrolling zooms
 
 // =============================================================================
-// --- Audio Constants ---
-// =============================================================================
-export const AUDIO_SFX_POOL_SIZE = 8; // Number of simultaneous sound effects allowed
-export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // Default volume for game music (adjust as needed)
-export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // Default volume for UI music (adjust as needed)
-export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects (adjust as needed)
-
-export const AUDIO_TRACKS = {
-    // Game Music (Wave themes) - paths already in WAVES config, keep them there for now
-    // Example: wave1: 'assets/audio/Wave1-350.mp3'
-
-    // UI Music
-    // title: 'assets/audio/title_music.mp3',   // <-- Add your title music path
-    pause: 'assets/audio/music/Pause.mp3',   // <-- Add your pause music path
-    // gameOver: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
-    // victory: 'assets/audio/victory_music.mp3',   // <-- Add your victory music path
-
-    // Sound Effects (Add actual paths and types as needed)
-    // player_hit: 'assets/audio/sfx/player_hit.wav', // <-- Example SFX path
-    // enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
-    // enemy_death: 'assets/audio/sfx/enemy_death.wav',
-    // block_break_dirt: 'assets/audio/sfx/block_break_dirt.wav',
-    // block_break_stone: 'assets/audio/sfx/block_break_stone.wav',
-    // item_pickup: 'assets/audio/sfx/item_pickup.wav',
-    // button_click: 'assets/audio/sfx/button_click.wav',
-    // player_jump: 'assets/audio/sfx/player_jump.wav', // For ground jump
-    // player_water_stroke: 'assets/audio/sfx/player_water_stroke.wav', // For water "jump"
-    // player_attack_swing: 'assets/audio/sfx/attack_swing.wav', // Generic attack sound
-    // player_attack_hit: 'assets/audio/sfx/attack_hit.wav', // Sound when player attack hits something
-
-    // Wave Music
-    // 1: 'assets/audio/title_music.mp3',   // <-- Add your title music path
-    // 2: 'assets/audio/music/Pause.mp3',   // <-- Add your pause music path
-    // 3: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
-    // 4: 'assets/audio/victory_music.mp3',   // <-- Add your victory music path
-
-
-};
-
-
-
-// =============================================================================
 // --- Block Parameters ---
 // =============================================================================
 
@@ -152,7 +110,7 @@ export const CAN_PLACE_IN_WATER = false; // Control if blocks can replace water 
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)'; // White outline for player blocks
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // 1 pixel thickness
 
-// --- Water Physics & Flow --- // Added or modified
+// --- Water Physics & Flow ---
 export const WATER_GRAVITY_FACTOR = 0.4; // Reduce gravity effect
 export const WATER_HORIZONTAL_DAMPING = 0.1; // Strong horizontal drag (adjust base value, used with Math.pow)
 export const WATER_VERTICAL_DAMPING = 0.05;  // Stronger vertical drag
@@ -170,8 +128,8 @@ export const WATER_UPDATES_PER_FRAME = 10; // Max number of water cells to proce
 // --- Player Constants ---
 // =============================================================================
 
-export const PLAYER_WIDTH = Math.max(5, Math.floor(1.25 * BLOCK_WIDTH)); // Approx 5px (adjust if block size changes)
-export const PLAYER_HEIGHT = Math.max(8, Math.floor(2.5 * BLOCK_HEIGHT)); // Approx 10px (adjust if block size changes)
+export const PLAYER_WIDTH = Math.max(5, Math.floor(2.5 * BLOCK_WIDTH));   // Approx 10px (adjust if block size changes)
+export const PLAYER_HEIGHT = Math.max(8, Math.floor(5 * BLOCK_HEIGHT)); // Approx 20px (adjust if block size changes)
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
 export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // Spawn slightly above mean ground
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
@@ -184,6 +142,11 @@ export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second
 export const PLAYER_MAX_SPEED_X = 120;     // Pixels per second
 export const PLAYER_FRICTION_BASE = 0.04;  // Base friction multiplier (Lower = stronger friction)
 export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward velocity)
+// Define thresholds as factors of entity.height
+export const ENTITY_STEP_TIER1_MAX_HEIGHT_FACTOR = 1/3; // Max height for effortless step (approx 0.33)
+export const ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR = 1/2; // Max height for slowed step (approx 0.5)
+// Horizontal velocity multiplier after completing a Tier 2 step
+export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.4; // Example: retain 40% of horizontal speed
 // ---  Interaction Range  ---
 export const PLAYER_INTERACTION_RANGE = 100; // Player range for block interaction (digging/placing)
 export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE;
@@ -415,6 +378,39 @@ export const GRAVITY_ACCELERATION = 700;   // Pixels per second per second
 export const MAX_FALL_SPEED = 450;         // Pixels per second - General max fall speed unless overridden
 export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
 
+
+// =============================================================================
+// --- Audio Constants ---
+// =============================================================================
+export const AUDIO_SFX_POOL_SIZE = 8; // Number of simultaneous sound effects allowed
+export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // Default volume for game music (adjust as needed)
+export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // Default volume for UI music (adjust as needed)
+export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects (adjust as needed)
+
+export const AUDIO_TRACKS = {
+    // Game Music (Wave themes) - paths already in WAVES config, keep them there for now
+    // Example: wave1: 'assets/audio/Wave1-350.mp3'
+
+    // UI Music
+    // title: 'assets/audio/title_music.mp3',   // <-- Add your title music path
+    pause: 'assets/audio/music/Pause.mp3',
+    // gameOver: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
+    victory: 'assets/audio/music/Victory.mp3',
+
+    // Sound Effects (Add actual paths and types as needed)
+    // player_hit: 'assets/audio/sfx/player_hit.wav', // <-- Example SFX path
+    // enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
+    // enemy_death: 'assets/audio/sfx/enemy_death.wav',
+    // block_break_dirt: 'assets/audio/sfx/block_break_dirt.wav',
+    // block_break_stone: 'assets/audio/sfx/block_break_stone.wav',
+    // item_pickup: 'assets/audio/sfx/item_pickup.wav',
+    // button_click: 'assets/audio/sfx/button_click.wav',
+    // player_jump: 'assets/audio/sfx/player_jump.wav', // For ground jump
+    // player_water_stroke: 'assets/audio/sfx/player_water_stroke.wav', // For water "jump"
+    // player_attack_swing: 'assets/audio/sfx/attack_swing.wav', // Generic attack sound
+    // player_attack_hit: 'assets/audio/sfx/attack_hit.wav', // Sound when player attack hits something
+};
+
 // =============================================================================
 // --- Wave System Definitions ---
 // =============================================================================
@@ -422,7 +418,6 @@ export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physic
 export const WAVE_START_DELAY = 10.0; // Seconds before the very first wave starts
 export const WAVE_INTERMISSION_DURATION = 60.0; // Seconds between *main* waves (1 minute)
 export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in group
-
 
 // --- Wave Scripts --- //
 export const WAVES = [
