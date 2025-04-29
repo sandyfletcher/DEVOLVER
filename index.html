@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"> <!-- Prevent zoom -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><!-- Prevent zoom -->
         <meta name="description" content="DEVOLVER - A 2D wave survival game built with HTML Canvas and JavaScript.">
         <title>DEVOLVER</title>
         <link rel="stylesheet" href="style.css">
@@ -10,9 +10,7 @@
     </head>
     <body>
         <div id="app-container">
-            <!-- Top Sidebar -->
             <aside id="top-sidebar">
-                <!-- Player -->
                 <div id="player-column">
                     <h2>PLAYER</h2>
                     <div id="health-display">
@@ -23,7 +21,6 @@
                         <span id="health-text">Loading...</span>
                     </div>
                 </div>
-                <!-- Portal -->
                 <div id="portal-column">
                     <h2>PORTAL READOUT</h2>
                     <div id="wave-status">Loading...</div>
@@ -31,44 +28,31 @@
                     <div id="enemy-count"></div>
                 </div>
             </aside>
-            <!-- Game Wrapper with Canvas -->
             <main id="game-wrapper">
                  <canvas id="game-canvas" width="800" height="800">
                      Your browser does not support the HTML canvas.
                  </canvas>
             </main>
-            <!-- Bottom Sidebar -->
             <aside id="bottom-sidebar" class="controls-hidden">
-                <!-- Inventory Selection Area -->
                 <div id="item-selection-area">
-                    <!-- Materials -->
                     <div id="inventory-boxes-container">Loading...</div>
-                    <!-- Title In Between -->
                     <h2>INVENTORY</h2>
-                    <!-- Weapons -->
                     <div id="weapon-slots-container">Loading...</div>
                 </div>
-                <!-- Toggle Button for Controls -->
                 <button id="toggle-controls-button" title="Show Controls">▲ TOUCH CONTROLS ▲</button>
-                <!-- Action Buttons Area -->
                 <div id="action-buttons-area">
-                    <!-- Left Buttons -->
                     <div class="action-button-group">
                         <button id="btn-move-left" class="action-button" title="Move Left (A/←)">◀</button>
                         <button id="btn-move-right" class="action-button" title="Move Right (D/→)">▶</button>
                     </div>
-                    <!-- Center Button -->
                     <button id="btn-pause" class="action-button" title="Pause (Esc)">⏸️</button>
-                    <!-- Right Buttons -->
                     <div class="action-button-group">
                         <button id="btn-jump" class="action-button" title="Jump (W/↑/Space)">▲</button>
                         <button id="btn-attack" class="action-button" title="Attack/Use (F/Click)">⚔️</button>
                     </div>
                 </div>
             </aside>
-            <!-- Game Overlay -->
             <div id="game-overlay">
-                <!-- Content Sections -->
                 <div id="overlay-title-content" class="overlay-content">
                     <h1>DEVOLVER</h1>
                     <button id="start-game-button">START GAME</button>
@@ -80,21 +64,17 @@
                  </div>
                 <div id="overlay-gameover-content" class="overlay-content">
                     <h2>GAME OVER</h2>
-                    <p id="gameover-stats-text">You survived X waves!</p> <!-- Changed ID -->
+                    <p id="gameover-stats-text">You survived X waves!</p>
                     <button id="restart-button-overlay">TRY AGAIN</button>
                 </div>
-                <!-- NEW: Victory Content -->
                 <div id="overlay-victory-content" class="overlay-content">
                     <h2>VICTORY!</h2>
-                    <!-- Re-use gameover-stats for wave count or add new p tag -->
-                    <p id="victory-stats-text">You cleared all waves!</p> <!-- NEW ID -->
-                    <button id="restart-button-overlay-victory">PLAY AGAIN?</button> <!-- Give this a distinct ID if needed -->
+                    <p id="victory-stats-text">You cleared all waves!</p>
+                    <button id="restart-button-overlay-victory">PLAY AGAIN?</button>
                 </div>
             </div>
         </div>
-        <!-- Warnings/Fallbacks -->
         <div id="landscape-warning"><p>Rotate device to landscape mode.</p></div>
-        <!-- Script Loading -->
         <noscript><p>This game requires JavaScript to run.</p></noscript>
         <script type="module" src="js/main.js" defer></script>
     </body>

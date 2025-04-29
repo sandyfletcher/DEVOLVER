@@ -1,9 +1,7 @@
 @font-face { font-family: 'Fredericka'; src: url('assets/fonts/Fredericka.ttf') format('truetype'); font-display: block}
 @font-face { font-family: 'Nosifer'; src: url('assets/fonts/Nosifer.ttf') format('truetype'); font-display: block}
 @font-face { font-family: 'RubikIso'; src: url('assets/fonts/RubikIso.ttf') format('truetype'); font-display: block}
-
-
-/* Basic Reset & Body Styling */
+/* --- Reset --- */
 html, body {
     margin: 0;
     padding: 0;
@@ -11,7 +9,7 @@ html, body {
     width: 100%;
     overflow: hidden;
     background-color: black;
-    font-family: sans-serif; /* Default fallback font */
+    font-family: 'Fredericka', sans-serif; /* maybe too greedy to set overall font here?, return to just sans-serif if need be */
     color: white;
 }
 body {
@@ -22,18 +20,16 @@ body {
 #app-container {
     display: flex;
     flex-direction: column;
-    width: 98vw; /* Use width instead of max-width for consistency */
-    height: 95vh; /* Use height instead of max-height */
+    width: 98vw;
+    height: 95vh;
     box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-    /* gap: 0.5rem; */ /* Remove gap or adjust as needed with percentages */
     padding: 0.5rem;
     box-sizing: border-box;
     margin: auto;
     position: relative;
     transition: filter 0.3s ease;
-    overflow: hidden; /* Prevent content spilling out */
+    overflow: hidden;
 }
-/* --- Game Overlay --- */
 #game-overlay {
     position: absolute;
     top: 0;
@@ -60,45 +56,55 @@ body {
     transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 .overlay-content {
-    display: none; /* All content divs are hidden by default */
+    display: none;
     flex-direction: column;
     align-items: center;
     width: 80%;
     max-width: 500px;
 }
-/* Show specific content based on overlay class */
 #game-overlay.show-title #overlay-title-content,
 #game-overlay.show-pause #overlay-pause-content,
 #game-overlay.show-gameover #overlay-gameover-content,
-#game-overlay.show-victory #overlay-victory-content { /* NEW RULE FOR VICTORY */
+#game-overlay.show-victory #overlay-victory-content {
     display: flex;
 }
-/* Apply specific font to the main title */
 #game-overlay h1 {
-    font-family: 'RubikIso', sans-serif; /* Use the desired font name */
+    font-family: 'RubikIso', sans-serif;
     font-size: 3.5em;
     margin-bottom: 1.5rem;
     text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
 }
-#game-overlay h2 { font-size: 2.5em; margin-bottom: 1.5rem; }
-#game-overlay p { font-size: 1.2em; margin-bottom: 1.5rem; } /* Styles apply to both gameover-stats-text and victory-stats-text */
-
-#game-overlay button { padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background-color: #eee; color: #333; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s ease; }
-#game-overlay button:hover { background-color: #fff; }
-#game-overlay button:active { transform: scale(0.97); }
-#restart-button-overlay { background-color: darkred; color: white; border-color: #ffaaaa; }
-#restart-button-overlay:hover { background-color: red; }
-/* Optional: Style victory button differently if desired */
-#restart-button-overlay-victory { background-color: darkgreen; color: white; border-color: #aaffaa; }
-#restart-button-overlay-victory:hover { background-color: green; }
-
-
-/* --- Optional: Dim/Blur Background --- */
+#game-overlay h2 {
+    font-size: 2.5em; margin-bottom: 1.5rem;
+}
+#game-overlay p {
+    font-size: 1.2em; margin-bottom: 1.5rem;
+}
+#game-overlay button {
+    padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background-color: #eee; color: #333; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s ease;
+}
+#game-overlay button:hover {
+    background-color: #fff;
+}
+#game-overlay button:active {
+    transform: scale(0.97);
+}
+#restart-button-overlay {
+    background-color: darkred; color: white; border-color: #ffaaaa;
+}
+#restart-button-overlay:hover {
+    background-color: red;
+}
+#restart-button-overlay-victory {
+    background-color: darkgreen; color: white; border-color: #aaffaa;
+}
+#restart-button-overlay-victory:hover {
+    background-color: green;
+}
 #app-container.overlay-active > #top-sidebar,
 #app-container.overlay-active > #game-wrapper,
 #app-container.overlay-active > #bottom-sidebar {
     filter: blur(4px) brightness(0.6);
-    /* Disable interactions on background elements when overlay is active */
     pointer-events: none;
     transition: filter 0.3s ease;
 }
@@ -106,13 +112,9 @@ body {
 #app-container > #game-wrapper,
 #app-container > #bottom-sidebar {
     filter: none;
-    /* Re-enable interactions when overlay is not active */
     pointer-events: auto;
     transition: filter 0.3s ease;
 }
-
-
-/* --- Sidebars --- */
 #top-sidebar, #bottom-sidebar {
     flex-basis: auto;
     flex-shrink: 0;
@@ -123,23 +125,21 @@ body {
     position: relative;
     display: flex;
 }
-
-/* --- Top Sidebar Specifics --- */
 #top-sidebar {
-    flex-basis: 10%; /* Roughly 10% of app-container height */
-    flex-shrink: 0; /* Don't shrink */
+    flex-basis: 10%;
+    flex-shrink: 0;
     width: 100%;
-    padding: 5px 15px; /* Reduced padding slightly */
+    padding: 5px 15px;
     box-sizing: border-box;
     border: 0.2rem solid white;
-    position: relative; /* Keep for potential absolute children */
+    position: relative;
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    align-items: flex-start; /* Keep */
-    gap: 15px; /* Keep */
-    min-height: 50px; /* Add a minimum height */
-    overflow-y: auto; /* Allow scrolling if content overflows */
+    align-items: flex-start;
+    gap: 15px;
+    min-height: 50px;
+    overflow-y: auto;
 }
 #player-column, #portal-column {
     flex-basis: 48%;
@@ -156,14 +156,24 @@ body {
     width: 100%;
     font-size: 1rem;
 }
-#health-display { display: flex; align-items: center; gap: 5px; margin-bottom: 0; }
-#health-label { flex-shrink: 0; font-size: 0.9em; }
-#health-bar-container { flex-grow: 1; height: 15px; background-color: rgb(80, 80, 80); border: 1px solid #ccc; border-radius: 3px; overflow: hidden; }
-#health-bar-fill { height: 100%; width: 100%; background-color: rgb(220, 40, 40); transition: width 0.2s ease-out; }
-#health-text { font-size: 0.9em; flex-shrink: 0; }
-#wave-status, #wave-timer, #enemy-count { font-size: 0.9em; color: #ccc; text-align: center; }
-
-
+#health-display {
+    display: flex; align-items: center; gap: 5px; margin-bottom: 0;
+}
+#health-label {
+     flex-shrink: 0; font-size: 0.9em;
+}
+#health-bar-container {
+    flex-grow: 1; height: 15px; background-color: rgb(80, 80, 80); border: 1px solid #ccc; border-radius: 3px; overflow: hidden;
+}
+#health-bar-fill {
+    height: 100%; width: 100%; background-color: rgb(220, 40, 40); transition: width 0.2s ease-out;
+}
+#health-text {
+    font-size: 0.9em; flex-shrink: 0;
+}
+#wave-status, #wave-timer, #enemy-count {
+    font-size: 0.9em; color: #ccc; text-align: center;
+}
 /* --- Game Area --- */
 #game-wrapper {
     flex-grow: 1; /* Take up remaining space */
@@ -179,12 +189,16 @@ body {
     overflow: hidden; /* Crucial to contain the canvas */
     background-color: #111; /* Optional: Background for letterboxing */
 }
-#game-canvas { display: block; max-width: 100%; max-height: 100%; object-fit: contain; image-rendering: pixelated; image-rendering: crisp-edges; }
-
-/* --- Bottom Sidebar Specifics --- */
+#game-canvas {
+     display: block;
+     max-width: 100%;
+     max-height: 100%;
+     object-fit: contain;
+     image-rendering: pixelated;
+     image-rendering: crisp-edges;
+}
 #bottom-sidebar {
-    /* flex-basis: 20%; */  /* --- REMOVE THIS LINE --- */
-    flex-shrink: 0;      /* Keep: Don't let it shrink below its content/min-height */
+    flex-shrink: 0; /* Don't shrink below content/min-height */
     width: 100%;
     padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     box-sizing: border-box;
@@ -192,45 +206,35 @@ body {
     position: relative;
     display: flex;
     flex-direction: column;
-    /* --- ADD/ADJUST min-height for the default size --- */
-    min-height: 120px; /* Adjust this pixel value until the collapsed state looks right */
-    /* Or try a percentage: */
-    /* min-height: 18%; */
-    /* --- ADJUST Transition --- */
-    /* Transition min-height (might be subtle) and potentially other properties if needed */
+    min-height: 18%;
     transition: min-height 0.3s ease-in-out;
     overflow-y: auto;
 }
-#bottom-sidebar h2 { /* Main "INVENTORY" title */
+#bottom-sidebar h2 {
     margin: 0;
     text-align: center;
     font-size: 1rem;
     flex-shrink: 0;
 }
-
-/* Item Selection Area */
 #item-selection-area {
     display: flex;
     flex-direction: column;
     gap: 5px;
 }
-
-#inventory-boxes-container { /* Material boxes */
+#inventory-boxes-container {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 5px;
     justify-content: center;
 }
-#weapon-slots-container { /* Weapon boxes */
+#weapon-slots-container {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 5px;
     justify-content: center;
 }
-
-/* Individual Item/Weapon Boxes (Unified Style) */
 .item-box {
     width: 40px;
     height: 40px;
@@ -248,26 +252,43 @@ body {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
-.item-box.active { border-color: yellow; box-shadow: 0 0 6px yellow; opacity: 1 !important; }
-.item-box.disabled { opacity: 0.45; cursor: default; box-shadow: inset 0 0 5px rgba(0,0,0,0.8); border-color: #666; }
-.item-box .item-count { position: absolute; bottom: 1px; right: 2px; font-size: 0.8em; font-weight: bold; color: white; text-shadow: 1px 1px 1px black; pointer-events: none; }
-
-/* Action Buttons Area */
+.item-box.active {
+    border-color: yellow;
+    box-shadow: 0 0 6px yellow;
+    opacity: 1 !important;
+}
+.item-box.disabled {
+    opacity: 0.45;
+    cursor: default;
+    box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
+    border-color: #666;
+}
+.item-box .item-count {
+    position: absolute;
+    bottom: 1px;
+    right: 2px;
+    font-size: 0.8em;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 1px black;
+    pointer-events: none;
+}
 #action-buttons-area {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    max-height: 100px; /* Allow it to take its needed space */
+    max-height: 100px;
     overflow: hidden;
-    margin-top: 0.5rem; /* Keep margin for spacing */
+    margin-top: 0.5rem;
     opacity: 1;
     visibility: visible;
-    padding-top: 0.5rem; /* Add padding back if needed */
+    padding-top: 0.5rem; 
     padding-bottom: 0.5rem;
-     /* Add transition for showing */
     transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease, margin-top 0.3s ease, visibility 0s linear 0s;
 }
-.action-button-group { display: flex; gap: 10px; }
+.action-button-group {
+    display: flex; gap: 10px;
+    }
 .action-button {
     width: 45px;
     height: 45px;
@@ -285,17 +306,19 @@ body {
     user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
-.action-button:active { transform: scale(0.95); }
-.action-button.illuminated { background-color: white; color: black; border-color: black; }
-
-/* Toggle Button */
+.action-button:active {
+     transform: scale(0.95);
+}
+.action-button.illuminated {
+    background-color: white; color: black; border-color: black;
+}
 #toggle-controls-button {
     position: absolute;
     bottom: -1px;
     left: 50%;
     transform: translateX(-50%);
-    width: auto; /* Allow width to fit text */
-    padding: 0 15px; /* Horizontal padding for text */
+    width: auto;
+    padding: 0 15px;
     height: 15px;
     background-color: #444;
     color: white;
@@ -311,9 +334,9 @@ body {
     z-index: 5;
     transition: background-color 0.2s ease;
 }
-#toggle-controls-button:hover { background-color: #666; }
-
-/* Tucking Behavior - Hiding the controls */
+#toggle-controls-button:hover {
+    background-color: #666;
+}
 #bottom-sidebar.controls-hidden #action-buttons-area {
     opacity: 0;
     max-height: 0;
@@ -321,19 +344,32 @@ body {
     padding-bottom: 0;
     visibility: hidden;
     margin-top: 0;
-    /* Add specific transition for hiding */
     transition: opacity 0.3s ease, max-height 0.3s ease, padding 0.3s ease, margin-top 0.3s ease, visibility 0s linear 0.3s;
 }
-
-
-/* --- Landscape Warning --- */
-#landscape-warning { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); color: white; z-index: 101; justify-content: center; align-items: center; text-align: center; font-size: 1.5em; }
-noscript p { color: white; text-align: center; padding: 20px; }
+#landscape-warning {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: white; z-index: 101;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    font-size: 1.5em;
+}
+noscript p {
+    color: white; text-align: center; padding: 20px;
+    }
 @media (orientation: portrait) {
     #app-container { display: none; }
     #landscape-warning { display: flex; }
 }
-
-/* --- Scrollbar Hiding --- */
-#top-sidebar::-webkit-scrollbar, #bottom-sidebar::-webkit-scrollbar { display: none; }
-#top-sidebar, #bottom-sidebar { -ms-overflow-style: none; scrollbar-width: none; }
+#top-sidebar::-webkit-scrollbar, #bottom-sidebar::-webkit-scrollbar {
+    display: none;
+    }
+#top-sidebar, #bottom-sidebar {
+    -ms-overflow-style: none; scrollbar-width: none;
+    }
