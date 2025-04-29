@@ -1,20 +1,17 @@
-// -----------------------------------------------------------------------------
-// js/config.js - Centralized Game Configuration
-// -----------------------------------------------------------------------------
+// root/js/config.js - Centralized Game Configuration
 
 // =============================================================================
 // --- World Parameters ---
 // =============================================================================
 
+export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
 // --- Grid ---
 export const GRID_COLS = 400;
 export const GRID_ROWS = 200;
 export const BASE_BLOCK_PIXEL_SIZE = 4; // Set desired square block size
-// --- Canvas (INTERNAL RESOLUTION based on grid and block size) ---
-export const CANVAS_WIDTH = GRID_COLS * BASE_BLOCK_PIXEL_SIZE;   // Calculated: 400 * 4 = 1600
-export const CANVAS_HEIGHT = GRID_ROWS * BASE_BLOCK_PIXEL_SIZE;  // Calculated: 200 * 4 = 800
-// --- Background ---
-export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
+// --- Canvas  ---
+export const CANVAS_WIDTH = GRID_COLS * BASE_BLOCK_PIXEL_SIZE;
+export const CANVAS_HEIGHT = GRID_ROWS * BASE_BLOCK_PIXEL_SIZE;
 // --- Procedural Generation Parameters ---
 export const WORLD_ISLAND_WIDTH = 0.8; // width of main island as a percentage
 export const WORLD_WATER_LEVEL = 0.15; // Water coverage: bottom 15%, can be raised for environmental chaos
@@ -38,7 +35,64 @@ export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 10;                           
 export const ISLAND_CENTER_TAPER_WIDTH = 80;                                      // Width of taper from island edge inward
 
 // =============================================================================
-// --- Camera / Viewport Constants ---
+// --- Delta-Time Based Physics ---
+// =============================================================================
+
+export const GRAVITY_ACCELERATION = 700;   // Pixels per second per second
+export const MAX_FALL_SPEED = 450;         // Pixels per second - General max fall speed unless overridden
+export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
+// --- Step-up allowance ---
+export const ENTITY_STEP_TIER1_MAX_HEIGHT_FACTOR = 1/3; // Max height for effortless step (approx 0.33)
+export const ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR = 1/2; // Max height for slowed step (approx 0.5)
+export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.4; // Horizontal velocity multiplier after completing a Tier 2 step, retain 40% of horizontal speed
+// --- Water Physics & Flow ---
+export const WATER_GRAVITY_FACTOR = 0.4; // Reduce gravity effect
+export const WATER_HORIZONTAL_DAMPING = 0.1; // Strong horizontal drag (adjust base value, used with Math.pow)
+export const WATER_VERTICAL_DAMPING = 0.05;  // Stronger vertical drag
+export const WATER_MAX_SPEED_FACTOR = 0.6; // Reduce max horizontal speed
+export const WATER_ACCELERATION_FACTOR = 0.5; // Reduce horizontal acceleration
+export const WATER_SWIM_VELOCITY = 120;    // Initial upward speed from a swim 'stroke'
+export const WATER_MAX_SWIM_UP_SPEED = 80;  // Max speed swimming up
+export const WATER_MAX_SINK_SPEED = 100;  // Max speed falling down in water
+export const ENEMY_WATER_BUOYANCY_ACCEL = 180;
+export const WATER_JUMP_COOLDOWN_DURATION = 0.2;
+export const WATER_PROPAGATION_DELAY = 0.05; // Delay between water spreading/falling updates (lower = faster flow)
+export const WATER_UPDATES_PER_FRAME = 10; // Max number of water cells to process per frame
+
+// =============================================================================
+// --- Audio Constants ---
+// =============================================================================
+export const AUDIO_SFX_POOL_SIZE = 8; // Number of simultaneous sound effects allowed
+export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // Default volume for game music (adjust as needed)
+export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // Default volume for UI music (adjust as needed)
+export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects (adjust as needed)
+
+export const AUDIO_TRACKS = {
+    // Game Music (Wave themes) - paths already in WAVES config, keep them there for now
+    // Example: wave1: 'assets/audio/Wave1-350.mp3'
+
+    // UI Music
+    // title: 'assets/audio/title_music.mp3',   // <-- Add your title music path
+    pause: 'assets/audio/music/Pause.mp3',
+    // gameOver: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
+    victory: 'assets/audio/music/Victory.mp3',
+
+    // Sound Effects (Add actual paths and types as needed)
+    // player_hit: 'assets/audio/sfx/player_hit.wav', // <-- Example SFX path
+    // enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
+    // enemy_death: 'assets/audio/sfx/enemy_death.wav',
+    // block_break_dirt: 'assets/audio/sfx/block_break_dirt.wav',
+    // block_break_stone: 'assets/audio/sfx/block_break_stone.wav',
+    // item_pickup: 'assets/audio/sfx/item_pickup.wav',
+    // button_click: 'assets/audio/sfx/button_click.wav',
+    // player_jump: 'assets/audio/sfx/player_jump.wav', // For ground jump
+    // player_water_stroke: 'assets/audio/sfx/player_water_stroke.wav', // For water "jump"
+    // player_attack_swing: 'assets/audio/sfx/attack_swing.wav', // Generic attack sound
+    // player_attack_hit: 'assets/audio/sfx/attack_hit.wav', // Sound when player attack hits something
+};
+
+// =============================================================================
+// --- Camera / Viewport ---
 // =============================================================================
 
 export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (zoom out)
@@ -62,8 +116,7 @@ export const BLOCK_GRASS = 4;
 export const BLOCK_STONE = 5;
 export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
-export const BLOCK_BONE = 8;
-// TODO: Glass, specific ores, etc.
+export const BLOCK_BONE = 8; // TODO: Glass, specific ores, etc.
 // --- Orientation IDs ---
 export const ORIENTATION_FULL = 0;
 export const ORIENTATION_SLOPE_BL = 1; // Bottom-Left triangle solid
@@ -101,8 +154,7 @@ export const MATERIAL_TO_BLOCK_TYPE = { // Map inventory material strings to blo
     'wood': BLOCK_WOOD,
     'sand': BLOCK_SAND,
     'metal': BLOCK_METAL,
-    'bone': BLOCK_BONE,
-    // Add other placeable materials here if needed
+    'bone': BLOCK_BONE,     // Add other placeable materials here if needed
 };
 // --- Ghost and Future build options ---
 export const GHOST_BLOCK_ALPHA = 0.5; // Transparency for placement preview
@@ -110,22 +162,8 @@ export const CAN_PLACE_IN_WATER = false; // Control if blocks can replace water 
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)'; // White outline for player blocks
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // 1 pixel thickness
 
-// --- Water Physics & Flow ---
-export const WATER_GRAVITY_FACTOR = 0.4; // Reduce gravity effect
-export const WATER_HORIZONTAL_DAMPING = 0.1; // Strong horizontal drag (adjust base value, used with Math.pow)
-export const WATER_VERTICAL_DAMPING = 0.05;  // Stronger vertical drag
-export const WATER_MAX_SPEED_FACTOR = 0.6; // Reduce max horizontal speed
-export const WATER_ACCELERATION_FACTOR = 0.5; // Reduce horizontal acceleration
-export const WATER_SWIM_VELOCITY = 120;    // Initial upward speed from a swim 'stroke'
-export const WATER_MAX_SWIM_UP_SPEED = 80;  // Max speed swimming up
-export const WATER_MAX_SINK_SPEED = 100;  // Max speed falling down in water
-export const ENEMY_WATER_BUOYANCY_ACCEL = 180;
-export const WATER_JUMP_COOLDOWN_DURATION = 0.2;
-export const WATER_PROPAGATION_DELAY = 0.05; // Delay between water spreading/falling updates (lower = faster flow)
-export const WATER_UPDATES_PER_FRAME = 10; // Max number of water cells to process per frame
-
 // =============================================================================
-// --- Player Constants ---
+// --- Player Parameters ---
 // =============================================================================
 
 export const PLAYER_WIDTH = Math.max(5, Math.floor(2.5 * BLOCK_WIDTH));   // Approx 10px (adjust if block size changes)
@@ -137,22 +175,17 @@ export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 export const PLAYER_INITIAL_HEALTH = 100;
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds (reduced slightly)
-// --- Delta-Time Physics ---
+// --- Physics ---
 export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second
 export const PLAYER_MAX_SPEED_X = 120;     // Pixels per second
 export const PLAYER_FRICTION_BASE = 0.04;  // Base friction multiplier (Lower = stronger friction)
 export const PLAYER_JUMP_VELOCITY = 200;   // Pixels per second (Initial upward velocity)
-// Define thresholds as factors of entity.height
-export const ENTITY_STEP_TIER1_MAX_HEIGHT_FACTOR = 1/3; // Max height for effortless step (approx 0.33)
-export const ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR = 1/2; // Max height for slowed step (approx 0.5)
-// Horizontal velocity multiplier after completing a Tier 2 step
-export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.4; // Example: retain 40% of horizontal speed
 // ---  Interaction Range  ---
 export const PLAYER_INTERACTION_RANGE = 100; // Player range for block interaction (digging/placing)
 export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE;
 
 // =============================================================================
-// --- Enemy Constants ---
+// --- Enemy Parameters ---
 // =============================================================================
 
 export const MAX_ENEMIES = 100;
@@ -161,17 +194,14 @@ export const ENEMY_FLASH_DURATION = 0.15; // Seconds enemy flashes when hit
 // --- Default  Size ---
 export const DEFAULT_ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);
 export const DEFAULT_ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT);
+// --- Default Separation Behavior ---
+export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // How close before pushing (factor of width)
+export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 60;     // How hard they push (pixels/sec velocity boost)
 // --- Type Identifiers ---
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
 // Add new type constants here: export const ENEMY_TYPE_FLYER = 'flyer';
-
-// --- Default Separation Behavior ---
-export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // How close before pushing (factor of width)
-export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 60;     // How hard they push (pixels/sec velocity boost)
-// Can be overridden in ENEMY_STATS per type
-
 // --- Detailed Stats ---
 export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read from this configuration.
     [ENEMY_TYPE_TETRAPOD]: {
@@ -275,6 +305,9 @@ export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read f
 // --- Item & Weapon Constants ---
 // =============================================================================
 
+export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob (relative to height)
+export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle
+// --- Weapons ---
 export const WEAPON_TYPE_UNARMED = 'unarmed';
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
@@ -295,7 +328,6 @@ export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(4.0 * BLOCK_HEIGHT); // Ta
 export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3; // Clunky duration
 export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.4; // Clunky cooldown
 export const PLAYER_SHOVEL_ATTACK_COLOR = 'rgba(180, 180, 180, 0.5)'; // Greyish color
-
 // --- Sword ---
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
 export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
@@ -309,7 +341,6 @@ export const PLAYER_SWORD_ATTACK_WIDTH = Math.floor(3.0 * BLOCK_WIDTH); // Wide 
 export const PLAYER_SWORD_ATTACK_HEIGHT = Math.floor(PLAYER_HEIGHT * 1.1); // Tall hitbox ~22px (arc) (Scales with new player height)
 export const PLAYER_SWORD_ATTACK_DURATION = 0.2; // Faster duration
 export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.3; // Faster cooldown
-
 // --- Spear ---
 // Visual size: Keep factors as is for now
 export const SPEAR_WIDTH = Math.floor(4 * BLOCK_WIDTH);      // Longer item ~16px
@@ -327,6 +358,7 @@ export const PLAYER_SPEAR_ATTACK_DURATION = 0.3; // Moderate duration (thrust li
 export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5; // Moderate/Slow cooldown (recovery)
 export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)'; // Different color?
 
+
 // --- Centralized Item Configuration Object ---
 export const ITEM_CONFIG = {
     [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
@@ -341,49 +373,8 @@ export const ITEM_CONFIG = {
     'bone': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_BONE] },
     // ... other items
 };
-export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob (relative to height)
-export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle
-
-// =============================================================================
-// --- General Physics Constants (Delta-Time Based) ---
-// =============================================================================
-
-export const GRAVITY_ACCELERATION = 700;   // Pixels per second per second
-export const MAX_FALL_SPEED = 450;         // Pixels per second - General max fall speed unless overridden
-export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
 
 
-// =============================================================================
-// --- Audio Constants ---
-// =============================================================================
-export const AUDIO_SFX_POOL_SIZE = 8; // Number of simultaneous sound effects allowed
-export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // Default volume for game music (adjust as needed)
-export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // Default volume for UI music (adjust as needed)
-export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects (adjust as needed)
-
-export const AUDIO_TRACKS = {
-    // Game Music (Wave themes) - paths already in WAVES config, keep them there for now
-    // Example: wave1: 'assets/audio/Wave1-350.mp3'
-
-    // UI Music
-    // title: 'assets/audio/title_music.mp3',   // <-- Add your title music path
-    pause: 'assets/audio/music/Pause.mp3',
-    // gameOver: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
-    victory: 'assets/audio/music/Victory.mp3',
-
-    // Sound Effects (Add actual paths and types as needed)
-    // player_hit: 'assets/audio/sfx/player_hit.wav', // <-- Example SFX path
-    // enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
-    // enemy_death: 'assets/audio/sfx/enemy_death.wav',
-    // block_break_dirt: 'assets/audio/sfx/block_break_dirt.wav',
-    // block_break_stone: 'assets/audio/sfx/block_break_stone.wav',
-    // item_pickup: 'assets/audio/sfx/item_pickup.wav',
-    // button_click: 'assets/audio/sfx/button_click.wav',
-    // player_jump: 'assets/audio/sfx/player_jump.wav', // For ground jump
-    // player_water_stroke: 'assets/audio/sfx/player_water_stroke.wav', // For water "jump"
-    // player_attack_swing: 'assets/audio/sfx/attack_swing.wav', // Generic attack sound
-    // player_attack_hit: 'assets/audio/sfx/attack_hit.wav', // Sound when player attack hits something
-};
 
 // =============================================================================
 // --- Wave System Definitions ---
@@ -448,7 +439,7 @@ export const WAVES = [
         ]
     },
     // ==================== Add Main Wave 3, 4, etc. here ====================
-    { // Example of a potentially shorter/different wave
+    {
         mainWaveNumber: 3,
         duration: 90,
         audioTrack: 'assets/audio/music/wave3.mp3', // <-- Add path for wave 3 music
@@ -457,17 +448,5 @@ export const WAVES = [
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
         ]
     }
-    // ... 7ish more waves
+    // ====================  ... 7ish more waves ====================
 ];
-
-
-// =============================================================================
-// --- Touch Controls --- move to input.js?
-// =============================================================================
-
-export const TOUCH_BUTTON_SIZE = 80; // Pixel size of touch buttons
-export const TOUCH_BUTTON_MARGIN = 20; // Pixel margin around buttons / from edge
-export const TOUCH_BUTTON_COLOR_IDLE = 'rgba(128, 128, 128, 0.4)';
-export const TOUCH_BUTTON_COLOR_PRESSED = 'rgba(255, 255, 255, 0.6)';
-export const TOUCH_BUTTON_LABEL_COLOR = 'rgba(255, 255, 255, 0.8)';
-export const TOUCH_BUTTON_LABEL_FONT = 'bold 24px sans-serif';
