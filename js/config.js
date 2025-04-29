@@ -280,91 +280,65 @@ export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
 export const WEAPON_TYPE_SPEAR = 'spear'
 // --- Shovel ---
-export const SHOVEL_WIDTH = Math.floor(2.5 * BLOCK_WIDTH);   // ~10px
+// Visual size: Keep factors as is for now
+export const SHOVEL_WIDTH = Math.floor(2.5 * BLOCK_WIDTH);   // ~10px (Matches new player width)
 export const SHOVEL_HEIGHT = Math.floor(1.5 * BLOCK_HEIGHT);  // ~6px
 export const SHOVEL_COLOR = 'rgb(160, 160, 160)'; // Grey color
+// Damage: Keep as is
 export const PLAYER_SHOVEL_ATTACK_DAMAGE = 5; // Very low damage vs enemies
 export const PLAYER_SHOVEL_BLOCK_DAMAGE = 25; // High damage vs blocks
-export const PLAYER_SHOVEL_ATTACK_REACH_X = Math.floor(1 * BLOCK_WIDTH);  // Short reach forward ~4px from player center
-export const PLAYER_SHOVEL_ATTACK_REACH_Y = Math.floor(1.5 * BLOCK_HEIGHT); // Slight downward offset ~6px from player center
-export const PLAYER_SHOVEL_ATTACK_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);  // Moderate width hitbox ~6px
-export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(2.0 * BLOCK_HEIGHT); // Short height hitbox ~8px
+// Hitbox: Adjust reach and size for 1-block horiz, 2-block vert from player center approx
+export const PLAYER_SHOVEL_ATTACK_REACH_X = Math.floor(2.5 * BLOCK_WIDTH);  // ~10px from player center (~1 block beyond player edge)
+export const PLAYER_SHOVEL_ATTACK_REACH_Y = Math.floor(2.0 * BLOCK_HEIGHT); // ~8px down from player center (~2 blocks down)
+export const PLAYER_SHOVEL_ATTACK_WIDTH = Math.floor(2.0 * BLOCK_WIDTH);  // Moderate width hitbox ~8px (covers ~1 block each side of reach point)
+export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(4.0 * BLOCK_HEIGHT); // Taller height hitbox ~16px (covers ~2 blocks each side of reach point)
 export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3; // Clunky duration
 export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.4; // Clunky cooldown
 export const PLAYER_SHOVEL_ATTACK_COLOR = 'rgba(180, 180, 180, 0.5)'; // Greyish color
+
 // --- Sword ---
-export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH);      // Approx 12px
-export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);     // Approx 4px
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
-export const PLAYER_SWORD_ATTACK_DAMAGE = 10; // Good baseline damage
-export const PLAYER_SWORD_BLOCK_DAMAGE = 0; // NEW: Swords don't break blocks
-export const PLAYER_SWORD_ATTACK_REACH_X = Math.floor(2.5 * BLOCK_WIDTH); // Moderate reach ~10px from player center
-export const PLAYER_SWORD_ATTACK_REACH_Y = 0; // Vertical offset from player center
-export const PLAYER_SWORD_ATTACK_WIDTH = Math.floor(2.0 * BLOCK_WIDTH); // Wide hitbox ~8px (arc)
-export const PLAYER_SWORD_ATTACK_HEIGHT = Math.floor(PLAYER_HEIGHT * 1.1); // Tall hitbox ~11px (arc)
+export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
+export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH); // Approx 12px
+export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT); // Approx 4px
+export const PLAYER_SWORD_ATTACK_DAMAGE = 15; // // Damage: Increase for combat focusGood baseline damage (Increased)
+export const PLAYER_SWORD_BLOCK_DAMAGE = 0; // Swords don't break blocks
+export const PLAYER_SWORD_ATTACK_REACH_X = Math.floor(4.5 * BLOCK_WIDTH); // Hitbox: Adjust reach and size for a wider arcModerate reach ~18px from player center (~3 blocks beyond player edge)
+export const PLAYER_SWORD_ATTACK_REACH_Y = Math.floor(0.5 * BLOCK_HEIGHT); // Slight downward offset ~2px from player center
+export const PLAYER_SWORD_ATTACK_WIDTH = Math.floor(3.0 * BLOCK_WIDTH); // Wide hitbox ~12px (arc) (Increased)
+export const PLAYER_SWORD_ATTACK_HEIGHT = Math.floor(PLAYER_HEIGHT * 1.1); // Tall hitbox ~22px (arc) (Scales with new player height)
 export const PLAYER_SWORD_ATTACK_DURATION = 0.2; // Faster duration
 export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.3; // Faster cooldown
-export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
+
 // --- Spear ---
+// Visual size: Keep factors as is for now
 export const SPEAR_WIDTH = Math.floor(4 * BLOCK_WIDTH);      // Longer item ~16px
 export const SPEAR_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT);  // Thinner item ~3px
 export const SPEAR_COLOR = 'rgb(210, 180, 140)'; // Wood-like color
+// Damage: Keep as is
 export const PLAYER_SPEAR_ATTACK_DAMAGE = 8; // Slightly less damage than sword
 export const PLAYER_SPEAR_BLOCK_DAMAGE = 0; // Spears don't break blocks
-export const PLAYER_SPEAR_ATTACK_REACH_X = Math.floor(3.5 * BLOCK_WIDTH); // Very Long reach ~14px from player center
-export const PLAYER_SPEAR_ATTACK_REACH_Y = Math.floor(0.5 * BLOCK_HEIGHT); // Slight vertical offset
+// Hitbox: Adjust reach for long poke, keep size narrow
+export const PLAYER_SPEAR_ATTACK_REACH_X = Math.floor(5.5 * BLOCK_WIDTH); // Very Long reach ~22px from player center (~4 blocks beyond player edge) (Increased)
+export const PLAYER_SPEAR_ATTACK_REACH_Y = Math.floor(0.5 * BLOCK_HEIGHT); // Slight vertical offset ~2px
 export const PLAYER_SPEAR_ATTACK_WIDTH = Math.floor(0.75 * BLOCK_WIDTH); // Narrow hitbox ~3px
 export const PLAYER_SPEAR_ATTACK_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT); // Narrow hitbox ~3px
 export const PLAYER_SPEAR_ATTACK_DURATION = 0.3; // Moderate duration (thrust lingers)
 export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5; // Moderate/Slow cooldown (recovery)
 export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)'; // Different color?
+
 // --- Centralized Item Configuration Object ---
 export const ITEM_CONFIG = {
-    [WEAPON_TYPE_SHOVEL]: { // Use constant
-            width: SHOVEL_WIDTH,
-            height: SHOVEL_HEIGHT,
-            color: SHOVEL_COLOR,
-    },
-    [WEAPON_TYPE_SWORD]: {
-        width: SWORD_WIDTH,
-        height: SWORD_HEIGHT,
-        color: SWORD_COLOR,
-    },
-    [WEAPON_TYPE_SPEAR]: {
-        width: SPEAR_WIDTH,
-        height: SPEAR_HEIGHT,
-        color: SPEAR_COLOR,
-    },
-    'dirt': { // Add config for material drops
-        width: Math.floor(1 * BLOCK_WIDTH),
-        height: Math.floor(1 * BLOCK_HEIGHT),
-        color: BLOCK_COLORS[BLOCK_DIRT],
-    },
-    'sand': {
-        width: Math.floor(1 * BLOCK_WIDTH),
-        height: Math.floor(1 * BLOCK_HEIGHT),
-        color: BLOCK_COLORS[BLOCK_SAND],
-    },
-    'wood': {
-        width: Math.floor(1 * BLOCK_WIDTH),
-        height: Math.floor(1 * BLOCK_HEIGHT),
-        color: BLOCK_COLORS[BLOCK_WOOD],
-    },
-    'stone': {
-        width: Math.floor(1 * BLOCK_WIDTH),
-        height: Math.floor(1 * BLOCK_HEIGHT),
-        color: BLOCK_COLORS[BLOCK_STONE],
-    },
-    'metal': {
-        width: Math.floor(1 * BLOCK_WIDTH),
-        height: Math.floor(1 * BLOCK_HEIGHT),
-        color: BLOCK_COLORS[BLOCK_METAL],
-    },
-    'bone': { // Add config for bone item
-            width: Math.floor(1 * BLOCK_WIDTH),
-            height: Math.floor(1 * BLOCK_HEIGHT),
-            color: BLOCK_COLORS[BLOCK_BONE],
-        },
+    [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
+    [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
+    [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
+    // ... other items (material drops)
+    'dirt': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_DIRT] },
+    'sand': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_SAND] },
+    'wood': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_WOOD] },
+    'stone': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_STONE] },
+    'metal': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_METAL] },
+    'bone': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_BONE] },
     // ... other items
 };
 export const ITEM_BOBBLE_AMOUNT = 0.15; // How much items bob (relative to height)
@@ -393,9 +367,9 @@ export const AUDIO_TRACKS = {
 
     // UI Music
     // title: 'assets/audio/title_music.mp3',   // <-- Add your title music path
-    pause: 'assets/audio/music/Pause.mp3',
+    pause: 'assets/audio/Music/Pause.mp3',
     // gameOver: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
-    victory: 'assets/audio/music/Victory.mp3',
+    victory: 'assets/audio/Music/Victory.mp3',
 
     // Sound Effects (Add actual paths and types as needed)
     // player_hit: 'assets/audio/sfx/player_hit.wav', // <-- Example SFX path
@@ -424,7 +398,7 @@ export const WAVES = [
     { // ==================== Main Wave 1 ====================
         mainWaveNumber: 1, // For reference/UI
         duration: 117, // Total duration of Wave 1 in seconds (for music)
-        audioTrack: 'assets/audio/Wave1-350.mp3',
+        audioTrack: 'assets/audio/Music/Wave1-350.mp3',
         subWaves: [
             { // --- Sub-Wave 1.1 ---
                 enemyGroups: [
@@ -450,7 +424,7 @@ export const WAVES = [
     { // ==================== Main Wave 2 ====================
         mainWaveNumber: 2,
         duration: 137, // Total duration of Wave 2 in seconds (for music)
-        audioTrack: 'assets/audio/Wave2-300.mp3', // <-- Add the path to your wave 2 music file
+        audioTrack: 'assets/audio/Music/Wave2-300.mp3', // <-- Add the path to your wave 2 music file
         subWaves: [
             { // --- Sub-Wave 2.1 ---
                  enemyGroups: [
@@ -477,7 +451,7 @@ export const WAVES = [
     { // Example of a potentially shorter/different wave
         mainWaveNumber: 3,
         duration: 90,
-        audioTrack: 'assets/audio/wave3.mp3', // <-- Add path for wave 3 music
+        audioTrack: 'assets/audio/Music/wave3.mp3', // <-- Add path for wave 3 music
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
