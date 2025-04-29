@@ -99,11 +99,7 @@ export function setVolume(type, volume) {
     }
 }
 
-/**
- * Plays a specific game music track.
- * Stops UI music if playing, pauses game music if already playing a different track.
- * @param {string} trackPath - The path to the audio file (from Config.AUDIO_TRACKS).
- */
+// Plays a specific game music track. Stops UI music if playing, pauses game music if already playing a different track.
 export function playGameMusic(trackPath) {
     console.log(`AudioManager: Requesting to play game music: ${trackPath}`);
     if (!gameMusicAudio || !uiMusicAudio) {
@@ -155,34 +151,21 @@ export function playGameMusic(trackPath) {
     }
 }
 
-/**
- * Plays a specific UI/Menu music track.
- * Pauses game music if currently playing.
- * @param {string} trackPath - The path to the audio file (from Config.AUDIO_TRACKS).
- */
-/**
- * Plays a specific UI/Menu music track.
- * Pauses game music if currently playing (and sets flag via pauseGameMusic).
- * @param {string} trackPath - The path to the audio file (from Config.AUDIO_TRACKS).
- */
+// Plays a specific UI/Menu music track. Pauses game music if currently playing.
 export function playUIMusic(trackPath) {
     console.log(`AudioManager: Requesting to play UI music: ${trackPath}`);
     if (!uiMusicAudio || !gameMusicAudio) {
          console.error("AudioManager: playUIMusic failed, audio elements not ready.");
         return;
     }
-
     // If game music is currently playing (not paused), pause it.
-    // The pauseGameMusic function handles setting gameMusicWasPlayingBeforeUI = true.
     if (gameMusicAudio && !gameMusicAudio.paused && gameMusicAudio.currentTime > 0) { // Added currentTime > 0 check for robustness
         console.log(`AudioManager: Game music is playing. Pausing game music before starting UI music.`);
-        pauseGameMusic(); // This correctly sets gameMusicWasPlayingBeforeUI = true internally
+        pauseGameMusic();
     } else {
-         // If game music is already paused or stopped, do nothing to gameMusicWasPlayingBeforeUI state.
+        // If game music is already paused or stopped, do nothing to gameMusicWasPlayingBeforeUI state.
         console.log(`AudioManager: Game music is already paused or stopped. Not affecting gameMusicWasPlayingBeforeUI.`);
     }
-
-
     if (!trackPath) {
          console.log("AudioManager: Empty trackPath provided for UI music, stopping current UI music.");
         stopUIMusic();
@@ -200,11 +183,9 @@ export function playUIMusic(trackPath) {
         }
         return;
     }
-
     // Stop the current UI music before loading a new one
     console.log("AudioManager: New UI music track requested, stopping current UI music.");
     stopUIMusic();
-
     // Set the new track source and play
     uiMusicAudio.src = trackPath;
     currentUITrackPath = trackPath;
@@ -328,18 +309,12 @@ export function stopAllMusic() {
      // gameMusicWasPlayingBeforeUI = false; // stopGameMusic already handles this
 }
 
-
-/**
- * Plays a specific sound effect. Finds an available audio element in the pool.
- * @param {string} sfxPath - The path to the sound effect file (from Config.AUDIO_TRACKS).
- * @param {number} [volume=sfxVolume] - Optional volume override (0.0 to 1.0).
- */
+// Plays a specific sound effect. Finds an available audio element in the pool with optional volume override
 export function playSound(sfxPath, volume = sfxVolume) {
     if (!sfxPath || !sfxAudioPool.length) {
         // console.warn(`AudioManager: playSound called with invalid path or empty pool: ${sfxPath}`);
         return;
     }
-
     // Find an available audio element (paused or ended)
     const availableSfx = sfxAudioPool.find(sfx => sfx.paused || sfx.ended);
 
