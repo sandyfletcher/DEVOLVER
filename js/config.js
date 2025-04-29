@@ -367,9 +367,9 @@ export const AUDIO_TRACKS = {
 
     // UI Music
     // title: 'assets/audio/title_music.mp3',   // <-- Add your title music path
-    pause: 'assets/audio/Music/Pause.mp3',
+    pause: 'assets/audio/music/Pause.mp3',
     // gameOver: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
-    victory: 'assets/audio/Music/Victory.mp3',
+    victory: 'assets/audio/music/Victory.mp3',
 
     // Sound Effects (Add actual paths and types as needed)
     // player_hit: 'assets/audio/sfx/player_hit.wav', // <-- Example SFX path
@@ -398,7 +398,7 @@ export const WAVES = [
     { // ==================== Main Wave 1 ====================
         mainWaveNumber: 1, // For reference/UI
         duration: 117, // Total duration of Wave 1 in seconds (for music)
-        audioTrack: 'assets/audio/Music/Wave1-350.mp3',
+        audioTrack: 'assets/audio/music/Wave1-350.mp3',
         subWaves: [
             { // --- Sub-Wave 1.1 ---
                 enemyGroups: [
@@ -424,7 +424,7 @@ export const WAVES = [
     { // ==================== Main Wave 2 ====================
         mainWaveNumber: 2,
         duration: 137, // Total duration of Wave 2 in seconds (for music)
-        audioTrack: 'assets/audio/Music/Wave2-300.mp3', // <-- Add the path to your wave 2 music file
+        audioTrack: 'assets/audio/music/Wave2-300.mp3', // <-- Add the path to your wave 2 music file
         subWaves: [
             { // --- Sub-Wave 2.1 ---
                  enemyGroups: [
@@ -451,13 +451,13 @@ export const WAVES = [
     { // Example of a potentially shorter/different wave
         mainWaveNumber: 3,
         duration: 90,
-        audioTrack: 'assets/audio/Music/wave3.mp3', // <-- Add path for wave 3 music
+        audioTrack: 'assets/audio/music/wave3.mp3', // <-- Add path for wave 3 music
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
         ]
     }
-    // ... more waves
+    // ... 7ish more waves
 ];
 
 
