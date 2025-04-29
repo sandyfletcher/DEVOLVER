@@ -9,13 +9,12 @@ import * as Input from './input.js';
 import * as Config from './config.js';
 import * as Renderer from './renderer.js';
 import * as CollisionManager from './collisionManager.js';
-import * as World from './worldManager.js'; // WorldManager now handles dynamic world updates and draw coordination
+import * as World from './worldManager.js';
 import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
-import * as WaveManager from './waveManager.js'; // Updated WaveManager
-// import * as WorldData from './utils/worldData.js'; // May not be needed directly here anymore
-import * as GridCollision from './utils/gridCollision.js'; // Needed for worldToGridCoords
-import * as AudioManager from './audioManager.js'; // <-- IMPORT AUDIO MANAGER
+import * as WaveManager from './waveManager.js';
+import * as GridCollision from './utils/gridCollision.js';
+import * as AudioManager from './audioManager.js';
 
 // --- Game State Enum ---
 const GameState = Object.freeze({
@@ -135,6 +134,7 @@ function getMouseGridCoords(inputMousePos) {
 // }
 
 // --- Overlay Management ---
+// --- Overlay Management ---
 function showOverlay(stateToShow) {
     if (!gameOverlay || !appContainer) {
          console.error("ShowOverlay: Core overlay/app container not found!");
@@ -144,36 +144,45 @@ function showOverlay(stateToShow) {
     // Remove previous state classes
     gameOverlay.classList.remove('show-title', 'show-pause', 'show-gameover', 'show-victory');
 
-    // Add class for the current state
+    // Handle Audio Transitions based on the state being shown
     switch (stateToShow) {
         case GameState.PRE_GAME:
             gameOverlay.classList.add('show-title');
-            AudioManager.stopMusic(); // Ensure music is stopped on title screen
+            // Stop all music for a clean start on the title screen
+            AudioManager.stopAllMusic();
+            // Play title music
+            AudioManager.playUIMusic(Config.AUDIO_TRACKS.title);
             break;
         case GameState.PAUSED:
             gameOverlay.classList.add('show-pause');
-            AudioManager.pauseMusic(); // Pause music when game is paused
+            // Pause game music (if playing) and play pause music
+            AudioManager.pauseGameMusic(); // This saves game music position and state
+            AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause); // This will play UI music (pause track)
             break;
         case GameState.GAME_OVER:
             gameOverlay.classList.add('show-gameover');
-            // Update game over stats text if element exists (using NEW ID)
+            // Update game over stats text if element exists
             if (gameOverStatsTextP) {
                  const finalWave = WaveManager.getCurrentWaveNumber(); // Get wave number reached
                  gameOverStatsTextP.textContent = `You reached Wave ${finalWave}.`;
             } else {
                 console.warn("ShowOverlay: gameover-stats-text element not found for GAME_OVER state.");
             }
-            AudioManager.stopMusic(); // Stop music on game over (WaveManager also does this, but redundancy is ok)
+            // Stop game music (game is over) and play game over music
+            AudioManager.stopGameMusic(); // Explicitly stop game music, resetting its state/position
+            AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver); // Play game over music
             break;
         case GameState.VICTORY:
             gameOverlay.classList.add('show-victory');
-            // Update victory stats text using NEW ID
+            // Update victory stats text
             if (victoryStatsTextP) {
                  victoryStatsTextP.textContent = `You cleared all ${Config.WAVES.length} waves!`;
             } else {
                  console.warn("ShowOverlay: victory-stats-text element not found for VICTORY state.");
             }
-            AudioManager.stopMusic(); // Stop music on victory (WaveManager also does this)
+             // Stop game music (game is won) and play victory music
+             AudioManager.stopGameMusic(); // Explicitly stop game music, resetting its state/position
+            AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory); // Play victory music
             break;
     }
     // Make overlay visible and dim background
@@ -185,11 +194,17 @@ function hideOverlay() {
     if (!gameOverlay || !appContainer) return;
     gameOverlay.classList.remove('active');
     // Ensure background interaction is re-enabled
-     appContainer.classList.remove('overlay-active'); // Redundant, but safe
+     appContainer.classList.remove('overlay-active');
 
-     // Resume music if transitioning from PAUSED to RUNNING
+     // Stop UI music when hiding overlay
+     AudioManager.stopUIMusic(); // This stops the UI music (pause, game over, victory track)
+
+     // Resume game music ONLY if transitioning from PAUSED to RUNNING
+     // The check inside resumeGameMusic (gameMusicWasPlayingBeforeUI && gameMusicAudio.paused)
+     // correctly determines if there was a game track paused that should now resume.
+     // This call is in the right place for the resumeGame flow.
      if (currentGameState === GameState.RUNNING) {
-         AudioManager.resumeMusic();
+         AudioManager.resumeGameMusic(); // Attempt to resume game music
      }
 }
 
@@ -244,27 +259,39 @@ function startGame() {
     // 6. Calculate Initial Camera Position
     calculateInitialCamera(); // Center camera on player
 
-    // 7. Set game state and hide overlay
-    currentGameState = GameState.RUNNING;
-    hideOverlay(); // Hide overlay AFTER UI init succeeds and player is ready
+   // 7. Set game state and hide overlay
+   currentGameState = GameState.RUNNING;
+   hideOverlay();
 
-    // 8. Start Game Loop
-    Input.consumeClick(); // Clear any clicks during transition/load
-    lastTime = performance.now(); // Set start time for delta time calculation
-    gameStartTime = performance.now(); // Record game start time
-    if (gameLoopId) {
-        cancelAnimationFrame(gameLoopId); // Clear any potentially orphaned loop
-    }
-    gameLoopId = requestAnimationFrame(gameLoop); // START THE LOOP!
-    console.log(">>> Game Loop Started <<<");
+   // 8. Start Game Loop
+   Input.consumeClick();
+   // REMOVE OR COMMENT OUT THIS LINE: lastTime = performance.now(); // <-- This caused the initial negative dt
+   gameStartTime = performance.now();
+   if (gameLoopId) {
+       cancelAnimationFrame(gameLoopId);
+   }
+   // Crucially, lastTime is NOT set here to performance.now().
+   // It will be 0 on the first gameLoop call, handled by the `if (lastTime === 0)` block.
+   gameLoopId = requestAnimationFrame(gameLoop);
+   console.log(">>> Game Loop Started <<<");
+
+        // --- Audio Unlock Strategy ---
+    // Attempt to unlock audio context here on the START GAME button click.
+    // This is done by trying to play a silent sound, or simply relying on the
+    // subsequent play calls in WaveManager or player actions.
+    // For HTMLAudioElements, simply calling play() on the elements shortly after
+    // a user gesture (like this button click) is often sufficient.
+    // The calls in showOverlay/hideOverlay and WaveManager update should leverage this.
+
 }
 
+/** Pauses the currently running game. */
 /** Pauses the currently running game. */
 function pauseGame() { // This function is exposed via window.pauseGameCallback
     if (currentGameState !== GameState.RUNNING) return; // Can only pause if running
     console.log(">>> Pausing Game <<<");
     currentGameState = GameState.PAUSED;
-    showOverlay(GameState.PAUSED); // Show the pause menu overlay (also pauses music)
+    showOverlay(GameState.PAUSED); // Show the pause menu overlay (handles audio)
     // Stop the game loop
     if (gameLoopId) {
         cancelAnimationFrame(gameLoopId);
@@ -274,14 +301,16 @@ function pauseGame() { // This function is exposed via window.pauseGameCallback
 
 /** Resumes the game from a paused state. */
 function resumeGame() {
-    if (currentGameState !== GameState.PAUSED) return; // Can only resume if paused
+    if (currentGameState !== GameState.PAUSED) return;
     console.log(">>> Resuming Game <<<");
-    currentGameState = GameState.RUNNING;
-    hideOverlay(); // Hide the pause overlay (also resumes music)
+    currentGameState = GameState.RUNNING; // Set state FIRST
+    hideOverlay(); // Hides overlay, resume music attempt happens inside hideOverlay/audioManager
 
     // Restart the game loop
-    lastTime = performance.now(); // IMPORTANT: Reset time to avoid huge dt jump after pause
-    if (!gameLoopId) { // Only start if not already running (shouldn't be, but safe check)
+    // REMOVE OR COMMENT OUT THIS LINE: lastTime = performance.now(); // <-- This also caused negative dt on resume
+    if (!gameLoopId) {
+        // lastTime will be the timestamp from the PAUSED frame, or 0 if it was fully stopped.
+        // The gameLoop's `if (lastTime === 0)` or standard calculation will handle the first dt after resume.
         gameLoopId = requestAnimationFrame(gameLoop);
     }
 }
@@ -291,10 +320,10 @@ function handleGameOver() {
     if (currentGameState === GameState.GAME_OVER) return; // Prevent multiple calls
     console.log(">>> Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER;
-    showOverlay(GameState.GAME_OVER); // Show game over overlay (updates stats text internally, stops music)
+    // Inform WaveManager about Game Over state (clears timers/enemies, stops game music)
+    WaveManager.setGameOver(); // WaveManager should call AudioManager.stopAllMusic()
 
-    // Inform WaveManager about Game Over state (clears timers/enemies)
-    WaveManager.setGameOver();
+    showOverlay(GameState.GAME_OVER); // Show game over overlay (updates stats text internally, plays game over music)
 
     // Stop the game loop
     if (gameLoopId) {
@@ -317,9 +346,10 @@ function handleVictory() {
      if (currentGameState === GameState.VICTORY) return; // Prevent multiple calls
      console.log(">>> Handling Victory <<<");
      currentGameState = GameState.VICTORY;
-     showOverlay(GameState.VICTORY); // Show victory overlay (stops music)
+      // Inform WaveManager (though it's already in VICTORY state)
+      WaveManager.setVictory(); // Add a setVictory function to WaveManager
 
-     // WaveManager is already in VICTORY state
+     showOverlay(GameState.VICTORY); // Show victory overlay (plays victory music)
 
      // Stop the game loop
      if (gameLoopId) {
@@ -356,24 +386,41 @@ function gameLoop(timestamp) {
     // Ensure loop doesn't run if game state is not RUNNING
     if (currentGameState !== GameState.RUNNING) {
         if (gameLoopId) {
-             // console.warn("Game loop called unexpectedly while not running. State:", currentGameState);
-             cancelAnimationFrame(gameLoopId);
-             gameLoopId = null;
+            console.warn("Game loop called unexpectedly while not running. State:", currentGameState);
+            cancelAnimationFrame(gameLoopId);
+            gameLoopId = null;
+        }
+// Optionally reset lastTime if game truly stops (e.g., not just paused) to ensure a clean start next time (IMPLEMENTED)
+        if (currentGameState !== GameState.PAUSED) {
+            lastTime = 0; // Reset for a brand new game start
         }
         return;
     }
 
     // --- Delta Time Calculation ---
-    const deltaTime = (timestamp - lastTime) / 1000; // Time since last frame in seconds
-    lastTime = timestamp;
-    // Clamp delta time to prevent physics glitches if frame rate drops significantly
-    const dt = Math.min(deltaTime, Config.MAX_DELTA_TIME);
+    let dt;
+    if (lastTime === 0) {
+        // This is the very first frame after starting/resuming.
+        // Set dt to 0 to avoid negative time calculations on startup or after a long pause.
+        dt = 0;
+        console.log("GameLoop: First frame detected (lastTime was 0). dt set to 0."); // Optional log
+    } else {
+        // Standard calculation for subsequent frames
+        dt = (timestamp - lastTime) / 1000; // Time since last frame in seconds
+        // Clamp delta time to prevent physics glitches if frame rate drops significantly
+        dt = Math.min(dt, Config.MAX_DELTA_TIME);
+    }
+
+        // Always update lastTime for the next frame
+        lastTime = timestamp;
+
+            // Now dt will always be >= 0, and player.update will receive a valid time step.
+    // The check in player.js:108 should no longer trigger for negative dt.
 
     // --- Game State Checks (Player Death & Victory) ---
     // Check Player health FIRST
     if (player && player.getCurrentHealth() <= 0) {
-        // Player died, transition to game over
-        handleGameOver();
+        handleGameOver(); // Player died, transition to game over
         return; // Stop processing this frame
     }
 
@@ -391,16 +438,17 @@ function gameLoop(timestamp) {
     let targetGridCell = getMouseGridCoords(internalMousePos);
 
     // --- Update Phase ---
-    let currentPlayerPosition = null; // <<< DECLARED HERE
+    let currentPlayerPosition = null;
     if (player) {
         player.update(dt, inputState, targetWorldPos, targetGridCell);
-        currentPlayerPosition = player.getPosition(); // <<< Assigned here
+        currentPlayerPosition = player.getPosition();
     }
 
     // Update game logic systems
     ItemManager.update(dt);
     EnemyManager.update(dt, currentPlayerPosition); // <<< Pass potentially null position
-    WaveManager.update(dt); // Update WaveManager (handles timers and spawning)
+    // --- IMPORTANT: Pass currentGameState to WaveManager.update ---
+    WaveManager.update(dt, currentGameState); // Update WaveManager (handles timers and spawning)
     World.update(dt); // Update dynamic world elements like water
 
     // --- Check Wave Manager state AFTER update ---
@@ -460,13 +508,22 @@ function gameLoop(timestamp) {
 
     // --- Loop Continuation ---
     // Schedule the next frame *only* if still running
-     if (currentGameState === GameState.RUNNING) {
+    if (currentGameState === GameState.RUNNING) {
         gameLoopId = requestAnimationFrame(gameLoop);
-     } else {
-         gameLoopId = null; // Ensure ID is cleared if state changed mid-frame
-     }
+    } else {
+        // If state changed (e.g., to PAUSED, GAME_OVER, VICTORY), ensure loop stops
+        if (gameLoopId) {
+            cancelAnimationFrame(gameLoopId);
+            gameLoopId = null;
+        }
+        // *** Important: Reset lastTime if transitioning OUT of RUNNING
+        // to ensure the *next* time RUNNING starts (via resume or restart),
+        // the first dt calculation is handled cleanly.
+        if (currentGameState !== GameState.PAUSED) {
+            lastTime = 0; // Reset lastTime when game ends or restarts
+        }
+    }
 }
-
 
 // --- Camera Calculation Helpers ---
 /** Calculates the initial camera position and scale when starting a game. */
@@ -552,10 +609,8 @@ function init() {
         restartButtonVictory = document.getElementById('restart-button-overlay-victory'); // <-- NEW REFERENCE
 
         // Get Overlay Stats Reference (used by both Game Over and Victory, check index.html structure)
-        // Using NEW IDs now
-        gameOverStatsTextP = document.getElementById('gameover-stats-text'); // <-- Use NEW ID
-        victoryStatsTextP = document.getElementById('victory-stats-text'); // <-- Use NEW ID
-
+        gameOverStatsTextP = document.getElementById('gameover-stats-text');
+        victoryStatsTextP = document.getElementById('victory-stats-text');
 
         // --- Check if all essential elements were found ---
         const essentialElements = [
@@ -619,6 +674,8 @@ function init() {
             alert(`FATAL Initialization Error:\n${error.message}\nPlease check console (F12) and refresh.`);
         }
     }
+        // Ensure lastTime is initialized to 0 globally when the script loads
+        lastTime = 0; // Already declared outside, just emphasize initial state.
 }
 
 

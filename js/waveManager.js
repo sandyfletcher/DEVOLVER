@@ -99,7 +99,6 @@ function advanceSpawnProgression() {
     }
 }
 
-
 /** Starts the next main wave, sets up timers and initial spawning state. */
 function startNextWave() {
     // Increment index to point to the *next* wave to start
@@ -111,7 +110,7 @@ function startNextWave() {
         console.log("[WaveMgr] All defined waves completed!");
         state = 'VICTORY';
         EnemyManager.clearAllEnemies(); // Clear any remaining enemies on victory
-        AudioManager.stopMusic(); // <-- Stop music on victory
+        AudioManager.stopAllMusic(); // <-- Stop ALL music on victory
         console.log("[WaveMgr] Transitioned to VICTORY state.");
         return false; // Indicates no wave was started
     }
@@ -121,11 +120,11 @@ function startNextWave() {
     mainWaveTimer = waveData.duration; // Set timer to the wave's total duration
     console.log(`[WaveMgr] Starting Main Wave ${waveData.mainWaveNumber}. Duration: ${mainWaveTimer}s`);
 
-    // --- Trigger music playback for the new wave ---
+    // --- Trigger game music playback for the new wave ---
     if (waveData.audioTrack) {
-        AudioManager.playMusic(waveData.audioTrack); // <-- Play the track for this wave
+        AudioManager.playGameMusic(waveData.audioTrack); // <-- Play the track for this wave
     } else {
-        AudioManager.stopMusic(); // <-- Stop music if no track is defined for this wave
+        AudioManager.stopGameMusic(); // <-- Stop game music if no track is defined for this wave
     }
 
 
@@ -138,7 +137,7 @@ function startNextWave() {
     const firstGroup = getCurrentGroupData();
      if (firstGroup) {
         groupStartDelayTimer = firstGroup.startDelay ?? 0; // Set start delay for the very first group
-        console.log(`[WaveMgr] Setup first group (Type: ${firstGroup.type}, Count: ${firstGroup.count}) in Sub-Wave ${currentMainWaveIndex+1}.${currentSubWaveIndex+1}. Start Delay: ${groupStartDelayTimer}s`);
+        // console.log(`[WaveMgr] Setup first group (Type: ${firstGroup.type}, Count: ${firstGroup.count}) in Sub-Wave ${currentMainWaveIndex+1}.${currentSubWaveIndex+1}. Start Delay: ${groupStartDelayTimer}s`);
      } else {
          console.warn(`[WaveMgr] Wave ${waveData.mainWaveNumber} has no enemy groups defined.`);
          groupStartDelayTimer = waveData.duration + 1; // Effectively prevent spawning if no groups
@@ -153,9 +152,9 @@ function endWave() {
     const waveData = getCurrentWaveData(); // Get data for the wave that just ended
     if (!waveData) {
         console.error("[WaveMgr] endWave called but no current wave data found!");
-        // Fallback to victory or game over? For now, just return.
+        // Fallback to game over?
         state = 'GAME_OVER'; // Safety state
-        AudioManager.stopMusic(); // <-- Stop music on error/game over
+        AudioManager.stopAllMusic(); // <-- Stop ALL music on error/game over
         return;
     }
 
@@ -167,12 +166,12 @@ function endWave() {
         // There is a next wave, transition to intermission
         state = 'INTERMISSION';
         intermissionTimer = Config.WAVE_INTERMISSION_DURATION;
-        AudioManager.stopMusic(); // <-- Stop wave music for intermission (optional: play intermission music)
+        AudioManager.stopGameMusic(); // <-- Stop wave music for intermission (intermission music handled by UI if overlay is shown?)
         console.log(`[WaveMgr] Transitioned to INTERMISSION. Next wave (${currentMainWaveIndex + 2}) starts in ${intermissionTimer}s.`);
     } else {
         // No more waves, transition to victory
         state = 'VICTORY';
-        AudioManager.stopMusic(); // <-- Stop music on victory (optional: play victory music)
+        AudioManager.stopAllMusic(); // <-- Stop ALL music on victory
         console.log("[WaveMgr] All waves completed! Transitioned to VICTORY state.");
     }
 
@@ -184,9 +183,9 @@ function endWave() {
     groupStartDelayTimer = 0;
 }
 
-
 // --- Exported Functions ---
 
+/** Initializes the wave manager to its default state. */
 /** Initializes the wave manager to its default state. */
 export function init() {
     currentMainWaveIndex = -1; // Start before the first wave
@@ -199,9 +198,7 @@ export function init() {
     preWaveTimer = Config.WAVE_START_DELAY; // Use config value for first delay
     mainWaveTimer = 0; // No main wave active yet
     intermissionTimer = 0; // No intermission active yet
-    // Audio should already be stopped by main.js showing the PRE_GAME overlay
-    // REMOVE THE LINE BELOW
-    // AudioManager.stopMusic();
+    // Audio should be stopped by main.js showing the PRE_GAME overlay and AudioManager.stopAllMusic()
     console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s`);
 }
 
@@ -209,104 +206,104 @@ export function init() {
 export function reset() {
     console.log("[WaveManager] Resetting...");
     init(); // Re-initialize to default state
+    // Note: EnemyManager.clearAllEnemies() is handled by init() or setGameOver()
 }
 
 /**
  * Updates the wave state machine, handling timers and spawning.
+ * Timers only decrement if the game is in the RUNNING state.
  * @param {number} dt - Delta time in seconds.
+ * @param {string} gameState - The current GameState string from main.js. // <-- ADD THIS PARAMETER
  */
-export function update(dt) {
-    // If the game is over, no wave logic runs except staying in the GAME_OVER state
+export function update(dt, gameState) { // <-- ACCEPT THE PARAMETER HERE
+    // If the game is over or victory, no wave logic runs
     if (state === 'GAME_OVER' || state === 'VICTORY') {
         return;
     }
 
-    switch (state) {
-        case 'PRE_WAVE':
-            preWaveTimer -= dt;
-            if (preWaveTimer <= 0) {
-                startNextWave(); // This handles transition to WAVE_COUNTDOWN or VICTORY
-            }
-            break;
+    // --- ONLY UPDATE TIMERS IF GAME IS RUNNING ---
+    if (gameState === 'RUNNING') { // <-- ADD THIS CHECK
+        switch (state) {
+            case 'PRE_WAVE':
+                preWaveTimer -= dt;
+                if (preWaveTimer <= 0) {
+                    startNextWave(); // This handles transition to WAVE_COUNTDOWN or VICTORY
+                }
+                break;
 
-        case 'WAVE_COUNTDOWN':
-            // Always count down the main wave timer
-            mainWaveTimer -= dt;
-            if (mainWaveTimer <= 0) {
-                mainWaveTimer = 0; // Ensure it doesn't go negative in display
-                endWave(); // This handles transition to INTERMISSION or VICTORY
-                break; // Exit case after state change
-            }
+            case 'WAVE_COUNTDOWN':
+                // Always count down the main wave timer
+                mainWaveTimer -= dt;
+                if (mainWaveTimer <= 0) {
+                    mainWaveTimer = 0; // Ensure it doesn't go negative in display
+                    endWave(); // This handles transition to INTERMISSION or VICTORY
+                    break; // Exit case after state change
+                }
 
-            // --- Handle Enemy Spawning Progression within the WAVE_COUNTDOWN ---
-            const subWaveData = getCurrentSubWaveData();
-            const groupData = getCurrentGroupData();
+                // --- Handle Enemy Spawning Progression within the WAVE_COUNTDOWN ---
+                // This spawning logic also relies on timers, so it stays within the RUNNING check.
+                const subWaveData = getCurrentSubWaveData();
+                const groupData = getCurrentGroupData();
 
-            // Only attempt spawning if we are still in a valid sub-wave/group index for spawning
-            if (subWaveData && groupData) {
+                // Only attempt spawning if we are still in a valid sub-wave/group index for spawning
+                if (subWaveData && groupData) {
 
-                // 1. Handle Group Start Delay (relative to wave start, but checked sequentially)
-                 // This timer is the time *remaining* until the current group can start spawning.
-                if (groupStartDelayTimer > 0) {
-                    groupStartDelayTimer -= dt;
-                } else { // Group start delay is over, or was 0 initially
-                    // Check if current group is fully spawned
-                    if (enemiesSpawnedThisGroup < groupData.count) {
-                        // Handle time delay between spawns in this group
-                        groupSpawnTimer -= dt;
-                        if (groupSpawnTimer <= 0) {
-                            // Attempt to spawn one enemy of the group's type
-                            const spawned = EnemyManager.trySpawnEnemy(groupData.type);
-                            if (spawned) {
-                                enemiesSpawnedThisGroup++;
-                                // Reset timer for the next spawn in this group
-                                groupSpawnTimer = groupData.delayBetween ?? Config.WAVE_ENEMY_SPAWN_DELAY;
-                                // console.log(`Spawned ${groupData.type} (${enemiesSpawnedThisGroup}/${groupData.count}) for Wave ${currentMainWaveIndex+1}`);
+                    // 1. Handle Group Start Delay (relative to wave start, but checked sequentially)
+                     // This timer is the time *remaining* until the current group can start spawning.
+                    if (groupStartDelayTimer > 0) {
+                        groupStartDelayTimer -= dt;
+                    } else { // Group start delay is over, or was 0 initially
+                        // Check if current group is fully spawned
+                        if (enemiesSpawnedThisGroup < groupData.count) {
+                            // Handle time delay between spawns in this group
+                            groupSpawnTimer -= dt;
+                            if (groupSpawnTimer <= 0) {
+                                // Attempt to spawn one enemy of the group's type
+                                const spawned = EnemyManager.trySpawnEnemy(groupData.type);
+                                if (spawned) {
+                                    enemiesSpawnedThisGroup++;
+                                    // Reset timer for the next spawn in this group
+                                    groupSpawnTimer = groupData.delayBetween ?? Config.WAVE_ENEMY_SPAWN_DELAY;
 
-                                // Immediately try to spawn the next enemy if delayBetween is 0 or negative
-                                if (groupSpawnTimer <= 0 && enemiesSpawnedThisGroup < groupData.count) {
-                                     // Keep groupSpawnTimer at 0 to spawn next frame
-                                     groupSpawnTimer = 0;
+                                    // Immediately try to spawn the next enemy if delayBetween is 0 or negative
+                                    if (groupSpawnTimer <= 0 && enemiesSpawnedThisGroup < groupData.count) {
+                                         groupSpawnTimer = 0; // Keep groupSpawnTimer at 0 to spawn next frame
+                                    }
+
+                                } else {
+                                    // Spawn failed (max enemies?), retry shortly without advancing count
+                                    groupSpawnTimer = 0.2; // Short delay before retry
                                 }
-
-                            } else {
-                                // Spawn failed (max enemies?), retry shortly without advancing count
-                                groupSpawnTimer = 0.2; // Short delay before retry
-                                // console.warn(`Spawn failed for ${groupData.type}, retrying...`);
                             }
+                        } else {
+                            // Current group is fully spawned, advance spawning progression
+                            advanceSpawnProgression(); // This sets up the next group's start delay
                         }
-                    } else {
-                        // Current group is fully spawned, advance spawning progression
-                        advanceSpawnProgression(); // This sets up the next group's start delay
                     }
                 }
-            }
-            // If subWaveData or groupData is null/undefined here, it means advanceSpawnProgression
-            // has already run and determined there are no more groups to spawn for this wave.
-            // The wave continues until mainWaveTimer hits zero.
+                // If subWaveData or groupData is null/undefined here, it means advanceSpawnProgression
+                // has already run and determined there are no more groups to spawn for this wave.
+                // The wave continues until mainWaveTimer hits zero.
 
-            break; // End of WAVE_COUNTDOWN case
+                break; // End of WAVE_COUNTDOWN case
 
-        case 'INTERMISSION':
-            intermissionTimer -= dt;
-            if (intermissionTimer <= 0) {
-                startNextWave(); // This handles transition to WAVE_COUNTDOWN or VICTORY
-            }
-            break;
+            case 'INTERMISSION':
+                intermissionTimer -= dt;
+                if (intermissionTimer <= 0) {
+                    startNextWave(); // This handles transition to WAVE_COUNTDOWN or VICTORY
+                }
+                break;
 
-        case 'GAME_OVER':
-             // Nothing to do here, main.js handles the visual overlay
-            break;
-        case 'VICTORY':
-            // Nothing to do here, main.js can handle a victory overlay if needed
-            break;
+            // GAME_OVER and VICTORY states don't have timers that need decrementing
+            // in the update loop, but they are handled by the outer if (state === ...) check.
 
-        default:
-            console.error("Unknown wave state:", state);
-            state = 'GAME_OVER'; // Attempt recovery
-            AudioManager.stopMusic(); // <-- Stop music on error/game over
-            break;
-    }
+            default:
+                console.error("Unknown wave state:", state);
+                setGameOver(); // Attempt recovery
+                break;
+        }
+    } // <-- END OF if (gameState === 'RUNNING') CHECK
+    // If not RUNNING, the timers are simply not decremented this frame.
 }
 
 /** Sets the game state to GAME_OVER (e.g., triggered by player death). */
@@ -321,7 +318,25 @@ export function setGameOver() {
         groupSpawnTimer = 0;
         groupStartDelayTimer = 0;
         EnemyManager.clearAllEnemies(); // Clear enemies on player death
-        AudioManager.stopMusic(); // <-- Stop music on game over
+        // DO NOT call AudioManager.stopAllMusic() here.
+        // Main.js handles audio transition in handleGameOver/showOverlay.
+        // REMOVE THE LINE BELOW:
+        // AudioManager.stopAllMusic();
+    }
+}
+
+/** Sets the game state to VICTORY. */
+export function setVictory() {
+    if (state !== 'VICTORY') {
+        console.log("[WaveManager] Setting state to VICTORY.");
+        state = 'VICTORY';
+        preWaveTimer = 0;
+        mainWaveTimer = 0;
+        intermissionTimer = 0;
+        groupSpawnTimer = 0;
+        groupStartDelayTimer = 0;
+        EnemyManager.clearAllEnemies();
+        // DO NOT call AudioManager.stopAllMusic() here.
     }
 }
 

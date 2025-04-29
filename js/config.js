@@ -46,6 +46,48 @@ export const MAX_CAMERA_SCALE = 3.0;  // Max zoom level (zoom in)
 export const ZOOM_SPEED_FACTOR = 0.001; // How fast scrolling zooms
 
 // =============================================================================
+// --- Audio Constants ---
+// =============================================================================
+export const AUDIO_SFX_POOL_SIZE = 8; // Number of simultaneous sound effects allowed
+export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // Default volume for game music (adjust as needed)
+export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // Default volume for UI music (adjust as needed)
+export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // Default volume for sound effects (adjust as needed)
+
+export const AUDIO_TRACKS = {
+    // Game Music (Wave themes) - paths already in WAVES config, keep them there for now
+    // Example: wave1: 'assets/audio/Wave1-350.mp3'
+
+    // UI Music
+    // title: 'assets/audio/title_music.mp3',   // <-- Add your title music path
+    pause: 'assets/audio/music/Pause.mp3',   // <-- Add your pause music path
+    // gameOver: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
+    // victory: 'assets/audio/victory_music.mp3',   // <-- Add your victory music path
+
+    // Sound Effects (Add actual paths and types as needed)
+    // player_hit: 'assets/audio/sfx/player_hit.wav', // <-- Example SFX path
+    // enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
+    // enemy_death: 'assets/audio/sfx/enemy_death.wav',
+    // block_break_dirt: 'assets/audio/sfx/block_break_dirt.wav',
+    // block_break_stone: 'assets/audio/sfx/block_break_stone.wav',
+    // item_pickup: 'assets/audio/sfx/item_pickup.wav',
+    // button_click: 'assets/audio/sfx/button_click.wav',
+    // player_jump: 'assets/audio/sfx/player_jump.wav', // For ground jump
+    // player_water_stroke: 'assets/audio/sfx/player_water_stroke.wav', // For water "jump"
+    // player_attack_swing: 'assets/audio/sfx/attack_swing.wav', // Generic attack sound
+    // player_attack_hit: 'assets/audio/sfx/attack_hit.wav', // Sound when player attack hits something
+
+    // Wave Music
+    // 1: 'assets/audio/title_music.mp3',   // <-- Add your title music path
+    // 2: 'assets/audio/music/Pause.mp3',   // <-- Add your pause music path
+    // 3: 'assets/audio/gameover_music.mp3', // <-- Add your game over music path
+    // 4: 'assets/audio/victory_music.mp3',   // <-- Add your victory music path
+
+
+};
+
+
+
+// =============================================================================
 // --- Block Parameters ---
 // =============================================================================
 
