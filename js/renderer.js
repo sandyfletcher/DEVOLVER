@@ -9,9 +9,7 @@ let canvas = null;
 let ctx = null;
 let gridCanvas = null; // The off-screen canvas element
 let gridCtx = null;    // The context for the off-screen canvas
-
 // --- Public Functions ---
-
 /** Initializes the main canvas and rendering context. */
 export function init() {
     canvas = document.getElementById('game-canvas');
@@ -25,45 +23,30 @@ export function init() {
     if (!ctx) { throw new Error("Renderer: Failed to get 2D context!"); }
     // Disable image smoothing for pixel art
     ctx.imageSmoothingEnabled = false;
-
     // console.log(`Renderer initialized. Internal Canvas Size: ${canvas.width}x${canvas.height}`);
 }
-
 export function createGridCanvas() {
     gridCanvas = document.createElement('canvas');
-
-    // *** SET OFF-SCREEN CANVAS RESOLUTION ***
-    gridCanvas.width = Config.CANVAS_WIDTH;  // Match main canvas internal resolution
-    gridCanvas.height = Config.CANVAS_HEIGHT;
-
+    gridCanvas.width = Config.CANVAS_WIDTH; // SET OFF-SCREEN CANVAS RESOLUTION
+    gridCanvas.height = Config.CANVAS_HEIGHT; // Match main canvas internal resolution
     gridCtx = gridCanvas.getContext('2d');
     if (!gridCtx) { throw new Error("Renderer: Failed to get 2D context for grid canvas!"); }
-    // Disable image smoothing for pixel art on grid canvas too
-    gridCtx.imageSmoothingEnabled = false;
+    gridCtx.imageSmoothingEnabled = false; // Disable image smoothing for pixel art on grid canvas too
     // console.log(`Renderer: Grid canvas created (${gridCanvas.width}x${gridCanvas.height}).`);
 }
-
 /** Returns the main rendering context. */
 export function getContext() {
     return ctx;
 }
-
 /** Returns the context for the off-screen grid canvas. */
 export function getGridContext() {
     return gridCtx;
 }
-
-/**
- * Returns the off-screen grid canvas HTML element itself.
- * @returns {HTMLCanvasElement | null} The grid canvas element or null if not created.
- */
+/** Returns the off-screen grid canvas HTML element itself. */
 export function getGridCanvas() {
     return gridCanvas;
 }
-
-/**
- * Clears the entire main canvas and fills with the background color.
- */
+/** Clears the entire main canvas and fills with the background color */
 export function clear() {
     if (!ctx || !canvas) {
         console.error("Renderer: Cannot clear - not initialized.");

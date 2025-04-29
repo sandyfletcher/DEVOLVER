@@ -1,40 +1,32 @@
-// -----------------------------------------------------------------------------
 // root/js/ui.js - Manages HTML Sidebar Elements and Updates
-// -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
 import * as EnemyManager from './enemyManager.js'; // <-- ADD THIS IMPORT
-// import * as WaveManager from './waveManager.js'; // No longer needed here, get info via player ref/main loop
 
-// --- Cache DOM Element References ---
+// --- DOM Element References ---
 
 // Top Sidebar
 let playerColumnEl, portalColumnEl;
 let healthLabelEl, healthBarContainerEl, healthBarFillEl, healthTextEl;
-let waveStatusEl, waveTimerEl, enemyCountEl; // Keep enemyCountEl for display
-
+let waveStatusEl, waveTimerEl, enemyCountEl;
 // Bottom Sidebar
 let bottomSidebarEl;
 let itemSelectionAreaEl;
 let inventoryBoxesContainerEl, weaponSlotsContainerEl;
 let actionButtonsAreaEl;
 let toggleControlsButtonEl;
-let actionButtons = {}; // { left: btnEl, right: btnEl, ... }
-
+let actionButtons = {};
 // Overlay
 let gameOverlay = null;
 
 // --- Internal State ---
 let playerRef = null;
-const itemSlotDivs = {}; // Unified store: { 'dirt': div, 'sword': div, ... }
+const itemSlotDivs = {};
 let buttonIlluminationTimers = {};
 const ILLUMINATION_DURATION = 150; // ms
-
 const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
-const ALL_SELECTABLE_ITEMS = [...Config.INVENTORY_MATERIALS, ...WEAPON_SLOTS_ORDER]; // Unused currently, can remove?
 
 // --- Initialization ---
-
 export function initOverlay() {
     gameOverlay = document.getElementById('game-overlay');
     if (!gameOverlay) {
@@ -46,7 +38,6 @@ export function initOverlay() {
 
 export function initGameUI() {
     let success = true;
-
     // --- Find Top Sidebar Elements ---
     playerColumnEl = document.getElementById('player-column');
     portalColumnEl = document.getElementById('portal-column');
@@ -57,7 +48,6 @@ export function initGameUI() {
     waveStatusEl = document.getElementById('wave-status');
     waveTimerEl = document.getElementById('wave-timer');
     enemyCountEl = document.getElementById('enemy-count'); // Keep for enemy count display
-
     // --- Find Bottom Sidebar Elements ---
     bottomSidebarEl = document.getElementById('bottom-sidebar');
     itemSelectionAreaEl = document.getElementById('item-selection-area');
@@ -65,14 +55,12 @@ export function initGameUI() {
     weaponSlotsContainerEl = document.getElementById('weapon-slots-container');
     actionButtonsAreaEl = document.getElementById('action-buttons-area');
     toggleControlsButtonEl = document.getElementById('toggle-controls-button');
-
     // Find Action Buttons
     actionButtons.left = document.getElementById('btn-move-left');
     actionButtons.right = document.getElementById('btn-move-right');
     actionButtons.pause = document.getElementById('btn-pause');
     actionButtons.jump = document.getElementById('btn-jump');
     actionButtons.attack = document.getElementById('btn-attack');
-
     // --- Verification ---
     const requiredElements = [
         playerColumnEl, portalColumnEl, healthBarContainerEl, healthBarFillEl, healthTextEl, healthLabelEl,
@@ -80,25 +68,21 @@ export function initGameUI() {
         inventoryBoxesContainerEl, weaponSlotsContainerEl, actionButtonsAreaEl, toggleControlsButtonEl,
         actionButtons.left, actionButtons.right, actionButtons.pause, actionButtons.jump, actionButtons.attack
     ];
-
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
         // Log specific missing elements if needed
         success = false;
     }
-
     // --- Clear previous dynamic content and listeners ---
     if (inventoryBoxesContainerEl) inventoryBoxesContainerEl.innerHTML = 'Loading...';
     if (weaponSlotsContainerEl) weaponSlotsContainerEl.innerHTML = '';
     for (const key in itemSlotDivs) delete itemSlotDivs[key];
     for (const key in buttonIlluminationTimers) clearTimeout(buttonIlluminationTimers[key]);
     buttonIlluminationTimers = {}; // Reset timers
-
     // --- Create Item/Weapon Selection Boxes Dynamically ---
     if (inventoryBoxesContainerEl && weaponSlotsContainerEl) {
         inventoryBoxesContainerEl.innerHTML = ''; // Clear loading text
-        weaponSlotsContainerEl.innerHTML = '';    // Clear loading text
-
+        weaponSlotsContainerEl.innerHTML = ''; // Clear loading text
         // Create Material Boxes
         for (const materialType of Config.INVENTORY_MATERIALS) {
             createItemSlot(materialType, inventoryBoxesContainerEl, 'material');
@@ -110,17 +94,14 @@ export function initGameUI() {
     } else {
         success = false;
     }
-
     // --- Add Event Listeners and Set Initial State ---
     if (success) {
         setupActionButtons();
         toggleControlsButtonEl.addEventListener('click', toggleActionControls);
-
         // Set initial state for health/inventory on init
         updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // Set initial empty state
         updateWaveInfo(); // Set initial loading state for wave info
     }
-
     if (!success) {
         console.error("UI: Failed to initialize some critical Game UI elements.");
     }
@@ -133,9 +114,7 @@ function createItemSlot(itemType, container, category) {
     slotDiv.classList.add('item-box');
     slotDiv.dataset.item = itemType;
     slotDiv.classList.add('disabled'); // Start disabled
-
     const itemConfig = Config.ITEM_CONFIG[itemType];
-
     if (category === 'material') {
         slotDiv.style.backgroundColor = itemConfig?.color || '#444';
         slotDiv.title = `${itemType.toUpperCase()} (0)`;
@@ -151,22 +130,18 @@ function createItemSlot(itemType, container, category) {
         slotDiv.title = `${itemType.toUpperCase()} (Not Found)`;
         slotDiv.style.backgroundColor = itemConfig?.color ? `${itemConfig.color}40` : '#111'; // Slightly transparent initially? Or make it disabled style
     }
-
     slotDiv.addEventListener('click', () => {
         handleItemSlotClick(itemType, category);
     });
-
     container.appendChild(slotDiv);
     itemSlotDivs[itemType] = slotDiv;
 }
-
 // Helper to handle clicks on item/weapon slots
 function handleItemSlotClick(itemType, category) {
      if (!playerRef) {
         console.error("UI Item Click: playerRef is null!");
         return;
     }
-
     // Allow selecting unarmed slot even if playerRef is null? (If unarmed button added)
     // Or maybe just ignore clicks if playerRef is null (game not running)
      if (playerRef.getCurrentlySelectedItem() === itemType) {
@@ -175,9 +150,7 @@ function handleItemSlotClick(itemType, category) {
              playerRef.equipItem(Config.WEAPON_TYPE_UNARMED);
          }
          return; // Click handled (switched or already selected)
-     }
-
-
+    }
     let canSelect = false;
     if (category === 'material') {
         canSelect = (playerRef.inventory[itemType] || 0) > 0;
@@ -186,7 +159,6 @@ function handleItemSlotClick(itemType, category) {
     }
     // Add logic for unarmed if you have a dedicated unarmed slot
     // else if (itemType === Config.WEAPON_TYPE_UNARMED) { canSelect = true; }
-
     if (canSelect) {
         playerRef.equipItem(itemType); // Player equips it, UI will update next frame via main loop
     } else {
@@ -217,7 +189,6 @@ function setupActionButtons() {
         const button = document.getElementById(buttonId); // Get button by ID
         const action = buttonActionMap[buttonId]; // Get the corresponding action name
         if (!button) return;
-
         // Special handling for pause (single click)
         if (action === 'pause') {
             button.addEventListener('click', (e) => {
@@ -276,8 +247,6 @@ function setupActionButtons() {
         button.addEventListener('touchcancel', handleRelease, { passive: false }); // Handle touches interrupted by OS
     });
 }
-
-
 // Toggles the visibility of the action buttons area
 function toggleActionControls() {
     if (bottomSidebarEl && actionButtonsAreaEl && toggleControlsButtonEl) {
@@ -288,8 +257,6 @@ function toggleActionControls() {
         toggleControlsButtonEl.title = isHidden ? 'Show Controls' : 'Hide Controls';
     }
 }
-
-
 // Sets the reference to the player object
 export function setPlayerReference(playerObject) {
     playerRef = playerObject;
@@ -317,7 +284,6 @@ export function setPlayerReference(playerObject) {
         }
     }
 }
-
 // Briefly illuminates a specific action button
 export function illuminateButton(actionName) {
     // Map internal action name to button ID
@@ -343,7 +309,6 @@ export function illuminateButton(actionName) {
 }
 
 // --- Update Functions ---
-
 // Updates the wave information display
 // Receives full waveInfo object from waveManager.getWaveInfo()
 export function updateWaveInfo(waveInfo = {}) {
@@ -351,7 +316,6 @@ export function updateWaveInfo(waveInfo = {}) {
         console.error("UI UpdateWaveInfo: Missing essential elements.");
         return;
     }
-
     // Default/loading state if no info is provided yet
     if (!waveInfo.state) {
          waveStatusEl.textContent = 'Loading...';
@@ -359,12 +323,10 @@ export function updateWaveInfo(waveInfo = {}) {
          enemyCountEl.textContent = '';
          return;
     }
-
     // Always show the wave number label
     waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber || '-'}`;
     waveTimerEl.textContent = ''; // Default empty
     enemyCountEl.textContent = ''; // Default empty
-
     // Update based on state
     switch (waveInfo.state) {
         case 'PRE_WAVE':
@@ -380,15 +342,12 @@ export function updateWaveInfo(waveInfo = {}) {
             // Show living enemy count below progress text if needed? Or integrate into progressText
              const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get live count directly
              if (livingEnemies > 0) {
-                 // Append living count, maybe on a new line? Or just use the progress text
-                 // Let's append to progressText for simplicity for now.
+                 // Append living count, maybe on a new line? append to progressText for simplicity for now
                  enemyCountEl.textContent += livingEnemies > 0 ? ` (Alive: ${livingEnemies})` : '';
              } else if (!waveInfo.progressText || livingEnemies === 0) {
                  // If no specific spawning progress text, just show living count
                  enemyCountEl.textContent = `Enemies Alive: ${livingEnemies}`;
              }
-
-
             break;
         case 'INTERMISSION':
             waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber} Complete`; // Show previous wave number
@@ -397,12 +356,10 @@ export function updateWaveInfo(waveInfo = {}) {
         case 'GAME_OVER':
             waveStatusEl.textContent = 'GAME OVER';
             // Timer text can show waves survived, handled in main.js overlay
-            // enemyCountEl can be empty
             break;
         case 'VICTORY':
             waveStatusEl.textContent = 'VICTORY!';
             waveTimerEl.textContent = `Cleared All ${waveInfo.mainWaveNumber} Waves!`;
-            // enemyCountEl can be empty
             break;
         default:
              // Handle other potential states or unknown states
@@ -412,25 +369,20 @@ export function updateWaveInfo(waveInfo = {}) {
              break;
     }
 }
-
 // Updates player health bar and inventory/weapon slots
-// Receives info directly, decouples from playerRef needing to be set first for this call
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
     if (!healthBarFillEl || !healthTextEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
          console.error("UI UpdatePlayerInfo: Missing essential elements.");
          return;
     }
-
     // Update Health Bar (Top Sidebar)
     const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
     const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
     healthBarFillEl.style.width = `${healthPercent}%`;
     healthTextEl.textContent = `${Math.round(clampedHealth)}/${maxHealth}`;
-
     // Update Item/Weapon Selection Boxes (Bottom Sidebar)
     // Need the currently selected item type. Get it from playerRef if available.
     const selectedItem = playerRef ? playerRef.getCurrentlySelectedItem() : null;
-
     // Update Material Boxes
     for (const materialType of Config.INVENTORY_MATERIALS) {
         const slotDiv = itemSlotDivs[materialType];
@@ -444,7 +396,6 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         slotDiv.classList.toggle('active', playerRef && selectedItem === materialType);
         slotDiv.title = `${materialType.toUpperCase()} (${count})`;
     }
-
     // Update Weapon Boxes
     const playerPossession = {
         [Config.WEAPON_TYPE_SWORD]: hasSword,
@@ -457,8 +408,7 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         const possessed = playerPossession[weaponType];
         const isDisabled = !possessed;
         slotDiv.classList.toggle('disabled', isDisabled);
-         // Only mark as active if the playerRef exists and has this item selected AND possesses it
-        slotDiv.classList.toggle('active', playerRef && possessed && selectedItem === weaponType);
+        slotDiv.classList.toggle('active', playerRef && possessed && selectedItem === weaponType); // Only mark as active if the playerRef exists and has this item selected AND possesses it
         slotDiv.title = possessed ? weaponType.toUpperCase() : `${weaponType.toUpperCase()} (Not Found)`;
     }
 }
