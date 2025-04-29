@@ -47,7 +47,8 @@ let resumeButton = null;
 let restartButtonGameOver = null; // Renamed for clarity
 let restartButtonVictory = null; // <-- NEW REFERENCE
 // Other Overlay Elements
-let gameOverStatsP = null; // Reference for game over stats text (reused for victory)
+let gameOverStatsTextP = null; // <-- NEW REFERENCE (suffix added)
+let victoryStatsTextP = null; // <-- NEW REFERENCE
 
 // --- Helper function to get world dimensions in pixels ---
 // (These correctly return the internal canvas size, which matches the world size)
@@ -155,25 +156,22 @@ function showOverlay(stateToShow) {
             break;
         case GameState.GAME_OVER:
             gameOverlay.classList.add('show-gameover');
-            // Update game over stats text if element exists
-            if (gameOverStatsP) {
+            // Update game over stats text if element exists (using NEW ID)
+            if (gameOverStatsTextP) {
                  const finalWave = WaveManager.getCurrentWaveNumber(); // Get wave number reached
-                 gameOverStatsP.textContent = `You reached Wave ${finalWave}.`;
+                 gameOverStatsTextP.textContent = `You reached Wave ${finalWave}.`;
             } else {
-                console.warn("ShowOverlay: gameOverStatsP element not found for GAME_OVER state.");
+                console.warn("ShowOverlay: gameover-stats-text element not found for GAME_OVER state.");
             }
             AudioManager.stopMusic(); // Stop music on game over (WaveManager also does this, but redundancy is ok)
             break;
         case GameState.VICTORY:
             gameOverlay.classList.add('show-victory');
-            // Add victory text/stats here if desired
-            // Using gameOverStatsP for simplicity based on index.html structure
-            if (gameOverStatsP) {
-                 // Assuming index.html has <p id="gameover-stats"> inside the victory content
-                 // If you used a different ID like <p id="victory-stats">, get that ref here.
-                 gameOverStatsP.textContent = `You cleared all ${Config.WAVES.length} waves!`;
+            // Update victory stats text using NEW ID
+            if (victoryStatsTextP) {
+                 victoryStatsTextP.textContent = `You cleared all ${Config.WAVES.length} waves!`;
             } else {
-                 console.warn("ShowOverlay: gameOverStatsP element not found for VICTORY state.");
+                 console.warn("ShowOverlay: victory-stats-text element not found for VICTORY state.");
             }
             AudioManager.stopMusic(); // Stop music on victory (WaveManager also does this)
             break;
@@ -551,21 +549,22 @@ function init() {
         startGameButton = document.getElementById('start-game-button');
         resumeButton = document.getElementById('resume-button');
         restartButtonGameOver = document.getElementById('restart-button-overlay'); // Original Game Over button
-        restartButtonVictory = document.getElementById('restart-button-overlay-victory'); // <-- NEW Victory button
+        restartButtonVictory = document.getElementById('restart-button-overlay-victory'); // <-- NEW REFERENCE
 
         // Get Overlay Stats Reference (used by both Game Over and Victory, check index.html structure)
-        // If using a different ID like #victory-stats, get that reference here as well.
-        gameOverStatsP = document.getElementById('gameover-stats');
+        // Using NEW IDs now
+        gameOverStatsTextP = document.getElementById('gameover-stats-text'); // <-- Use NEW ID
+        victoryStatsTextP = document.getElementById('victory-stats-text'); // <-- Use NEW ID
 
 
         // --- Check if all essential elements were found ---
         const essentialElements = [
             appContainer, gameOverlay, startGameButton, resumeButton,
-            restartButtonGameOver, restartButtonVictory, gameOverStatsP // <-- Include NEW button in check
+            restartButtonGameOver, restartButtonVictory, gameOverStatsTextP, victoryStatsTextP // <-- Include NEW IDs in check
         ];
         if (essentialElements.some(el => !el)) {
              // Find out which specific elements are missing for better debugging
-             const missing = essentialElements.map((el, i) => el ? null : ['appContainer', 'gameOverlay', 'startGameButton', 'resumeButton', 'restartButtonGameOver', 'restartButtonVictory', 'gameOverStatsP'][i]).filter(id => id !== null);
+             const missing = essentialElements.map((el, i) => el ? null : ['appContainer', 'gameOverlay', 'startGameButton', 'resumeButton', 'restartButtonGameOver', 'restartButtonVictory', 'gameover-stats-text', 'victory-stats-text'][i]).filter(id => id !== null);
              throw new Error(`Essential overlay elements not found: ${missing.join(', ')}! Check index.html.`);
         }
 

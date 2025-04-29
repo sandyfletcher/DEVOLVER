@@ -1,6 +1,7 @@
-@font-face { font-family: 'Goldman'; src: url('assets/fonts/Fredericka.ttf') format('truetype'); font-display: block}
-@font-face { font-family: 'Goldman'; src: url('assets/fonts/Nosifer.ttf') format('truetype'); font-display: block}
-@font-face { font-family: 'Goldman'; src: url('assets/fonts/RubikIso.ttf') format('truetype'); font-display: block}
+@font-face { font-family: 'Fredericka'; src: url('assets/fonts/Fredericka.ttf') format('truetype'); font-display: block}
+@font-face { font-family: 'Nosifer'; src: url('assets/fonts/Nosifer.ttf') format('truetype'); font-display: block}
+@font-face { font-family: 'RubikIso'; src: url('assets/fonts/RubikIso.ttf') format('truetype'); font-display: block}
+
 
 /* Basic Reset & Body Styling */
 html, body {
@@ -10,7 +11,7 @@ html, body {
     width: 100%;
     overflow: hidden;
     background-color: black;
-    font-family: sans-serif;
+    font-family: sans-serif; /* Default fallback font */
     color: white;
 }
 body {
@@ -72,9 +73,16 @@ body {
 #game-overlay.show-victory #overlay-victory-content { /* NEW RULE FOR VICTORY */
     display: flex;
 }
-#game-overlay h1 { font-size: 3.5em; margin-bottom: 1.5rem; text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4); }
+/* Apply specific font to the main title */
+#game-overlay h1 {
+    font-family: 'RubikIso', sans-serif; /* Use the desired font name */
+    font-size: 3.5em;
+    margin-bottom: 1.5rem;
+    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
+}
 #game-overlay h2 { font-size: 2.5em; margin-bottom: 1.5rem; }
-#game-overlay p { font-size: 1.2em; margin-bottom: 1.5rem; }
+#game-overlay p { font-size: 1.2em; margin-bottom: 1.5rem; } /* Styles apply to both gameover-stats-text and victory-stats-text */
+
 #game-overlay button { padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background-color: #eee; color: #333; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s ease; }
 #game-overlay button:hover { background-color: #fff; }
 #game-overlay button:active { transform: scale(0.97); }

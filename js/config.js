@@ -202,7 +202,7 @@ export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read f
         applyGravity: true,               // Does gravity affect this enemy?
         gravityFactor: 1.0,               // Multiplier for gravity (1.0 = normal)
         canJump: true,                   // Can this enemy initiate a jump?
-        jumpVelocity: 0.4,                  // Initial jump speed if canJump is true
+        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.5, // <-- UPDATED: Meaningful jump strength relative to player
         canSwim: false, // Default land creature
         canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR, // Use default separation
@@ -280,10 +280,10 @@ export const SHOVEL_HEIGHT = Math.floor(1.5 * BLOCK_HEIGHT);  // ~6px
 export const SHOVEL_COLOR = 'rgb(160, 160, 160)'; // Grey color
 export const PLAYER_SHOVEL_ATTACK_DAMAGE = 5; // Very low damage vs enemies
 export const PLAYER_SHOVEL_BLOCK_DAMAGE = 25; // High damage vs blocks
-export const PLAYER_SHOVEL_ATTACK_REACH_X = Math.floor(1 * BLOCK_WIDTH);  // Short reach forward ~2px
-export const PLAYER_SHOVEL_ATTACK_REACH_Y = Math.floor(1.5 * BLOCK_HEIGHT); // Slight downward offset ~3px
+export const PLAYER_SHOVEL_ATTACK_REACH_X = Math.floor(1 * BLOCK_WIDTH);  // Short reach forward ~4px from player center
+export const PLAYER_SHOVEL_ATTACK_REACH_Y = Math.floor(1.5 * BLOCK_HEIGHT); // Slight downward offset ~6px from player center
 export const PLAYER_SHOVEL_ATTACK_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);  // Moderate width hitbox ~6px
-export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(2.0 * BLOCK_HEIGHT); // Short height hitbox ~4px
+export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(2.0 * BLOCK_HEIGHT); // Short height hitbox ~8px
 export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3; // Clunky duration
 export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.4; // Clunky cooldown
 export const PLAYER_SHOVEL_ATTACK_COLOR = 'rgba(180, 180, 180, 0.5)'; // Greyish color
@@ -293,7 +293,7 @@ export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT);     // Approx 4px
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
 export const PLAYER_SWORD_ATTACK_DAMAGE = 10; // Good baseline damage
 export const PLAYER_SWORD_BLOCK_DAMAGE = 0; // NEW: Swords don't break blocks
-export const PLAYER_SWORD_ATTACK_REACH_X = Math.floor(2 * BLOCK_WIDTH); // Moderate reach ~7px
+export const PLAYER_SWORD_ATTACK_REACH_X = Math.floor(2.5 * BLOCK_WIDTH); // Moderate reach ~10px from player center
 export const PLAYER_SWORD_ATTACK_REACH_Y = 0; // Vertical offset from player center
 export const PLAYER_SWORD_ATTACK_WIDTH = Math.floor(2.0 * BLOCK_WIDTH); // Wide hitbox ~8px (arc)
 export const PLAYER_SWORD_ATTACK_HEIGHT = Math.floor(PLAYER_HEIGHT * 1.1); // Tall hitbox ~11px (arc)
@@ -306,8 +306,8 @@ export const SPEAR_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT);  // Thinner item ~3
 export const SPEAR_COLOR = 'rgb(210, 180, 140)'; // Wood-like color
 export const PLAYER_SPEAR_ATTACK_DAMAGE = 8; // Slightly less damage than sword
 export const PLAYER_SPEAR_BLOCK_DAMAGE = 0; // Spears don't break blocks
-export const PLAYER_SPEAR_ATTACK_REACH_X = Math.floor(3.5 * BLOCK_WIDTH); // Very Long reach ~14px
-export const PLAYER_SPEAR_ATTACK_REACH_Y = Math.floor(1 * BLOCK_HEIGHT);
+export const PLAYER_SPEAR_ATTACK_REACH_X = Math.floor(3.5 * BLOCK_WIDTH); // Very Long reach ~14px from player center
+export const PLAYER_SPEAR_ATTACK_REACH_Y = Math.floor(0.5 * BLOCK_HEIGHT); // Slight vertical offset
 export const PLAYER_SPEAR_ATTACK_WIDTH = Math.floor(0.75 * BLOCK_WIDTH); // Narrow hitbox ~3px
 export const PLAYER_SPEAR_ATTACK_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT); // Narrow hitbox ~3px
 export const PLAYER_SPEAR_ATTACK_DURATION = 0.3; // Moderate duration (thrust lingers)
