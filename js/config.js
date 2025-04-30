@@ -371,16 +371,14 @@ export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read f
 // =============================================================================
 
 export const WAVE_START_DELAY = 10.0; // Seconds before the very first wave starts
-// REMOVED: export const WAVE_INTERMISSION_DURATION = 60.0; // Seconds between *main* waves (1 minute)
-// REMOVED: export const BUILDPHASE_DURATION = 50.0; // Seconds for player building/exploration
 export const WARPPHASE_DURATION = 5.0; // Fixed duration for the warp/cleanup phase
 
 export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in group
 export const WAVES = [
     { // === Wave 1 ===
         mainWaveNumber: 1, // for UI references
-        duration: 117, // total wave duration in seconds (for music sync)
-        intermissionDuration: 60.0, // TOTAL duration of the intermission *after* this wave
+        duration: 117, // total wave duration in seconds
+        intermissionDuration: 15.0, // total duration of the intermission *after* this wave
         audioTrack: 'assets/audio/music/Wave1-350.mp3',
         subWaves: [
             { // --- 1.1 ---
@@ -407,7 +405,7 @@ export const WAVES = [
     { // === Wave 2 ===
         mainWaveNumber: 2,
         duration: 137,
-        intermissionDuration: 75.0, // Longer intermission after wave 2
+        intermissionDuration: 20.0,
         audioTrack: 'assets/audio/music/Wave2-300.mp3',
         subWaves: [
             { // --- 2.1 ---
@@ -434,7 +432,7 @@ export const WAVES = [
     { // === Wave 3 ===
         mainWaveNumber: 3,
         duration: 90,
-        intermissionDuration: 45.0, // Shorter intermission after wave 3
+        intermissionDuration: 25.0, // Shorter intermission after wave 3
         audioTrack: 'assets/audio/music/wave3.mp3', // <-- need to add music track here
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
@@ -454,10 +452,8 @@ export const EPOCH_MAP = {
     3: 90,  // Wave 3 corresponds to 90 Million Years Ago
     // Add mappings for subsequent waves as needed
 };
-
 // Duration the epoch text is displayed for each wave start (in seconds)
 export const EPOCH_DISPLAY_DURATION = 4.0;
-
 
 // =============================================================================
 // --- Projectile Parameters (Future Use) ---
