@@ -84,6 +84,8 @@ export const AUDIO_TRACKS = {
     // player_water_stroke: 'assets/audio/sfx/player_water_stroke.wav', // For water "jump"
     // player_attack_swing: 'assets/audio/sfx/attack_swing.wav', // Generic attack sound
     // player_attack_hit: 'assets/audio/sfx/attack_hit.wav', // Sound when player attack hits something
+    // portal_hit: 'assets/audio/sfx/portal_hit.wav', // TODO: Add sfx
+    // portal_destroyed: 'assets/audio/sfx/portal_destroyed.wav', // TODO: Add sfx
 };
 
 // =============================================================================
@@ -156,25 +158,32 @@ export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)'; // outline
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // 1 pixel thickness
 
 // =============================================================================
+// --- Portal Parameters ---
+// =============================================================================
+
+export const PORTAL_COLOR = 'rgb(100, 100, 255)'; // Blueish color
+export const PORTAL_WIDTH = Math.floor(8 * BASE_BLOCK_PIXEL_SIZE); // e.g., 32 pixels
+export const PORTAL_HEIGHT = Math.floor(10 * BASE_BLOCK_PIXEL_SIZE); // e.g., 40 pixels
+export const PORTAL_INITIAL_HEALTH = 500;
+export const PORTAL_SAFETY_RADIUS = Math.floor(30 * BASE_BLOCK_PIXEL_SIZE); // e.g., 120 pixels radius
+export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // How many blocks above mean ground level to spawn the top of the portal
+
+// =============================================================================
 // --- Player Parameters ---
 // =============================================================================
 
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 export const PLAYER_WIDTH = Math.max(5, Math.floor(2.5 * BLOCK_WIDTH)); // Approx 10px (adjust if block size changes)
 export const PLAYER_HEIGHT = Math.max(8, Math.floor(5 * BLOCK_HEIGHT)); // Approx 20px (adjust if block size changes)
-// --- Spawn Position  ---
-export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
+export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2; // Spawn Position
 export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // slightly above mean ground
-// --- Health  ---
-export const PLAYER_INITIAL_HEALTH = 100;
+export const PLAYER_INITIAL_HEALTH = 100; // --- Health  ---
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds
-// --- Physics ---
-export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second
+export const PLAYER_MOVE_ACCELERATION = 800; // --- Physics --- // Pixels per second per second
 export const PLAYER_MAX_SPEED_X = 120; // Pixels per second
 export const PLAYER_FRICTION_BASE = 0.04; // Base friction multiplier (Lower = stronger friction)
 export const PLAYER_JUMP_VELOCITY = 200; // Pixels per second (Initial upward velocity)
-// ---  Interaction Range  ---
 export const PLAYER_INTERACTION_RANGE = 100; // Player range for block interaction (digging/placing)
 export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE;
 

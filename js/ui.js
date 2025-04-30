@@ -18,20 +18,17 @@ let toggleControlsButtonEl;
 let actionButtons = {};
 // Overlay
 let gameOverlay = null;
-// NEW: Epoch Overlay
 let epochOverlayEl = null;
-
-
+let portalHealthDisplayEl = null; // New variable for clarity, points to enemyCountEl
 // --- Internal State ---
 let playerRef = null;
+let portalRef = null;
 const itemSlotDivs = {};
 let buttonIlluminationTimers = {};
 const ILLUMINATION_DURATION = 150; // ms
 const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
-
 // Add a flag to track if UI init was successful
 let isUIReady = false;
-
 
 // --- Initialization ---
 export function initOverlay() {
@@ -52,29 +49,33 @@ export function initGameUI() {
     healthBarFillEl = document.getElementById('health-bar-fill');
     healthTextEl = document.getElementById('health-text');
     healthLabelEl = document.getElementById('health-label');
-    waveStatusEl = document.getElementById('wave-status');
-    waveTimerEl = document.getElementById('wave-timer');
-    enemyCountEl = document.getElementById('enemy-count'); // Keep for enemy count display
-    // --- Find Bottom Sidebar Elements ---
+    waveStatusEl = document.getElementById('wave-status'); // Wave # / Status
+    waveTimerEl = document.getElementById('wave-timer'); // Timer display
+    // enemyCountEl = document.getElementById('enemy-count'); // Existing element, repurposing
+    portalHealthDisplayEl = document.getElementById('enemy-count'); // *** Repurpose enemy-count for Portal Health ***
+
+    // --- Find Bottom Sidebar Elements (Keep) ---
     bottomSidebarEl = document.getElementById('bottom-sidebar');
     itemSelectionAreaEl = document.getElementById('item-selection-area');
     inventoryBoxesContainerEl = document.getElementById('inventory-boxes-container');
     weaponSlotsContainerEl = document.getElementById('weapon-slots-container');
     actionButtonsAreaEl = document.getElementById('action-buttons-area');
     toggleControlsButtonEl = document.getElementById('toggle-controls-button');
-    // NEW: Find Epoch Overlay Element
+    // NEW: Find Epoch Overlay Element (Keep)
     epochOverlayEl = document.getElementById('epoch-overlay');
 
-    // Find Action Buttons
+    // Find Action Buttons (Keep)
     actionButtons.left = document.getElementById('btn-move-left');
     actionButtons.right = document.getElementById('btn-move-right');
     actionButtons.pause = document.getElementById('btn-pause');
     actionButtons.jump = document.getElementById('btn-jump');
     actionButtons.attack = document.getElementById('btn-attack');
+
     // --- Verification ---
+    // Update requiredElements list to use portalHealthDisplayEl
     const requiredElements = [
         playerColumnEl, portalColumnEl, healthBarContainerEl, healthBarFillEl, healthTextEl, healthLabelEl,
-        waveStatusEl, waveTimerEl, enemyCountEl, bottomSidebarEl, itemSelectionAreaEl,
+        waveStatusEl, waveTimerEl, portalHealthDisplayEl, bottomSidebarEl, itemSelectionAreaEl, // Use portalHealthDisplayEl
         inventoryBoxesContainerEl, weaponSlotsContainerEl, actionButtonsAreaEl, toggleControlsButtonEl,
         actionButtons.left, actionButtons.right, actionButtons.pause, actionButtons.jump, actionButtons.attack,
         epochOverlayEl // NEW: Add epoch overlay element to the required list
@@ -87,13 +88,13 @@ export function initGameUI() {
         });
         success = false;
     }
-    // --- Clear previous dynamic content and listeners ---
+    // --- Clear previous dynamic content and listeners (Keep) ---
     if (inventoryBoxesContainerEl) inventoryBoxesContainerEl.innerHTML = 'Loading...';
     if (weaponSlotsContainerEl) weaponSlotsContainerEl.innerHTML = '';
     for (const key in itemSlotDivs) delete itemSlotDivs[key];
     for (const key in buttonIlluminationTimers) clearTimeout(buttonIlluminationTimers[key]);
     buttonIlluminationTimers = {}; // Reset timers
-    // --- Create Item/Weapon Selection Boxes Dynamically ---
+    // --- Create Item/Weapon Selection Boxes Dynamically (Keep) ---
     if (inventoryBoxesContainerEl && weaponSlotsContainerEl) {
         inventoryBoxesContainerEl.innerHTML = ''; // Clear loading text
         weaponSlotsContainerEl.innerHTML = ''; // Clear loading text
@@ -108,13 +109,14 @@ export function initGameUI() {
     } else {
         success = false;
     }
-    // --- Add Event Listeners and Set Initial State ---
+    // --- Add Event Listeners and Set Initial State (Keep setupActionButtons, toggleControlsButtonEl listener) ---
     if (success) {
         setupActionButtons();
         toggleControlsButtonEl.addEventListener('click', toggleActionControls);
         // Set initial state for health/inventory on init
         updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // Set initial empty state
-        updateWaveInfo(); // Set initial loading state for wave info
+        // Use the new update function for portal/wave info
+        updatePortalAndWaveInfo(); // Set initial loading state
         isUIReady = true; // Mark UI as ready if all steps succeeded
         console.log("UI: Game UI initialized successfully.");
     } else {
@@ -300,6 +302,9 @@ export function setPlayerReference(playerObject) {
         }
     }
 }
+export function setPortalReference(portalObject) {
+    portalRef = portalObject;
+}
 // Briefly illuminates a specific action button
 export function illuminateButton(actionName) {
     // Map internal action name to button ID
@@ -325,25 +330,46 @@ export function illuminateButton(actionName) {
 }
 
 // --- Update Functions ---
-// Updates the wave information display
-// Receives full waveInfo object from waveManager.getWaveInfo()
-export function updateWaveInfo(waveInfo = {}) {
-    if (!waveStatusEl || !waveTimerEl || !enemyCountEl) {
-        console.error("UI UpdateWaveInfo: Missing essential elements.");
-        return;
+// REPLACED: Updates the portal and wave information display
+// Receives full waveInfo object from waveManager.getWaveInfo() and portal health
+export function updatePortalAndWaveInfo(waveInfo = {}, portalHealth = null, portalMaxHealth = null) {
+    // Update required elements list to use portalHealthDisplayEl
+     if (!waveStatusEl || !waveTimerEl || !portalHealthDisplayEl || !portalColumnEl) { // Add portalColumnEl check for robustness
+         console.error("UI UpdatePortalAndWaveInfo: Missing essential elements.");
+         return;
     }
     // Default/loading state if no info is provided yet
     if (!waveInfo.state) {
          waveStatusEl.textContent = 'Loading...';
          waveTimerEl.textContent = '';
-         enemyCountEl.textContent = '';
+         portalHealthDisplayEl.textContent = '';
+         portalColumnEl.querySelector('h2').textContent = 'PORTAL READOUT'; // Reset title
          return;
     }
     // Always show the wave number label
     waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber || '-'}`;
     waveTimerEl.textContent = ''; // Default empty
-    enemyCountEl.textContent = ''; // Default empty
-    // Update based on state
+    portalHealthDisplayEl.textContent = ''; // Default empty
+
+    // Update Portal Health Display (Using the element previously for enemy count)
+    portalColumnEl.querySelector('h2').textContent = 'PORTAL HEALTH'; // Change title
+    if (typeof portalHealth === 'number' && typeof portalMaxHealth === 'number') {
+        const displayHealth = Math.max(0, Math.min(Math.round(portalHealth), portalMaxHealth));
+        portalHealthDisplayEl.textContent = `${displayHealth}/${portalMaxHealth}`;
+         // Optional: Change color based on health percentage
+        const healthPercent = (portalMaxHealth > 0) ? (portalHealth / portalMaxHealth) : 0;
+        if (portalHealthDisplayEl.style) {
+             if (healthPercent > 0.5) portalHealthDisplayEl.style.color = '#aaffaa'; // Greenish
+             else if (healthPercent > 0.2) portalHealthDisplayEl.style.color = 'yellow'; // Yellowish
+             else portalHealthDisplayEl.style.color = 'red'; // Reddish
+        }
+    } else {
+         portalHealthDisplayEl.textContent = '---'; // Show placeholder if health data is bad
+         if (portalHealthDisplayEl.style) portalHealthDisplayEl.style.color = '#ccc';
+    }
+
+
+    // Update Wave Status based on state
     switch (waveInfo.state) {
         case 'PRE_WAVE':
             waveStatusEl.textContent = `Next Wave: ${waveInfo.mainWaveNumber || 1}`;
@@ -352,18 +378,15 @@ export function updateWaveInfo(waveInfo = {}) {
         case 'WAVE_COUNTDOWN':
             waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber}`;
             waveTimerEl.textContent = `${waveInfo.timerLabel} ${Math.max(0, waveInfo.timer).toFixed(1)}s`; // Show countdown
+             // Show spawning progress or 'spawning complete' in waveStatusEl (re-use)
+             // Or perhaps add a new line/element for this? Let's add below timer for now.
             if (waveInfo.progressText) {
-                 enemyCountEl.textContent = waveInfo.progressText; // Show spawning progress or 'spawning complete'
+                 // This text might get long, keep an eye on layout
+                // waveTimerEl.textContent += ` | ${waveInfo.progressText}`; // Append to timer line?
+                // Or use waveStatusEl for this text below the Wave #:
+                waveStatusEl.textContent += ` - ${waveInfo.progressText}`;
             }
-            // Show living enemy count below progress text if needed? Or integrate into progressText
-             const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get live count directly
-             if (livingEnemies > 0) {
-                 // Append living count, maybe on a new line? append to progressText for simplicity for now
-                 enemyCountEl.textContent += livingEnemies > 0 ? ` (Alive: ${livingEnemies})` : '';
-             } else if (!waveInfo.progressText || livingEnemies === 0) {
-                 // If no specific spawning progress text, just show living count
-                 enemyCountEl.textContent = `Enemies Alive: ${livingEnemies}`;
-             }
+            // Enemy count is implicitly handled by the "Alive: X" part of progressText if available
             break;
         case 'INTERMISSION':
             waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber} Complete`; // Show previous wave number
@@ -378,13 +401,22 @@ export function updateWaveInfo(waveInfo = {}) {
             waveTimerEl.textContent = `Cleared All ${waveInfo.mainWaveNumber} Waves!`;
             break;
         default:
-             // Handle other potential states or unknown states
              waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber || '-'}`;
              waveTimerEl.textContent = waveInfo.timerLabel || '';
-             enemyCountEl.textContent = waveInfo.progressText || '';
+             portalHealthDisplayEl.textContent = '---'; // Placeholder if state is odd
              break;
     }
+     // Restore default color if state doesn't set a specific one
+     if (waveInfo.state !== 'WAVE_COUNTDOWN' && waveInfo.state !== 'INTERMISSION') {
+         if (waveStatusEl.style) waveStatusEl.style.color = '#eee'; // Default wave status color
+         if (waveTimerEl.style) waveTimerEl.style.color = '#ccc'; // Default timer color
+     } else {
+          if (waveStatusEl.style) waveStatusEl.style.color = '#eee'; // Keep colors normal during waves/intermission
+          if (waveTimerEl.style) waveTimerEl.style.color = '#ccc';
+     }
+
 }
+
 // Updates player health bar and inventory/weapon slots
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
     if (!healthBarFillEl || !healthTextEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
@@ -429,39 +461,32 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
     }
 }
 
-// NEW: Function to display the epoch text overlay
+// Function to display the epoch text overlay
 // Clears any pending hide timer and sets a new one
 export function showEpochText(epochYear) {
     if (!epochOverlayEl || typeof epochYear !== 'number' || isNaN(epochYear)) {
         console.warn("UI showEpochText: Element not found or invalid year.", epochOverlayEl, epochYear);
         return;
     }
-
     // Build the text string
     epochOverlayEl.textContent = `${epochYear} Million Years Ago`;
-
     // Clear any previous hide timer to prevent overlaps if waves transition quickly
     if (epochOverlayEl._hideTimer) {
         clearTimeout(epochOverlayEl._hideTimer);
     }
-
     // Show the element by making it visible and fading in
     epochOverlayEl.style.visibility = 'visible';
     epochOverlayEl.style.opacity = '1';
-
     // Set a timer to start the fade-out after the display duration
     epochOverlayEl._hideTimer = setTimeout(() => {
         epochOverlayEl.style.opacity = '0'; // Start fade-out
-
         // Set another timer to hide the element completely after the fade-out transition finishes
         // The transition duration is 0.5s in CSS
         epochOverlayEl._hideTimer = setTimeout(() => {
              epochOverlayEl.style.visibility = 'hidden';
         }, 500); // Match CSS transition duration
-
     }, Config.EPOCH_DISPLAY_DURATION * 1000); // Convert duration from seconds to milliseconds
 }
-
 
 // Add a getter for the initialization status
 export function isInitialized() {

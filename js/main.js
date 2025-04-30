@@ -12,12 +12,14 @@ import * as EnemyManager from './enemyManager.js';
 import * as WaveManager from './waveManager.js';
 import * as GridCollision from './utils/gridCollision.js';
 import * as AudioManager from './audioManager.js';
+import { Portal } from './portal.js';
 
 // =============================================================================
 // --- Global Game Variables ---
 // =============================================================================
 
 let player = null;
+let portal = null; // Portal instance
 let gameLoopId = null; // store requestAnimationFrame ID for pausing/stopping
 let lastTime = 0;
 let gameStartTime = 0; // track when the current game started for playtime/stats
@@ -49,12 +51,8 @@ let currentGameState = GameState.PRE_GAME;
 // =============================================================================
 
 // --- Return the internal canvas size in pixels, which matches the world dimensions ---
-function getWorldPixelWidth() {
-    return Config.CANVAS_WIDTH;
-}
-function getWorldPixelHeight() {
-    return Config.CANVAS_HEIGHT;
-}
+function getWorldPixelWidth() { return Config.CANVAS_WIDTH; }
+function getWorldPixelHeight() { return Config.GRID_ROWS * Config.BLOCK_HEIGHT; } // Use GRID_ROWS * BLOCK_HEIGHT for world height
 
 /* --- Console log the world grid (currently unused but kept for future debugging) ---
 function logWorldGrid() {
@@ -120,7 +118,6 @@ function handleWaveStart(waveNumber) {
         // UI.showEpochText(`Wave ${waveNumber} Starting`);
     }
 }
-
 
 // =============================================================================
 // --- Overlay Management ---
@@ -218,57 +215,50 @@ function startGame() {
         return;
     }
     console.log(">>> Starting Game <<<");
-// 1. Initialize Game UI Elements (find elements, create dynamic slots, add listeners)
-    // UI initialization moved to init(), ensure it succeeded before continuing
-    if (!UI.isInitialized()) { // Check if UI.initGameUI() was successful during init()
+    if (!UI.isInitialized()) { // Initialize UI Elements (find, create dynamic slots, add listeners)
          console.error("FATAL: UI was not initialized correctly. Aborting game start.");
-         // Stay in PRE_GAME state and show overlay (should already be showing due to init failure)
          return;
     }
-// 2. Reset player reference in UI before creating new player
-    UI.setPlayerReference(null);
-// 3. Initialize Game Logic Systems
-    World.init();
+    UI.setPlayerReference(null); // Reset player reference
+    UI.setPortalReference(null); // portal too
+    World.init(); // Initialize Game Logic Systems
     ItemManager.init();
     EnemyManager.init();
-    // NEW: Use reset and pass the wave start callback
     WaveManager.reset(handleWaveStart);
-// 4. Create Player Instance
-    try {
-        player = null; // Ensure old reference is cleared
+    try { // Create Player Instance
         player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
-// 5. Set Player Reference in UI after player is created so UI can access player data for updates and button clicks
-        UI.setPlayerReference(player);
+        const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2; // Position the portal centered horizontally, slightly above the mean ground level
+        const portalSpawnY = (Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT) - Config.PORTAL_HEIGHT - (Config.PORTAL_SPAWN_Y_OFFSET_BLOCKS * Config.BLOCK_HEIGHT);
+        portal = new Portal(portalSpawnX, portalSpawnY); // Create portal instance
+        UI.setPlayerReference(player); // Set Player and Portal References in UI
+        UI.setPortalReference(portal); // Set portal reference
     } catch (error) {
-        console.error("FATAL: Player Creation/Init Error Message:", error.message);
+        console.error("FATAL: Game Object Creation/Init Error Message:", error.message);
         console.error("Error Stack:", error.stack);
         currentGameState = GameState.PRE_GAME;
         showOverlay(GameState.PRE_GAME);
-        alert("Error creating player. Please check console and refresh.");
+        alert("Error creating game objects. Please check console and refresh.");
         return;
     }
-// 6. Calculate camera position, centered on player
-    calculateInitialCamera();
-// 7. Set game state and hide overlay
-   currentGameState = GameState.RUNNING;
+    calculateInitialCamera(); // Calculate camera position, centered on player
+   currentGameState = GameState.RUNNING; // Set game state, hide overlay
    hideOverlay();
-// 8. Start Game Loop
-   Input.consumeClick(); // Consume any lingering click from the start button
-   gameStartTime = performance.now();
+   Input.consumeClick(); // consume any lingering clicks
+   gameStartTime = performance.now(); // Start Game Loop
    if (gameLoopId) {
        cancelAnimationFrame(gameLoopId);
    }
    gameLoopId = requestAnimationFrame(gameLoop);
-   console.log(">>> Game Loop Started <<<");
+   // console.log(">>> Game Loop Started <<<");
 }
-// --- Pauses the currently running game ---
+// --- Pause currently running game ---
 function pauseGame() { // exposed via window.pauseGameCallback
     if (currentGameState !== GameState.RUNNING) return;
     console.log(">>> Pausing Game <<<");
     currentGameState = GameState.PAUSED;
     showOverlay(GameState.PAUSED);
     if (gameLoopId) {
-        cancelAnimationFrame(gameLoopId); // Stop the game loop
+        cancelAnimationFrame(gameLoopId); // stop game loop
         gameLoopId = null;
     }
 }
@@ -279,25 +269,25 @@ function resumeGame() {
     currentGameState = GameState.RUNNING;
     hideOverlay();
     if (!gameLoopId) {
-        gameLoopId = requestAnimationFrame(gameLoop); // Restart the game loop
+        gameLoopId = requestAnimationFrame(gameLoop); // restart game loop
     }
 }
-// --- Handles transition to game over state (player died) ---
+// --- Handles transition to game over state ---
 function handleGameOver() {
-    if (currentGameState === GameState.GAME_OVER) return; // Prevent multiple calls
+    if (currentGameState === GameState.GAME_OVER) return;
     console.log(">>> Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER;
-    WaveManager.setGameOver(); // Inform WaveManager about Game Over state (clears timers/enemies, stops game music)
-    showOverlay(GameState.GAME_OVER); // Show game over overlay (updates stats text internally, plays game over music)
+    WaveManager.setGameOver();
+    showOverlay(GameState.GAME_OVER);
     if (gameLoopId) {
-        cancelAnimationFrame(gameLoopId); // Stop the game loop
+        cancelAnimationFrame(gameLoopId);
         gameLoopId = null;
     }
     // Perform a final UI update to show the end-game state
-    const waveInfo = WaveManager.getWaveInfo(); // Get final info (state should be GAME_OVER)
-    const livingEnemies = EnemyManager.getLivingEnemyCount(); // Should be 0 after WaveManager.setGameOver()
-    UI.updateWaveInfo(waveInfo, livingEnemies);
-    if (player) { // Update health (likely 0), inventory, weapon status one last time
+    const waveInfo = WaveManager.getWaveInfo();
+    // Pass player health and portal health one last time
+    UI.updatePortalAndWaveInfo(waveInfo, portal?.currentHealth, portal?.maxHealth); // Pass portal health
+    if (player) {
          UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.hasWeapon(Config.WEAPON_TYPE_SWORD), player.hasWeapon(Config.WEAPON_TYPE_SPEAR), player.hasWeapon(Config.WEAPON_TYPE_SHOVEL));
     }
 }
@@ -358,25 +348,35 @@ function gameLoop(timestamp) {
         dt = Math.min(dt, Config.MAX_DELTA_TIME); // clamp dt to prevent physics issues if frame rate drops
     }
     lastTime = timestamp; // update lastTime for the next frame
-    if (player && player.getCurrentHealth() <= 0) {
-        handleGameOver(); // dead, transition to gameover
-        return; // stop processing
-    }
+// --- Game Over Checks ---
+if (player && player.getCurrentHealth() <= 0) {
+    console.log("Game Over: Player died.");
+    handleGameOver(); // Player died
+    return;
+}
+ // Check Portal Health - Only trigger game over if portal dies AND it's not the final wave
+ if (portal && !portal.isAlive() && WaveManager.getCurrentWaveNumber() < Config.WAVES.length) {
+     console.log("Game Over: Portal destroyed before the final wave.");
+     handleGameOver(); // Portal destroyed
+     return;
+ }
 // --- Input Phase ---
     const inputState = Input.getState();
     const internalMousePos = Input.getMousePosition();
     let targetWorldPos = getMouseWorldCoords(internalMousePos);
     let targetGridCell = getMouseGridCoords(internalMousePos);
 // --- Update Phase ---
-    let currentPlayerPosition = null;
-    if (player) {
-        player.update(dt, inputState, targetWorldPos, targetGridCell);
-        currentPlayerPosition = player.getPosition();
-    }
-    ItemManager.update(dt);
-    EnemyManager.update(dt, currentPlayerPosition);
-    // Pass the current game state to WaveManager.update so it knows whether to decrement timers
-    WaveManager.update(dt, currentGameState);
+let currentPlayerPosition = null;
+if (player) {
+    player.update(dt, inputState, targetWorldPos, targetGridCell);
+    currentPlayerPosition = player.getPosition();
+}
+if (portal) { // NEW: Update portal
+    portal.update(dt);
+}
+ItemManager.update(dt);
+EnemyManager.update(dt, currentPlayerPosition);
+WaveManager.update(dt, currentGameState); // Pass the current game state to WaveManager.update so it knows whether to decrement timers
 // --- Check Wave Manager state AFTER update ---
     const waveInfo = WaveManager.getWaveInfo();
     if (waveInfo.state === 'VICTORY') {
@@ -392,6 +392,9 @@ function gameLoop(timestamp) {
         CollisionManager.checkPlayerAttackBlockCollisions(player);
         CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
     }
+    if (portal) {
+        CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
+    }
 // --- Render Phase ---
     Renderer.clear();
     const mainCtx = Renderer.getContext();
@@ -401,16 +404,20 @@ function gameLoop(timestamp) {
 // --- Draw World Elements ---
     World.draw(mainCtx); // static world background
     ItemManager.draw(mainCtx); // items
+    if (portal) { // NEW: Draw portal
+        portal.draw(mainCtx);
+    }
     EnemyManager.draw(mainCtx); // enemies
     if (player) {
         player.draw(mainCtx); // player sprite and held weapon visual
         player.drawGhostBlock(mainCtx); // block placement preview
     }
     mainCtx.restore(); // restore context state (remove transformations)
-// --- Update Sidebar UI ---
-    const livingEnemies = EnemyManager.getLivingEnemyCount(); // current enemy count
-    UI.updateWaveInfo(waveInfo, livingEnemies); // top sidebar portal info
-    if (player) { // Update top sidebar health AND bottom sidebar inventory/weapon states
+    // --- Update Sidebar UI ---
+    const livingEnemies = EnemyManager.getLivingEnemyCount(); // This is for debugging/info, not the main portal health display
+    // Use the updated function to send wave info and portal health
+    UI.updatePortalAndWaveInfo(waveInfo, portal?.currentHealth, portal?.maxHealth);
+    if (player) {
         UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.hasWeapon(Config.WEAPON_TYPE_SWORD), player.hasWeapon(Config.WEAPON_TYPE_SPEAR), player.hasWeapon(Config.WEAPON_TYPE_SHOVEL));
     }
 // --- Loop Continuation ---
