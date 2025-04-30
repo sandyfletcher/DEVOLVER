@@ -145,3 +145,25 @@ export function getLivingEnemyCount() {
 export function clearAllEnemies() {
     enemies = [];
 }
+// NEW: Clears all enemies outside a given radius from a center point
+export function clearEnemiesOutsideRadius(centerX, centerY, radius) {
+    const radiusSq = radius * radius; // Compare squared distances for efficiency
+    const initialCount = enemies.length;
+    enemies = enemies.filter(enemy => {
+        if (!enemy || !enemy.isActive || typeof enemy.x !== 'number' || typeof enemy.y !== 'number' || isNaN(enemy.x) || isNaN(enemy.y)) {
+             // Remove invalid or already inactive enemies defensively
+             console.warn("EnemyManager: Found invalid/inactive enemy data during cleanup, removing.", enemy);
+            return false;
+        }
+        // Check distance from enemy's center to the center point
+        const enemyCenterX = enemy.x + enemy.width / 2;
+        const enemyCenterY = enemy.y + enemy.height / 2;
+        const dx = enemyCenterX - centerX;
+        const dy = enemyCenterY - centerY;
+        const distSq = dx * dx + dy * dy;
+        // Keep the enemy ONLY if its center is INSIDE or EXACTLY ON the radius boundary
+        return distSq <= radiusSq;
+    });
+    const removedCount = initialCount - enemies.length;
+    // console.log(`EnemyManager: Cleared ${removedCount} enemies outside radius ${radius}.`);
+}

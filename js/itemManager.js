@@ -173,3 +173,26 @@ export function getItems() {
 export function removeItem(itemToRemove) {
     items = items.filter(item => item !== itemToRemove);
 }
+
+// Clears all items outside a given radius from a center point
+export function clearItemsOutsideRadius(centerX, centerY, radius) {
+    const radiusSq = radius * radius; // Compare squared distances for efficiency
+    const initialCount = items.length;
+    items = items.filter(item => {
+        if (!item || typeof item.x !== 'number' || typeof item.y !== 'number' || isNaN(item.x) || isNaN(item.y)) {
+            // Remove invalid items defensively
+            console.warn("ItemManager: Found invalid item data during cleanup, removing.", item);
+            return false;
+        }
+        // Check distance from item's center to the center point
+        const itemCenterX = item.x + item.width / 2;
+        const itemCenterY = item.y + item.height / 2;
+        const dx = itemCenterX - centerX;
+        const dy = itemCenterY - centerY;
+        const distSq = dx * dx + dy * dy;
+        // Keep the item ONLY if its center is INSIDE or EXACTLY ON the radius boundary
+        return distSq <= radiusSq;
+    });
+    const removedCount = initialCount - items.length;
+    // console.log(`ItemManager: Cleared ${removedCount} items outside radius ${radius}.`);
+}

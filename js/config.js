@@ -372,6 +372,8 @@ export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read f
 
 export const WAVE_START_DELAY = 10.0; // Seconds before the very first wave starts
 export const WAVE_INTERMISSION_DURATION = 60.0; // Seconds between *main* waves (1 minute)
+export const BUILDPHASE_DURATION = 50.0; // Seconds for player building/exploration
+export const WARPPHASE_DURATION = WAVE_INTERMISSION_DURATION - BUILDPHASE_DURATION; // Seconds for cleanup/aging (should be 10s)
 export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // Default delay if not specified in group
 export const WAVES = [
     { // === Wave 1 ===

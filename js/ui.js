@@ -1,7 +1,7 @@
 // root/js/ui.js - Manages HTML Sidebar Elements and Updates
 
 import * as Config from './config.js';
-import * as EnemyManager from './enemyManager.js'; // <-- ADD THIS IMPORT
+import * as EnemyManager from './enemyManager.js';
 
 // --- DOM Element References ---
 
@@ -421,7 +421,7 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
 }
 
 
-// NEW: Updates the portal health bar
+// Updates the portal health bar
 export function updatePortalInfo(currentHealth, maxHealth) {
     // Update required elements list to use portalHealthBarFillEl and portalColumnH2El
      if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) { // Add portalColumnEl check
@@ -442,15 +442,18 @@ export function updatePortalInfo(currentHealth, maxHealth) {
     // Text content remains "PORTAL HEALTH" as defined in HTML
 }
 
-// NEW: Updates the wave timer bar
-// currentTimer: time remaining (e.g., 55.6)
-// maxTimer: total duration for this state (e.g., 60)
-// timerLabel: descriptive text for the timer (e.g., "Next Wave In:") - not used for text *overlay* but could be used elsewhere
-export function updateWaveTimer(currentTimer, maxTimer) {
-    if (!timerBarFillEl || !timerTextOverlayEl || !timerRowEl) { // Add timerRowEl check
+// NEW: Updates the wave timer bar and text based on wave info state
+// Accepts the entire waveInfo object now
+export function updateWaveTimer(waveInfo) {
+    if (!timerBarFillEl || !timerTextOverlayEl || !timerRowEl) {
          console.error("UI UpdateWaveTimer: Missing essential elements.");
          return;
     }
+
+    const currentTimer = waveInfo.timer;
+    const maxTimer = waveInfo.maxTimer;
+    const state = waveInfo.state; // Get the current state from waveInfo
+
     // Clamp currentTimer to be between 0 and maxTimer
     const clampedTimer = Math.max(0, Math.min(currentTimer, maxTimer));
 
@@ -459,16 +462,45 @@ export function updateWaveTimer(currentTimer, maxTimer) {
 
     timerBarFillEl.style.width = `${timerPercent}%`;
 
-    // Timer text overlay remains "TIME REMAINING" as defined in HTML
-    // Optional: Change color of text overlay based on time remaining?
-    // const timerPercentRatio = (maxTimer > 0) ? (clampedTimer / maxTimer) : 0;
-    // if (timerTextOverlayEl.style) {
-    //      if (timerPercentRatio > 0.3) timerTextOverlayEl.style.color = 'white';
-    //      else if (timerPercentRatio > 0.1) timerTextOverlayEl.style.color = 'yellow';
-    //      else timerTextOverlayEl.style.color = 'orange';
+    // --- Update Timer Text Overlay based on State ---
+    let timerText = "";
+    switch(state) {
+        case 'PRE_WAVE': timerText = "FIRST WAVE IN"; break;
+        case 'WAVE_COUNTDOWN': timerText = "WAVE ENDS IN"; break;
+        case 'BUILDPHASE': timerText = "BUILD TIME"; break;
+        case 'WARPPHASE': timerText = "WARPING..."; break;
+        case 'GAME_OVER': timerText = "GAME OVER"; break;
+        case 'VICTORY': timerText = "VICTORY!"; break;
+        default: timerText = "TIME"; break;
+    }
+     // Optional: Append formatted time if state is timed
+    if (state === 'PRE_WAVE' || state === 'WAVE_COUNTDOWN' || state === 'BUILDPHASE' || state === 'WARPPHASE') {
+         const minutes = Math.floor(clampedTimer / 60);
+         const seconds = Math.floor(clampedTimer % 60);
+         const milliseconds = Math.floor((clampedTimer * 1000) % 1000);
+         // Format seconds and milliseconds with leading zeros
+         const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
+         const formattedMilliseconds = milliseconds < 100 ? (milliseconds < 10 ? '00' + milliseconds : '0' + milliseconds) : milliseconds;
+
+         // Only show milliseconds during active phases (WAVE, BUILD, WARP), round to nearest second otherwise
+         if (state === 'WAVE_COUNTDOWN' || state === 'BUILDPHASE' || state === 'WARPPHASE') {
+             timerText = `${timerText}: ${minutes}:${formattedSeconds}.${formattedMilliseconds}`;
+         } else {
+             timerText = `${timerText}: ${minutes}:${formattedSeconds}`;
+         }
+    }
+
+    timerTextOverlayEl.textContent = timerText;
+
+    // Optional: Change color of timer bar or text based on state or time remaining
+    // Example:
+    // if (state === 'WARPPHASE') {
+    //      timerBarFillEl.style.backgroundColor = 'purple';
+    // } else {
+    //      // Reset to default green
+    //      timerBarFillEl.style.backgroundColor = 'rgb(80, 180, 80)';
     // }
 }
-
 
 // Function to display the epoch text overlay (Keep)
 // Clears any pending hide timer and sets a new one
