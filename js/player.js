@@ -647,7 +647,6 @@ export class Player {
 
     /** Handles the player's death state. */
     die() {
-        console.log("Player died!");
         // Stop movement
         this.vx = 0;
         this.vy = 0;
@@ -655,16 +654,12 @@ export class Player {
         // by checking player health. This function might be used for death animations later.
     }
 
-    /**
-     * Calculates the position and dimensions of the attack hitbox based on the equipped weapon and target direction.
-     * @returns {object | null} Hitbox rectangle { x, y, width, height } or null if not attacking/no weapon.
-     */
+    // Calculates the position and dimensions of the attack hitbox based on the equipped weapon and target direction.
     getAttackHitbox() {
         // Cannot have a hitbox if not attacking or not using a weapon
         if (!this.isAttacking || !this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
             return null;
         }
-
         // Player center coordinates
         const playerCenterX = this.x + this.width / 2;
         const playerCenterY = this.y + this.height / 2;
@@ -675,7 +670,6 @@ export class Player {
         const dx = targetX - playerCenterX;
         const dy = targetY - playerCenterY;
         const dist = Math.sqrt(dx * dx + dy * dy); // Distance to target
-
         // Get hitbox dimensions and reach offsets from config based on equipped weapon
         let hitboxWidth, hitboxHeight, reachX, reachY;
         switch (this.selectedItem) {
@@ -693,7 +687,6 @@ export class Player {
                 break;
             default: return null; // Should not happen if checks passed, but safety first
         }
-
         // Calculate hitbox center position
         let hitboxCenterX, hitboxCenterY;
         // Use a small epsilon for distance check to avoid division by zero or erratic behavior when mouse is exactly on player center
@@ -710,7 +703,6 @@ export class Player {
             hitboxCenterX = playerCenterX + this.lastDirection * reachX;
             hitboxCenterY = playerCenterY + reachY;
         }
-
         // Calculate top-left corner of the hitbox from its center and dimensions
         const hitboxX = hitboxCenterX - hitboxWidth / 2;
         const hitboxY = hitboxCenterY - hitboxHeight / 2;
@@ -727,7 +719,6 @@ export class Player {
     hasHitBlockThisSwing(col, row) { const blockKey = `${col},${row}`; return this.hitBlocksThisSwing.includes(blockKey); }
     /** Registers a block as hit during the current swing. */
     registerHitBlock(col, row) { const blockKey = `${col},${row}`; if (!this.hasHitBlockThisSwing(col, row)) { this.hitBlocksThisSwing.push(blockKey); } }
-
 
     // --- Inventory & Item Methods ---
 
