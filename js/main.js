@@ -172,7 +172,8 @@ function showOverlay(stateToShow) {
             gameOverlay.classList.add('show-gameover');
             // Update game over stats text element if it exists
             if (gameOverStatsTextP) {
-                 const finalWave = WaveManager.getCurrentWaveNumber(); // Get the wave number reached
+                 // Get the wave number reached from WaveManager
+                 const finalWave = WaveManager.getWaveInfo().mainWaveNumber;
                  gameOverStatsTextP.textContent = `You reached Wave ${finalWave}!`; // Display the final wave
             } else {
                 console.warn("ShowOverlay: gameover-stats-text element not found for GAME_OVER state.");
@@ -189,7 +190,9 @@ function showOverlay(stateToShow) {
             gameOverlay.classList.add('show-victory');
             // Update victory stats text element if it exists
             if (victoryStatsTextP) {
-                 victoryStatsTextP.textContent = `You cleared all ${Config.WAVES.length} waves!`; // Display total waves cleared
+                 // Get the total number of waves from config
+                 const totalWaves = Config.WAVES.length;
+                 victoryStatsTextP.textContent = `You cleared all ${totalWaves} waves!`; // Display total waves cleared
             } else {
                 console.warn("ShowOverlay: victory-stats-text element not found for VICTORY state.");
             }
@@ -286,6 +289,7 @@ function startGame() {
 
     // Pass the newly created Portal instance reference to the WaveManager.
     // This is needed for WaveManager's cleanup logic during the WARPPHASE.
+    // WaveManager.reset now requires the callback and portal reference.
     WaveManager.reset(handleWaveStart, portal); // Reset WaveManager, passing callback AND portal instance
 
     // Calculate initial camera position, centered on the player.
@@ -380,6 +384,9 @@ function handleGameOver() {
     console.log(">>> Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER; // Change main game state
     WaveManager.setGameOver(); // Notify WaveManager of game over state
+    EnemyManager.clearAllEnemies(); // Clear enemies on game over
+    ItemManager.clearItemsOutsideRadius(0, 0, Infinity); // Clear all items on game over
+
     showOverlay(GameState.GAME_OVER); // Show the game over overlay and handle audio
     // Stop the game loop.
     if (gameLoopId) {
@@ -402,6 +409,9 @@ function handleVictory() {
      console.log(">>> Handling Victory <<<");
      currentGameState = GameState.VICTORY; // Change main game state
      WaveManager.setVictory(); // Notify WaveManager of victory state
+     EnemyManager.clearAllEnemies(); // Clear enemies on victory
+     ItemManager.clearItemsOutsideRadius(0, 0, Infinity); // Clear all items on victory
+
      showOverlay(GameState.VICTORY); // Show the victory overlay and handle audio
      // Stop the game loop.
      if (gameLoopId) {
@@ -475,11 +485,22 @@ function gameLoop(timestamp) {
     // Update lastTime for the next frame's calculation.
     lastTime = timestamp;
 
-    // --- Game Over Checks (Redundant here as handled earlier, but harmless) ---
-    // This check is also performed at the very top of the function,
-    // and transitions the state if necessary, causing the loop to exit early.
-    // Keeping it here as a reminder or potential alternative trigger point is fine,
-    // but the check before dt calculation is more immediate.
+    // --- Check Game Over/Victory Conditions FIRST during RUNNING state ---
+    // This is the critical check to transition out of RUNNING.
+    if (player && player.getCurrentHealth() <= 0 || (portal && !portal.isAlive())) {
+        console.log("Main: Player or Portal health is zero. Triggering Game Over.");
+        handleGameOver();
+        // After triggering game over, the next frame will hit the `if (currentGameState !== GameState.RUNNING)` check
+        // at the top and exit early. No need to process updates/render for this frame.
+        return;
+    }
+    const waveInfo = WaveManager.getWaveInfo();
+    if (waveInfo.allWavesCleared) {
+         console.log("Main: WaveManager signals all waves cleared. Triggering Victory.");
+         handleVictory();
+         // Similar to Game Over, exit early.
+         return;
+    }
 
 
     // --- Update Phase ---
@@ -487,9 +508,9 @@ function gameLoop(timestamp) {
     // Get the latest wave information from the WaveManager.
     // This info includes the current state (WAVE_COUNTDOWN, BUILDPHASE, WARPPHASE, etc.)
     // and timer values. This should happen first, as other updates might depend on the state.
-    const waveInfo = WaveManager.getWaveInfo();
+    // const waveInfo = WaveManager.getWaveInfo(); // Already got it for victory check above
 
-    // Pass the current main GameState (RUNNING, PAUSED) to WaveManager.
+    // Pass the current main GameState (RUNNING) to WaveManager.
     // WaveManager's internal timers (`preWaveTimer`, `mainWaveTimer`, etc.)
     // will *only* decrement when the `gameState` passed to it is `RUNNING`.
     WaveManager.update(dt, currentGameState);
@@ -506,6 +527,8 @@ function gameLoop(timestamp) {
         // Increment the radius by the configured growth amount per wave.
         currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
         console.log(`New Safety Radius: ${currentPortalSafetyRadius}`);
+        // Note: Warp cleanup is triggered *by WaveManager* when it transitions into WARPPHASE.
+        // The radius used for cleanup is the one *set* by main.js (which is updated here at the start of BUILDPHASE).
     }
 
     // Update the previous WaveManager state tracker for the next frame.
@@ -515,12 +538,12 @@ function gameLoop(timestamp) {
     // --- Update Game Objects Based on Wave State ---
     // During the 'WARPPHASE', we pause most updates (player, enemies, items, collisions)
     // to give the appearance of time warping/cleanup. Only the World (e.g., water) updates.
-    if (waveInfo.state !== 'WARPPHASE') {
-         // --- Updates that Run During PRE_WAVE, WAVE_COUNTDOWN, BUILDPHASE, GAME_OVER, VICTORY ---
-         // Note: Some of these (Player, Collision) are also guarded by the outer `currentGameState === GameState.RUNNING` check.
-         // The inner `waveInfo.state !== 'WARPPHASE'` check further refines WHEN they run.
+    // ALSO, entities should NOT update if their health is zero (handled within entity update methods).
+    if (currentWaveManagerState !== 'WARPPHASE') {
+         // --- Updates that Run During PRE_WAVE, WAVE_COUNTDOWN, BUILDPHASE ---
 
         // Update Player state based on input and environment.
+        // Player.update checks its own health.
         if (player) {
              // Get current input state and mouse/target positions.
              const inputState = Input.getState();
@@ -531,31 +554,35 @@ function gameLoop(timestamp) {
              player.update(dt, inputState, targetWorldPos, targetGridCell);
         }
 
-        // Update Items (physics like falling, bobbing)
+        // Update Items (physics like falling, bobbing). Items.update checks isActive.
         ItemManager.update(dt);
 
-        // Update Enemies (AI, movement, physics)
+        // Update Enemies (AI, movement, physics). EnemyManager.update filters active enemies.
         // Pass player position for AI targeting.
         EnemyManager.update(dt, player ? player.getPosition() : null);
 
         // --- Collision Detection Phase ---
         // Check for collisions between entities and the world/other entities.
         // Collision checks are resource-intensive and should be skipped during WARPPHASE.
-        if (player) {
+        // Collision managers should check if entities are active/alive internally.
+        if (player) { // Collision checks involving player
             CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
+            // checkPlayerAttackEnemyCollisions checks if player is attacking and weapon damage > 0
             CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
+            // checkPlayerAttackBlockCollisions checks if player is attacking and block damage > 0
             CollisionManager.checkPlayerAttackBlockCollisions(player);
-            CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
+             // checkPlayerEnemyCollisions checks if player is invulnerable or dead
+             CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
         }
-        if (portal) {
+        // checkEnemyPortalCollisions checks if portal is alive
+        if (portal) { // Collision checks involving portal
             CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
         }
 
     } else {
         // --- Updates that Run ONLY During WARPPHASE (if game is RUNNING) ---
-        // During WARPPHASE, only the World update (like water simulation) occurs.
-        // The cleanup logic (clearing entities outside radius) is triggered ONCE
-        // upon entering the WARPPHASE state (handled in WaveManager).
+        // During WARPPHASE, entities are frozen. Cleanup happens once at transition.
+        // World update (water) continues below this block.
     }
 
     // --- World Update (Dynamic Elements) ---
@@ -585,9 +612,9 @@ function gameLoop(timestamp) {
     // --- Draw World Elements ---
     // Draw the static world background (pre-rendered grid canvas) and dynamic water.
     World.draw(mainCtx);
-    // Draw active items in the world.
+    // Draw active items in the world. ItemManager.draw checks isActive.
     ItemManager.draw(mainCtx);
-    // Draw the portal.
+    // Draw the portal. Portal.draw checks isActive.
     if (portal) {
         // Pass the current safety radius value (managed by main.js) to the portal instance
         // so it can draw the radius visualization if applicable (e.g., during BUILDPHASE).
@@ -595,11 +622,24 @@ function gameLoop(timestamp) {
         portal.setSafetyRadius(currentPortalSafetyRadius);
         portal.draw(mainCtx);
     }
-    EnemyManager.draw(mainCtx); // Draw active enemies.
-    // Draw the player (and their held item visual/ghost block).
+    // Draw active enemies. EnemyManager.draw checks isActive.
+    // ADDED: Only draw enemies if not in WARPPHASE to prevent them appearing frozen before removal.
+     if (currentWaveManagerState !== 'WARPPHASE') {
+        EnemyManager.draw(mainCtx);
+     } else {
+         // Optional: Draw a static snapshot or effect for enemies in WARPPHASE?
+     }
+
+
+    // Draw the player (and their held item visual/ghost block). Player.draw checks invulnerability flashing.
+    // ADDED: Only draw player if not in WARPPHASE? Or always draw? Let's always draw, player doesn't disappear.
     if (player) {
         player.draw(mainCtx);
-        player.drawGhostBlock(mainCtx); // Draw the block placement preview
+        // Player.drawGhostBlock checks if ghost block info is valid.
+        // ADDED: Maybe only draw ghost block during BUILDPHASE? Or whenever player is alive and has material selected?
+        // Let's stick to drawing it when player is alive and has material selected, but ensure updates are paused in WARPPHASE.
+        // Since player update (which determines placement target) is paused in WARPPHASE, the ghost won't move/update anyway.
+        player.drawGhostBlock(mainCtx);
     }
     // Restore the context state to remove the camera transformations.
     mainCtx.restore();
@@ -625,9 +665,8 @@ function gameLoop(timestamp) {
 
     // --- Loop Continuation ---
     // Request the next animation frame to continue the game loop.
-    // This line is reached *only if* the `currentGameState === GameState.RUNNING` check at the top passed.
-    // If the state changed during this frame's update (e.g., to GAME_OVER), the next frame
-    // will hit the exit condition at the top and not run the loop body again.
+    // This line is reached *only if* the `currentGameState === GameState.RUNNING` check at the top passed
+    // AND the Game Over/Victory checks *did not* trigger a state change.
     gameLoopId = requestAnimationFrame(gameLoop);
 }
 

@@ -37,9 +37,11 @@ export class Portal {
             console.error(`>>> Portal DRAW ERROR: Preventing draw due to NaN coordinates!`);
             return;
         }
-// Get current game state from WaveManager
+        // Get current game state from WaveManager
        const waveInfo = WaveManager.getWaveInfo();
-       const isIntermission = waveInfo.state === 'INTERMISSION';
+       // Correct the check to include the new intermission states
+       const isIntermission = waveInfo.state === 'BUILDPHASE' || waveInfo.state === 'WARPPHASE';
+
 // Calculate portal's center for circle
         const centerX = this.x + this.width / 2;
         const centerY = this.y + this.height / 2;
