@@ -9,7 +9,7 @@ html, body {
     width: 100%;
     overflow: hidden;
     background-color: black;
-    font-family: 'Fredericka', sans-serif; /* maybe too greedy to set overall font here?, return to just sans-serif if need be */
+    font-family: 'Fredericka', sans-serif;
     color: white;
 }
 body {
@@ -116,64 +116,114 @@ body {
     transition: filter 0.3s ease;
 }
 #top-sidebar, #bottom-sidebar {
-    flex-basis: auto;
     flex-shrink: 0;
     width: 100%;
-    padding: 10px 15px;
+    padding: 0.5rem 0.5rem;
     box-sizing: border-box;
     border: 0.2rem solid white;
     position: relative;
     display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    gap: 5px;
 }
-#top-sidebar {
-    flex-basis: 10%;
-    flex-shrink: 0;
-    width: 100%;
-    padding: 5px 15px;
-    box-sizing: border-box;
-    border: 0.2rem solid white;
-    position: relative;
+/* --- Top Info Row (Player/Portal) --- */
+#top-info-row {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 15px;
-    min-height: 50px;
-    overflow-y: auto;
+    align-items: center; /* Align items vertically */
+    width: 100%;
+    flex-grow: 1; /* Allow this row to grow */
+    gap: 15px; /* Gap between player and portal columns */
+    min-height: 35px; /* Minimum height for health bars + titles */
 }
-#player-column, #portal-column {
-    flex-basis: 48%;
+.top-info-column {
+    flex-basis: 48%; /* Distribute space */
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    align-items: center;
+    justify-content: center;
+    position: relative; /* Needed for absolute positioning of h2 */
 }
-#top-sidebar h2 {
-    margin: 0 0 5px 0;
-    padding-bottom: 3px;
-    border-bottom: 1px solid #555;
-    color: #eee;
+/* --- Superimposed Title Styles --- */
+.top-info-column h2 {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2; /* Above the health bar */
+    margin: 0;
+    padding: 0;
+    font-size: 1em; /* Smaller font size */
+    color: white; /* White text */
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.6); /* Shadow for readability */
     text-align: center;
+    width: 100%; /* Take full width of parent column */
+    pointer-events: none; /* Allow clicks/touches to pass through */
+}
+/* --- Health Bar Container (Common Styles) --- */
+.health-bar-container {
+    flex-grow: 1; /* Allow bar to take available width */
+    height: 25px; /* Increased height for visibility */
+    background-color: rgb(80, 80, 80);
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    overflow: hidden;
+    width: 100%; /* Take full width of parent column */
+    position: relative; /* Needed for fill */
+    z-index: 1; /* Below the title */
+}
+/* --- Health Bar Fill (Common Styles) --- */
+.health-bar-fill {
+    height: 100%;
+    width: 100%; /* Default to full for loading */
+    transition: width 0.2s ease-out;
+}
+/* Specific Health Bar Fill Colors */
+#player-health-bar-fill {
+    background-color: rgb(220, 40, 40); /* Red for Player */
+}
+#portal-health-bar-fill {
+    background-color: rgb(100, 100, 255); /* Blue for Portal */
+}
+
+
+/* --- Timer Row (Full Width Bar) --- */
+#timer-row {
+    position: relative; /* Needed for absolute text */
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
-    font-size: 1rem;
+    height: 30px; /* Slightly thicker bar */
+    margin-top: 5px; /* Space below health bars */
 }
-#health-display {
-    display: flex; align-items: center; gap: 5px; margin-bottom: 0;
+/* Timer Bar Container (inherits .health-bar-container styles) */
+#timer-bar-container {
+     /* Overrides for timer bar specific height/width */
+     width: 100%;
+     height: 100%;
 }
-#health-label {
-     flex-shrink: 0; font-size: 0.9em;
+/* Timer Bar Fill */
+#timer-bar-fill {
+    /* Inherits .health-bar-fill transition */
+    background-color: rgb(80, 180, 80); /* Greenish for Timer */
 }
-#health-bar-container {
-    flex-grow: 1; height: 15px; background-color: rgb(80, 80, 80); border: 1px solid #ccc; border-radius: 3px; overflow: hidden;
+/* Timer Text Overlay */
+#timer-text-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3; /* Above the timer bar */
+    font-size: 1.1em; /* Slightly larger than titles */
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+    pointer-events: none; /* Allow clicks/touches to pass through */
 }
-#health-bar-fill {
-    height: 100%; width: 100%; background-color: rgb(220, 40, 40); transition: width 0.2s ease-out;
-}
-#health-text {
-    font-size: 0.9em; flex-shrink: 0;
-}
-#wave-status, #wave-timer, #enemy-count {
-    font-size: 0.9em; color: #ccc; text-align: center;
-}
+
+
 /* --- Game Area --- */
 #game-wrapper {
     flex-grow: 1; /* Take up remaining space */
@@ -314,7 +364,7 @@ body {
     background-color: #111;
     color: white;
     border: 2px solid white;
-    border-radius: 5px;
+    border-radius: 5pt;
     font-size: 22px;
     font-weight: bold;
     cursor: pointer;

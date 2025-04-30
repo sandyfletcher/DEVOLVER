@@ -220,12 +220,12 @@ function startGame() {
          console.error("FATAL: UI was not initialized correctly. Aborting game start.");
          return;
     }
-    UI.setPlayerReference(null); // Reset player reference
-    UI.setPortalReference(null); // portal too
+    UI.setPlayerReference(null); // Reset player reference in UI
+    UI.setPortalReference(null); // Reset portal reference in UI
     World.init(); // Initialize Game Logic Systems
     ItemManager.init();
     EnemyManager.init();
-    WaveManager.reset(handleWaveStart);
+    WaveManager.reset(handleWaveStart); // Reset WaveManager, passing the callback
     try { // Create Player Instance
         player = new Player(Config.PLAYER_START_X, Config.PLAYER_START_Y, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
         const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2; // Position the portal centered horizontally, slightly above the mean ground level
@@ -256,7 +256,7 @@ function startGame() {
         cancelAnimationFrame(gameLoopId);
     }
     gameLoopId = requestAnimationFrame(gameLoop);
-    console.log(">>> Game Loop Started <<<");
+    console.log(">>> Game Started <<<");
 }
 // --- Pause currently running game ---
 function pauseGame() { // exposed via window.pauseGameCallback
@@ -284,39 +284,28 @@ function handleGameOver() {
     if (currentGameState === GameState.GAME_OVER) return;
     console.log(">>> Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER;
-    WaveManager.setGameOver();
-    showOverlay(GameState.GAME_OVER);
+    WaveManager.setGameOver(); // Set WaveManager state
+    showOverlay(GameState.GAME_OVER); // Show overlay and handle music
     if (gameLoopId) {
         cancelAnimationFrame(gameLoopId);
         gameLoopId = null;
     }
-    // Perform a final UI update to show the end-game state
-    const waveInfo = WaveManager.getWaveInfo();
-    // Pass player health and portal health one last time
-    UI.updatePortalAndWaveInfo(waveInfo, portal?.currentHealth, portal?.maxHealth); // Pass portal health
-    if (player) {
-         UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.hasWeapon(Config.WEAPON_TYPE_SWORD), player.hasWeapon(Config.WEAPON_TYPE_SPEAR), player.hasWeapon(Config.WEAPON_TYPE_SHOVEL));
-    }
+    // Perform a final UI update (though overlay should cover most)
+    // const waveInfo = WaveManager.getWaveInfo(); // Not strictly needed as overlay shows final state
 }
 // --- Handles the transition to the victory state (all waves cleared) ---
 function handleVictory() {
      if (currentGameState === GameState.VICTORY) return; // Prevent multiple calls
      console.log(">>> Handling Victory <<<");
      currentGameState = GameState.VICTORY;
-      // Inform WaveManager (though it's already in VICTORY state)
-      WaveManager.setVictory(); // Add a setVictory function to WaveManager
-     showOverlay(GameState.VICTORY); // Show victory overlay (plays victory music)
+     WaveManager.setVictory(); // Set WaveManager state
+     showOverlay(GameState.VICTORY); // Show overlay and handle music
      if (gameLoopId) {
          cancelAnimationFrame(gameLoopId); // Stop the game loop
          gameLoopId = null;
      }
-     // Final UI Update
-     const waveInfo = WaveManager.getWaveInfo(); // State should be VICTORY
-     const livingEnemies = EnemyManager.getLivingEnemyCount(); // Should be 0
-     UI.updateWaveInfo(waveInfo, livingEnemies);
-     if (player) {
-         UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.hasWeapon(Config.WEAPON_TYPE_SWORD), player.hasWeapon(Config.WEAPON_TYPE_SPEAR), player.hasWeapon(Config.WEAPON_TYPE_SHOVEL));
-     }
+     // Final UI Update (less critical as overlay is shown)
+     // const waveInfo = WaveManager.getWaveInfo();
 }
 /** Restart game from GAME_OVER, VICTORY, or PAUSED state */
 function restartGame() {
@@ -362,6 +351,7 @@ if (player && player.getCurrentHealth() <= 0) {
     return;
 }
  // Check Portal Health - Only trigger game over if portal dies AND it's not the final wave
+ // Access portal.isAlive() only if portal exists
  if (portal && !portal.isAlive() && WaveManager.getCurrentWaveNumber() < Config.WAVES.length) {
      console.log("Game Over: Portal destroyed before the final wave.");
      handleGameOver(); // Portal destroyed
@@ -377,7 +367,8 @@ let currentPlayerPosition = null;
 if (player) {
     player.update(dt, inputState, targetWorldPos, targetGridCell);
     currentPlayerPosition = player.getPosition();
-    player.equipItem(player.getCurrentlySelectedItem()); // Re-equip to update UI selection state based on availability/possession
+    // Re-equip logic handled internally by player.update now via equipItem calls from UI/pickup
+    // player.equipItem(player.getCurrentlySelectedItem()); // This line might be redundant if equipItem is handled elsewhere
 }
 if (portal) { // Update portal
     portal.update(dt);
@@ -385,7 +376,6 @@ if (portal) { // Update portal
 ItemManager.update(dt);
 EnemyManager.update(dt, currentPlayerPosition);
 WaveManager.update(dt, currentGameState); // Pass the current game state to WaveManager.update so it knows whether to decrement timers
-World.update(dt);
 
 // --- Check Wave Manager state AFTER update ---
     // Get the latest wave info after update
@@ -402,8 +392,7 @@ World.update(dt);
          handleVictory(); // transition to victory state
          return; // stop processing
     }
-// --- Update Camera Position ---
-    calculateCameraPosition();
+
 // --- Collision Detection Phase ---
     if (player) {
         CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
@@ -414,6 +403,12 @@ World.update(dt);
     if (portal) {
         CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
     }
+
+// --- World Update (handles dynamic things like water flow AFTER collisions) ---
+World.update(dt);
+
+// --- Update Camera Position ---
+    calculateCameraPosition();
 // --- Render Phase ---
     Renderer.clear();
     const mainCtx = Renderer.getContext();
@@ -435,12 +430,22 @@ World.update(dt);
     }
     mainCtx.restore(); // restore context state (remove transformations)
     // --- Update Sidebar UI ---
-    const livingEnemies = EnemyManager.getLivingEnemyCount(); // This is for debugging/info, not the main portal health display
-    // Use the updated function to send wave info and portal health
-    UI.updatePortalAndWaveInfo(waveInfo, portal?.currentHealth, portal?.maxHealth);
+    // Use separate functions for player, portal, and timer UI
     if (player) {
-        UI.updatePlayerInfo(player.getCurrentHealth(), player.getMaxHealth(), player.getInventory(), player.hasWeapon(Config.WEAPON_TYPE_SWORD), player.hasWeapon(Config.WEAPON_TYPE_SPEAR), player.hasWeapon(Config.WEAPON_TYPE_SHOVEL));
+        UI.updatePlayerInfo(
+             player.getCurrentHealth(), player.getMaxHealth(),
+             player.getInventory(),
+             player.hasWeapon(Config.WEAPON_TYPE_SWORD),
+             player.hasWeapon(Config.WEAPON_TYPE_SPEAR),
+             player.hasWeapon(Config.WEAPON_TYPE_SHOVEL)
+        );
     }
+    if (portal) {
+        UI.updatePortalInfo(portal.currentHealth, portal.maxHealth);
+    }
+    // Pass timer data from waveInfo
+    UI.updateWaveTimer(waveInfo.timer, waveInfo.maxTimer); // Pass current and max timer
+
 // --- Loop Continuation ---
     if (currentGameState === GameState.RUNNING) { // Schedule the next frame *only* if still running
         gameLoopId = requestAnimationFrame(gameLoop);

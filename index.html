@@ -11,28 +11,31 @@
     <body>
         <div id="app-container">
             <aside id="top-sidebar">
-                <div id="player-column">
-                    <h2>PLAYER</h2>
-                    <div id="health-display">
-                        <span id="health-label">HEALTH:</span>
-                        <div id="health-bar-container">
-                            <div id="health-bar-fill"></div>
+                <div id="top-info-row">
+                    <div id="player-column" class="top-info-column">
+                        <h2>PLAYER</h2> 
+                        <div id="player-health-bar-container" class="health-bar-container">
+                            <div id="player-health-bar-fill" class="health-bar-fill"></div>
                         </div>
-                        <span id="health-text">Loading...</span>
+                    </div>
+                    <div id="portal-column" class="top-info-column">
+                        <h2 id="portal-health-title">PORTAL</h2> 
+                        <div id="portal-health-bar-container" class="health-bar-container">
+                            <div id="portal-health-bar-fill" class="health-bar-fill"></div>
+                        </div>
                     </div>
                 </div>
-                <div id="portal-column">
-                    <h2>PORTAL READOUT</h2>
-                    <div id="wave-status">Loading...</div>
-                    <div id="wave-timer"></div>
-                    <div id="enemy-count"></div>
+                <div id="timer-row">
+                    <div id="timer-bar-container" class="health-bar-container">
+                        <div id="timer-bar-fill" class="health-bar-fill"></div>
+                    </div>
+                    <div id="timer-text-overlay">TIME REMAINING</div>
                 </div>
             </aside>
             <main id="game-wrapper">
                  <canvas id="game-canvas" width="800" height="800">
                      Your browser does not support the HTML canvas.
                  </canvas>
-                 <!-- NEW: Add div for epoch text overlay -->
                  <div id="epoch-overlay"></div>
             </main>
             <aside id="bottom-sidebar" class="controls-hidden">

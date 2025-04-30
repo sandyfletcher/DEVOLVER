@@ -6,9 +6,13 @@ import * as EnemyManager from './enemyManager.js'; // <-- ADD THIS IMPORT
 // --- DOM Element References ---
 
 // Top Sidebar
-let playerColumnEl, portalColumnEl;
-let healthLabelEl, healthBarContainerEl, healthBarFillEl, healthTextEl;
-let waveStatusEl, waveTimerEl, enemyCountEl;
+let topSidebarEl = null;
+let playerColumnEl, portalColumnEl; // Keep column refs for structure/class
+let playerHealthBarContainerEl, playerHealthBarFillEl; // Updated player health bar elements
+let portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl; // Updated portal health bar elements (added H2 ref)
+// Removed: healthLabelEl, healthTextEl, waveStatusEl, waveTimerEl, enemyCountEl
+let timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl; // New timer elements
+
 // Bottom Sidebar
 let bottomSidebarEl;
 let itemSelectionAreaEl;
@@ -19,7 +23,8 @@ let actionButtons = {};
 // Overlay
 let gameOverlay = null;
 let epochOverlayEl = null;
-let portalHealthDisplayEl = null; // New variable for clarity, points to enemyCountEl
+// Removed: portalHealthDisplayEl
+
 // --- Internal State ---
 let playerRef = null;
 let portalRef = null;
@@ -43,16 +48,23 @@ export function initOverlay() {
 export function initGameUI() {
     let success = true;
     // --- Find Top Sidebar Elements ---
-    playerColumnEl = document.getElementById('player-column');
-    portalColumnEl = document.getElementById('portal-column');
-    healthBarContainerEl = document.getElementById('health-bar-container');
-    healthBarFillEl = document.getElementById('health-bar-fill');
-    healthTextEl = document.getElementById('health-text');
-    healthLabelEl = document.getElementById('health-label');
-    waveStatusEl = document.getElementById('wave-status'); // Wave # / Status
-    waveTimerEl = document.getElementById('wave-timer'); // Timer display
-    // enemyCountEl = document.getElementById('enemy-count'); // Existing element, repurposing
-    portalHealthDisplayEl = document.getElementById('enemy-count'); // *** Repurpose enemy-count for Portal Health ***
+    topSidebarEl = document.getElementById('top-sidebar'); // Get the main top sidebar
+    playerColumnEl = document.getElementById('player-column'); // Player column (container)
+    portalColumnEl = document.getElementById('portal-column'); // Portal column (container)
+
+    playerHealthBarContainerEl = document.getElementById('player-health-bar-container'); // Player bar container
+    playerHealthBarFillEl = document.getElementById('player-health-bar-fill'); // Player bar fill
+    // Removed: healthLabelEl, healthTextEl
+
+    portalColumnH2El = document.getElementById('portal-health-title'); // Portal title (now superimposed H2)
+    portalHealthBarContainerEl = document.getElementById('portal-health-bar-container'); // Portal bar container
+    portalHealthBarFillEl = document.getElementById('portal-health-bar-fill'); // Portal bar fill
+    // Removed: waveStatusEl, waveTimerEl, enemyCountEl (which was repurposed)
+
+    timerRowEl = document.getElementById('timer-row'); // Timer row container
+    timerBarContainerEl = document.getElementById('timer-bar-container'); // Timer bar container
+    timerBarFillEl = document.getElementById('timer-bar-fill'); // Timer bar fill
+    timerTextOverlayEl = document.getElementById('timer-text-overlay'); // Timer text overlay
 
     // --- Find Bottom Sidebar Elements (Keep) ---
     bottomSidebarEl = document.getElementById('bottom-sidebar');
@@ -72,11 +84,14 @@ export function initGameUI() {
     actionButtons.attack = document.getElementById('btn-attack');
 
     // --- Verification ---
-    // Update requiredElements list to use portalHealthDisplayEl
+    // Update requiredElements list
     const requiredElements = [
-        playerColumnEl, portalColumnEl, healthBarContainerEl, healthBarFillEl, healthTextEl, healthLabelEl,
-        waveStatusEl, waveTimerEl, portalHealthDisplayEl, bottomSidebarEl, itemSelectionAreaEl, // Use portalHealthDisplayEl
-        inventoryBoxesContainerEl, weaponSlotsContainerEl, actionButtonsAreaEl, toggleControlsButtonEl,
+        topSidebarEl, playerColumnEl, portalColumnEl,
+        playerHealthBarContainerEl, playerHealthBarFillEl,
+        portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl,
+        timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl,
+        bottomSidebarEl, itemSelectionAreaEl, inventoryBoxesContainerEl, weaponSlotsContainerEl,
+        actionButtonsAreaEl, toggleControlsButtonEl,
         actionButtons.left, actionButtons.right, actionButtons.pause, actionButtons.jump, actionButtons.attack,
         epochOverlayEl // NEW: Add epoch overlay element to the required list
     ];
@@ -84,7 +99,7 @@ export function initGameUI() {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
         // Log specific missing elements if needed
         requiredElements.forEach(el => {
-            if (!el) console.error(`Missing element: ${el?.id || 'Unknown (null)'}`);
+            if (!el) console.error(`Missing element: ${el?.id || el?.className || 'Unknown (null)'}`);
         });
         success = false;
     }
@@ -106,6 +121,8 @@ export function initGameUI() {
         for (const weaponType of WEAPON_SLOTS_ORDER) {
             createItemSlot(weaponType, weaponSlotsContainerEl, 'weapon');
         }
+         // Add unarmed slot? No, maybe select unarmed by clicking equipped item again?
+         // createItemSlot(Config.WEAPON_TYPE_UNARMED, weaponSlotsContainerEl, 'weapon');
     } else {
         success = false;
     }
@@ -115,8 +132,11 @@ export function initGameUI() {
         toggleControlsButtonEl.addEventListener('click', toggleActionControls);
         // Set initial state for health/inventory on init
         updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // Set initial empty state
-        // Use the new update function for portal/wave info
-        updatePortalAndWaveInfo(); // Set initial loading state
+        // Use the new update function for portal info
+        updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH); // Set initial portal health
+        // Set initial state for timer bar
+         updateWaveTimer(0, 1, "Loading..."); // Set initial timer state
+
         isUIReady = true; // Mark UI as ready if all steps succeeded
     } else {
         isUIReady = false; // Mark UI as not ready on failure
@@ -143,9 +163,11 @@ function createItemSlot(itemType, container, category) {
         if (itemType === Config.WEAPON_TYPE_SWORD) slotDiv.textContent = '⚔️';
         else if (itemType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑';
         else if (itemType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️';
-        else slotDiv.textContent = '?';
+        else slotDiv.textContent = '?'; // Fallback for unknown weapon type
         slotDiv.title = `${itemType.toUpperCase()} (Not Found)`;
-        slotDiv.style.backgroundColor = itemConfig?.color ? `${itemConfig.color}40` : '#111'; // Slightly transparent initially? Or make it disabled style
+        // Initial background color - maybe use a dimmer version if disabled?
+        // slotDiv.style.backgroundColor = itemConfig?.color ? `${itemConfig.color}` : '#111';
+        // Disabled class will handle opacity
     }
     slotDiv.addEventListener('click', () => {
         handleItemSlotClick(itemType, category);
@@ -163,8 +185,12 @@ function handleItemSlotClick(itemType, category) {
     // Or maybe just ignore clicks if playerRef is null (game not running)
      if (playerRef.getCurrentlySelectedItem() === itemType) {
          // Already selected, maybe switch to unarmed if clicked again?
-         if (itemType !== Config.WEAPON_TYPE_UNARMED) { // Prevent double clicking unarmed
+         // Adding specific handling for weapon types - clicking an equipped weapon unequips it
+         if (category === 'weapon' && itemType !== Config.WEAPON_TYPE_UNARMED) {
              playerRef.equipItem(Config.WEAPON_TYPE_UNARMED);
+              // console.log(`UI Click: Unequipped ${itemType}`); // Keep logs quieter
+         } else {
+             // console.log(`UI Click: Already equipped ${itemType}.`); // Keep logs quieter
          }
          return; // Click handled (switched or already selected)
     }
@@ -178,6 +204,7 @@ function handleItemSlotClick(itemType, category) {
     // else if (itemType === Config.WEAPON_TYPE_UNARMED) { canSelect = true; }
     if (canSelect) {
         playerRef.equipItem(itemType); // Player equips it, UI will update next frame via main loop
+        // console.log(`UI Click: Equipped ${itemType}.`); // Keep logs quieter
     } else {
         // console.log(`UI Click: Cannot select ${itemType}.`);
         const slotDiv = itemSlotDivs[itemType];
@@ -223,26 +250,24 @@ function setupActionButtons() {
         // Holdable/Toggleable listeners for movement and attack
         const handlePress = (e) => {
             e.preventDefault(); // Prevent default touch behaviors
-             // Ensure Input state is accessible and not game over/paused
-            if (window.Input?.state && typeof window.pauseGameCallback !== 'function') { // Check for pause callback existence implies game state? Or add a specific check?
-                 // Better: Add a check for main game state or use playerRef status
-                 // For now, rely on main.js/player update ignoring input if paused/dead
-                const inputState = window.Input.state;
-                if (action === 'attack') {
-                     // Only trigger attack if not already attacking this frame
-                     if (!inputState[action]) {
-                         inputState[action] = true;
+             // Ensure Input state is accessible and game is not paused
+            // The check for playerRef or gameState is better done in main.js or player.update
+            // UI buttons just signal the input intent.
+            if (window.Input?.state) {
+                 const inputState = window.Input.state;
+                 if (action === 'attack') {
+                      // Only trigger attack if not already attacking this frame (consumed by main loop)
+                     if (!inputState.attack) { // Check the state flag
+                         inputState.attack = true;
                          illuminateButton(action);
                      }
                  } else { // Movement actions
                       // Only set state and illuminate if not already pressed
-                      if (!inputState[action]) {
+                     if (!inputState[action]) { // Check the state flag
                           inputState[action] = true;
                           illuminateButton(action);
-                      }
+                     }
                  }
-            } else {
-                 // console.log("Input state not accessible or game paused/over.");
             }
         };
         const handleRelease = (e) => {
@@ -252,6 +277,9 @@ function setupActionButtons() {
                 if (action !== 'attack') { // Attack is consumed in main loop
                     window.Input.state[action] = false;
                 }
+                // Note: If attack button is released while cooldown is active,
+                // the state.attack flag might still be true until the main loop
+                // consumes it in a subsequent frame. This is expected.
             }
         };
 
@@ -278,7 +306,7 @@ function toggleActionControls() {
 export function setPlayerReference(playerObject) {
     playerRef = playerObject;
     // Initial UI update when player is set (on game start)
-    if (playerRef && healthBarFillEl) {
+    if (playerRef) {
          // Request an initial update for player UI elements
          requestAnimationFrame(() => {
              updatePlayerInfo(
@@ -287,22 +315,29 @@ export function setPlayerReference(playerObject) {
                  playerRef.hasWeapon(Config.WEAPON_TYPE_SPEAR), playerRef.hasWeapon(Config.WEAPON_TYPE_SHOVEL)
              );
          });
-    } else if (!playerRef && healthBarFillEl) {
+    } else {
         // Clear UI if player is removed (restart or game over)
-        healthBarFillEl.style.width = '0%';
-        healthTextEl.textContent = '---';
+         if (playerHealthBarFillEl) playerHealthBarFillEl.style.width = '0%';
         // Also reset inventory/weapon UI
         for(const key in itemSlotDivs){
             itemSlotDivs[key]?.classList.remove('active');
             itemSlotDivs[key]?.classList.add('disabled'); // Disable all slots
             const countSpan = itemSlotDivs[key]?.querySelector('.item-count');
             if (countSpan) countSpan.textContent = ''; // Clear counts
-            // Reset weapon text/title? (Currently just sets disabled class)
+            // Weapon slots might keep their icon but be disabled
         }
     }
 }
 export function setPortalReference(portalObject) {
     portalRef = portalObject;
+    if (portalRef) {
+        requestAnimationFrame(() => {
+            updatePortalInfo(portalRef.currentHealth, portalRef.maxHealth);
+        });
+    } else {
+        if (portalHealthBarFillEl) portalHealthBarFillEl.style.width = '0%';
+        if (portalColumnH2El) portalColumnH2El.textContent = 'PORTAL'; // Reset title
+    }
 }
 // Briefly illuminates a specific action button
 export function illuminateButton(actionName) {
@@ -317,6 +352,15 @@ export function illuminateButton(actionName) {
     const button = actionButtonMap[actionName];
     if (!button) return;
 
+    // Prevent illumination if the button is currently disabled or hidden (e.g. controls-hidden state)
+    // Note: The button element itself isn't disabled, its container is hidden.
+    // Let's check if the bottom sidebar is hidden.
+    if (bottomSidebarEl && bottomSidebarEl.classList.contains('controls-hidden') && actionName !== 'pause') {
+         // Don't illuminate movement/attack/jump if controls are hidden
+         return;
+    }
+
+
     if (buttonIlluminationTimers[actionName]) {
         clearTimeout(buttonIlluminationTimers[actionName]);
     }
@@ -329,104 +373,18 @@ export function illuminateButton(actionName) {
 }
 
 // --- Update Functions ---
-// REPLACED: Updates the portal and wave information display
-// Receives full waveInfo object from waveManager.getWaveInfo() and portal health
-export function updatePortalAndWaveInfo(waveInfo = {}, portalHealth = null, portalMaxHealth = null) {
-    // Update required elements list to use portalHealthDisplayEl
-     if (!waveStatusEl || !waveTimerEl || !portalHealthDisplayEl || !portalColumnEl) { // Add portalColumnEl check for robustness
-         console.error("UI UpdatePortalAndWaveInfo: Missing essential elements.");
-         return;
-    }
-    // Default/loading state if no info is provided yet
-    if (!waveInfo.state) {
-         waveStatusEl.textContent = 'Loading...';
-         waveTimerEl.textContent = '';
-         portalHealthDisplayEl.textContent = '';
-         portalColumnEl.querySelector('h2').textContent = 'PORTAL READOUT'; // Reset title
-         return;
-    }
-    // Always show the wave number label
-    waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber || '-'}`;
-    waveTimerEl.textContent = ''; // Default empty
-    portalHealthDisplayEl.textContent = ''; // Default empty
-
-    // Update Portal Health Display (Using the element previously for enemy count)
-    portalColumnEl.querySelector('h2').textContent = 'PORTAL HEALTH'; // Change title
-    if (typeof portalHealth === 'number' && typeof portalMaxHealth === 'number') {
-        const displayHealth = Math.max(0, Math.min(Math.round(portalHealth), portalMaxHealth));
-        portalHealthDisplayEl.textContent = `${displayHealth}/${portalMaxHealth}`;
-         // Optional: Change color based on health percentage
-        const healthPercent = (portalMaxHealth > 0) ? (portalHealth / portalMaxHealth) : 0;
-        if (portalHealthDisplayEl.style) {
-             if (healthPercent > 0.5) portalHealthDisplayEl.style.color = '#aaffaa'; // Greenish
-             else if (healthPercent > 0.2) portalHealthDisplayEl.style.color = 'yellow'; // Yellowish
-             else portalHealthDisplayEl.style.color = 'red'; // Reddish
-        }
-    } else {
-         portalHealthDisplayEl.textContent = '---'; // Show placeholder if health data is bad
-         if (portalHealthDisplayEl.style) portalHealthDisplayEl.style.color = '#ccc';
-    }
-
-
-    // Update Wave Status based on state
-    switch (waveInfo.state) {
-        case 'PRE_WAVE':
-            waveStatusEl.textContent = `Next Wave: ${waveInfo.mainWaveNumber || 1}`;
-            waveTimerEl.textContent = `${waveInfo.timerLabel} ${Math.max(0, waveInfo.timer).toFixed(1)}s`;
-            break;
-        case 'WAVE_COUNTDOWN':
-            waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber}`;
-            waveTimerEl.textContent = `${waveInfo.timerLabel} ${Math.max(0, waveInfo.timer).toFixed(1)}s`; // Show countdown
-             // Show spawning progress or 'spawning complete' in waveStatusEl (re-use)
-             // Or perhaps add a new line/element for this? Let's add below timer for now.
-            if (waveInfo.progressText) {
-                 // This text might get long, keep an eye on layout
-                // waveTimerEl.textContent += ` | ${waveInfo.progressText}`; // Append to timer line?
-                // Or use waveStatusEl for this text below the Wave #:
-                waveStatusEl.textContent += ` - ${waveInfo.progressText}`;
-            }
-            // Enemy count is implicitly handled by the "Alive: X" part of progressText if available
-            break;
-        case 'INTERMISSION':
-            waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber} Complete`; // Show previous wave number
-            waveTimerEl.textContent = `${waveInfo.timerLabel} ${Math.max(0, waveInfo.timer).toFixed(1)}s`; // Show intermission timer
-            break;
-        case 'GAME_OVER':
-            waveStatusEl.textContent = 'GAME OVER';
-            // Timer text can show waves survived, handled in main.js overlay
-            break;
-        case 'VICTORY':
-            waveStatusEl.textContent = 'VICTORY!';
-            waveTimerEl.textContent = `Cleared All ${waveInfo.mainWaveNumber} Waves!`;
-            break;
-        default:
-             waveStatusEl.textContent = `Wave ${waveInfo.mainWaveNumber || '-'}`;
-             waveTimerEl.textContent = waveInfo.timerLabel || '';
-             portalHealthDisplayEl.textContent = '---'; // Placeholder if state is odd
-             break;
-    }
-     // Restore default color if state doesn't set a specific one
-     if (waveInfo.state !== 'WAVE_COUNTDOWN' && waveInfo.state !== 'INTERMISSION') {
-         if (waveStatusEl.style) waveStatusEl.style.color = '#eee'; // Default wave status color
-         if (waveTimerEl.style) waveTimerEl.style.color = '#ccc'; // Default timer color
-     } else {
-          if (waveStatusEl.style) waveStatusEl.style.color = '#eee'; // Keep colors normal during waves/intermission
-          if (waveTimerEl.style) waveTimerEl.style.color = '#ccc';
-     }
-
-}
 
 // Updates player health bar and inventory/weapon slots
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
-    if (!healthBarFillEl || !healthTextEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
+    if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
          console.error("UI UpdatePlayerInfo: Missing essential elements.");
          return;
     }
     // Update Health Bar (Top Sidebar)
     const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
     const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
-    healthBarFillEl.style.width = `${healthPercent}%`;
-    healthTextEl.textContent = `${Math.round(clampedHealth)}/${maxHealth}`;
+    playerHealthBarFillEl.style.width = `${healthPercent}%`;
+
     // Update Item/Weapon Selection Boxes (Bottom Sidebar)
     // Need the currently selected item type. Get it from playerRef if available.
     const selectedItem = playerRef ? playerRef.getCurrentlySelectedItem() : null;
@@ -436,7 +394,7 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         if (!slotDiv) continue;
         const count = inventory[materialType] || 0;
         const countSpan = slotDiv.querySelector('.item-count');
-        if (countSpan) countSpan.textContent = count > 0 ? Math.min(count, 999) : ''; // Show count if > 0
+        if (countSpan) countSpan.textContent = count > 0 ? Math.min(count, 99) : ''; // Cap count for display
         const isDisabled = count === 0;
         slotDiv.classList.toggle('disabled', isDisabled);
         // Only mark as active if the playerRef exists and has this item selected
@@ -458,9 +416,61 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         slotDiv.classList.toggle('active', playerRef && possessed && selectedItem === weaponType); // Only mark as active if the playerRef exists and has this item selected AND possesses it
         slotDiv.title = possessed ? weaponType.toUpperCase() : `${weaponType.toUpperCase()} (Not Found)`;
     }
+     // Handle Unarmed slot if it existed - would need logic here to mark it active if selectedItem is unarmed
+     // if (itemSlotDivs[Config.WEAPON_TYPE_UNARMED]) { ... }
 }
 
-// Function to display the epoch text overlay
+
+// NEW: Updates the portal health bar
+export function updatePortalInfo(currentHealth, maxHealth) {
+    // Update required elements list to use portalHealthBarFillEl and portalColumnH2El
+     if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) { // Add portalColumnEl check
+         console.error("UI UpdatePortalInfo: Missing essential elements.");
+         return;
+    }
+    const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
+    const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
+    portalHealthBarFillEl.style.width = `${healthPercent}%`;
+
+    // Update Portal title color based on health percentage
+    const healthPercentRatio = (maxHealth > 0) ? (clampedHealth / maxHealth) : 0;
+    if (portalColumnH2El.style) {
+        if (healthPercentRatio > 0.5) portalColumnH2El.style.color = '#aaffaa'; // Greenish
+        else if (healthPercentRatio > 0.2) portalColumnH2El.style.color = 'yellow'; // Yellowish
+        else portalColumnH2El.style.color = 'red'; // Reddish
+    }
+    // Text content remains "PORTAL HEALTH" as defined in HTML
+}
+
+// NEW: Updates the wave timer bar
+// currentTimer: time remaining (e.g., 55.6)
+// maxTimer: total duration for this state (e.g., 60)
+// timerLabel: descriptive text for the timer (e.g., "Next Wave In:") - not used for text *overlay* but could be used elsewhere
+export function updateWaveTimer(currentTimer, maxTimer) {
+    if (!timerBarFillEl || !timerTextOverlayEl || !timerRowEl) { // Add timerRowEl check
+         console.error("UI UpdateWaveTimer: Missing essential elements.");
+         return;
+    }
+    // Clamp currentTimer to be between 0 and maxTimer
+    const clampedTimer = Math.max(0, Math.min(currentTimer, maxTimer));
+
+    // Calculate fill percentage (counts down, so percentage decreases)
+    const timerPercent = (maxTimer > 0) ? (clampedTimer / maxTimer) * 100 : 0;
+
+    timerBarFillEl.style.width = `${timerPercent}%`;
+
+    // Timer text overlay remains "TIME REMAINING" as defined in HTML
+    // Optional: Change color of text overlay based on time remaining?
+    // const timerPercentRatio = (maxTimer > 0) ? (clampedTimer / maxTimer) : 0;
+    // if (timerTextOverlayEl.style) {
+    //      if (timerPercentRatio > 0.3) timerTextOverlayEl.style.color = 'white';
+    //      else if (timerPercentRatio > 0.1) timerTextOverlayEl.style.color = 'yellow';
+    //      else timerTextOverlayEl.style.color = 'orange';
+    // }
+}
+
+
+// Function to display the epoch text overlay (Keep)
 // Clears any pending hide timer and sets a new one
 export function showEpochText(epochYear) {
     if (!epochOverlayEl || typeof epochYear !== 'number' || isNaN(epochYear)) {
@@ -487,7 +497,7 @@ export function showEpochText(epochYear) {
     }, Config.EPOCH_DISPLAY_DURATION * 1000); // Convert duration from seconds to milliseconds
 }
 
-// Add a getter for the initialization status
+// Add a getter for the initialization status (Keep)
 export function isInitialized() {
     return isUIReady;
 }

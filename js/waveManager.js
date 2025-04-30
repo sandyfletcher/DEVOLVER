@@ -20,6 +20,9 @@ let preWaveTimer = Config.WAVE_START_DELAY; // Timer before the very first wave
 let mainWaveTimer = 0; // Timer for the total duration of the current main wave
 let intermissionTimer = 0; // Timer between main waves
 
+// Store initial/max durations for the current state (needed for UI bar)
+let currentMaxTimer = 0;
+
 // NEW: Callback function to notify caller when a wave starts
 let waveStartCallback = null;
 
@@ -113,6 +116,7 @@ function startNextWave() {
         // No more waves found, transition to victory state
         console.log("[WaveMgr] All defined waves completed!");
         state = 'VICTORY';
+        currentMaxTimer = 0; // No timer in victory state
         EnemyManager.clearAllEnemies(); // Clear any remaining enemies on victory
         AudioManager.stopAllMusic(); // <-- Stop ALL music on victory
         console.log("[WaveMgr] Transitioned to VICTORY state.");
@@ -123,6 +127,7 @@ function startNextWave() {
     // Found a valid next wave, start the countdown
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration; // Set timer to the wave's total duration
+    currentMaxTimer = waveData.duration; // Set max timer for UI
     // console.log(`[WaveMgr] Starting Main Wave ${waveData.mainWaveNumber}. Duration: ${mainWaveTimer}s`);
 
     // Call the callback to notify the main loop (e.g., to show epoch text)
@@ -161,6 +166,7 @@ function endWave() {
         console.error("[WaveMgr] endWave called but no current wave data found!");
         // Fallback to game over?
         state = 'GAME_OVER'; // Safety state
+        currentMaxTimer = 0; // No timer in game over state
         AudioManager.stopAllMusic(); // <-- Stop ALL music on error/game over
         return;
     }
@@ -173,11 +179,13 @@ function endWave() {
         // There is a next wave, transition to intermission
         state = 'INTERMISSION';
         intermissionTimer = Config.WAVE_INTERMISSION_DURATION;
+        currentMaxTimer = Config.WAVE_INTERMISSION_DURATION; // Set max timer for UI
         AudioManager.stopGameMusic(); // <-- Stop wave music for intermission
         // console.log(`[WaveMgr] Transitioned to INTERMISSION. Next wave (${currentMainWaveIndex + 2}) starts in ${intermissionTimer}s.`);
     } else {
         // No more waves, transition to victory
         state = 'VICTORY';
+        currentMaxTimer = 0; // No timer in victory state
         // AudioManager.stopAllMusic() is handled by main.js when it transitions to VICTORY overlay
         console.log("[WaveMgr] All waves completed! Transitioned to VICTORY state.");
     }
@@ -203,6 +211,7 @@ export function init(callback = null) {
     groupStartDelayTimer = 0;
     state = 'PRE_WAVE';
     preWaveTimer = Config.WAVE_START_DELAY; // Use config value for first delay
+    currentMaxTimer = Config.WAVE_START_DELAY; // Set initial max timer
     mainWaveTimer = 0; // No main wave active yet
     intermissionTimer = 0; // No intermission active yet
     waveStartCallback = callback;     // Store the callback
@@ -305,6 +314,7 @@ export function setGameOver() {
         intermissionTimer = 0;
         groupSpawnTimer = 0;
         groupStartDelayTimer = 0;
+        currentMaxTimer = 0; // No timer in game over
         EnemyManager.clearAllEnemies(); // Clear enemies on player death
         // No callback needed for game over state transition here, main.js handles game over overlay
     }
@@ -320,6 +330,7 @@ export function setVictory() {
         intermissionTimer = 0;
         groupSpawnTimer = 0;
         groupStartDelayTimer = 0;
+        currentMaxTimer = 0; // No timer in victory
         EnemyManager.clearAllEnemies();
         // DO NOT call AudioManager.stopAllMusic() here. Main.js handles music on overlay show.
     }
@@ -339,72 +350,73 @@ export function getCurrentWaveNumber() {
 
 /** Returns an object containing relevant wave info for UI or other systems. */
 export function getWaveInfo() {
-    const groupData = getCurrentGroupData();
     let timer = 0;
     let timerLabel = "";
-    let progressText = "";
+    let progressText = ""; // Still keep progress text for debugging/potential future use
     let currentWaveNumber = getCurrentWaveNumber(); // Get 1-based number
 
+    // Determine current timer and its max duration
     switch (state) {
         case 'PRE_WAVE':
             timer = preWaveTimer;
-            timerLabel = "First Wave In:";
-            currentWaveNumber = 1; // Show "Wave 1" is coming
+            // maxTimer is already set to Config.WAVE_START_DELAY in init/reset
+            timerLabel = "First Wave In:"; // This label is not used by the new UI, but keep for console/debug
             break;
         case 'WAVE_COUNTDOWN':
             timer = mainWaveTimer;
-            timerLabel = "Wave Ends In:"; // Changed label
+            // maxTimer is already set to waveData.duration in startNextWave
+            timerLabel = "Wave Ends In:"; // Keep for console/debug
+             const groupData = getCurrentGroupData();
              if (currentSubWaveIndex !== -1 && currentGroupIndex !== -1 && groupData) {
-                // Show spawning progress if still spawning groups for this wave
+                // Show spawning progress if still spawning groups for this wave (debug only now)
                 let enemiesLeftInGroup = groupData.count - enemiesSpawnedThisGroup;
                 progressText = `Spawning: ${groupData.type} (${enemiesLeftInGroup} left)`;
-                // Optional: Add sub-wave/group index info if needed for complexity
-                // progressText += ` (Sub-Wave ${currentSubWaveIndex + 1}, Group ${currentGroupIndex + 1})`;
              } else {
-                 // Spawning is complete for this wave, just waiting for timer
+                 // Spawning is complete for this wave (debug only now)
                  progressText = "Spawning complete.";
              }
-            // Append living enemy count below progress text or if no progress text
-             const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get live count directly
-             if (livingEnemies > 0 || (!progressText && livingEnemies === 0)) { // Condition adjusted for clarity
-                 if (progressText && progressText !== "Spawning complete.") progressText += ' | '; // Add separator if needed, but not if just "Spawning complete"
-                 else if (!progressText) progressText = ''; // Ensure progressText is at least empty string if it was null/undefined
+            // Append living enemy count (debug only now)
+             const livingEnemies = EnemyManager.getLivingEnemyCount();
+             if (livingEnemies > 0 || (!progressText && livingEnemies === 0)) {
+                 if (progressText && progressText !== "Spawning complete.") progressText += ' | ';
+                 else if (!progressText) progressText = '';
                  progressText += `Alive: ${livingEnemies}`;
              } else if (progressText === "Spawning complete." && livingEnemies > 0) {
-                 // Special case: Spawning is done, but enemies are still alive
                  progressText = `Spawning complete. Alive: ${livingEnemies}`;
              }
-
-
             break;
         case 'INTERMISSION':
             timer = intermissionTimer;
-            // Show the number of the NEXT wave during intermission
-            timerLabel = `Next Wave (${currentWaveNumber + 1}) In:`;
-            progressText = `Wave ${currentWaveNumber} Complete.`; // Show previous wave number complete
+            // maxTimer is already set to Config.WAVE_INTERMISSION_DURATION in endWave
+            timerLabel = `Next Wave (${currentWaveNumber + 1}) In:`; // Keep for console/debug
+            progressText = `Wave ${currentWaveNumber} Complete.`; // Keep for console/debug
             break;
         case 'GAME_OVER':
-            // UI handles this via the overlay state
-            progressText = "Game Over"; // Fallback text if UI doesn't hide this part
+            timer = 0;
+            // maxTimer is 0
+            progressText = "Game Over"; // Keep for console/debug
             break;
         case 'VICTORY':
-            progressText = "Victory!"; // Fallback text
+            timer = 0;
+            // maxTimer is 0
+            progressText = "Victory!"; // Keep for console/debug
              currentWaveNumber = Config.WAVES.length; // Show the last completed wave number
             break;
         default:
              // Handle other potential states or unknown states
-             waveStatusEl.textContent = `Wave ${currentWaveNumber || '-'}`;
-             waveTimerEl.textContent = waveInfo.timerLabel || '';
-             enemyCountEl.textContent = waveInfo.progressText || '';
+             timer = 0;
+             currentMaxTimer = 1; // Avoid division by zero
+             progressText = '---'; // Keep for console/debug
              break;
     }
 
     return {
         state: state,
         mainWaveNumber: currentWaveNumber,
-        timer: timer,
-        timerLabel: timerLabel,
-        progressText: progressText,
+        timer: timer, // Time remaining in the current state
+        maxTimer: currentMaxTimer, // Initial duration of the current state (for UI bar width)
+        timerLabel: timerLabel, // Keep for debug/console
+        progressText: progressText, // Keep for debug/console
         isGameOver: isGameOver(), // Check if state is specifically GAME_OVER
         allWavesCleared: state === 'VICTORY'
     };
