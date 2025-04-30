@@ -23,6 +23,8 @@ let portal = null; // Portal instance
 let gameLoopId = null; // store requestAnimationFrame ID for pausing/stopping
 let lastTime = 0;
 let gameStartTime = 0; // track when the current game started for playtime/stats
+// --- Portal State ---
+let currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS;
 // --- Camera ---
 let cameraX = 0;
 let cameraY = 0;
@@ -36,6 +38,7 @@ let restartButtonGameOver = null;
 let restartButtonVictory = null;
 let gameOverStatsTextP = null;
 let victoryStatsTextP = null;
+let intermissionRadiusIncreasedThisWave = false;
 // --- Game State Enum ---
 const GameState = Object.freeze({
     PRE_GAME: 'PRE_GAME',
@@ -105,8 +108,7 @@ function getMouseGridCoords(inputMousePos) {
     const { x: worldX, y: worldY } = getMouseWorldCoords(inputMousePos);
     return GridCollision.worldToGridCoords(worldX, worldY);
 }
-
-// NEW: Callback function to handle the start of a new wave, triggered by WaveManager
+// Callback function to handle the start of a new wave, triggered by WaveManager
 function handleWaveStart(waveNumber) {
     console.log(`Main: Wave ${waveNumber} officially starting. Triggering epoch display.`);
     const epochYear = Config.EPOCH_MAP[waveNumber];
@@ -233,6 +235,10 @@ function startGame() {
         UI.setPlayerReference(player); // Set Player and Portal References in UI
         UI.setPortalReference(portal); // Set portal reference
     } catch (error) {
+        // Ensure portal and player are null if creation failed
+        player = null;
+        portal = null;
+        currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Reset radius
         console.error("FATAL: Game Object Creation/Init Error Message:", error.message);
         console.error("Error Stack:", error.stack);
         currentGameState = GameState.PRE_GAME;
@@ -241,15 +247,17 @@ function startGame() {
         return;
     }
     calculateInitialCamera(); // Calculate camera position, centered on player
-   currentGameState = GameState.RUNNING; // Set game state, hide overlay
-   hideOverlay();
-   Input.consumeClick(); // consume any lingering clicks
-   gameStartTime = performance.now(); // Start Game Loop
-   if (gameLoopId) {
-       cancelAnimationFrame(gameLoopId);
-   }
-   gameLoopId = requestAnimationFrame(gameLoop);
-   // console.log(">>> Game Loop Started <<<");
+    currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Reset radius for new game
+    intermissionRadiusIncreasedThisWave = false;
+    currentGameState = GameState.RUNNING; // Set game state, hide overlay
+    hideOverlay();
+    Input.consumeClick(); // consume any lingering clicks
+    gameStartTime = performance.now(); // Start Game Loop
+    if (gameLoopId) {
+        cancelAnimationFrame(gameLoopId);
+    }
+    gameLoopId = requestAnimationFrame(gameLoop);
+    console.log(">>> Game Loop Started <<<");
 }
 // --- Pause currently running game ---
 function pauseGame() { // exposed via window.pauseGameCallback
@@ -370,15 +378,25 @@ let currentPlayerPosition = null;
 if (player) {
     player.update(dt, inputState, targetWorldPos, targetGridCell);
     currentPlayerPosition = player.getPosition();
+    player.equipItem(player.getCurrentlySelectedItem()); // Re-equip to update UI selection state based on availability/possession
 }
-if (portal) { // NEW: Update portal
+if (portal) { // Update portal
     portal.update(dt);
 }
 ItemManager.update(dt);
 EnemyManager.update(dt, currentPlayerPosition);
 WaveManager.update(dt, currentGameState); // Pass the current game state to WaveManager.update so it knows whether to decrement timers
 // --- Check Wave Manager state AFTER update ---
-    const waveInfo = WaveManager.getWaveInfo();
+    // Get the latest wave info after update
+     const waveInfo = WaveManager.getWaveInfo();
+    // Check if transitioning into intermission to increment radius
+    if (waveInfo.state === 'INTERMISSION' && !intermissionRadiusIncreasedThisWave) {
+        currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
+        intermissionRadiusIncreasedThisWave = true;
+        console.log(`Main: Entered Intermission (Wave ${waveInfo.mainWaveNumber} complete). Portal radius increased to ${currentPortalSafetyRadius}.`);
+    } else if (waveInfo.state !== 'INTERMISSION') {
+         intermissionRadiusIncreasedThisWave = false; // Reset flag when not in intermission
+    }
     if (waveInfo.state === 'VICTORY') {
          handleVictory(); // transition to victory state
          return; // stop processing
@@ -398,13 +416,15 @@ WaveManager.update(dt, currentGameState); // Pass the current game state to Wave
 // --- Render Phase ---
     Renderer.clear();
     const mainCtx = Renderer.getContext();
+    // Pass the dynamically managed radius to the portal instance for drawing
     mainCtx.save(); // save context state before transformation
     mainCtx.scale(cameraScale, cameraScale); // apply camera transformations (scale and translate)
     mainCtx.translate(-cameraX, -cameraY);
 // --- Draw World Elements ---
     World.draw(mainCtx); // static world background
     ItemManager.draw(mainCtx); // items
-    if (portal) { // NEW: Draw portal
+    if (portal) { // Draw portal
+        portal.setSafetyRadius(currentPortalSafetyRadius); // Update portal instance with current radius before drawing
         portal.draw(mainCtx);
     }
     EnemyManager.draw(mainCtx); // enemies
