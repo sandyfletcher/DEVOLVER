@@ -1,7 +1,7 @@
 // root/js/main.js - Game Entry Point and Main Loop
 
 import * as UI from './ui.js';
-import { Player, isTargetWithinRange } from './player.js';
+import { Player } from './player.js';
 import * as Input from './input.js';
 import * as Config from './config.js';
 import * as Renderer from './renderer.js';
@@ -110,7 +110,7 @@ function getMouseGridCoords(inputMousePos) {
 }
 // Callback function to handle the start of a new wave, triggered by WaveManager
 function handleWaveStart(waveNumber) {
-    console.log(`Wave ${waveNumber}:`);
+    console.log(`Wave ${waveNumber}`);
     const epochYear = Config.EPOCH_MAP[waveNumber];
     if (epochYear !== undefined) {
         UI.showEpochText(epochYear);
@@ -385,10 +385,7 @@ if (portal) { // Update portal
 ItemManager.update(dt);
 EnemyManager.update(dt, currentPlayerPosition);
 WaveManager.update(dt, currentGameState); // Pass the current game state to WaveManager.update so it knows whether to decrement timers
-
-// --- ADD THIS LINE ---
 World.update(dt);
-// --- END ADD THIS LINE ---
 
 // --- Check Wave Manager state AFTER update ---
     // Get the latest wave info after update
@@ -397,7 +394,7 @@ World.update(dt);
     if (waveInfo.state === 'INTERMISSION' && !intermissionRadiusIncreasedThisWave) {
         currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
         intermissionRadiusIncreasedThisWave = true;
-        console.log(`Intermission after Wave ${waveInfo.mainWaveNumber}. Portal radius increased to ${currentPortalSafetyRadius}.`);
+        console.log(`Intermission - Safety Radius: ${currentPortalSafetyRadius}`);
     } else if (waveInfo.state !== 'INTERMISSION') {
          intermissionRadiusIncreasedThisWave = false; // Reset flag when not in intermission
     }

@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from '../config.js';
-import * as WorldData from './worldData.js';
+import * as WorldData from './worldData.js'; // Make sure WorldData is imported
 
 // Small value for floating point comparisons.
 const E_EPSILON = 1e-4; // Tiny offset to prevent floating point errors / sticking
@@ -63,6 +63,34 @@ export function isSolid(col, row) {
     }
     // Fallback for unexpected data
     return false;
+}
+
+/**
+ * Checks if a grid cell has an adjacent solid block (needed for placement support).
+ * @param {number} col - The column of the cell to check around.
+ * @param {number} row - The row of the cell to check around.
+ * @returns {boolean} True if any adjacent cell (cardinal directions) is solid.
+ */
+export function hasSolidNeighbor(col, row) {
+     // Ensure col and row are valid numbers
+     if (typeof col !== 'number' || typeof row !== 'number' || isNaN(col) || isNaN(row)) {
+         // console.warn("hasSolidNeighbor: Invalid coordinates.", col, row); // Keep console less noisy
+         return false;
+     }
+    const neighbors = [
+        { c: col, r: row - 1 }, // Above
+        { c: col, r: row + 1 }, // Below
+        { c: col - 1, r: row }, // Left
+        { c: col + 1, r: row }  // Right
+    ];
+
+    for (const n of neighbors) {
+        // Use GridCollision.isSolid which handles boundary checks and block type checks
+        if (isSolid(n.c, n.r)) {
+            return true; // Found a solid neighbor
+        }
+    }
+    return false; // No solid neighbors found
 }
 
 
