@@ -118,7 +118,6 @@ export function initGameUI() {
         // Use the new update function for portal/wave info
         updatePortalAndWaveInfo(); // Set initial loading state
         isUIReady = true; // Mark UI as ready if all steps succeeded
-        console.log("UI: Game UI initialized successfully.");
     } else {
         isUIReady = false; // Mark UI as not ready on failure
         console.error("UI: Failed to initialize some critical Game UI elements.");

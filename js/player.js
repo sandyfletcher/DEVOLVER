@@ -692,15 +692,10 @@ export class Player {
         return { x: hitboxX, y: hitboxY, width: hitboxWidth, height: hitboxHeight };
     }
 
-    /**
-     * Handles picking up an item. Updates inventory or weapon possession state.
-     * @param {Item} item - The item object being picked up.
-     * @returns {boolean} True if the item was successfully picked up, false otherwise.
-     */
+    // Handles picking up an item. Updates inventory or weapon possession state.
     pickupItem(item) {
         if (!item || !item.type) return false; // Invalid item
         let pickedUp = false;
-
         // Check item type and update player state accordingly
         if (item.type === Config.WEAPON_TYPE_SWORD) {
             if (!this.hasSword) { this.hasSword = true; console.log("Player picked up the sword!"); pickedUp = true; }
@@ -716,14 +711,12 @@ export class Player {
         } else {
             // console.warn(`Player encountered unknown item type: ${item.type}`);
         }
-
         // If a weapon was just picked up, equip it immediately ONLY if player is currently unarmed
         if (pickedUp && this.isWeaponType(item.type) && this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
             this.equipItem(item.type); // Equip the newly picked up weapon
         }
         return pickedUp; // Return whether the item was processed
     }
-
     /** Checks if the player possesses a specific weapon type. */
     hasWeapon(weaponType) {
         switch (weaponType) {
@@ -733,7 +726,6 @@ export class Player {
             default: return false; // Not a known weapon type
         }
     }
-
     /**
      * Equips an item (weapon or material) if the player possesses it / has stock.
      * @param {string} itemType - The type of item to equip.
@@ -748,7 +740,6 @@ export class Player {
         } else if (Config.INVENTORY_MATERIALS.includes(itemType)) {
             canEquip = (this.inventory[itemType] || 0) > 0; // Check inventory count for materials
         }
-
         // Equip the item if possible and not already equipped
         if (canEquip && this.selectedItem !== itemType) {
             this.selectedItem = itemType;
@@ -760,7 +751,6 @@ export class Player {
         // else if (!canEquip) { console.log(`Cannot equip ${itemType}.`); } // Log if needed
         // else { /* console.log(`Already equipped ${itemType}.`); */ } // Optional log
     }
-
     /** Decrements the inventory count for a given material type. */
     decrementInventory(itemType) {
         if (Config.INVENTORY_MATERIALS.includes(itemType) && this.inventory[itemType] > 0) {

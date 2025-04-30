@@ -57,7 +57,7 @@ export const WATER_MAX_SINK_SPEED = 100;  // Max speed falling down in water
 export const ENEMY_WATER_BUOYANCY_ACCEL = 180;
 export const WATER_JUMP_COOLDOWN_DURATION = 0.2;
 export const WATER_PROPAGATION_DELAY = 0.05; // Delay between water spreading/falling updates (lower = faster flow)
-export const WATER_UPDATES_PER_FRAME = 10; // Max number of water cells to process per frame
+export const WATER_UPDATES_PER_FRAME = 500; // Max number of water cells to process per frame
 
 // =============================================================================
 // --- Audio Constants ---
@@ -166,6 +166,7 @@ export const PORTAL_WIDTH = Math.floor(8 * BASE_BLOCK_PIXEL_SIZE); // e.g., 32 p
 export const PORTAL_HEIGHT = Math.floor(10 * BASE_BLOCK_PIXEL_SIZE); // e.g., 40 pixels
 export const PORTAL_INITIAL_HEALTH = 500;
 export const PORTAL_SAFETY_RADIUS = Math.floor(30 * BASE_BLOCK_PIXEL_SIZE); // e.g., 120 pixels radius
+export const PORTAL_RADIUS_GROWTH_PER_WAVE = 25; // Increase radius by 25 pixels each intermission
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // How many blocks above mean ground level to spawn the top of the portal
 
 // =============================================================================

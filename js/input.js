@@ -187,24 +187,16 @@ export function init() {
         // Warn but continue if app container isn't found (wheel check might be less precise)
         console.warn("Input Initialization Warning: App container element 'app-container' not found. Scroll zoom might occur outside game area.");
     }
-
     // Add Keyboard Listeners to the window
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
-
     // Add Mouse Listeners specifically to the canvas
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mousemove', handleMouseMove); // Tracks mouse position for aiming
-
     // Add Wheel Listener to the window (handler checks if inside appContainer)
     window.addEventListener('wheel', handleWheel, { passive: false }); // Need passive: false to allow preventDefault
-
-    // --- Touch controls are now handled by UI buttons in ui.js ---
-
     // Expose the state object globally so UI button handlers can modify it directly.
     window.Input = { state: state };
-
-    console.log("Input Initialized: Listening for Keyboard, Mouse (on Canvas), Wheel.");
 }
 
 /**

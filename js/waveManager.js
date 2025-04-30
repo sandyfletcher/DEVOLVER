@@ -95,7 +95,7 @@ function advanceSpawnProgression() {
         } else {
             // Finished all sub-waves in the current main wave
             // Spawning for this wave cycle is complete.
-            console.log(`[WaveMgr] All sub-waves processed for Wave ${currentMainWaveIndex + 1}. Spawning complete.`);
+            // console.log(`[WaveMgr] All sub-waves processed for Wave ${currentMainWaveIndex + 1}. Spawning complete.`);
             currentGroupIndex = -1; // Sentinel
             currentSubWaveIndex = -1; // Sentinel
             return false; // Indicate no more spawning progression for this wave
@@ -123,31 +123,26 @@ function startNextWave() {
     // Found a valid next wave, start the countdown
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration; // Set timer to the wave's total duration
-    console.log(`[WaveMgr] Starting Main Wave ${waveData.mainWaveNumber}. Duration: ${mainWaveTimer}s`);
+    // console.log(`[WaveMgr] Starting Main Wave ${waveData.mainWaveNumber}. Duration: ${mainWaveTimer}s`);
 
-    // NEW: Call the callback to notify the main loop (e.g., to show epoch text)
+    // Call the callback to notify the main loop (e.g., to show epoch text)
     if (typeof waveStartCallback === 'function') {
-        console.log(`[WaveMgr] Calling waveStartCallback for wave ${waveData.mainWaveNumber}.`);
+        // console.log(`[WaveMgr] Calling waveStartCallback for wave ${waveData.mainWaveNumber}.`);
         waveStartCallback(waveData.mainWaveNumber);
     } else {
         console.warn("[WaveMgr] No waveStartCallback function registered.");
     }
-
-
     // --- Trigger game music playback for the new wave ---
     if (waveData.audioTrack) {
         AudioManager.playGameMusic(waveData.audioTrack); // <-- Play the track for this wave
     } else {
         AudioManager.stopGameMusic(); // <-- Stop game music if no track is defined for this wave
     }
-
-
     // Reset spawning progression pointers for the new wave
     currentSubWaveIndex = 0;
     currentGroupIndex = 0; // Start with the first group of the first sub-wave
     enemiesSpawnedThisGroup = 0;
     groupSpawnTimer = 0; // Ready to spawn first enemy in group
-
     const firstGroup = getCurrentGroupData();
      if (firstGroup) {
         groupStartDelayTimer = firstGroup.startDelay ?? 0; // Set start delay for the very first group
@@ -156,8 +151,6 @@ function startNextWave() {
          console.warn(`[WaveMgr] Wave ${waveData.mainWaveNumber} has no enemy groups defined.`);
          groupStartDelayTimer = waveData.duration + 1; // Effectively prevent spawning if no groups
      }
-
-
     return true; // Indicates a wave was started
 }
 
@@ -172,7 +165,7 @@ function endWave() {
         return;
     }
 
-    console.log(`[WaveMgr] Main Wave ${waveData.mainWaveNumber} ended by timer.`);
+    // console.log(`[WaveMgr] Main Wave ${waveData.mainWaveNumber} ended by timer.`);
     EnemyManager.clearAllEnemies(); // Clear all remaining enemies at the end of the timed wave
 
     // Check if there's a *next* wave available AFTER the one that just finished
@@ -181,7 +174,7 @@ function endWave() {
         state = 'INTERMISSION';
         intermissionTimer = Config.WAVE_INTERMISSION_DURATION;
         AudioManager.stopGameMusic(); // <-- Stop wave music for intermission
-        console.log(`[WaveMgr] Transitioned to INTERMISSION. Next wave (${currentMainWaveIndex + 2}) starts in ${intermissionTimer}s.`);
+        // console.log(`[WaveMgr] Transitioned to INTERMISSION. Next wave (${currentMainWaveIndex + 2}) starts in ${intermissionTimer}s.`);
     } else {
         // No more waves, transition to victory
         state = 'VICTORY';
@@ -202,7 +195,6 @@ function endWave() {
 /** Initializes the wave manager to its default state. */
 // NEW: Accept an optional callback
 export function init(callback = null) {
-    console.log("[WaveManager] Initializing...");
     currentMainWaveIndex = -1; // Start before the first wave
     currentSubWaveIndex = 0;
     currentGroupIndex = 0;
@@ -213,33 +205,23 @@ export function init(callback = null) {
     preWaveTimer = Config.WAVE_START_DELAY; // Use config value for first delay
     mainWaveTimer = 0; // No main wave active yet
     intermissionTimer = 0; // No intermission active yet
-    // Store the callback
-    waveStartCallback = callback;
-    console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s. Callback ${callback ? 'provided' : 'not provided'}.`);
+    waveStartCallback = callback;     // Store the callback
+    // console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s. Callback ${callback ? 'provided' : 'not provided'}.`);
 }
 
-/** Resets the wave manager, typically for restarting the game. */
-// NEW: Accept an optional callback
+// Resets the wave manager, typically for restarting the game
 export function reset(callback = null) {
-    console.log("[WaveManager] Resetting...");
     // Pass the callback during reset as well
     init(callback); // Re-initialize using the init function
 }
 
-/**
- * Updates the wave state machine, handling timers and spawning.
- * Timers only decrement if the game is in the RUNNING state.
- * @param {number} dt - Delta time in seconds.
- * @param {string} gameState - The current GameState string from main.js. // <-- ADD THIS PARAMETER
- */
-export function update(dt, gameState) { // <-- ACCEPT THE PARAMETER HERE
-    // If the game is over or victory, no wave logic runs
+// Updates the wave state machine, handling timers and spawning. Timers only decrement if the game is in the RUNNING state.
+export function update(dt, gameState) {
     if (state === 'GAME_OVER' || state === 'VICTORY') {
-        return;
+        return; // If the game is over or victory, no wave logic runs
     }
-
     // --- ONLY UPDATE TIMERS IF GAME IS RUNNING ---
-    if (gameState === 'RUNNING') { // <-- ADD THIS CHECK
+    if (gameState === 'RUNNING') {
         switch (state) {
             case 'PRE_WAVE':
                 preWaveTimer -= dt;
@@ -303,20 +285,19 @@ export function update(dt, gameState) { // <-- ACCEPT THE PARAMETER HERE
                     startNextWave(); // This handles transition to WAVE_COUNTDOWN or VICTORY
                 }
                 break;
-            // GAME_OVER and VICTORY states don't have timers that need decrementing
-            // in the update loop, but they are handled by the outer if (state === ...) check.
+            // GAME_OVER and VICTORY states don't have timers that need decrementing in the update loop, but they are handled by the outer if (state === ...) check
             default:
                 console.error("Unknown wave state:", state);
                 setGameOver(); // Attempt recovery
                 break;
         }
-    } // <-- END OF if (gameState === 'RUNNING') CHECK
+    }
 }
 
 /** Sets the game state to GAME_OVER (e.g., triggered by player death). */
 export function setGameOver() {
     if (state !== 'GAME_OVER') {
-        console.log("[WaveManager] Setting state to GAME_OVER.");
+        // console.log("[WaveManager] Setting state to GAME_OVER.");
         state = 'GAME_OVER';
         // Optionally clear timers or enemies
         preWaveTimer = 0;

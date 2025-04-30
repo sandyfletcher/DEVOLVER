@@ -128,8 +128,7 @@ export function init() {
     const startY3 = startY - Config.BLOCK_HEIGHT * 10; // Adjust Y for shovel spawn
     spawnItem(Config.CANVAS_WIDTH * 0.4 - Config.SWORD_WIDTH / 2, startY, Config.WEAPON_TYPE_SWORD);
     spawnItem(Config.CANVAS_WIDTH * 0.6 - Config.SPEAR_WIDTH / 2, startY2, Config.WEAPON_TYPE_SPEAR);
-    spawnItem(Config.CANVAS_WIDTH * 0.5 - Config.SHOVEL_WIDTH / 2, startY3, Config.WEAPON_TYPE_SHOVEL); // Spawn shovel
-    console.log("Item Manager initialized with Sword, Spear, and Shovel.");
+    spawnItem(Config.CANVAS_WIDTH * 0.5 - Config.SHOVEL_WIDTH / 2, startY3, Config.WEAPON_TYPE_SHOVEL);
 }
 
 export function spawnItem(x, y, type) {

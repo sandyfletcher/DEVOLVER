@@ -110,7 +110,7 @@ function getMouseGridCoords(inputMousePos) {
 }
 // Callback function to handle the start of a new wave, triggered by WaveManager
 function handleWaveStart(waveNumber) {
-    console.log(`Main: Wave ${waveNumber} officially starting. Triggering epoch display.`);
+    console.log(`Wave ${waveNumber}:`);
     const epochYear = Config.EPOCH_MAP[waveNumber];
     if (epochYear !== undefined) {
         UI.showEpochText(epochYear);
@@ -216,7 +216,6 @@ function startGame() {
         console.warn("startGame called but game already RUNNING.");
         return;
     }
-    console.log(">>> Starting Game <<<");
     if (!UI.isInitialized()) { // Initialize UI Elements (find, create dynamic slots, add listeners)
          console.error("FATAL: UI was not initialized correctly. Aborting game start.");
          return;
@@ -350,7 +349,7 @@ function gameLoop(timestamp) {
     let dt;
     if (lastTime === 0) { // set dt to 0 to avoid negative time calculations on startup or after a long pause
         dt = 0;
-        console.log("GameLoop: First frame detected (lastTime was 0). dt set to 0.");
+        // console.log("GameLoop: First frame detected (lastTime was 0). dt set to 0.");
     } else { // standard calculation for subsequent frames
         dt = (timestamp - lastTime) / 1000; // time since last frame in seconds
         dt = Math.min(dt, Config.MAX_DELTA_TIME); // clamp dt to prevent physics issues if frame rate drops
@@ -386,6 +385,11 @@ if (portal) { // Update portal
 ItemManager.update(dt);
 EnemyManager.update(dt, currentPlayerPosition);
 WaveManager.update(dt, currentGameState); // Pass the current game state to WaveManager.update so it knows whether to decrement timers
+
+// --- ADD THIS LINE ---
+World.update(dt);
+// --- END ADD THIS LINE ---
+
 // --- Check Wave Manager state AFTER update ---
     // Get the latest wave info after update
      const waveInfo = WaveManager.getWaveInfo();
@@ -393,7 +397,7 @@ WaveManager.update(dt, currentGameState); // Pass the current game state to Wave
     if (waveInfo.state === 'INTERMISSION' && !intermissionRadiusIncreasedThisWave) {
         currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
         intermissionRadiusIncreasedThisWave = true;
-        console.log(`Main: Entered Intermission (Wave ${waveInfo.mainWaveNumber} complete). Portal radius increased to ${currentPortalSafetyRadius}.`);
+        console.log(`Intermission after Wave ${waveInfo.mainWaveNumber}. Portal radius increased to ${currentPortalSafetyRadius}.`);
     } else if (waveInfo.state !== 'INTERMISSION') {
          intermissionRadiusIncreasedThisWave = false; // Reset flag when not in intermission
     }
