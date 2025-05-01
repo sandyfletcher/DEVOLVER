@@ -269,27 +269,38 @@ export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 60; // How hard they push (pixe
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod'; // Add new type constants here: export const ENEMY_TYPE_FLYER = 'flyer';
+// NEW: Tetrapod specific constants (including damage values)
+export const TETRAPOD_WATER_CONTACT_DAMAGE = 1; // Damage when player touches Tetrapod in water
+export const TETRAPOD_LAND_FLOP_DAMAGE = 1;     // Damage when player touches Tetrapod during a land hop
+export const TETRAPOD_LAND_STILL_DAMAGE = 0;    // Damage when player touches Tetrapod on land but not hopping
+export const TETRAPOD_FLOP_ATTACK_DURATION = 0.2; // How long the land flop damage window is active (seconds)
+export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5; // Base seconds between land hops
+export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0; // Random variation added to base cooldown
+export const TETRAPOD_LAND_HOP_HORIZONTAL_FORCE = 50; // Horizontal velocity applied during a flop hop
+
 // --- Detailed Stats ---
-export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read from this configuration.
+export const ENEMY_STATS = {
     [ENEMY_TYPE_TETRAPOD]: {
         displayName: "Tetrapod",
         aiType: 'flopAI',
         color: 'rgb(100, 120, 80)',
-        width: DEFAULT_ENEMY_WIDTH, // Use default size for now
+        width: DEFAULT_ENEMY_WIDTH,
         height: DEFAULT_ENEMY_HEIGHT,
         health: 1, // Very fragile
-        contactDamage: 0, // <-- Minimal damage (0 for now, can adjust)
+        contactDamage: 0, // <-- Base contact damage is 0. Logic in Enemy.js determines actual damage.
         applyGravity: true,
         gravityFactor: 1.0,
-        maxSpeedX: 15, // Reduced land speed example
-        canJump: true, // Keep the land jump for flopping
-        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.4, // Weak jump/flop strength
+        maxSpeedX: 15, // Reduced land speed (only applies during hop action timer if AI sets vx)
+        maxSpeedY: 50, // Used for vertical movement in water/air by Enemy.js
+        swimSpeed: 70, // Max speed for swimming (used by AI for targetVx/Vy)
+        canJump: true, // <-- Enable jumping for land hops
+        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.25, // <-- Set jump strength for flops
         canSwim: true, // Good in water
         canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2, // slightly more space
         separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.8, // less pushy
         dropTable: [
-                { type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }, // drop table configuration, set to bone currently
+                { type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 },
             ],
     },
     [ENEMY_TYPE_CENTER_SEEKER]: {

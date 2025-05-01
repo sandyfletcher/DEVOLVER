@@ -117,33 +117,33 @@ export function checkPlayerAttackBlockCollisions(player) {
 
 /**
  * Checks for collisions between the player and enemies (contact damage).
- * If a collision occurs, damages the player using the specific enemy's contact damage value.
+ * If a collision occurs, damages the player using the enemy's calculated contact damage.
  * @param {Player} player - The player object.
  * @param {Array<Enemy>} enemies - An array of active enemy objects.
  */
 export function checkPlayerEnemyCollisions(player, enemies) {
-    // Check player state *before* iterating (invulnerable or dead)
     if (!player || !enemies || player.isInvulnerable || player.getCurrentHealth() <= 0) {
         return;
     }
 
     const playerRect = player.getRect();
     for (const enemy of enemies) {
-        if (!enemy || !enemy.isActive) continue; // Skip inactive/invalid enemies
+        if (!enemy || !enemy.isActive) continue;
 
         if (checkRectOverlap(playerRect, enemy.getRect())) {
             // Collision detected!
-            // Get the contact damage from the *specific enemy instance* that collided.
-            // The enemy instance should have its stats loaded from Config during construction.
-            // Add a fallback (e.g., 1 damage) in case stats or contactDamage is missing.
-            const damageAmount = enemy.stats?.contactDamage ?? 1; // Use nullish coalescing for safety
+            // NEW: Get the current contact damage by calling the enemy's method
+            const damageAmount = enemy.getCurrentContactDamage();
 
-            // console.log(`CollisionManager: Player collided with ${enemy.displayName}. Applying ${damageAmount} damage.`);
-            player.takeDamage(damageAmount);
+            // Only apply damage if the determined amount is greater than 0
+            if (damageAmount > 0) {
+                // console.log(`CollisionManager: Player collided with ${enemy.displayName}. Applying ${damageAmount} damage.`);
+                player.takeDamage(damageAmount);
 
-            // Important: Break after first hit in a frame to prevent multiple damage instances
-            // from the same or multiple enemies simultaneously. Player's takeDamage handles invulnerability timer.
-            break;
+                // Important: Break after first hit in a frame to prevent multiple damage instances.
+                // Player's takeDamage handles invulnerability timer.
+                break;
+            }
         }
     }
 }
@@ -169,11 +169,12 @@ export function checkEnemyPortalCollisions(enemies, portal) {
         // Perform collision check
         if (checkRectOverlap(enemy.getRect(), portalRect)) {
             // Collision detected!
-            // Damage the portal using the enemy's contact damage
+            // Damage the portal using the enemy's *base* contact damage stat, NOT the player-specific one
+            // We assume enemies deal their base contact damage to the portal regardless of state.
             // Add a fallback (e.g., 1 damage) in case stats or contactDamage is missing.
             const damageAmount = enemy.stats?.contactDamage ?? 1;
 
-            // Only damage if the enemy actually deals contact damage
+            // Only damage if the enemy actually deals base contact damage
             if (damageAmount > 0) {
                 portal.takeDamage(damageAmount);
                 // Optional: Add a cooldown or flag to enemy to prevent spamming damage every frame

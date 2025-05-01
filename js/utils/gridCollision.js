@@ -6,7 +6,7 @@ import * as Config from '../config.js';
 import * as WorldData from './worldData.js'; // Make sure WorldData is imported
 
 // Small value for floating point comparisons.
-const E_EPSILON = 1e-4; // Tiny offset to prevent floating point errors / sticking
+export const E_EPSILON = 1e-4; // Tiny offset to prevent floating point errors / sticking
 
 // --- Collision Helpers ---
 

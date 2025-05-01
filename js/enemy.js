@@ -1,3 +1,5 @@
+// root/js/enemy.js
+
 // -----------------------------------------------------------------------------
 // root/js/enemy.js - Enemy Class (Refactored for Config & AI Strategy)
 // -----------------------------------------------------------------------------
@@ -5,6 +7,7 @@
 import * as Config from './config.js';
 import * as ItemManager from './itemManager.js'; // Needed for drops on death
 import * as GridCollision from './utils/gridCollision.js'; // For physics and water detection
+import { E_EPSILON } from './utils/gridCollision.js';
 import { SeekCenterAI } from './ai/seekCenterAI.js';
 import { ChasePlayerAI } from './ai/chasePlayerAI.js';
 import { FlopAI } from './ai/flopAI.js';
@@ -13,7 +16,7 @@ import { FlopAI } from './ai/flopAI.js';
 const aiStrategyMap = {
     'seekCenter': SeekCenterAI,
     'chasePlayer': ChasePlayerAI,
-    'flopAI': FlopAI,
+    'flopAI': FlopAI, // Ensure FlopAI is mapped
     // 'flyPatrol': FlyerAI, // Add mappings for new AI types here
     // 'standAndShoot': ShooterAI,
 };
@@ -35,16 +38,15 @@ export class Enemy {
                 height: Config.DEFAULT_ENEMY_HEIGHT,
                 maxSpeedX: 30,
                 health: 1,
-                contactDamage: 1,
+                contactDamage: 1, // Fallback gets 1 damage
                 applyGravity: true,
                 gravityFactor: 1.0,
                 canJump: false,
                 jumpVelocity: 0,
-                canSwim: stats.canSwim ?? false,
-                canFly: stats.canFly ?? false,
-// Optionally read maxSpeedY if needed for flyers/swimmers
-                maxSpeedY: stats.maxSpeedY ?? 50,
-// Ensure applyGravity defaults correctly based on canFly
+                canSwim: stats.canSwim ?? false, // Read from original stats if available
+                canFly: stats.canFly ?? false,   // Read from original stats if available
+                maxSpeedY: stats.maxSpeedY ?? 50, // Read from original stats if available
+                swimSpeed: stats.swimSpeed ?? 50, // NEW: Read swimSpeed
                 applyGravity: stats.applyGravity ?? ! (stats.canFly ?? false),
                 separationFactor: Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
                 separationStrength: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH,
@@ -61,7 +63,13 @@ export class Enemy {
                 separationStrength: stats.separationStrength ?? Config.DEFAULT_ENEMY_SEPARATION_STRENGTH,
                 applyGravity: stats.applyGravity ?? true,
                 gravityFactor: stats.gravityFactor ?? 1.0,
-                contactDamage: stats.contactDamage ?? 1,
+                contactDamage: stats.contactDamage ?? 0, // Default to 0 if missing in config for non-Tetrapod
+                maxSpeedY: stats.maxSpeedY ?? 50, // Ensure maxSpeedY has a default
+                swimSpeed: stats.swimSpeed ?? 50, // NEW: Ensure swimSpeed has a default
+                canJump: stats.canJump ?? false,
+                jumpVelocity: stats.jumpVelocity ?? 0,
+                canSwim: stats.canSwim ?? false,
+                canFly: stats.canFly ?? false,
                 dropTable: stats.dropTable ?? [],
             };
         }
@@ -72,12 +80,15 @@ export class Enemy {
         this.height = this.stats.height;
         this.color = this.stats.color;
         this.health = this.stats.health;
-        this.maxSpeedX = this.stats.maxSpeedX;
+        this.maxSpeedX = this.stats.maxSpeedX; // Max speed for horizontal movement (often on land)
+        this.maxSpeedY = this.stats.maxSpeedY; // Max speed for vertical movement (often in air/water)
+        this.swimSpeed = this.stats.swimSpeed; // NEW: Max speed specific to swimming (used by AI/physics)
         this.displayName = this.stats.displayName;
 // --- Store Movement Capabilities ---
         this.canSwim = this.stats.canSwim;
         this.canFly = this.stats.canFly;
         this.applyGravityDefault = this.stats.applyGravity; // Store the default gravity setting
+        this.canJump = this.stats.canJump; // Store canJump capability
 // --- Physics State ---
         this.vx = 0;
         this.vy = 0;
@@ -85,6 +96,9 @@ export class Enemy {
         this.isActive = true;
         this.isInWater = false;
         this.waterJumpCooldown = 0; // Keep for non-swimming jumpers
+        // NEW: AI-controlled state flag(s) - specific AIs can set these
+        this.isFlopAttacking = false; // Specifically for Tetrapod's land hop attack
+
 // --- Visual Feedback State ---
         this.isFlashing = false;
         this.flashTimer = 0;
@@ -99,7 +113,9 @@ export class Enemy {
             console.error(`>>> Enemy CONSTRUCTOR: AI strategy type "${this.stats.aiType}" not found for enemy "${this.displayName}".`);
             this.aiStrategy = {
                 decideMovement: () => ({ targetVx: 0, jump: false }),
-                reactToCollision: () => {}
+                reactToCollision: () => {},
+                 // Add dummy methods for any flags AI controls, or ensure AI doesn't try to set them
+                 // For now, isFlopAttacking is a public property AI can set.
             };
         }
 // --- Initial Position Validation ---
@@ -112,6 +128,11 @@ export class Enemy {
 // --- Updates the enemy's state, delegating behavioral decisions to its AI strategy ---
     update(dt, playerPosition, allEnemies) {
         if (!this.isActive) return;
+// Ensure dt is valid
+         if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
+             console.warn(`Enemy(${this.displayName}) Update: Invalid delta time.`, dt);
+             return;
+         }
 // --- Determine Current Environment State ---
         this.isInWater = GridCollision.isEntityInWater(this);
 // Note: isOnGround is updated by collideAndResolve later, but we might need its state *from the previous frame* here.
@@ -148,7 +169,7 @@ export class Enemy {
 // Apply AI's vertical target directly (potentially with limits/smoothing)
             this.vy = targetVy; // Simplest: Directly set velocity based on AI
 // Could add acceleration: this.vy += (targetVy - this.vy) * flyAccel * dt;
-            this.vy = Math.max(-this.stats.maxSpeedY, Math.min(this.stats.maxSpeedY, this.vy)); // Clamp vertical speed
+            this.vy = Math.max(-this.maxSpeedY, Math.min(this.maxSpeedY, this.vy)); // Clamp vertical speed (Use maxSpeedY stat)
 // Horizontal movement
             this.vx = targetVx; // Directly set based on AI
 // Apply some air friction/damping? (Optional)
@@ -157,10 +178,10 @@ export class Enemy {
             useStandardGravity = false; // Override gravity/buoyancy for smooth swimmers
 // Apply AI's vertical target directly
             this.vy = targetVy;
-            this.vy = Math.max(-this.stats.maxSpeedY, Math.min(this.stats.maxSpeedY, this.vy)); // Clamp vertical speed
+            this.vy = Math.max(-this.swimSpeed, Math.min(this.swimSpeed, this.vy)); // Clamp vertical speed using swimSpeed
 // Apply AI's horizontal target
             this.vx = targetVx;
-// Apply strong water damping to horizontal movement
+// Apply standard water damping to horizontal movement
             this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
 // Apply some vertical damping too?
             this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt); // Less aggressive damping maybe?
@@ -174,7 +195,7 @@ export class Enemy {
             if (useStandardGravity && !this.isOnGround) {
                 const gravityMultiplier = applyWaterEffects ? Config.WATER_GRAVITY_FACTOR : 1.0;
                 this.vy += currentGravity * gravityMultiplier * dt;
-            } else if (this.isOnGround && this.vy > 0) {
+            } else if (this.isOnGround && this.vy > E_EPSILON) { // Use epsilon for float comparison
                 this.vy = 0; // Clamp on ground
             }
 // Apply Standard Vertical Damping (only for non-swimmers in water)
@@ -182,15 +203,15 @@ export class Enemy {
                  this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
             }
 // Handle Jumps (Ground or Water Strokes for non-swimmers)
-            if (wantsJump && this.stats.canJump) {
+            if (wantsJump && this.canJump) { // Check entity's canJump stat
                 if (applyWaterEffects) { // Water Stroke (for non-swimmer)
                     if (this.waterJumpCooldown <= 0) {
-                        this.vy = -(this.stats.jumpVelocity * 0.8); // Impulse
+                        this.vy = -(this.stats.jumpVelocity * 0.8); // Impulse (Use stat)
                         this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION;
                         this.isOnGround = false;
                     }
                 } else if (this.isOnGround) { // Ground Jump
-                    this.vy = -this.stats.jumpVelocity;
+                    this.vy = -this.stats.jumpVelocity; // Use stat
                     this.isOnGround = false;
                 }
             }
@@ -202,7 +223,7 @@ export class Enemy {
 // Add ground friction here if desired (if !applyWaterEffects && this.isOnGround)
         }
 // --- Clamp Speeds (After potential jumps/mode changes) ---
-        const currentMaxSpeedX = this.isInWater && !this.canSwim ? this.stats.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.stats.maxSpeedX;
+        const currentMaxSpeedX = this.isInWater && !this.canSwim ? this.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.maxSpeedX; // Use maxSpeedX stat
         this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
         if (applyWaterEffects) { // Non-swimmer in water
              this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED); // Limit stroke upward speed
@@ -214,8 +235,8 @@ export class Enemy {
 // --- 3. Separation Behavior (Apply after primary movement/physics) ---
         let separationForceX = 0;
         let separationForceY = 0;
-        let neighborsCount = 0; // <<< DECLARE AND INITIALIZE HERE
-        const separationRadius = this.width * this.stats.separationFactor;
+        let neighborsCount = 0;
+        const separationRadius = this.width * this.stats.separationFactor; // Use stat
         const separationRadiusSq = separationRadius * separationRadius;
         if (allEnemies) { // Check if the list was provided
             for (const otherEnemy of allEnemies) {
@@ -231,26 +252,31 @@ export class Enemy {
                          const repelStrength = (1.0 - (dist / separationRadius));
                          separationForceX += (dx / dist) * repelStrength;
                          separationForceY += (dy / dist) * repelStrength * 0.5; // Weaker vertical push
-                         neighborsCount++; // <<< INCREMENT HERE
+                         neighborsCount++;
                     }
                 }
             }
         }
 // Calculate the actual boost vectors AFTER iterating through all enemies
-        const separationBoostX = (neighborsCount > 0) ? separationForceX * this.stats.separationStrength : 0;
-        const separationBoostY = (neighborsCount > 0) ? separationForceY * this.stats.separationStrength : 0;  
+        const separationBoostX = (neighborsCount > 0) ? separationForceX * this.stats.separationStrength : 0; // Use stat
+        const separationBoostY = (neighborsCount > 0) ? separationForceY * this.stats.separationStrength : 0; // Use stat
 // Apply separation velocity adjustment
         if (neighborsCount > 0) {
 // Be careful applying separation in fly/swim modes - might need adjustment
-            if (!this.canFly && !(this.canSwim && this.isInWater)) {
+            if (!this.canFly && !(this.canSwim && this.isInWater)) { // Only apply full separation on ground/air (non-swim)
                 this.vx += separationBoostX;
+                // Apply vertical boost only if on ground, or if the boost is significant, or in water
                 if (this.isOnGround || Math.abs(separationBoostY) > 10 || this.isInWater) {
                     this.vy += separationBoostY;
                 }
-            } else {
-// How flyers/swimmers handle separation? Maybe only horizontal? Or ignore?
-                 this.vx += separationBoostX;
-// this.vy += separationBoostY * 0.5; // Weaker vertical push for flyers/swimmers?
+            } else if (this.canSwim && this.isInWater) { // Swimming: Apply separation differently?
+                // Maybe only apply horizontal separation boost?
+                 this.vx += separationBoostX * 0.5; // Reduced horizontal effect in water?
+                 // vertical separation might make sense if swimming side-by-side
+                 this.vy += separationBoostY * 0.5; // Reduced vertical effect in water?
+            } else if (this.canFly) { // Flying: Apply separation differently?
+                 this.vx += separationBoostX * 0.5; // Reduced horizontal effect?
+                 this.vy += separationBoostY * 0.5; // Apply vertical separation boost
             }
         }
 // --- 4. Physics: Grid Collision ---
@@ -263,7 +289,6 @@ export class Enemy {
         this.isOnGround = collisionResult.isOnGround; // Update ground status
 // Flyers shouldn't get stuck on ground if they are trying to fly up
         if (this.canFly && targetVy < 0 && collisionResult.collidedY && this.vy >= 0) {
-// If flyer wants up, hit head/ground, and is now moving down/stopped, clear vy?
 // This needs careful thought - maybe just let collision handle it.
         } else {
              if (collisionResult.collidedX) this.vx = 0;
@@ -297,6 +322,7 @@ export class Enemy {
         this.isActive = false;
         this.vx = 0;
         this.vy = 0;
+        this.isFlopAttacking = false; // NEW: Ensure flag is false on death
         if (killedByPlayer && this.stats.dropTable && this.stats.dropTable.length > 0) {
             if (typeof this.x !== 'number' || typeof this.y !== 'number' || isNaN(this.x) || isNaN(this.y)) {
                 console.error(`>>> ${this.displayName} died with invalid coordinates [${this.x}, ${this.y}], skipping drop spawn.`);
@@ -350,5 +376,47 @@ export class Enemy {
 
         ctx.fillStyle = drawColor;
         ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+
+        // Optional: Add a visual indicator for isFlopAttacking state for debugging
+        // if (this.isFlopAttacking) {
+        //      ctx.strokeStyle = 'red';
+        //      ctx.lineWidth = 1;
+        //      ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+        // }
+    }
+
+    // NEW: Method to determine current contact damage based on state
+    getCurrentContactDamage() {
+        // Default to 0 if this method is called on a type that doesn't have contact damage logic defined here
+        let damage = 0;
+
+        // --- Specific Logic for Tetrapod ---
+        if (this.type === Config.ENEMY_TYPE_TETRAPOD) {
+             if (this.isInWater) {
+                 // Damage when in water
+                 damage = Config.TETRAPOD_WATER_CONTACT_DAMAGE;
+             } else if (this.isOnGround) {
+                 // Damage when on land (only during flop attack state)
+                 damage = this.isFlopAttacking ? Config.TETRAPOD_LAND_FLOP_DAMAGE : Config.TETRAPOD_LAND_STILL_DAMAGE;
+             } else {
+                 // Damage when airborne over land (e.g., falling between hops)
+                 // Maybe still 0 damage if not actively flopping? Let's say 0 unless isFlopAttacking
+                 damage = this.isFlopAttacking ? Config.TETRAPOD_LAND_FLOP_DAMAGE : Config.TETRAPOD_LAND_STILL_DAMAGE; // Same as land logic
+             }
+        }
+        // --- Add Specific Logic for Other Enemy Types Here If Needed ---
+        // else if (this.type === Config.ENEMY_TYPE_SPIKE_BALL) {
+        //      return Config.SPIKE_BALL_DAMAGE; // Example: Always deals damage
+        // }
+        // else if (this.type === Config.ENEMY_TYPE_SLEEPER) {
+        //      return this.isAwake ? Config.SLEEPER_AWAKE_DAMAGE : 0; // Example: Deals damage only when awake
+        // }
+        // --- Default for Other Types ---
+        else {
+            // For any enemy type not handled above, fall back to their base contactDamage stat
+            damage = this.stats?.contactDamage ?? 0;
+        }
+
+        return damage;
     }
 }
