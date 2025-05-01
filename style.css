@@ -322,7 +322,7 @@ body {
 .item-box.active {
     border-color: yellow;
     box-shadow: 0 0 6px yellow;
-    opacity: 1 !important;
+    opacity: 1;
 }
 .item-box.disabled {
     opacity: 0.45;
@@ -379,6 +379,20 @@ body {
 .action-button.illuminated {
     background-color: white; color: black; border-color: black;
 }
+
+/* NEW: Style for settings group */
+.settings-group {
+    /* Adjust alignment/gap if needed for this specific group */
+    gap: 8px; /* Slightly smaller gap for settings buttons */
+}
+
+/* NEW: Style for muted audio buttons */
+.action-button.muted {
+    border-color: darkred; /* Red border */
+    color: darkred;       /* Red icon */
+    /* Optional: background-color: #333; */
+}
+
 #toggle-controls-button {
     position: absolute;
     bottom: -1px;

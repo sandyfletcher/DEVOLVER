@@ -11,6 +11,7 @@ import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
 import * as WaveManager from './waveManager.js';
 import * as GridCollision from './utils/gridCollision.js';
+import * as GridRenderer from './utils/grid.js'; // NEW: Import GridRenderer
 // Correctly import unpauseGameMusic
 import * as AudioManager from './audioManager.js';
 // Make sure unpauseGameMusic is accessible via AudioManager namespace
@@ -46,6 +47,11 @@ let restartButtonVictory = null;
 let gameOverStatsTextP = null;
 let victoryStatsTextP = null;
 
+// NEW: Settings Button References
+let btnToggleGrid = null;
+let btnMuteMusic = null;
+let btnMuteSfx = null;
+
 // --- Game State Enum ---
 const GameState = Object.freeze({
     PRE_GAME: 'PRE_GAME', // Title screen state
@@ -64,6 +70,11 @@ let previousWaveManagerState = null; // Tracker for WaveManager state transition
 // --- Auto-Pause State ---
 // Flag to indicate if the game was paused automatically due to losing tab visibility.
 let isAutoPaused = false; // <--- NEW FLAG FOR AUTO-PAUSE
+
+// NEW: Settings State
+let isGridVisible = false; // Default to grid off
+// Audio mute states are managed by AudioManager.js, but we can get them for UI updates
+
 
 // =============================================================================
 // --- Helper Functions ---
@@ -133,6 +144,38 @@ function handleWaveStart(waveNumber) {
 }
 
 // =============================================================================
+// --- Settings Toggle Functions ---
+// =============================================================================
+
+// NEW: Toggles the visibility of the grid.
+function toggleGridDisplay() {
+    isGridVisible = !isGridVisible;
+    console.log(`Main: Grid display is now ${isGridVisible ? 'ON' : 'OFF'}.`);
+    // UI update handled by main loop's UI.updateSettingsButtonStates
+    UI.illuminateButton('toggleGrid'); // Illuminate the button
+    // Re-render static world to apply change? No, GridRenderer draws directly in main loop now.
+}
+
+// NEW: Toggles music mute state.
+function toggleMusicMute() {
+    // AudioManager manages the mute state and volume. We just call its toggle function.
+    const newState = AudioManager.toggleMusicMute();
+    console.log(`Main: Music is now ${newState ? 'muted' : 'unmuted'}.`);
+    // UI update handled by main loop's UI.updateSettingsButtonStates
+    UI.illuminateButton('muteMusic'); // Illuminate the button
+}
+
+// NEW: Toggles SFX mute state.
+function toggleSfxMute() {
+    // AudioManager manages the mute state and volume. We just call its toggle function.
+    const newState = AudioManager.toggleSfxMute();
+    console.log(`Main: SFX is now ${newState ? 'muted' : 'unmuted'}.`);
+    // UI update handled by main loop's UI.updateSettingsButtonStates
+    UI.illuminateButton('muteSfx'); // Illuminate the button
+}
+
+
+// =============================================================================
 // --- Overlay Management ---
 // =============================================================================
 
@@ -152,6 +195,8 @@ function showOverlay(stateToShow) {
             // Stop all music for a clean start on the title screen
             AudioManager.stopAllMusic();
             // Play title music (if defined in config)
+            // Ensure UI music volume is set before playing (respects mute state)
+            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME); // Reset UI volume setting
             if (Config.AUDIO_TRACKS.title) {
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.title);
             } else {
@@ -162,6 +207,8 @@ function showOverlay(stateToShow) {
             gameOverlay.classList.add('show-pause');
             // Pause game music and play pause music (if defined)
             AudioManager.pauseGameMusic(); // Pause game music (retains position)
+             // Ensure UI music volume is set before playing (respects mute state)
+            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME); // Reset UI volume setting
             if (Config.AUDIO_TRACKS.pause) {
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             } else {
@@ -180,7 +227,9 @@ function showOverlay(stateToShow) {
             }
             // Stop game music and play game over music (if defined)
             AudioManager.stopGameMusic(); // Stop game music (reset position)
-            if (Config.AUDIO_TRACKS.gameOver) {
+             // Ensure UI music volume is set before playing (respects mute state)
+            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME); // Reset UI volume setting
+            if (Config.AUDIO_TRACKS.gameOver) { // Assuming you add a gameover track
                  AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver);
             } else {
                  AudioManager.stopUIMusic(); // Ensure UI music is stopped if no game over track
@@ -198,6 +247,8 @@ function showOverlay(stateToShow) {
             }
             // Stop game music and play victory music (if defined)
              AudioManager.stopGameMusic(); // Stop game music
+             // Ensure UI music volume is set before playing (respects mute state)
+            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME); // Reset UI volume setting
             if (Config.AUDIO_TRACKS.victory) {
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory);
             } else {
@@ -239,7 +290,6 @@ function startGame() {
         console.warn("startGame called but game already RUNNING.");
         return;
     }
-
     // Ensure UI is initialized before proceeding with game start logic
     if (!UI.isInitialized()) {
          console.error("FATAL: UI was not initialized correctly. Aborting game start.");
@@ -247,9 +297,6 @@ function startGame() {
          showOverlay(GameState.PRE_GAME); // Revert to title state, possibly showing an error message later
          return; // Stop game start sequence
     }
-
-    console.log(">>> Initializing Game Systems <<<");
-
     // Reset UI references before creating new game objects
     UI.setPlayerReference(null);
     UI.setPortalReference(null);
@@ -303,6 +350,16 @@ function startGame() {
 
     // Initialize the auto-pause flag.
     isAutoPaused = false; // Initialize the auto-pause flag.
+
+    // NEW: Reset settings state on new game
+    isGridVisible = false; // Grid starts off
+    // AudioManager mute states are managed by AudioManager, but ensure default volumes are applied
+    AudioManager.setVolume('game', Config.AUDIO_DEFAULT_GAME_VOLUME);
+    AudioManager.setVolume('sfx', Config.AUDIO_DEFAULT_SFX_VOLUME);
+    AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME); // Set UI volume in case it was messed with
+    // Update UI settings button states to reflect the reset
+    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
+
 
     // Transition the main game state to RUNNING.
     currentGameState = GameState.RUNNING;
@@ -552,6 +609,10 @@ function gameLoop(timestamp) {
              const targetGridCell = getMouseGridCoords(internalMousePos);
              // Call the player's update method.
              player.update(dt, inputState, targetWorldPos, targetGridCell);
+
+             // Consume attack input state after player has potentially used it
+             // This is moved here from Input.js based on player's internal logic
+             Input.consumeClick();
         }
 
         // Update Items (physics like falling, bobbing). Items.update checks isActive.
@@ -583,6 +644,8 @@ function gameLoop(timestamp) {
         // --- Updates that Run ONLY During WARPPHASE (if game is RUNNING) ---
         // During WARPPHASE, entities are frozen. Cleanup happens once at transition.
         // World update (water) continues below this block.
+         // Ensure Input attack state is consumed even if player update is skipped
+         Input.consumeClick();
     }
 
     // --- World Update (Dynamic Elements) ---
@@ -612,6 +675,11 @@ function gameLoop(timestamp) {
     // --- Draw World Elements ---
     // Draw the static world background (pre-rendered grid canvas) and dynamic water.
     World.draw(mainCtx);
+
+    // NEW: Draw Grid Lines if enabled (draw on mainCtx AFTER world but BEFORE entities)
+    GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
+
+
     // Draw active items in the world. ItemManager.draw checks isActive.
     ItemManager.draw(mainCtx);
     // Draw the portal. Portal.draw checks isActive.
@@ -639,6 +707,9 @@ function gameLoop(timestamp) {
         // ADDED: Maybe only draw ghost block during BUILDPHASE? Or whenever player is alive and has material selected?
         // Let's stick to drawing it when player is alive and has material selected, but ensure updates are paused in WARPPHASE.
         // Since player update (which determines placement target) is paused in WARPPHASE, the ghost won't move/update anyway.
+        // Only draw ghost block if game is in a state where placement is allowed (e.g. BUILDPHASE)
+        // Or perhaps draw it if player is alive and has material selected, regardless of wave state?
+        // Let's draw it based on player state, but rely on player.update being paused in WARPPHASE to prevent its position updating.
         player.drawGhostBlock(mainCtx);
     }
     // Restore the context state to remove the camera transformations.
@@ -662,6 +733,10 @@ function gameLoop(timestamp) {
     }
     // Pass the entire waveInfo object to the UI timer update function.
     UI.updateWaveTimer(waveInfo); // UI uses waveInfo.state and waveInfo.timer/maxTimer
+
+    // NEW: Update the state of settings buttons in the UI
+    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
+
 
     // --- Loop Continuation ---
     // Request the next animation frame to continue the game loop.
@@ -784,15 +859,26 @@ function init() {
         gameOverStatsTextP = document.getElementById('gameover-stats-text');
         victoryStatsTextP = document.getElementById('victory-stats-text');
 
+        // NEW: Get Settings Button References
+        btnToggleGrid = document.getElementById('btn-toggle-grid');
+        btnMuteMusic = document.getElementById('btn-mute-music');
+        btnMuteSfx = document.getElementById('btn-mute-sfx');
+
+
         // --- Verify Essential DOM Elements Are Found ---
         const essentialOverlayElements = [
             appContainer, gameOverlay, startGameButton, resumeButton,
-            restartButtonGameOver, restartButtonVictory, gameOverStatsTextP, victoryStatsTextP
+            restartButtonGameOver, restartButtonVictory, gameOverStatsTextP, victoryStatsTextP,
+            btnToggleGrid, btnMuteMusic, btnMuteSfx // NEW: Include settings buttons in check
         ];
         // Use `some()` to check if *any* element is missing.
         if (essentialOverlayElements.some(el => !el)) {
              // Identify which specific elements are missing for better debugging.
-             const missing = essentialOverlayElements.map((el, i) => el ? null : ['appContainer', 'gameOverlay', 'startGameButton', 'resumeButton', 'restartButtonGameOver', 'restartButtonVictory', 'gameover-stats-text', 'victory-stats-text'][i]).filter(id => id !== null);
+             const missing = essentialOverlayElements.map((el, i) => el ? null : [
+                 'appContainer', 'gameOverlay', 'startGameButton', 'resumeButton',
+                 'restartButtonGameOver', 'restartButtonVictory', 'gameover-stats-text', 'victory-stats-text',
+                 'btn-toggle-grid', 'btn-mute-music', 'btn-mute-sfx' // NEW: Button IDs
+             ][i]).filter(id => id !== null);
              // Throw a descriptive error if required elements are missing.
              throw new Error(`FATAL INIT ERROR: Essential overlay elements not found: ${missing.join(', ')}! Check index.html.`);
         }
@@ -803,6 +889,12 @@ function init() {
         resumeButton.addEventListener('click', resumeGame);
         restartButtonGameOver.addEventListener('click', restartGame);
         restartButtonVictory.addEventListener('click', restartGame);
+
+        // NEW: Setup Event Listeners for Settings Buttons
+        btnToggleGrid.addEventListener('click', toggleGridDisplay);
+        btnMuteMusic.addEventListener('click', toggleMusicMute); // These now call our new toggle functions
+        btnMuteSfx.addEventListener('click', toggleSfxMute);
+
 
         // --- Initialize Core Systems that DON'T Depend on Game Objects (Player, Portal) ---
 
@@ -817,7 +909,7 @@ function init() {
         // Initialize Input handlers (keyboard, mouse, touch, wheel).
         Input.init();
         // Initialize Audio Manager (creates audio elements).
-        AudioManager.init();
+        AudioManager.init(); // This now applies initial mute state from its own flags
 
         // Initialize Game UI. This finds UI elements and sets up item/weapon slots.
         // initGameUI also finds the epoch overlay element.
@@ -832,6 +924,13 @@ function init() {
         previousWaveManagerState = null; // Tracker for WaveManager state transitions.
         currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Radius value managed by main.js.
         isAutoPaused = false; // Initialize the auto-pause flag.
+
+        // NEW: Initialize settings state here (defaults set at variable declaration)
+        isGridVisible = false; // Explicitly ensure default state on init script run
+
+        // NEW: Update UI settings buttons initially to reflect the default state
+        UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
+
 
         // --- Setup Visibility Change Listener for Auto-Pause ---
         // Listen for when the document becomes hidden or visible.
