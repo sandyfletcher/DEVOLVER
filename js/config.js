@@ -1,5 +1,3 @@
-// root/js/config.js
-
 // root/js/config.js - Centralized Game Configuration
 
 // =============================================================================
@@ -184,6 +182,8 @@ export const PLAYER_FRICTION_BASE = 0.03; // Base friction multiplier (Lower = s
 export const PLAYER_JUMP_VELOCITY = 200; // Pixels per second (Initial upward velocity)
 export const PLAYER_INTERACTION_RANGE = 50; // Player range for block interaction (digging/placing)
 export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE;
+export const PLAYER_ITEM_ATTRACT_RADIUS = 100; // Pixels - How close player needs to be for attraction
+export const PLAYER_ITEM_ATTRACT_STRENGTH = 200; // Pixels/sec/sec - How strongly items accelerate towards the player
 
 // =============================================================================
 // --- Items & Weapons ---
