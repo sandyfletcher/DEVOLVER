@@ -691,7 +691,7 @@ function gameLoop(timestamp) {
         portal.draw(mainCtx);
     }
     // Draw active enemies. EnemyManager.draw checks isActive.
-    // ADDED: Only draw enemies if not in WARPPHASE to prevent them appearing frozen before removal.
+    // Only draw enemies if not in WARPPHASE to prevent them appearing frozen before removal.
      if (currentWaveManagerState !== 'WARPPHASE') {
         EnemyManager.draw(mainCtx);
      } else {
@@ -700,25 +700,14 @@ function gameLoop(timestamp) {
 
 
     // Draw the player (and their held item visual/ghost block). Player.draw checks invulnerability flashing.
-    // ADDED: Only draw player if not in WARPPHASE? Or always draw? Let's always draw, player doesn't disappear.
     if (player) {
         player.draw(mainCtx);
-        // Player.drawGhostBlock checks if ghost block info is valid.
-        // ADDED: Maybe only draw ghost block during BUILDPHASE? Or whenever player is alive and has material selected?
-        // Let's stick to drawing it when player is alive and has material selected, but ensure updates are paused in WARPPHASE.
-        // Since player update (which determines placement target) is paused in WARPPHASE, the ghost won't move/update anyway.
-        // Only draw ghost block if game is in a state where placement is allowed (e.g. BUILDPHASE)
-        // Or perhaps draw it if player is alive and has material selected, regardless of wave state?
-        // Let's draw it based on player state, but rely on player.update being paused in WARPPHASE to prevent its position updating.
         player.drawGhostBlock(mainCtx);
     }
     // Restore the context state to remove the camera transformations.
     mainCtx.restore();
 
-    // --- Update Sidebar UI ---
-    // Update the UI elements in the HTML sidebars based on the current game state.
-    // These updates should run every frame to reflect the latest game data (health, inventory, timers).
-    // They do not need to be skipped during WARPPHASE, as UI should remain responsive.
+    // --- Update Sidebar UI elements based on the current game state ---
     if (player) {
         UI.updatePlayerInfo(
              player.getCurrentHealth(), player.getMaxHealth(),
@@ -733,15 +722,10 @@ function gameLoop(timestamp) {
     }
     // Pass the entire waveInfo object to the UI timer update function.
     UI.updateWaveTimer(waveInfo); // UI uses waveInfo.state and waveInfo.timer/maxTimer
-
-    // NEW: Update the state of settings buttons in the UI
+    // Update the state of settings buttons in the UI
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 
-
-    // --- Loop Continuation ---
-    // Request the next animation frame to continue the game loop.
-    // This line is reached *only if* the `currentGameState === GameState.RUNNING` check at the top passed
-    // AND the Game Over/Victory checks *did not* trigger a state change.
+    // Request next animation frame only if the GameState.RUNNING check passed AND GameOver/Victory checks did not trigger state change
     gameLoopId = requestAnimationFrame(gameLoop);
 }
 
@@ -843,8 +827,7 @@ function calculateCameraPosition() {
 // --- Initialization ---
 // =============================================================================
 
-// Initializes the game by setting up DOM references, event listeners,
-// core systems (Renderer, Input, Audio, UI), and showing the initial overlay.
+// Initializes the game by setting up DOM references, event listeners, core systems (Renderer, Input, Audio, UI), and showing initial overlay.
 function init() {
     currentGameState = GameState.PRE_GAME; // Set the initial main game state.
 
@@ -859,17 +842,16 @@ function init() {
         gameOverStatsTextP = document.getElementById('gameover-stats-text');
         victoryStatsTextP = document.getElementById('victory-stats-text');
 
-        // NEW: Get Settings Button References
+        // Get Settings Button References
         btnToggleGrid = document.getElementById('btn-toggle-grid');
         btnMuteMusic = document.getElementById('btn-mute-music');
         btnMuteSfx = document.getElementById('btn-mute-sfx');
-
 
         // --- Verify Essential DOM Elements Are Found ---
         const essentialOverlayElements = [
             appContainer, gameOverlay, startGameButton, resumeButton,
             restartButtonGameOver, restartButtonVictory, gameOverStatsTextP, victoryStatsTextP,
-            btnToggleGrid, btnMuteMusic, btnMuteSfx // NEW: Include settings buttons in check
+            btnToggleGrid, btnMuteMusic, btnMuteSfx // Include settings buttons in check
         ];
         // Use `some()` to check if *any* element is missing.
         if (essentialOverlayElements.some(el => !el)) {
@@ -890,11 +872,10 @@ function init() {
         restartButtonGameOver.addEventListener('click', restartGame);
         restartButtonVictory.addEventListener('click', restartGame);
 
-        // NEW: Setup Event Listeners for Settings Buttons
+        // Setup Event Listeners for Settings Buttons
         btnToggleGrid.addEventListener('click', toggleGridDisplay);
         btnMuteMusic.addEventListener('click', toggleMusicMute); // These now call our new toggle functions
         btnMuteSfx.addEventListener('click', toggleSfxMute);
-
 
         // --- Initialize Core Systems that DON'T Depend on Game Objects (Player, Portal) ---
 
@@ -925,10 +906,10 @@ function init() {
         currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Radius value managed by main.js.
         isAutoPaused = false; // Initialize the auto-pause flag.
 
-        // NEW: Initialize settings state here (defaults set at variable declaration)
+        // Initialize settings state here (defaults set at variable declaration)
         isGridVisible = false; // Explicitly ensure default state on init script run
 
-        // NEW: Update UI settings buttons initially to reflect the default state
+        // Update UI settings buttons initially to reflect the default state
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 
 
@@ -940,8 +921,7 @@ function init() {
         // Start by displaying the title screen.
         showOverlay(GameState.PRE_GAME);
 
-    } catch (error) {
-        // --- Handle Fatal Initialization Errors ---
+    } catch (error) { // --- Handle Fatal Initialization Errors ---
         console.error("FATAL: Initialization Error:", error);
         // Attempt to display an error message on the screen using the overlay if possible.
         if (gameOverlay) {
@@ -980,36 +960,14 @@ function init() {
             alert(`FATAL Initialization Error:\n${error.message}\nPlease check console (F12) and refresh.`);
         }
     }
-    // The script execution will halt here due to the thrown error or the alert.
 }
-
-// --- Event Handler for Document Visibility Change ---
-// Automatically pauses the game when the browser tab/window is hidden.
-// DOES NOT auto-resume; user must click the Resume button.
+// --- Automatically pauses when window is hidden - user must click Resume button to continue ---
 function handleVisibilityChange() {
-    if (document.hidden) {
-        // Document is now hidden (tab switched or window minimized)
-        // Only auto-pause if the game is currently RUNNING.
-        if (currentGameState === GameState.RUNNING) {
-            console.log("Document hidden, auto-pausing game.");
-            isAutoPaused = true; // Mark that this pause is automatic
-            pauseGame(); // Call the existing pause function. This transitions state to PAUSED and shows the overlay.
-        }
-    } else {
-        // Document is now visible (tab switched back or window restored)
-        // We do NOT automatically resume here.
-        // The game will remain in the PAUSED state (if it was auto-paused)
-        // and the pause overlay will remain visible.
-        // The user must click the "Resume" button, which calls resumeGame().
-        if (currentGameState === GameState.PAUSED && isAutoPaused) {
-             console.log("Document visible, game remains paused (auto-paused).");
-             // Do nothing else. The game state is already PAUSED, the overlay is showing.
-             // The user must interact.
-        }
+    if (document.hidden && currentGameState === GameState.RUNNING) {
+        console.log("Document hidden, auto-pausing game.");
+        isAutoPaused = true;
+        pauseGame();
     }
 }
-
-
-// --- Start Initialization When DOM is Ready ---
-// Add an event listener to run the init function once the DOM is fully loaded and parsed.
+// --- Add an event listener to run the init function once the DOM is fully loaded and parsed ---
 window.addEventListener('DOMContentLoaded', init);

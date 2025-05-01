@@ -13,7 +13,6 @@ let topSidebarEl = null;
 let playerColumnEl, portalColumnEl; // Keep column refs for structure/class
 let playerHealthBarContainerEl, playerHealthBarFillEl; // Updated player health bar elements
 let portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl; // Updated portal health bar elements (added H2 ref)
-// Removed: healthLabelEl, healthTextEl, waveStatusEl, waveTimerEl, enemyCountEl
 let timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl; // New timer elements
 
 // Bottom Sidebar
@@ -31,7 +30,6 @@ let muteSfxButtonEl = null;
 // Overlay
 let gameOverlay = null;
 let epochOverlayEl = null;
-// Removed: portalHealthDisplayEl
 
 // --- Internal State ---
 let playerRef = null;
@@ -59,51 +57,35 @@ export function initGameUI() {
     topSidebarEl = document.getElementById('top-sidebar'); // Get the main top sidebar
     playerColumnEl = document.getElementById('player-column'); // Player column (container)
     portalColumnEl = document.getElementById('portal-column'); // Portal column (container)
-
     playerHealthBarContainerEl = document.getElementById('player-health-bar-container'); // Player bar container
     playerHealthBarFillEl = document.getElementById('player-health-bar-fill'); // Player bar fill
-    // Removed: healthLabelEl, healthTextEl
-
     portalColumnH2El = document.getElementById('portal-health-title'); // Portal title (now superimposed H2)
     portalHealthBarContainerEl = document.getElementById('portal-health-bar-container'); // Portal bar container
     portalHealthBarFillEl = document.getElementById('portal-health-bar-fill'); // Portal bar fill
-    // Removed: waveStatusEl, waveTimerEl, enemyCountEl (which was repurposed)
-
     timerRowEl = document.getElementById('timer-row'); // Timer row container
     timerBarContainerEl = document.getElementById('timer-bar-container'); // Timer bar container
     timerBarFillEl = document.getElementById('timer-bar-fill'); // Timer bar fill
     timerTextOverlayEl = document.getElementById('timer-text-overlay'); // Timer text overlay
-
-    // --- Find Bottom Sidebar Elements (Keep) ---
     bottomSidebarEl = document.getElementById('bottom-sidebar');
     itemSelectionAreaEl = document.getElementById('item-selection-area');
     inventoryBoxesContainerEl = document.getElementById('inventory-boxes-container');
     weaponSlotsContainerEl = document.getElementById('weapon-slots-container');
     actionButtonsAreaEl = document.getElementById('action-buttons-area');
     toggleControlsButtonEl = document.getElementById('toggle-controls-button');
-
-    // NEW: Find Settings Buttons
     toggleGridButtonEl = document.getElementById('btn-toggle-grid');
     muteMusicButtonEl = document.getElementById('btn-mute-music');
     muteSfxButtonEl = document.getElementById('btn-mute-sfx');
-
-
-    // Find Action Buttons (Keep)
     actionButtons.left = document.getElementById('btn-move-left');
     actionButtons.right = document.getElementById('btn-move-right');
     actionButtons.pause = document.getElementById('btn-pause');
     actionButtons.jump = document.getElementById('btn-jump');
     actionButtons.attack = document.getElementById('btn-attack');
-
-    // NEW: Add settings buttons to actionButtons mapping for illumination
     actionButtons.toggleGrid = toggleGridButtonEl;
     actionButtons.muteMusic = muteMusicButtonEl;
     actionButtons.muteSfx = muteSfxButtonEl;
-
-    // NEW: Find Epoch Overlay Element (Keep)
     epochOverlayEl = document.getElementById('epoch-overlay');
 
-    // --- Verification ---
+    // --- Verification - Update requiredElements list to include new settings buttons ---
     // Update requiredElements list to include new settings buttons
     const requiredElements = [
         topSidebarEl, playerColumnEl, portalColumnEl,

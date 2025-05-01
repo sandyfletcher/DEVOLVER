@@ -1,3 +1,5 @@
+// root/js/itemManager.js
+
 // -----------------------------------------------------------------------------
 // itemManager.js - Manages Items in the World
 // -----------------------------------------------------------------------------
@@ -7,7 +9,8 @@ import * as GridCollision from './utils/gridCollision.js'; // Make sure this is 
 
 // --- Internal Item Class ---
 class Item {
-    constructor(x, y, type, config) { // Config is passed in
+    // ... (existing Item class code - no changes needed here)
+     constructor(x, y, type, config) { // Config is passed in
         this.x = x;
         this.y = y;
         this.type = type;
@@ -25,10 +28,6 @@ class Item {
         this.isActive = true;
         this.isInWater = false; // Initialize water state flag
     }
-
-// --- Physics and state ---
-
-// Updates the item's physics and state using grid collision
     update(dt) {
         if (!this.isActive) return;
         this.isInWater = GridCollision.isEntityInWater(this); // Detect water status first
@@ -87,7 +86,6 @@ class Item {
              this.isActive = false;
         }
     }
-
     draw(ctx) {
         if (!this.isActive || !ctx) return;
         if (isNaN(this.x) || isNaN(this.y)) {
@@ -104,7 +102,6 @@ class Item {
         ctx.fillStyle = this.color;
         ctx.fillRect(Math.floor(this.x), Math.floor(drawY), this.width, this.height);
     }
-
     getRect() {
          const safeX = typeof this.x === 'number' && !isNaN(this.x) ? this.x : 0;
          const safeY = typeof this.y === 'number' && !isNaN(this.y) ? this.y : 0;
@@ -117,19 +114,34 @@ class Item {
     }
 }
 
+
 // --- Module State ---
 let items = []; // Array containing active Item instances
 
 // --- Public Functions ---
 export function init() {
     items = [];
-    const startY = (Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT) - Config.SWORD_HEIGHT - (8 * Config.BLOCK_HEIGHT);
-    const startY2 = startY - Config.BLOCK_HEIGHT * 5;
-    const startY3 = startY - Config.BLOCK_HEIGHT * 10; // Adjust Y for shovel spawn
-    spawnItem(Config.CANVAS_WIDTH * 0.4 - Config.SWORD_WIDTH / 2, startY, Config.WEAPON_TYPE_SWORD);
-    spawnItem(Config.CANVAS_WIDTH * 0.6 - Config.SPEAR_WIDTH / 2, startY2, Config.WEAPON_TYPE_SPEAR);
-    spawnItem(Config.CANVAS_WIDTH * 0.5 - Config.SHOVEL_WIDTH / 2, startY3, Config.WEAPON_TYPE_SHOVEL);
+    // Get the Y coordinate of the mean ground level in world pixels
+    const meanGroundWorldY = Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT;
+
+    // Calculate spawn positions relative to the mean ground, adjusting for item height
+    // Spawn Sword slightly to the left of center
+    const swordSpawnX = Config.CANVAS_WIDTH * 0.4 - Config.SWORD_WIDTH / 2;
+    const swordSpawnY = meanGroundWorldY - Config.SWORD_HEIGHT - (5 * Config.BLOCK_HEIGHT); // Example: 5 blocks above mean ground
+
+    // Spawn Spear slightly to the right of center, higher up
+    const spearSpawnX = Config.CANVAS_WIDTH * 0.6 - Config.SPEAR_WIDTH / 2;
+    const spearSpawnY = meanGroundWorldY - Config.SPEAR_HEIGHT - (10 * Config.BLOCK_HEIGHT); // Example: 10 blocks above mean ground
+
+    // Spawn Shovel at center, even higher up
+    const shovelSpawnX = Config.CANVAS_WIDTH * 0.5 - Config.SHOVEL_WIDTH / 2;
+    const shovelSpawnY = meanGroundWorldY - Config.SHOVEL_HEIGHT - (15 * Config.BLOCK_HEIGHT); // Example: 15 blocks above mean ground
+
+    spawnItem(swordSpawnX, swordSpawnY, Config.WEAPON_TYPE_SWORD);
+    spawnItem(spearSpawnX, spearSpawnY, Config.WEAPON_TYPE_SPEAR);
+    spawnItem(shovelSpawnX, shovelSpawnY, Config.WEAPON_TYPE_SHOVEL);
 }
+
 
 export function spawnItem(x, y, type) {
     const itemConfig = Config.ITEM_CONFIG[type];

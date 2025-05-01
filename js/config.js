@@ -1,3 +1,5 @@
+// root/js/config.js
+
 // root/js/config.js - Centralized Game Configuration
 
 // =============================================================================
@@ -11,7 +13,7 @@ export const GRID_COLS = 400;
 export const GRID_ROWS = 200;
 // --- Canvas  ---
 export const CANVAS_WIDTH = GRID_COLS * BASE_BLOCK_PIXEL_SIZE;
-export const CANVAS_HEIGHT = GRID_ROWS * BASE_BLOCK_PIXEL_SIZE;
+export const CANVAS_HEIGHT = GRID_ROWS * BASE_BLOCK_PIXEL_SIZE; // Canvas height matches total grid height
 // --- Procedural Generation Parameters ---
 export const WORLD_ISLAND_WIDTH = 0.8; // width of island as a percentage
 export const WORLD_WATER_LEVEL = 0.15; // water covers bottom 15%, could be raised for environmental chaos
@@ -42,6 +44,7 @@ export const GRAVITY_ACCELERATION = 700; // Pixels per second per second
 export const MAX_FALL_SPEED = 450; // Pixels per second - General max fall speed unless overridden
 export const MAX_DELTA_TIME = 0.05; // Max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
 // --- Step-up allowance ---
+// Ratios based on ENTITY height
 export const ENTITY_STEP_TIER1_MAX_HEIGHT_FACTOR = 1/3; // Max height for effortless step (approx 0.33)
 export const ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR = 1/2; // Max height for slowed step (approx 0.5)
 export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.4; // Horizontal velocity multiplier after completing a Tier 2 step, retain 40% of horizontal speed
@@ -162,10 +165,10 @@ export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // 1 pixel thickness
 // =============================================================================
 
 export const PORTAL_COLOR = 'rgb(100, 100, 255)'; // Blueish color
-export const PORTAL_WIDTH = Math.floor(8 * BASE_BLOCK_PIXEL_SIZE); // e.g., 32 pixels
-export const PORTAL_HEIGHT = Math.floor(10 * BASE_BLOCK_PIXEL_SIZE); // e.g., 40 pixels
+export const PORTAL_WIDTH = Math.floor(8 * BASE_BLOCK_PIXEL_SIZE); // e.g., 32 pixels (8 blocks)
+export const PORTAL_HEIGHT = Math.floor(10 * BASE_BLOCK_PIXEL_SIZE); // e.g., 40 pixels (10 blocks)
 export const PORTAL_INITIAL_HEALTH = 500;
-export const PORTAL_SAFETY_RADIUS = Math.floor(30 * BASE_BLOCK_PIXEL_SIZE); // e.g., 120 pixels radius
+export const PORTAL_SAFETY_RADIUS = Math.floor(30 * BASE_BLOCK_PIXEL_SIZE); // e.g., 120 pixels radius (30 blocks)
 export const PORTAL_RADIUS_GROWTH_PER_WAVE = 25; // Increase radius by 25 pixels each intermission
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // How many blocks above mean ground level to spawn the top of the portal
 
@@ -174,18 +177,18 @@ export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // How many blocks above mean gro
 // =============================================================================
 
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
-export const PLAYER_WIDTH = Math.max(5, Math.floor(2.5 * BLOCK_WIDTH)); // Approx 10px (adjust if block size changes)
-export const PLAYER_HEIGHT = Math.max(8, Math.floor(5 * BLOCK_HEIGHT)); // Approx 20px (adjust if block size changes)
+export const PLAYER_WIDTH = 3* BLOCK_WIDTH; // 8 pixels
+export const PLAYER_HEIGHT = 6 * BLOCK_HEIGHT; // 16 pixels
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2; // Spawn Position
 export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT); // slightly above mean ground
 export const PLAYER_INITIAL_HEALTH = 100; // --- Health  ---
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds
-export const PLAYER_MOVE_ACCELERATION = 800; // --- Physics --- // Pixels per second per second
+export const PLAYER_MOVE_ACCELERATION = 800; // Pixels per second per second
 export const PLAYER_MAX_SPEED_X = 120; // Pixels per second
-export const PLAYER_FRICTION_BASE = 0.04; // Base friction multiplier (Lower = stronger friction)
+export const PLAYER_FRICTION_BASE = 0.03; // Base friction multiplier (Lower = stronger friction)
 export const PLAYER_JUMP_VELOCITY = 200; // Pixels per second (Initial upward velocity)
-export const PLAYER_INTERACTION_RANGE = 100; // Player range for block interaction (digging/placing)
+export const PLAYER_INTERACTION_RANGE = 50; // Player range for block interaction (digging/placing)
 export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE;
 
 // =============================================================================
@@ -199,56 +202,65 @@ export const WEAPON_TYPE_UNARMED = 'unarmed';
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
 export const WEAPON_TYPE_SPEAR = 'spear'
-// --- Shovel ---
-export const SHOVEL_WIDTH = Math.floor(2.5 * BLOCK_WIDTH);   // Visual size: Keep factors as is for now ~10px (Matches new player width)
-export const SHOVEL_HEIGHT = Math.floor(1.5 * BLOCK_HEIGHT);  // ~6px
+// NEW Weapon Sizes: Standardized to block units
+// Shovel: 1x2 blocks
+export const SHOVEL_WIDTH = 1 * BLOCK_WIDTH; // 4 pixels
+export const SHOVEL_HEIGHT = 2 * BLOCK_HEIGHT; // 8 pixels
 export const SHOVEL_COLOR = 'rgb(160, 160, 160)'; // Grey color
 export const PLAYER_SHOVEL_ATTACK_DAMAGE = 5; // Damage: Keep as is, Very low damage vs enemies
 export const PLAYER_SHOVEL_BLOCK_DAMAGE = 25; // High damage vs blocks
-export const PLAYER_SHOVEL_ATTACK_REACH_X = Math.floor(2.5 * BLOCK_WIDTH);  // Hitbox: Adjust reach and size for 1-block horiz, 2-block vert from player center approx // ~10px from player center (~1 block beyond player edge)
-export const PLAYER_SHOVEL_ATTACK_REACH_Y = Math.floor(2.0 * BLOCK_HEIGHT); // ~8px down from player center (~2 blocks down)
-export const PLAYER_SHOVEL_ATTACK_WIDTH = Math.floor(2.0 * BLOCK_WIDTH);  // Moderate width hitbox ~8px (covers ~1 block each side of reach point)
-export const PLAYER_SHOVEL_ATTACK_HEIGHT = Math.floor(4.0 * BLOCK_HEIGHT); // Taller height hitbox ~16px (covers ~2 blocks each side of reach point)
+// NEW Shovel Hitbox/Reach: Adjusted based on new player/shovel size
+export const PLAYER_SHOVEL_ATTACK_REACH_X = PLAYER_WIDTH + SHOVEL_WIDTH * 0.5; // Reach from player center approx (player_w/2 + shovel_w/2) + small buffer? Let's try player_w/2 + shovel_w * 1.5
+export const PLAYER_SHOVEL_ATTACK_REACH_Y = PLAYER_HEIGHT * 0.4; // Reach vertically down from player center? (player_h/2 + shovel_h*0.5)
+export const PLAYER_SHOVEL_ATTACK_WIDTH = SHOVEL_WIDTH * 2; // Hitbox width (approx 2 blocks wide)
+export const PLAYER_SHOVEL_ATTACK_HEIGHT = SHOVEL_HEIGHT * 2; // Hitbox height (approx 4 blocks tall)
 export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3; // Clunky duration
 export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.4; // Clunky cooldown
 export const PLAYER_SHOVEL_ATTACK_COLOR = 'rgba(180, 180, 180, 0.5)'; // Greyish color
-// --- Sword ---
+
+// Sword: 3x1 blocks
+export const SWORD_WIDTH = 3 * BLOCK_WIDTH; // 12 pixels
+export const SWORD_HEIGHT = 1 * BLOCK_HEIGHT; // 4 pixels
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
 export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
-export const SWORD_WIDTH = Math.floor(3 * BLOCK_WIDTH); // Approx 12px
-export const SWORD_HEIGHT = Math.floor(1 * BLOCK_HEIGHT); // Approx 4px
-export const PLAYER_SWORD_ATTACK_DAMAGE = 15; // // Damage: Increase for combat focusGood baseline damage (Increased)
+export const PLAYER_SWORD_ATTACK_DAMAGE = 15; // Good baseline damage (Increased)
 export const PLAYER_SWORD_BLOCK_DAMAGE = 0; // Swords don't break blocks
-export const PLAYER_SWORD_ATTACK_REACH_X = Math.floor(4.5 * BLOCK_WIDTH); // Hitbox: Adjust reach and size for a wider arcModerate reach ~18px from player center (~3 blocks beyond player edge)
-export const PLAYER_SWORD_ATTACK_REACH_Y = Math.floor(0.5 * BLOCK_HEIGHT); // Slight downward offset ~2px from player center
-export const PLAYER_SWORD_ATTACK_WIDTH = Math.floor(3.0 * BLOCK_WIDTH); // Wide hitbox ~12px (arc) (Increased)
-export const PLAYER_SWORD_ATTACK_HEIGHT = Math.floor(PLAYER_HEIGHT * 1.1); // Tall hitbox ~22px (arc) (Scales with new player height)
+// NEW Sword Hitbox/Reach: Adjusted based on new player/sword size
+export const PLAYER_SWORD_ATTACK_REACH_X = PLAYER_WIDTH * 0.8; // Reach horizontally from player center (swing arc)
+export const PLAYER_SWORD_ATTACK_REACH_Y = PLAYER_HEIGHT * 0; // Slight downward offset (relative to player center)
+export const PLAYER_SWORD_ATTACK_WIDTH = PLAYER_WIDTH * 1.5; // Wide hitbox (arc)
+export const PLAYER_SWORD_ATTACK_HEIGHT = PLAYER_HEIGHT * 0.9; // Tall hitbox (arc)
 export const PLAYER_SWORD_ATTACK_DURATION = 0.2; // Faster duration
 export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.3; // Faster cooldown
-// --- Spear ---
-export const SPEAR_WIDTH = Math.floor(4 * BLOCK_WIDTH);      // Longer item ~16px
-export const SPEAR_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT);  // Thinner item ~3px
+
+// Spear: 4x1 blocks
+export const SPEAR_WIDTH = 4 * BLOCK_WIDTH; // 16 pixels
+export const SPEAR_HEIGHT = 1 * BLOCK_HEIGHT; // 4 pixels
 export const SPEAR_COLOR = 'rgb(210, 180, 140)'; // Wood-like color
 export const PLAYER_SPEAR_ATTACK_DAMAGE = 8; // Slightly less damage than sword
 export const PLAYER_SPEAR_BLOCK_DAMAGE = 0; // Spears don't break blocks
-export const PLAYER_SPEAR_ATTACK_REACH_X = Math.floor(5.5 * BLOCK_WIDTH); // Very Long reach ~22px from player center (~4 blocks beyond player edge) (Increased)
-export const PLAYER_SPEAR_ATTACK_REACH_Y = Math.floor(0.5 * BLOCK_HEIGHT); // Slight vertical offset ~2px
-export const PLAYER_SPEAR_ATTACK_WIDTH = Math.floor(0.75 * BLOCK_WIDTH); // Narrow hitbox ~3px
-export const PLAYER_SPEAR_ATTACK_HEIGHT = Math.floor(0.75 * BLOCK_HEIGHT); // Narrow hitbox ~3px
+// NEW Spear Hitbox/Reach: Adjusted based on new player/spear size
+export const PLAYER_SPEAR_ATTACK_REACH_X = PLAYER_WIDTH * 1.2; // Very Long reach horizontally from player center
+export const PLAYER_SPEAR_ATTACK_REACH_Y = PLAYER_HEIGHT * 0.1; // Slight vertical offset
+export const PLAYER_SPEAR_ATTACK_WIDTH = SPEAR_WIDTH * 0.3; // Narrow hitbox
+export const PLAYER_SPEAR_ATTACK_HEIGHT = SPEAR_HEIGHT * 2; // A bit taller hitbox than the spear itself? Or keep narrow? Let's try wider
 export const PLAYER_SPEAR_ATTACK_DURATION = 0.3; // Moderate duration (thrust lingers)
 export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5; // Moderate/Slow cooldown (recovery)
 export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)'; // Different color?
+
 // --- Centralized Item Configuration Object ---
 export const ITEM_CONFIG = {
+    // Use the updated constants here
     [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
     [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
     [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
-    'dirt': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_DIRT] },
-    'sand': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_SAND] },
-    'wood': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_WOOD] },
-    'stone': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_STONE] },
-    'metal': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_METAL] },
-    'bone': { width: Math.floor(1 * BLOCK_WIDTH), height: Math.floor(1 * BLOCK_HEIGHT), color: BLOCK_COLORS[BLOCK_BONE] },
+    // Materials are 1x1 blocks
+    'dirt': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_DIRT] },
+    'sand': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_SAND] },
+    'wood': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_WOOD] },
+    'stone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_STONE] },
+    'metal': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_METAL] },
+    'bone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_BONE] },
 // don't forget to add here if there are other items (material drops)
 };
 
@@ -259,42 +271,48 @@ export const ITEM_CONFIG = {
 export const MAX_ENEMIES = 100;
 export const ENEMY_SPAWN_EDGE_MARGIN = 80; // Pixels away from screen edge to attempt spawning
 export const ENEMY_FLASH_DURATION = 0.15; // Seconds enemy flashes when hit
-// --- Default  Size ---
-export const DEFAULT_ENEMY_WIDTH = Math.floor(1.5 * BLOCK_WIDTH);
-export const DEFAULT_ENEMY_HEIGHT = Math.floor(2.25 * BLOCK_HEIGHT);
+// NEW Default Enemy Size: Standardized to 2x2 blocks
+export const DEFAULT_ENEMY_WIDTH = 2 * BLOCK_WIDTH; // 8 pixels
+export const DEFAULT_ENEMY_HEIGHT = 2 * BLOCK_HEIGHT; // 8 pixels
+
 // --- Default Separation Behavior ---
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // How close before pushing (factor of width)
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 60; // How hard they push (pixels/sec velocity boost)
+
 // --- Type Identifiers ---
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod'; // Add new type constants here: export const ENEMY_TYPE_FLYER = 'flyer';
+
 // NEW: Tetrapod specific constants (including damage values)
 export const TETRAPOD_WATER_CONTACT_DAMAGE = 1; // Damage when player touches Tetrapod in water
 export const TETRAPOD_LAND_FLOP_DAMAGE = 1;     // Damage when player touches Tetrapod during a land hop
 export const TETRAPOD_LAND_STILL_DAMAGE = 0;    // Damage when player touches Tetrapod on land but not hopping
+
 export const TETRAPOD_FLOP_ATTACK_DURATION = 0.2; // How long the land flop damage window is active (seconds)
 export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5; // Base seconds between land hops
 export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0; // Random variation added to base cooldown
 export const TETRAPOD_LAND_HOP_HORIZONTAL_FORCE = 50; // Horizontal velocity applied during a flop hop
 
+
 // --- Detailed Stats ---
-export const ENEMY_STATS = {
+export const ENEMY_STATS = { // Enemy class constructor and AI Strategies read from this configuration.
     [ENEMY_TYPE_TETRAPOD]: {
         displayName: "Tetrapod",
         aiType: 'flopAI',
-        color: 'rgb(100, 120, 80)',
-        width: DEFAULT_ENEMY_WIDTH,
-        height: DEFAULT_ENEMY_HEIGHT,
+        color: 'rgb(100, 120, 80)', // Muddy greenish-brown
+        // Use NEW Default Enemy Size or define specific size in block units
+        width: DEFAULT_ENEMY_WIDTH, // 2 blocks
+        height: DEFAULT_ENEMY_HEIGHT, // 2 blocks
         health: 1, // Very fragile
-        contactDamage: 0, // <-- Base contact damage is 0. Logic in Enemy.js determines actual damage.
+        contactDamage: 0, // Base contact damage is 0. Logic in Enemy.js determines actual damage.
         applyGravity: true,
         gravityFactor: 1.0,
         maxSpeedX: 15, // Reduced land speed (only applies during hop action timer if AI sets vx)
-        maxSpeedY: 50, // Used for vertical movement in water/air by Enemy.js
-        swimSpeed: 70, // Max speed for swimming (used by AI for targetVx/Vy)
-        canJump: true, // <-- Enable jumping for land hops
-        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.25, // <-- Set jump strength for flops
+        maxSpeedY: 50, // Used for vertical movement in air/water by Enemy.js (vertical limit)
+        swimSpeed: 70, // Max speed specific to swimming (used by AI for targetVx/Vy)
+        canJump: true, // Enable jumping for land hops
+        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.25, // Set jump strength for flops
         canSwim: true, // Good in water
         canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2, // slightly more space
@@ -307,11 +325,13 @@ export const ENEMY_STATS = {
         displayName: "Seeker", // For potential UI/debugging
         aiType: 'seekCenter', // Key to match an AI Strategy class (to be implemented)
         color: 'rgb(80, 150, 80)', // Visual color
-        width: DEFAULT_ENEMY_WIDTH, // Use default size
-        height: DEFAULT_ENEMY_HEIGHT,
+        width: DEFAULT_ENEMY_WIDTH, // Use NEW Default Size (2 blocks)
+        height: DEFAULT_ENEMY_HEIGHT, // Use NEW Default Size (2 blocks)
         maxSpeedX: 40, // Movement speed (pixels/sec)
+        maxSpeedY: 50, // Ensure maxSpeedY has a default for swimming/flying checks
+        swimSpeed: 50, // Ensure swimSpeed has a default
         health: 1, // Starting health points
-        contactDamage: 10, // Damage dealt on player collision
+        contactDamage: 10, // Damage dealt on player collision (base damage)
         applyGravity: true, // Does gravity affect this enemy?
         gravityFactor: 1.0, // Multiplier for gravity (1.0 = normal)
         canJump: true, // Can this enemy initiate a jump?
@@ -328,11 +348,13 @@ export const ENEMY_STATS = {
         displayName: "Chaser",
         aiType: 'chasePlayer',            // Key for AI Strategy
         color: 'rgb(150, 80, 80)',
-        width: DEFAULT_ENEMY_WIDTH,
-        height: DEFAULT_ENEMY_HEIGHT,
+        width: DEFAULT_ENEMY_WIDTH, // Use NEW Default Size (2 blocks)
+        height: DEFAULT_ENEMY_HEIGHT, // Use NEW Default Size (2 blocks)
         maxSpeedX: 55,                    // Slightly faster
+        maxSpeedY: 50, // Ensure maxSpeedY has a default
+        swimSpeed: 50, // Ensure swimSpeed has a default
         health: 2,                        // Slightly tougher
-        contactDamage: 10,
+        contactDamage: 10, // Base damage
         applyGravity: true,
         gravityFactor: 1.0,
         canJump: true,                   // Chasers can jump over small obstacles

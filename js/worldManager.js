@@ -155,8 +155,6 @@ function renderStaticWorldToGridCanvas() {
             }
         }
     }
-// Optional: Draw grid lines over the world
-// GridRenderer.drawStaticGrid(); // Ensure this is imported if used
 }
 
 // --- Helper function to update a single block on the off-screen canvas ---

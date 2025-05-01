@@ -20,9 +20,6 @@ export const state = {
     // Store mouse coordinates relative to the INTERNAL canvas resolution
     internalMouseX: 0,
     internalMouseY: 0,
-    // Keep mouseX/Y perhaps for legacy reasons or debug, but internalMouseX/Y are primary
-    mouseX: 0, // <<< Could potentially remove these if unused elsewhere
-    mouseY: 0, // <<< Could potentially remove these if unused elsewhere
 };
 
 // --- Keyboard Mapping ---
@@ -199,21 +196,12 @@ export function init() {
     window.Input = { state: state };
 }
 
-/**
- * Returns the current input state object.
- * This state reflects combined input from keyboard and UI buttons.
- * @returns {object} The input state object.
- */
+// Returns the current input state object.
 export function getState() {
     return state;
 }
 
-/**
- * Returns the current mouse position relative to the INTERNAL canvas resolution.
- * THIS IS THE CRITICAL FIX.
- * @returns {{x: number, y: number}} Mouse coordinates.
- */
+// Returns the current mouse position relative to the INTERNAL canvas resolution.
 export function getMousePosition() {
-    // *** FIX: Return the internal coordinates ***
     return { x: state.internalMouseX, y: state.internalMouseY };
 }

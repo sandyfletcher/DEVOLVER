@@ -2,25 +2,15 @@
 
 import * as Config from './config.js';
 
-// --- Module State ---
 let gameMusicAudio = null; // Audio element for gameplay wave music
-let uiMusicAudio = null;   // Audio element for UI/menu music
-let sfxAudioPool = [];     // Array of audio elements for sound effects
-
-// Keep track of which tracks are loaded to avoid unnecessary reloads
-let currentGameTrackPath = null;
+let uiMusicAudio = null; // Audio element for UI/menu music
+let sfxAudioPool = []; // Array of audio elements for sound effects
+let currentGameTrackPath = null; // Keep track of which tracks are loaded to avoid unnecessary reloads
 let currentUITrackPath = null;
-
-// We will remove gameMusicWasPlayingBeforeUI flag from AudioManager
-
-
-// Volume settings
-let gameVolume = Config.AUDIO_DEFAULT_GAME_VOLUME;
+let gameVolume = Config.AUDIO_DEFAULT_GAME_VOLUME; // Volume settings
 let uiVolume = Config.AUDIO_DEFAULT_UI_VOLUME;
 let sfxVolume = Config.AUDIO_DEFAULT_SFX_VOLUME;
-
-// NEW: Mute state and last non-zero volumes
-let isMusicMuted = false;
+let isMusicMuted = false; // NEW: Mute state and last non-zero volumes
 let isSfxMuted = false;
 // lastGameVolume, lastUiVolume, lastSfxVolume are not strictly needed for this fix,
 // but keeping them if intended for UI sliders later. The current setVolume
@@ -32,11 +22,9 @@ let isSfxMuted = false;
 // let lastUiVolume = uiVolume;
 // let lastSfxVolume = sfxVolume;
 
-/**
- * Initializes the audio manager. Creates all necessary audio elements and pool.
- */
+// --- Initialize audio manager, create all necessary audio elements and pool
 export function init() {
-    // Capture initial volumes as the last non-zero volumes (Removed)
+    // Capture initial volumes as the last non-zero volumes
     // lastGameVolume = gameVolume;
     // lastUiVolume = uiVolume;
     // lastSfxVolume = sfxVolume;
