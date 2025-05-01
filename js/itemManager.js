@@ -6,29 +6,29 @@ import * as WorldData from './utils/worldData.js';
 
 // --- Internal Item Class ---
 class Item {
-    constructor(x, y, type, config) { // Config passed in
+    constructor(x, y, type, config) { // pass config in
         this.x = x;
         this.y = y;
         this.type = type;
-        this.width = config?.width ?? Math.floor(Config.BLOCK_WIDTH); // Use passed config directly
+        this.width = config?.width ?? Math.floor(Config.BLOCK_WIDTH);
         this.height = config?.height ?? Math.floor(Config.BLOCK_HEIGHT);
         this.color = config?.color ?? 'magenta';
         this.bobbleAmount = config?.bobbleAmount ?? Config.ITEM_BOBBLE_AMOUNT;
         this.bobbleSpeed = config?.bobbleSpeed ?? Config.ITEM_BOBBLE_SPEED;
-        this.vx = 0; // Physics and state
+        this.vx = 0;
         this.vy = 0;
         this.isOnGround = false;
         this.bobbleOffset = Math.random() * Math.PI * 2;
         this.isActive = true;
-        this.isInWater = false; // Initialize water state flag
-        this.isAttracted = false; // Flag to know if currently being attracted
+        this.isInWater = false;
+        this.isAttracted = false;
     }
     update(dt, player) {
         if (!this.isActive) return;
-        if (typeof dt !== 'number' || isNaN(dt) || dt < 0) return; // Basic dt validation
-        this.isInWater = GridCollision.isEntityInWater(this); // Detect water status first
+        if (typeof dt !== 'number' || isNaN(dt) || dt < 0) return; // dt validation
+        this.isInWater = GridCollision.isEntityInWater(this); // detect water status first
         this.isAttracted = false;
-        if (player && player.getCurrentHealth() > 0) { // Only attract if player exists and is alive
+        if (player && player.getCurrentHealth() > 0) { // only attract if player is alive
             const playerRect = player.getRect();
             const itemCenterX = this.x + this.width / 2;
             const itemCenterY = this.y + this.height / 2;
@@ -36,23 +36,18 @@ class Item {
             const playerCenterY = playerRect.y + playerRect.height / 2;
             const dx = playerCenterX - itemCenterX;
             const dy = playerCenterY - itemCenterY;
-            const distSq = dx * dx + dy * dy; // Squared distance for faster comparison
+            const distSq = dx * dx + dy * dy; // squared distance for faster comparison
             const attractRadiusSq = Config.PLAYER_ITEM_ATTRACT_RADIUS * Config.PLAYER_ITEM_ATTRACT_RADIUS;
-            const pickupRangeSq = Config.PLAYER_INTERACTION_RANGE_SQ; // Use player's pickup range
-            // Attract if within attraction radius, but not already close enough for pickup (to avoid jitter)
-            if (distSq < attractRadiusSq && distSq > pickupRangeSq) {
+            const pickupRangeSq = Config.PLAYER_INTERACTION_RANGE_SQ; // use player pickup range
+            if (distSq < attractRadiusSq && distSq > pickupRangeSq) { // attract if within radius
                 this.isAttracted = true;
                 const dist = Math.sqrt(distSq);
-                // Normalize direction vector
-                const normX = dx / dist;
+                const normX = dx / dist; // normalize direction vector
                 const normY = dy / dist;
-                // Apply attraction force (acceleration)
-                this.vx += normX * Config.PLAYER_ITEM_ATTRACT_STRENGTH * dt;
+                this.vx += normX * Config.PLAYER_ITEM_ATTRACT_STRENGTH * dt; // apply acceleration force from attraction
                 this.vy += normY * Config.PLAYER_ITEM_ATTRACT_STRENGTH * dt;
-                // Optional: Apply stronger damping/friction while attracted?
-                // This might make them feel less floaty once attraction starts.
-                // this.vx *= Math.pow(0.8, dt); // Example: apply some friction
-                // this.vy *= Math.pow(0.8, dt); // Example: apply some friction
+                this.vx *= Math.pow(0.8, dt); // apply stronger friction while attracted to feel less floaty once attracted
+                this.vy *= Math.pow(0.8, dt);
             }
         }
         // --- Get Current Physics Params ---
@@ -60,17 +55,16 @@ class Item {
         const horizontalDampingFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : 1;
         const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
         // --- Apply Horizontal Damping (if item ever gets vx) ---
-        if (this.isInWater && Math.abs(this.vx) > GridCollision.E_EPSILON) { // Use E_EPSILON here too for small velocities
+        if (this.isInWater && Math.abs(this.vx) > GridCollision.E_EPSILON) { // EPSILON here for small velocities
             this.vx *= horizontalDampingFactor;
-            if (Math.abs(this.vx) < GridCollision.E_EPSILON) this.vx = 0; // Use E_EPSILON here too
+            if (Math.abs(this.vx) < GridCollision.E_EPSILON) this.vx = 0;
         }
         // --- Physics Step 1: Apply Gravity ---
         if (!this.isOnGround) {
              this.vy += currentGravity * dt;
         } else {
              // On ground logic: reset vy
-             // FIX: Use GridCollision.E_EPSILON for floating point comparison
-            if (this.vy > GridCollision.E_EPSILON) this.vy = 0; // <-- CORRECTED LINE
+            if (this.vy > GridCollision.E_EPSILON) this.vy = 0;
         }
         // --- Apply Vertical Damping & Clamp Speed ---
         if (this.isInWater) {
@@ -159,7 +153,7 @@ export function spawnItem(x, y, type) {
 export function update(dt, player) { 
     for (let i = items.length - 1; i >= 0; i--) {
         const item = items[i];
-        item.update(dt, player); // The main update loop now calls item.update() with player
+        item.update(dt, player);
         if (!item.isActive) {
             items.splice(i, 1);
         }
@@ -181,11 +175,10 @@ export function removeItem(itemToRemove) {
 }
 // Clears all items outside a given radius from a center point
 export function clearItemsOutsideRadius(centerX, centerY, radius) {
-    const radiusSq = radius * radius; // Compare squared distances for efficiency
+    const radiusSq = radius * radius; // compare squared distances for efficiency
     const initialCount = items.length;
     items = items.filter(item => {
-        if (!item || typeof item.x !== 'number' || typeof item.y !== 'number' || isNaN(item.x) || isNaN(item.y)) {
-            // Remove invalid items defensively
+        if (!item || typeof item.x !== 'number' || typeof item.y !== 'number' || isNaN(item.x) || isNaN(item.y)) { // Remove invalid items defensively
             console.warn("ItemManager: Found invalid item data during cleanup, removing.", item);
             return false;
         }
