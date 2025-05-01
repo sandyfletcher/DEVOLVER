@@ -117,12 +117,6 @@ export const BLOCK_STONE = 5;
 export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8; // TODO: Glass, specific ores, etc.
-// --- Orientation IDs ---
-export const ORIENTATION_FULL = 0;
-export const ORIENTATION_SLOPE_BL = 1; // Bottom-Left triangle solid
-export const ORIENTATION_SLOPE_BR = 2; // Bottom-Right triangle solid
-export const ORIENTATION_SLOPE_TR = 3; // Top-Right triangle solid
-export const ORIENTATION_SLOPE_TL = 4; // Top-Left triangle solid
 // --- HP ---
 export const BLOCK_HP = {
     [BLOCK_WATER]: Infinity,

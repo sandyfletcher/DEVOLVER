@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// root/js/worldGenerator.js - Semi-random world generation to start game
+// root/js/utils/worldGenerator.js - Semi-random world generation to start game
 // -----------------------------------------------------------------------------
 
 import * as Config from '../config.js';
@@ -32,7 +32,8 @@ function generateLandmass() {
     // Edge taper constants
     const edgeTaperWidth = Math.floor(Config.GRID_COLS * 0.15);
     const edgeStoneLevelTarget = Config.GRID_ROWS + 5; // Target stone level AT THE EDGE (below map)
-    const edgeFloorLevelTarget = deepOceanFloorStartRow + 10; // Target floor level AT THE EDGE
+    const edgeFloorLevelTarget = deepOceanFloorStartRow + 10; // Target floor level below deep ocean floor at edge
+    const islandCenterTaperWidth = Config.ISLAND_CENTER_TAPER_WIDTH; // Use config value
 
     // Intermediate storage for calculated levels
     let worldLevels = Array(Config.GRID_COLS).fill(null);
@@ -173,7 +174,8 @@ function generateLandmass() {
 console.log("Pass 3: Placing blocks with controlled sand depth...");
 for (let r = 0; r < Config.GRID_ROWS; r++) {
     for (let c = 0; c < Config.GRID_COLS; c++) {
-        let blockData = createBlock(Config.BLOCK_AIR, Config.ORIENTATION_FULL, false); // Default to AIR, NOT player placed
+        // Use createBlock
+        let blockData = createBlock(Config.BLOCK_AIR, false); // Default to AIR, NOT player placed
         const levels = worldLevels[c];
         if (!levels) {
             console.warn(`Missing level data for column ${c}`);
@@ -186,7 +188,7 @@ for (let r = 0; r < Config.GRID_ROWS; r++) {
 
         if (r >= finalStoneRow && finalStoneRow < Config.GRID_ROWS) {
             // Place Stone below the calculated stone level
-            blockData = createBlock(Config.BLOCK_STONE, Config.ORIENTATION_FULL, false); // Stone not player placed
+            blockData = createBlock(Config.BLOCK_STONE, false); // Stone not player placed
 
         } else if (r > finalSurfaceRow && r < finalStoneRow) {
             // --- Between stone and surface level ---
@@ -196,14 +198,14 @@ for (let r = 0; r < Config.GRID_ROWS; r++) {
                 const currentDepth = r - finalSurfaceRow;
 
                 if (currentDepth <= maxAllowedSandDepth) {
-                    blockData = createBlock(Config.BLOCK_SAND, Config.ORIENTATION_FULL, false); // Sand not player placed
+                    blockData = createBlock(Config.BLOCK_SAND, false); // Sand not player placed
                 } else {
                     // Exceeded allowed sand depth, place what would normally be here
-                    blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT, Config.ORIENTATION_FULL, false); // Sand/Dirt not player placed
+                    blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT, false); // Sand/Dirt not player placed
                 }
             } else {
                 // Surface is above water - standard logic (Dirt for island, Sand for ocean floor)
-                blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT, Config.ORIENTATION_FULL, false); // Sand/Dirt not player placed
+                blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT, false); // Sand/Dirt not player placed
             }
 
         } else if (r === finalSurfaceRow) {
@@ -211,13 +213,13 @@ for (let r = 0; r < Config.GRID_ROWS; r++) {
             if (surfaceIsBelowWater) {
                 // Surface itself is underwater, place Sand (minimum 1 layer)
                  if (finalStoneRow > finalSurfaceRow) {
-                    blockData = createBlock(Config.BLOCK_SAND, Config.ORIENTATION_FULL, false); // Sand not player placed
+                    blockData = createBlock(Config.BLOCK_SAND, false); // Sand not player placed
                  } else {
-                     blockData = createBlock(Config.BLOCK_STONE, Config.ORIENTATION_FULL, false); // Stone not player placed
+                     blockData = createBlock(Config.BLOCK_STONE, false); // Stone not player placed
                  }
             } else {
                 // Surface is above water - standard logic (Grass for island, Sand for ocean floor)
-                blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_GRASS, Config.ORIENTATION_FULL, false); // Grass/Sand not player placed
+                blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_GRASS, false); // Grass/Sand not player placed
             }
         }
 
@@ -309,7 +311,7 @@ function applyFloodFill(targetWaterRow) {
 
        // Fill with water - Use the WorldData setter, which uses createBlock
        // Water is naturally occurring, so isPlayerPlaced is false
-       setBlock(c, r, Config.BLOCK_WATER, Config.ORIENTATION_FULL, false); // Use imported setter, set isPlayerPlaced false
+       setBlock(c, r, Config.BLOCK_WATER, false); // Use imported setter, set isPlayerPlaced false
        processed++;
 
         // Add valid AIR neighbors (must be below targetWaterRow) to the queue

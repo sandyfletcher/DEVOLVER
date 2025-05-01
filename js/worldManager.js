@@ -45,7 +45,7 @@ function addWaterUpdateCandidate(col, row) {
 // --- Internal function to set a block in grid data AND update the static visual cache ---
 // This function is used internally by WorldManager whenever block type changes.
 // It also triggers adding the changed cell and neighbors to the water simulation queue if below water.
-function internalSetBlock(col, row, blockType, orientation = Config.ORIENTATION_FULL, isPlayerPlaced = false) {
+function internalSetBlock(col, row, blockType, isPlayerPlaced = false) {
     // --> OPTIONAL DEBUG LOG: internalSetBlock Call <--
     // console.log(`[WaterMgr] internalSetBlock called for [${col}, ${row}] to type ${blockType}, player placed: ${isPlayerPlaced}.`);
 
@@ -56,7 +56,7 @@ function internalSetBlock(col, row, blockType, orientation = Config.ORIENTATION_
 
 
     // Use setBlock from WorldData to update the underlying data structure
-    const success = WorldData.setBlock(col, row, blockType, orientation, isPlayerPlaced);
+    const success = WorldData.setBlock(col, row, blockType, isPlayerPlaced);
 
     if (success) {
         // Always update the static visual cache on block data change
@@ -131,7 +131,6 @@ function renderStaticWorldToGridCanvas() {
             }
             const blockX = c * Config.BLOCK_WIDTH;
             const blockY = r * Config.BLOCK_HEIGHT;
-            // const orientation = block.orientation; // Unused for now
             const isPlayerPlaced = block && typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false; // default to false if property is missing
 
 // draw block body onto GRID CANVAS using gridCtx
@@ -244,10 +243,10 @@ function seedWaterUpdateQueue() {
 
 
 // Sets a player-placed block - assumes validity checks (range, clear, neighbor) are done by the caller (Player class).
-export function placePlayerBlock(col, row, blockType, orientation = Config.ORIENTATION_FULL) {
+export function placePlayerBlock(col, row, blockType) {
     // Use the internalSetBlock function, marking it as player placed.
     // internalSetBlock now handles the water queue update AND timer reset.
-    return internalSetBlock(col, row, blockType, orientation, true); // Set isPlayerPlaced = true
+    return internalSetBlock(col, row, blockType, true); // Set isPlayerPlaced = true
 }
 
 // Applies damage to a block at the given coordinates. If block HP drops to 0, it's replaced with air and drops an item.
@@ -295,7 +294,7 @@ export function damageBlock(col, row, damageAmount) {
         // Use internalSetBlock to change the block data AND update the visual cache.
         // Destroyed blocks are naturally occurring, so isPlayerPlaced is false.
         // internalSetBlock now handles the water queue update AND timer reset.
-        internalSetBlock(col, row, Config.BLOCK_AIR, Config.ORIENTATION_FULL, false);
+        internalSetBlock(col, row, Config.BLOCK_AIR, false); // isPlayerPlaced = false
     } else {
         // Block damaged but not destroyed: No need to update static visual cache for HP change.
         // No block type change occurred, so internalSetBlock was not called.
@@ -324,21 +323,21 @@ export function update(dt) {
     // Update water simulation timer
          // Ensure timer doesn't go massively negative if frame rate is very low
          waterPropagationTimer = Math.max(0, waterPropagationTimer - dt);
-    
+
          // --- ADDED DEBUG LOG ---
          // console.log(`[WaterMgr.Update] dt: ${dt.toFixed(4)}, Timer: ${waterPropagationTimer.toFixed(4)}, Queue: ${waterUpdateQueue.size}`);
          // --- END ADDED DEBUG LOG ---
-    
-    
+
+
     // Only process water flow if the timer is ready and there are candidates
         if (waterPropagationTimer <= 0 && waterUpdateQueue.size > 0) {
             waterPropagationTimer = Config.WATER_PROPAGATION_DELAY; // Reset timer
-    
+
     // Get and process a limited number of candidates from the queue
     // Convert Map values to an array to slice
             const candidatesToProcess = Array.from(waterUpdateQueue.values()).slice(0, Config.WATER_UPDATES_PER_FRAME);
             // Sort candidates to process cells in lower rows (higher 'r' value) first.
-            candidatesToProcess.sort((a, b) => b.r - a.r); 
+            candidatesToProcess.sort((a, b) => b.r - a.r);
             // Remove processed candidates from the queue *before* processing the batch
             // This prevents infinite re-queuing within the same batch update.
             candidatesToProcess.forEach(({c, r}) => {
@@ -347,9 +346,9 @@ export function update(dt) {
             });
             // Process the batch of candidates
             candidatesToProcess.forEach(({c, r}) => {
-                 // Re-check bounds, as things might have changed since it was queued (e.g. block placed/destroyed)
+                 // Re-check bounds, as things might have changed since it was queued (e.e. block placed/destroyed)
                 if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return;
-                const currentBlockType = WorldData.getBlockType(c, r);  
+                const currentBlockType = WorldData.getBlockType(c, r);
                 // --- Water Propagation: Add Neighbors below waterline that are WATER or AIR to the queue ---
                 // This ensures both AIR (can become water) and WATER (can spread water) are queued.
                 // NOTE: The order of adding neighbors here (down, up, right, left) doesn't directly
@@ -360,7 +359,7 @@ export function update(dt) {
                 neighbors.forEach(neighbor => {
                      const nc = c + neighbor.dc;
                      const nr = r + neighbor.dr;
-    
+
                      // Queue neighbor if it's within bounds, AT or below waterline, and IS WATER or AIR.
                      // The addWaterUpdateCandidate function handles the specific type check (non-solid ground) and queue check.
                      // Also important: addWaterUpdateCandidate already checks if nr >= Config.WORLD_WATER_LEVEL_ROW_TARGET
@@ -378,7 +377,7 @@ export function update(dt) {
                     const immediateNeighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // Cardinal neighbors again
                      for (const neighbor of immediateNeighbors) {
                         const nc = c + neighbor.dc;
-                        const nr = r + neighbor.dr;
+                        const nr = r + neighbor.nr; // FIX: Should be neighbor.dr not neighbor.nr
                         // Check if neighbor is within bounds and is WATER
                         if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS && WorldData.getBlockType(nc, nr) === Config.BLOCK_WATER) { // Use WorldData's function directly
                             adjacentToWater = true;
@@ -386,17 +385,17 @@ export function update(dt) {
                             // console.log(`[WaterProc] [${c}, ${r}] (AIR) adjacent to WATER at [${nc}, ${nr}]`);
                             break; // Found water neighbor
                         }
-                    }    
+                    }
                     if (adjacentToWater) {
                         // console.log(`[WaterFill] Filling [${c}, ${r}]`);
                         // Set to WATER. internalSetBlock updates WorldData and static canvas, AND re-queues neighbors and resets timer.
-                        internalSetBlock(c, r, Config.BLOCK_WATER, Config.ORIENTATION_FULL, false); // Water is not player-placed
+                        internalSetBlock(c, r, Config.BLOCK_WATER, false); // Water is not player-placed
                     }
                 }
                 // --- Logic for WATER to propagate (from water blocks) ---
                 // If the candidate *was* water (and hasn't become air this batch)
                  if (currentBlockType === Config.BLOCK_WATER) {
-    
+
                     // === ADDED DOWNWARD FLOW CHECK ===
                     // If there is AIR directly below this water block, queue that AIR block.
                     // Processing water from bottom-up due to sorting helps ensure this check
@@ -408,16 +407,16 @@ export function update(dt) {
                          // console.log(`[WaterQueueBelow] Queueing [${c}, ${r+1}] from [${c}, ${r}]`);
                     }
                     // === END ADDED DOWNWARD FLOW CHECK ===
-    
+
                     // Check for sideways flow over solid ground: if block below is solid OR water AND side block is air
                     // First, check the block directly below this water cell.
                     const blockBelow = WorldData.getBlock(c, r + 1);
                     const blockBelowResolvedType = blockBelow?.type ?? Config.BLOCK_AIR; // Use resolved type, handle null/0
-    
+
                     // Is the block below something that would act as a "floor" for sideways flow?
                     // This means it's NOT air AND it exists (not null).
                     const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR);
-    
+
                     if (isBelowSolidOrWater) {
                         // If there's solid ground or water directly below, water can try to flow sideways.
                         // Check left

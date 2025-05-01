@@ -14,7 +14,7 @@ export function initializeGrid() {
     worldGrid = new Array(Config.GRID_ROWS);
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         // Initialize each row with BLOCK_AIR using createBlock
-        worldGrid[r] = new Array(Config.GRID_COLS).fill(createBlock(Config.BLOCK_AIR, Config.ORIENTATION_FULL, false)); // Explicitly set isPlayerPlaced: false
+        worldGrid[r] = new Array(Config.GRID_COLS).fill(createBlock(Config.BLOCK_AIR, false)); // Explicitly set isPlayerPlaced: false
     }
     // console.log("World grid initialized.");
 }
@@ -52,16 +52,15 @@ export function getBlockType(col, row) {
 }
 
 /**
- * Sets a block in the grid using type and orientation. Creates the block object.
+ * Sets a block in the grid using type. Creates the block object.
  * Handles boundary checks. This is the primary way to modify the grid.
  * @param {number} col - Column index.
  * @param {number} row - Row index.
  * @param {number} blockType - The type ID of the block to place (e.g., Config.BLOCK_STONE).
- * @param {number} [orientation=Config.ORIENTATION_FULL] - The orientation for the new block.
  * @param {boolean} [isPlayerPlaced=false] - True if placed by the player.
  * @returns {boolean} True if the block was set successfully, false otherwise (e.g., out of bounds).
  */
-export function setBlock(col, row, blockType, orientation = Config.ORIENTATION_FULL, isPlayerPlaced = false) {
+export function setBlock(col, row, blockType, isPlayerPlaced = false) {
     if (row >= 0 && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
         // Ensure the row exists (should after init)
         if (!worldGrid[row]) {
@@ -69,7 +68,7 @@ export function setBlock(col, row, blockType, orientation = Config.ORIENTATION_F
              return false; // Cannot set block
         }
         // Use the imported createBlock function to generate the data structure, passing the new flag
-        worldGrid[row][col] = createBlock(blockType, orientation, isPlayerPlaced);
+        worldGrid[row][col] = createBlock(blockType, isPlayerPlaced);
         return true;
     } else {
         // console.warn(`Set block out of bounds: ${row}, ${col}`); // Commented out for less console noise
@@ -93,6 +92,8 @@ export function setBlockData(col, row, blockData) {
               return false;
          }
          // Ensure blockData is a valid object or the AIR constant before setting
+         // Validation relies on `createBlock` returning a number for AIR and object otherwise.
+         // We assume the structure is correct if it's not AIR.
          if (blockData === Config.BLOCK_AIR || (typeof blockData === 'object' && blockData !== null && typeof blockData.type === 'number')) {
              worldGrid[row][col] = blockData;
              return true;

@@ -52,17 +52,9 @@ export function isSolid(col, row) {
     }
     // For now, any block object that exists and isn't air or water is considered solid.
     if (typeof block === 'object' && typeof block.type === 'number') {
-        // Check if orientation is solid (e.g., not a slope that should be passable from this angle)
-        // For now, all orientations are treated as solid, but this is where slope collision logic would go.
-        if (block.orientation !== Config.ORIENTATION_FULL) {
-             // TODO: Implement slope collision logic here
-             // For now, treat all blocks as solid regardless of orientation
-             return true;
-        }
-        return true; // It's a block object representing a solid tile with full orientation
+        return true; // It's a block object representing a solid tile
     }
-    // Fallback for unexpected data
-    return false;
+    return false; // Fallback for unexpected data
 }
 
 /**
