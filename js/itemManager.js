@@ -2,7 +2,6 @@
 
 import * as Config from './config.js';
 import * as GridCollision from './utils/gridCollision.js';
-import * as WorldData from './utils/worldData.js'; // Make sure this is still imported if needed elsewhere
 
 // --- Internal Item Class ---
 class Item {
@@ -65,11 +64,8 @@ class Item {
 
         if (this.isAttracted) {
             // --- Attracted Physics (Phasing) ---
-
             this.isOnGround = false; // Not considered on ground when phasing
-
             const dist = Math.sqrt(distSq); // dist, dx, dy already calculated above
-
             // If the item is very close to the player center, snap velocity to zero
             if (dist < Config.PLAYER_INTERACTION_RANGE + GridCollision.E_EPSILON) { // Use pickup range as snap threshold
                  this.vx = 0;
@@ -77,33 +73,24 @@ class Item {
             } else if (dist > GridCollision.E_EPSILON) { // Avoid division by zero
                  const normX = dx / dist; // Normalized vector towards player
                  const normY = dy / dist;
-
                  // Set velocity directly towards the player with a fixed speed
                  this.vx = normX * Config.PLAYER_ITEM_ATTRACT_SPEED;
                  this.vy = normY * Config.PLAYER_ITEM_ATTRACT_SPEED;
-
                  // Optional: Apply some damping even when attracted to prevent infinite acceleration if returning to standard mode
                  // const attractedDampingFactor = Math.pow(0.8, dt);
                  // this.vx *= attractedDampingFactor;
                  // this.vy *= attractedDampingFactor;
             }
-
-
             // Apply movement based on the velocity set above
             this.x += this.vx * dt;
             this.y += this.vy * dt;
-
-
         } else {
             // --- Standard Physics (Collision) ---
-
             // Apply Gravity if NOT on ground
             const effectiveGravity = Config.GRAVITY_ACCELERATION * (this.isInWater ? Config.WATER_GRAVITY_FACTOR : 1.0);
             if (!this.isOnGround) { // Only apply gravity if not on ground
                  this.vy += effectiveGravity * dt; // Add gravity acceleration
             }
-
-
             // Apply standard water damping if in water AND not attracted
             if (this.isInWater) {
                  const horizontalDampingFactor = Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
@@ -111,30 +98,24 @@ class Item {
                  this.vx *= horizontalDampingFactor;
                  this.vy *= verticalDampingFactor;
             }
-
             // Apply Standard Speed Clamping (Air fall, Water sink/swim limits)
             if (this.isInWater) {
                  this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);
                  this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
                  // Optional: Clamp horizontal speed in water if not attracted?
                  // this.vx = Math.max(-Config.WATER_MAX_SPEED_FACTOR * Config.MAX_HORIZONTAL_ITEM_SPEED, Math.min(Config.WATER_MAX_SPEED_FACTOR * Config.MAX_HORIZONTAL_ITEM_SPEED, this.vx));
-
             } else {
                  // Clamp fall speed in air
                  this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
                  // Optional: Clamp horizontal speed in air if not attracted?
                  // this.vx = Math.max(-Config.MAX_HORIZONTAL_ITEM_SPEED, Math.min(Config.MAX_HORIZONTAL_ITEM_SPEED, this.vx));
             }
-
             // Calculate potential movement after applying standard physics and clamping
             const potentialMoveX = this.vx * dt;
             const potentialMoveY = this.vy * dt;
-
             // Resolve collision with grid - this updates this.x and this.y
             const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
-
             this.isOnGround = collisionResult.isOnGround; // Update ground status from collision result
-
             // Zero out velocity component if collideAndResolve indicated a collision
             if (collisionResult.collidedX) {
                  this.vx = 0;
@@ -148,7 +129,6 @@ class Item {
                  // collideAndResolve snaps the position, so no need to do it here.
             }
         }
-
         // --- Final velocity snap-to-zero ---
         // Snap small velocities to zero to prevent jittering from float errors
         // Apply this to both modes? Or just standard mode? Let's apply to standard mode.
@@ -156,8 +136,6 @@ class Item {
               if (Math.abs(this.vx) < GridCollision.E_EPSILON) this.vx = 0;
               if (Math.abs(this.vy) < GridCollision.E_EPSILON) this.vy = 0;
          }
-
-
         // --- Despawn/Remove if falls out of world boundaries ---
         // This check should happen regardless of attraction, AFTER position update.
         // Add bounds checks for X axis as well
@@ -165,7 +143,6 @@ class Item {
              this.isActive = false;
         }
     }
-
     // draw method remains the same as the previous correction
     draw(ctx) {
         if (!this.isActive || !ctx) return;
@@ -186,11 +163,9 @@ class Item {
              this.bobbleOffset = (this.bobbleOffset + attractedBobbleSpeed * (1/60)) % (Math.PI * 2);
              drawY += Math.sin(this.bobbleOffset) * attractedBobbleAmount * this.height;
         }
-
         ctx.fillStyle = this.color;
         ctx.fillRect(Math.floor(this.x), Math.floor(drawY), this.width, this.height);
     }
-
     // getRect method remains the same
     getRect() {
          const safeX = typeof this.x === 'number' && !isNaN(this.x) ? this.x : 0;
@@ -211,31 +186,35 @@ export function init() {
     items = [];
     // Get the Y coordinate of the mean ground level in world pixels
     const meanGroundWorldY = Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT;
-    // Calculate spawn positions relative to the mean ground, adjusting for item height
-    const swordSpawnX = Config.CANVAS_WIDTH * 0.4 - Config.SWORD_WIDTH / 2; // Spawn Sword slightly to the left of center
-    const swordSpawnY = meanGroundWorldY - Config.SWORD_HEIGHT - (5 * Config.BLOCK_HEIGHT); // Example: 5 blocks above mean ground
-    const spearSpawnX = Config.CANVAS_WIDTH * 0.6 - Config.SPEAR_WIDTH / 2; // Spawn Spear slightly to the right of center, higher up
-    const spearSpawnY = meanGroundWorldY - Config.SPEAR_HEIGHT - (10 * Config.BLOCK_HEIGHT); // Example: 10 blocks above mean ground
+    // ONLY SPAWN THE SHOVEL INITIALLY
     const shovelSpawnX = Config.CANVAS_WIDTH * 0.5 - Config.SHOVEL_WIDTH / 2; // Spawn Shovel at center, even higher up
     const shovelSpawnY = meanGroundWorldY - Config.SHOVEL_HEIGHT - (15 * Config.BLOCK_HEIGHT); // Example: 15 blocks above mean ground
-
     // Ensure spawn points are valid numbers after calculation
-    if (!isNaN(swordSpawnX) && !isNaN(swordSpawnY)) spawnItem(swordSpawnX, swordSpawnY, Config.WEAPON_TYPE_SWORD); else console.error("Invalid Sword spawn coords!");
-    if (!isNaN(spearSpawnX) && !isNaN(spearSpawnY)) spawnItem(spearSpawnX, spearSpawnY, Config.WEAPON_TYPE_SPEAR); else console.error("Invalid Spear spawn coords!");
-    if (!isNaN(shovelSpawnX) && !isNaN(shovelSpawnY)) spawnItem(shovelSpawnX, shovelSpawnY, Config.WEAPON_TYPE_SHOVEL); else console.error("Invalid Shovel spawn coords!");
+    if (!isNaN(shovelSpawnX) && !isNaN(shovelSpawnY)) {
+        spawnItem(shovelSpawnX, shovelSpawnY, Config.WEAPON_TYPE_SHOVEL);
+    } else {
+        console.error("Invalid Shovel spawn coords!");
+    }
+    // console.log("ItemManager initialized. Shovel spawned."); // Keep logs quieter
 }
 
-// spawnItem function remains the same
 export function spawnItem(x, y, type) {
     const itemConfig = Config.ITEM_CONFIG[type];
+    // Allow spawning materials or the shovel, but maybe warn/prevent crafting-only items?
+    // Any other spawn call for sword/spear should be reviewed if it happens.
+    // Let's allow spawning any type for now, just logging a warning for craftable ones if needed.
     if (!itemConfig) {
-        console.warn(`ItemManager: Attempted to spawn unknown item type "${type}".`);
-        return;
+        console.warn(`ItemManager: Attempted to spawn item type "${type}" with no config.`);
+        // Decide if you return or create with defaults. Creating with defaults is safer.
+        // return; // Option to fail
+         const newItem = new Item(x, y, type, null); // Create with default fallback
+         if (newItem) items.push(newItem);
+         else console.error(`Failed to create new Item instance for unknown type "${type}".`);
+         return;
     }
     // Validate and use fallback if x or y are NaN/invalid numbers
     const spawnX = typeof x === 'number' && !isNaN(x) ? x : Config.CANVAS_WIDTH / 2;
     const spawnY = typeof y === 'number' && !isNaN(y) ? y : 50;
-
     const newItem = new Item(spawnX, spawnY, type, itemConfig);
     if (newItem) {
         items.push(newItem);

@@ -187,7 +187,7 @@ export const ITEM_BOBBLE_SPEED = 2.0;   // radians per second for bobbing cycle
 export const WEAPON_TYPE_UNARMED = 'unarmed'; // weapons
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
-export const WEAPON_TYPE_SPEAR = 'spear'
+export const WEAPON_TYPE_SPEAR = 'spear';
 export const SHOVEL_WIDTH = 1 * BLOCK_WIDTH; // shovel: 1x2 blocks
 export const SHOVEL_HEIGHT = 2 * BLOCK_HEIGHT; // 4 pixels x 8 pixels
 export const SHOVEL_COLOR = 'rgb(160, 160, 160)'; // grey
@@ -234,6 +234,16 @@ export const ITEM_CONFIG = { // centralized item configuration object ---
     'stone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_STONE] },
     'metal': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_METAL] },
     'bone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_BONE] }, // TODO: don't forget to add here if there are other items (material drops)
+};
+export const CRAFTING_RECIPES = { // crafting recipes
+    [WEAPON_TYPE_SWORD]: [
+        { type: 'stone', amount: 5 }
+    ],
+    [WEAPON_TYPE_SPEAR]: [
+        { type: 'wood', amount: 2 },
+        { type: 'stone', amount: 1 }
+    ],
+    // add other craftable items here
 };
 
 // =============================================================================

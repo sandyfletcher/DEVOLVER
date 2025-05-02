@@ -16,42 +16,34 @@ export class Player {
         this.width = width;
         this.height = height;
         this.color = color;
-
         // Physics state (velocity)
         this.vx = 0; // Velocity in pixels per second
         this.vy = 0; // Velocity in pixels per second
         this.isOnGround = false;
         this.isInWater = false;
         this.waterJumpCooldown = 0; // Cooldown timer for water jumps/strokes
-
         // --- Weapon & Inventory State ---
         this.hasShovel = false;
         this.hasSword = false;
         this.hasSpear = false;
         this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Start unarmed
         this.inventory = {}; // Stores counts of materials: { 'dirt': 10, 'stone': 5 }
-        // NEW: Placement Cooldown Timer
         this.placementCooldown = 0; // Timer for delaying consecutive block placements
-
-
         // --- Combat State ---
         this.isAttacking = false;    // Is the attack animation/hitbox active? (Controlled by attackTimer now)
         this.attackTimer = 0;        // Duration timer for the current attack
         this.attackCooldown = 0;     // Cooldown timer until the next weapon attack is possible
         this.hitEnemiesThisSwing = []; // Tracks enemies hit during the current attack swing
         this.hitBlocksThisSwing = [];  // Tracks blocks hit during the current attack swing ("col,row" keys)
-
         // --- Health State ---
         this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY; // Max health for UI display
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH; // Starting health
         this.isInvulnerable = false; // Is the player currently immune to damage?
         this.invulnerabilityTimer = 0; // Timer for invulnerability duration
-
         // --- Targeting State ---
         this.targetWorldPos = { x: 0, y: 0 }; // Mouse position in world coordinates
         this.targetGridCell = { col: 0, row: 0 }; // Grid cell the mouse is over
         this.lastDirection = 1; // Facing direction (1 for right, -1 for left), used as fallback for aiming
-
         // Initial position validation
          if (isNaN(this.x) || isNaN(this.y)) {
              console.error(`>>> Player CONSTRUCTOR ERROR: NaN initial coordinates! Resetting to center.`);
@@ -136,15 +128,11 @@ export class Player {
         // Decrement cooldowns, ensure they don't go negative
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         if (this.attackCooldown < 0) this.attackCooldown = 0;
-
         if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt;
         if (this.waterJumpCooldown < 0) this.waterJumpCooldown = 0;
-
-        // NEW: Decrement placement cooldown
+        //  Decrement placement cooldown
         if (this.placementCooldown > 0) this.placementCooldown -= dt;
         if (this.placementCooldown < 0) this.placementCooldown = 0;
-
-
         // Update attack duration timer and related state
         if (this.isAttacking) { // Only count down if an attack is active
             this.attackTimer -= dt;
@@ -154,7 +142,6 @@ export class Player {
                 this.hitBlocksThisSwing = [];
             }
         }
-
         // Update invulnerability timer
         if (this.isInvulnerable) {
             this.invulnerabilityTimer -= dt;
@@ -167,7 +154,6 @@ export class Player {
     /** Handles player input and sets desired movement/action flags/velocities. */
     _handleInput(dt, inputState) { // dt is now passed for placement cooldown
         this._handleMovement(dt, inputState); // Movement & Jump/Swim Stroke handled here
-
         // --- Handle Attack / Use Input (Activated by inputState.attack being true) ---
         // This logic now handles both weapon attacks and block placement based on the selected item.
         // It triggers repeatedly as long as inputState.attack is true and respective cooldowns are ready.
@@ -796,14 +782,14 @@ export class Player {
         } else if (Config.INVENTORY_MATERIALS.includes(item.type)) {
             // Add material to inventory, initializing count if necessary
             this.inventory[item.type] = (this.inventory[item.type] || 0) + 1;
-            // console.log(`Player picked up ${item.type}. Count: ${this.inventory[item.type]}`); // Keep logs quieter
+            // console.log(`Player picked up ${item.type}. Count: ${this.inventory[item.type]}`);
             pickedUp = true;
         } else {
-            // console.warn(`Player encountered unknown item type: ${item.type}`);
+            console.warn(`Player encountered unknown item type: ${item.type}`);
         }
         // If a weapon was just picked up, equip it immediately ONLY if player is currently unarmed
         if (pickedUp && this.isWeaponType(item.type) && this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
-            this.equipItem(item.type); // Equip the newly picked up weapon
+            this.equipItem(item.type); // Equip the newly picked up weapon TODO: should this be changed to equip after assembling a new weapon?
         }
         return pickedUp; // Return whether the item was processed
     }
@@ -821,15 +807,24 @@ export class Player {
      * @param {string} itemType - The type of item to equip.
      */
     equipItem(itemType) {
+        // Allow equipping unarmed state anytime
+        if (itemType === Config.WEAPON_TYPE_UNARMED) {
+            // console.log("Player equipped unarmed."); // Keep logs quieter
+             this.selectedItem = Config.WEAPON_TYPE_UNARMED;
+             this.isAttacking = false; // Cancel attack if unequipping
+             this.attackTimer = 0;
+             this.placementCooldown = 0; // Reset cooldown
+            return true;
+        }
+
         let canEquip = false;
         // Check if the item type is valid and if the player can equip it
-        if (itemType === Config.WEAPON_TYPE_UNARMED) {
-            canEquip = true; // Can always switch to unarmed
-        } else if (this.isWeaponType(itemType)) {
+        if (this.isWeaponType(itemType)) {
             canEquip = this.hasWeapon(itemType); // Check possession for weapons
         } else if (Config.INVENTORY_MATERIALS.includes(itemType)) {
             canEquip = (this.inventory[itemType] || 0) > 0; // Check inventory count for materials
         }
+
         // Equip the item if possible and not already equipped
         if (canEquip && this.selectedItem !== itemType) {
             this.selectedItem = itemType;
@@ -837,18 +832,20 @@ export class Player {
             // Cancel current action states on equip
             this.isAttacking = false;
             this.attackTimer = 0;
-            // Maybe reset attackCooldown too, depending on desired behavior
-            // this.attackCooldown = 0; // Or keep cooldown? Let's reset for now.
             this.placementCooldown = 0; // Reset placement cooldown when switching items
-            // UI update to show the new selection happens in the main loop via updatePlayerInfo
+             // UI update to show the new selection happens in the main loop via updatePlayerInfo
+            return true;
         }
-        // else if (!canEquip) { console.log(`Cannot equip ${itemType}.`); } // Log if needed
-        // else { /* console.log(`Already equipped ${itemType}.`); */ } // Optional log
+        // Return false if cannot equip (e.g., don't have it, or trying to equip something unknown)
+        // console.log(`Cannot equip ${itemType}. Player possession/count check failed.`); // Keep logs quieter
+        return false;
     }
+
     /** Decrements the inventory count for a given material type. */
-    decrementInventory(itemType) {
-        if (Config.INVENTORY_MATERIALS.includes(itemType) && this.inventory[itemType] > 0) {
-            this.inventory[itemType]--;
+    decrementInventory(itemType, amount = 1) { // Added optional amount parameter
+        if (Config.INVENTORY_MATERIALS.includes(itemType) && (this.inventory[itemType] || 0) >= amount) {
+            this.inventory[itemType] -= amount;
+            // console.log(`Decremented ${itemType} by ${amount}. New count: ${this.inventory[itemType]}.`); // Keep logs quieter
             // If the count reaches 0 and this material was the selected item, switch to unarmed
             if (this.inventory[itemType] === 0 && this.selectedItem === itemType) {
                  this.equipItem(Config.WEAPON_TYPE_UNARMED); // Switch to unarmed
@@ -856,8 +853,83 @@ export class Player {
             }
             return true; // Decrement successful
         }
-        return false; // Material not found or count already 0
+        // console.log(`Cannot decrement ${itemType} by ${amount}. Not enough stock or invalid type.`); // Keep logs quieter
+        return false; // Material not found, count too low, or invalid type
     }
+    
+        // NEW: Crafting Method
+    /**
+     * Attempts to craft a specific item if the player has the required materials.
+     * @param {string} itemType - The type of item to craft (must be in CRAFTING_RECIPES).
+     * @returns {boolean} True if crafting was successful, false otherwise.
+     */
+    craftItem(itemType) {
+        // Ensure it's a craftable item type first
+        const recipe = Config.CRAFTING_RECIPES[itemType];
+        if (!recipe) {
+            console.warn(`Attempted to craft non-craftable item type: ${itemType}`);
+            return false; // Not a craftable item
+        }
+
+        // Ensure player doesn't already have the weapon (can't craft duplicates)
+        // NOTE: This assumes weapons are unique items, not stackable.
+        if (this.isWeaponType(itemType) && this.hasWeapon(itemType)) {
+            // console.log(`Already possess ${itemType}. Cannot craft.`); // Keep logs quieter
+            return false; // Already have this weapon
+        }
+
+
+        // 1. Check if player has all required materials
+        let hasMaterials = true;
+        for (const ingredient of recipe) {
+            const requiredType = ingredient.type;
+            const requiredAmount = ingredient.amount;
+            const possessedAmount = this.inventory[requiredType] || 0;
+
+            if (possessedAmount < requiredAmount) {
+                hasMaterials = false;
+                // console.log(`Not enough ${requiredType}. Need ${requiredAmount}, have ${possessedAmount}.`); // Keep logs quieter
+                break; // Stop checking if one ingredient is missing
+            }
+        }
+
+        if (!hasMaterials) {
+            // console.log(`Cannot craft ${itemType}. Missing materials.`); // Keep logs quieter
+            return false; // Cannot craft - missing materials
+        }
+
+        // 2. Consume materials
+        for (const ingredient of recipe) {
+            // Use the decrementInventory method to remove materials
+            if (!this.decrementInventory(ingredient.type, ingredient.amount)) {
+                // This should ideally not happen if the check passed, but defensive programming
+                console.error(`Failed to consume materials while crafting ${itemType}. Inventory state may be inconsistent.`);
+                return false; // Crafting failed mid-process
+            }
+        }
+
+        // 3. Grant the crafted item (for weapons, set possession flag)
+        let craftedSuccessfully = false;
+        switch (itemType) {
+            case Config.WEAPON_TYPE_SWORD:
+                this.hasSword = true;
+                craftedSuccessfully = true;
+                // console.log(`Crafted Sword!`); // Keep logs quieter
+                break;
+            case Config.WEAPON_TYPE_SPEAR:
+                this.hasSpear = true;
+                craftedSuccessfully = true;
+                // console.log(`Crafted Spear!`); // Keep logs quieter
+                break;
+            // Add cases for other craftable items here (e.g., placeables like metal blocks if they were crafted)
+            default:
+                console.error(`Crafting logic for item type ${itemType} not implemented.`);
+                return false; // Crafting logic missing
+        }
+
+        // 4. Return success status
+        return craftedSuccessfully;
+   }
 
     // --- State/Type Check Helpers ---
     /** Checks if an item type string corresponds to a known weapon type. */
@@ -872,8 +944,6 @@ export class Player {
     isMaterialSelected() {
         return Config.INVENTORY_MATERIALS.includes(this.selectedItem);
     }
-
-
     // --- Getters for Player State and Properties ---
     getRect() {
          const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
@@ -896,13 +966,14 @@ export class Player {
     getCurrentlySelectedItem() { return this.selectedItem; }
 
     /** Returns the selected material type if a material is selected, otherwise null. Used by UI. */
-     getActiveInventoryMaterial() {
-         return this.isMaterialSelected() ? this.selectedItem : null;
-     }
-     /** Returns the selected weapon type if a weapon is selected, otherwise null. Used by UI. */
-     getActiveWeaponType() {
-         return this.isWeaponSelected() ? this.selectedItem : null;
-     }
+    getActiveInventoryMaterial() {
+        return this.isMaterialSelected() ? this.selectedItem : null;
+    }
+    /** Returns the selected weapon type if a weapon is selected, otherwise null. Used by UI. */
+    getActiveWeaponType() {
+        // Return unarmed if selected, as it's a valid selection state
+        return this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED ? this.selectedItem : null;
+    }
 
 
     // --- Get Damage Output Based on Equipped Item ---
@@ -928,34 +999,76 @@ export class Player {
     // --- Methods for UI Interaction (called by UI event listeners) ---
     /** Equips a material if available. Called when a material slot is clicked in the UI. */
     setActiveInventoryMaterial(materialType) {
-         if (Config.INVENTORY_MATERIALS.includes(materialType)) {
-             // Check if player actually has the material before equipping
-             if ((this.inventory[materialType] || 0) > 0) {
-                 this.equipItem(materialType); // Use the main equip logic
-             } else {
-                 // console.log(`Cannot select ${materialType}, count is 0.`); // Keep logs quieter
-                 // Optionally switch to unarmed if trying to select an empty slot?
-                 // this.equipItem(Config.WEAPON_TYPE_UNARMED);
-             }
-         } else {
-             console.warn(`Attempted to set invalid material type via UI: ${materialType}`);
-         }
-     }
+        if (Config.INVENTORY_MATERIALS.includes(materialType)) {
+            // Check if player actually has the material before equipping
+            if ((this.inventory[materialType] || 0) > 0) {
+                // Use the main equip logic
+                return this.equipItem(materialType);
+            } else {
+                // console.log(`Cannot select ${materialType}, count is 0.`); // Keep logs quieter
+                // Optionally switch to unarmed if trying to select an empty slot?
+                // this.equipItem(Config.WEAPON_TYPE_UNARMED);
+            }
+        } else {
+            console.warn(`Attempted to set invalid material type via UI: ${materialType}`);
+        }
+        return false; // Selection failed
+    }
 
      /** Equips a weapon if possessed. Called when a weapon slot is clicked in the UI. */
      setActiveWeapon(weaponType) {
-         if (this.isWeaponType(weaponType)) {
-             if (this.hasWeapon(weaponType)) {
-                 this.equipItem(weaponType); // Use the main equip logic
-             } else {
-                 // console.log(`Cannot select ${weaponType}, player does not possess it.`); // Keep logs quieter
-             }
-         } else {
-             console.warn(`Attempted to set invalid weapon type via UI: ${weaponType}`);
-         }
-     }
+        // Check if it's a valid weapon type (including unarmed)
+        if (this.isWeaponType(weaponType) || weaponType === Config.WEAPON_TYPE_UNARMED) {
+            // --- Handle clicking the currently equipped weapon ---
+            if (this.selectedItem === weaponType) {
+                // If the player clicks the already selected weapon (and it's not unarmed),
+                // unequip it to go back to unarmed state. Shovel is an exception - maybe keep shovel equipped?
+                // Let's allow unequipping any equipped weapon by clicking its slot.
+                if (weaponType !== Config.WEAPON_TYPE_UNARMED) { // Don't unequip unarmed by clicking unarmed
+                    // console.log(`UI Click: Unequipping ${weaponType} to become unarmed.`); // Keep logs quieter
+                    return this.equipItem(Config.WEAPON_TYPE_UNARMED); // Switch to unarmed
+                }
+                 // Clicking unarmed slot while unarmed does nothing
+                 // console.log("UI Click: Already unarmed."); // Keep logs quieter
+                 return false;
+            }
+            // --- Handle clicking a DIFFERENT weapon slot ---
+            // 1. Check if the player already possesses the weapon
+            if (this.hasWeapon(weaponType)) {
+                // Possessed, just equip it
+                 // console.log(`UI Click: Possess ${weaponType}. Equipping.`); // Keep logs quieter
+                return this.equipItem(weaponType); // Use main equip logic
+            } else {
+                // 2. Player does NOT possess the weapon. Check if it's craftable and they have the materials.
+                 const recipe = Config.CRAFTING_RECIPES[weaponType];
+                 if (recipe) { // Is it a craftable item? (Only weapons are craftable for now)
+                     // Attempt to craft it
+                      // console.log(`UI Click: Do not possess ${weaponType}. Attempting to craft.`); // Keep logs quieter
+                      const crafted = this.craftItem(weaponType); // Attempt crafting using the player's method
 
-    // --- Reset Methods ---
+                      if (crafted) {
+                          // Crafting successful! Now equip the newly crafted weapon.
+                          // console.log(`UI Click: Crafting successful! Equipping ${weaponType}.`); // Keep logs quieter
+                          return this.equipItem(weaponType);
+                      } else {
+                           // Crafting failed (not enough materials)
+                          // console.log(`UI Click: Crafting failed for ${weaponType}.`); // Keep logs quieter
+                           // UI might need to provide feedback (e.g. shake slot) - this will be handled in ui.js
+                           return false; // Indicate selection/crafting failed
+                      }
+                 } else {
+                      // Not a craftable item, and not possessed (e.g., shovel not spawned, or unknown weapon)
+                      // console.log(`UI Click: Cannot select ${weaponType}. Not possessed and not craftable.`); // Keep logs quieter
+                      return false; // Cannot select
+                 }
+            }
+
+        } else {
+            console.warn(`Attempted to set invalid weapon type via UI: ${weaponType}`);
+        }
+        return false; // Invalid type or failed to process
+    }
+    // --- Reset Methods (Update to reflect starting shovel) ---
     /** Resets the player's state completely for a new game or restart. */
     reset() {
         console.log("Resetting player state...");
@@ -981,10 +1094,14 @@ export class Player {
         this.hitBlocksThisSwing = [];
         // Inventory & Weapons
         this.inventory = {}; // Clear inventory
-        this.hasSword = false; // Reset weapon possession flags
+        // Reset weapon possession flags - Shovel is a starting item again
+        this.hasShovel = true; // Player starts with shovel on reset
+        this.hasSword = false;
         this.hasSpear = false;
-        this.hasShovel = false;
-        this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Reset equipped item to unarmed
+        this.selectedItem = Config.WEAPON_TYPE_SHOVEL; // Player starts with shovel equipped? Or unarmed? Let's start unarmed.
+        // Let's make player start unarmed, but possessing the shovel.
+        this.selectedItem = Config.WEAPON_TYPE_UNARMED;
+
 
         // Targeting
         this.lastDirection = 1; // Reset facing direction
@@ -998,6 +1115,7 @@ export class Player {
              this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
              this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
          }
+         // console.log(`Player state reset. Has Shovel: ${this.hasShovel}, Equipped: ${this.selectedItem}`); // Keep logs quieter
     }
 
     // --- Resets only the player's position and physics state (e.g., after falling out) ---
