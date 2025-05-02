@@ -175,6 +175,7 @@ export const PLAYER_INTERACTION_RANGE = 50; // player range for block interactio
 export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE;
 export const PLAYER_ITEM_ATTRACT_RADIUS = 100; // pixels - how close player needs to be for attraction
 export const PLAYER_ITEM_ATTRACT_STRENGTH = 200; // pixels/sec/sec - how strongly items accelerate towards the player
+export const PLAYER_ITEM_ATTRACT_SPEED = 250; // NEW: pixels/sec - direct speed when attracted
 export const PLAYER_PLACEMENT_COOLDOWN = 0.15; // seconds per block placement
 
 // =============================================================================

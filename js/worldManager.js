@@ -340,7 +340,6 @@ export function damageBlock(col, row, damageAmount) {
         wasDestroyed = true;
         // Ensure health doesn't go below zero in data
         block.hp = 0;
-
         // Determine Drop Type
         let dropType = null;
         switch (block.type) { // Use the current type from the object
@@ -353,7 +352,6 @@ export function damageBlock(col, row, damageAmount) {
              case Config.BLOCK_METAL: dropType = 'metal'; break;
              // Add cases for other block types that drop items
         }
-
         // --- Spawn Item Drop (if any) ---
         if (dropType) {
             // position slightly off-center and random within the block bounds
@@ -361,7 +359,6 @@ export function damageBlock(col, row, damageAmount) {
             const dropY = row * Config.BLOCK_HEIGHT + (Config.BLOCK_HEIGHT / 2);
             const offsetX = (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.4; // random offset
             const offsetY = (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.4;
-
             // Ensure dropX and dropY are valid numbers before spawning
              if (!isNaN(dropX) && !isNaN(dropY) && typeof dropX === 'number' && typeof dropY === 'number') {
                  ItemManager.spawnItem(dropX + offsetX, dropY + offsetY, dropType);
@@ -370,7 +367,6 @@ export function damageBlock(col, row, damageAmount) {
                  console.error(`>>> ITEM SPAWN FAILED: Invalid drop coordinates [${dropX}, ${dropY}] for ${dropType} from destroyed block at [${col}, ${row}].`);
              }
         }
-
         // --- Replace Block with Air ---
         // Use internalSetBlock to change the block data AND update the visual cache.
         // Destroyed blocks are naturally occurring, so isPlayerPlaced is false.
@@ -381,7 +377,6 @@ export function damageBlock(col, row, damageAmount) {
          // Block damaged but not destroyed: updateStaticWorldAt was already called above
          // to redraw the block with the damage indicator. No further action needed here.
     }
-
     // Damage was applied, regardless of destruction
     return true;
 }
@@ -404,12 +399,7 @@ export function update(dt) {
     // Update water simulation timer
          // Ensure timer doesn't go massively negative if frame rate is very low
          waterPropagationTimer = Math.max(0, waterPropagationTimer - dt);
-
-         // --- ADDED DEBUG LOG ---
          // console.log(`[WaterMgr.Update] dt: ${dt.toFixed(4)}, Timer: ${waterPropagationTimer.toFixed(4)}, Queue: ${waterUpdateQueue.size}`);
-         // --- END ADDED DEBUG LOG ---
-
-
     // Only process water flow if the timer is ready and there are candidates
         if (waterPropagationTimer <= 0 && waterUpdateQueue.size > 0) {
             waterPropagationTimer = Config.WATER_PROPAGATION_DELAY; // Reset timer
@@ -439,8 +429,7 @@ export function update(dt) {
                 const neighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // Cardinal neighbors
                 neighbors.forEach(neighbor => {
                      const nc = c + neighbor.dc;
-                     const nr = r + neighbor.dr; // FIX: Should be neighbor.dr not neighbor.nr
-
+                     const nr = r + neighbor.dr;
                      // Queue neighbor if it's within bounds, AT or below waterline, and IS WATER or AIR.
                      // The addWaterUpdateCandidate function handles the specific type check (non-solid ground) and queue check.
                      // Also important: addWaterUpdateCandidate already checks if nr >= Config.WORLD_WATER_LEVEL_ROW_TARGET
@@ -477,19 +466,14 @@ export function update(dt) {
                 // --- Logic for WATER to propagate (from water blocks) ---
                 // If the candidate *was* water (and hasn't become air this batch)
                  if (currentBlockType === Config.BLOCK_WATER) {
-
-                    // === ADDED DOWNWARD FLOW CHECK ===
                     // If there is AIR directly below this water block, queue that AIR block.
                     // Processing water from bottom-up due to sorting helps ensure this check
                     // queues air below which will then be processed sooner in the *next* batch.
                     const blockBelowType = WorldData.getBlockType(c, r + 1);
                     if (blockBelowType === Config.BLOCK_AIR) {
                          addWaterUpdateCandidate(c, r + 1); // Queue the air block below!
-                         // --> DEBUG LOG: Queueing Downwards <--
                          // console.log(`[WaterQueueBelow] Queueing [${c}, ${r+1}] from [${c}, ${r}]`);
                     }
-                    // === END ADDED DOWNWARD FLOW CHECK ===
-
                     // Check for sideways flow over solid ground: if block below is solid OR water AND side block is air
                     // First, check the block directly below this water cell.
                     const blockBelow = WorldData.getBlock(c, r + 1);
@@ -519,10 +503,8 @@ export function update(dt) {
                 // They served their purpose by potentially adding neighbors to the queue for the NEXT step.
             });
         } else if (waterPropagationTimer <= 0 && waterUpdateQueue.size === 0) {
-           // --> OPTIONAL DEBUG LOG: Queue Empty <--
            // console.log("[WaterMgr] Water update timer ready, but queue is empty.");
         } else if (waterPropagationTimer > 0) {
-           // --> OPTIONAL DEBUG LOG: Timer Waiting <--
            // console.log(`[WaterMgr] Water update timer active: ${waterPropagationTimer.toFixed(2)}s remaining.`);
         }
     }
