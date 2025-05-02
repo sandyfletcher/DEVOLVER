@@ -21,8 +21,7 @@ let itemSelectionAreaEl;
 let inventoryBoxesContainerEl, weaponSlotsContainerEl;
 let actionButtonsAreaEl;
 let toggleControlsButtonEl;
-let actionButtons = {};
-// NEW: Settings buttons
+export let actionButtons = {};
 let toggleGridButtonEl = null;
 let muteMusicButtonEl = null;
 let muteSfxButtonEl = null;

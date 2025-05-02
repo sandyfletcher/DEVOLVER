@@ -30,11 +30,14 @@ export class Player {
         this.hasSpear = false;
         this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Start unarmed
         this.inventory = {}; // Stores counts of materials: { 'dirt': 10, 'stone': 5 }
+        // NEW: Placement Cooldown Timer
+        this.placementCooldown = 0; // Timer for delaying consecutive block placements
+
 
         // --- Combat State ---
-        this.isAttacking = false;    // Is the attack animation/hitbox active?
+        this.isAttacking = false;    // Is the attack animation/hitbox active? (Controlled by attackTimer now)
         this.attackTimer = 0;        // Duration timer for the current attack
-        this.attackCooldown = 0;     // Cooldown timer until the next attack is possible
+        this.attackCooldown = 0;     // Cooldown timer until the next weapon attack is possible
         this.hitEnemiesThisSwing = []; // Tracks enemies hit during the current attack swing
         this.hitBlocksThisSwing = [];  // Tracks blocks hit during the current attack swing ("col,row" keys)
 
@@ -79,15 +82,20 @@ export class Player {
          // Ensure target positions are valid objects with numbers
         if (typeof targetWorldPos !== 'object' || targetWorldPos === null || typeof targetWorldPos.x !== 'number' || typeof targetWorldPos.y !== 'number' || isNaN(targetWorldPos.x) || isNaN(targetWorldPos.y)) {
              console.warn("Player Update: Invalid targetWorldPos object.", targetWorldPos);
-             this.targetWorldPos = { x: this.x + this.width / 2 + this.lastDirection * 50, y: this.y + this.height / 2 }; // Default to slightly in front of player
+             // Fallback: use last known position or position slightly in front of player
+             this.targetWorldPos = this._lastValidTargetWorldPos || { x: this.x + this.width / 2 + this.lastDirection * 50, y: this.y + this.height / 2 };
          } else {
               this.targetWorldPos = targetWorldPos;
+              this._lastValidTargetWorldPos = { ...targetWorldPos }; // Store valid position
          }
          if (typeof targetGridCell !== 'object' || targetGridCell === null || typeof targetGridCell.col !== 'number' || typeof targetGridCell.row !== 'number' || isNaN(targetGridCell.col) || isNaN(targetGridCell.row)) {
              console.warn("Player Update: Invalid targetGridCell object.", targetGridCell);
-             this.targetGridCell = GridCollision.worldToGridCoords(this.targetWorldPos.x, this.targetWorldPos.y); // Calculate from valid world pos
+             // Fallback: calculate from valid world pos
+             this.targetGridCell = GridCollision.worldToGridCoords(this.targetWorldPos.x, this.targetWorldPos.y);
+             this._lastValidTargetGridCell = { ...this.targetGridCell }; // Store valid cell
          } else {
              this.targetGridCell = targetGridCell;
+             this._lastValidTargetGridCell = { ...targetGridCell }; // Store valid cell
          }
 
         // Update Player Facing Direction based on Target Position relative to player center
@@ -105,11 +113,11 @@ export class Player {
             this.waterJumpCooldown = 0;
         }
 
-        // Update timers (attack, invulnerability, water jump)
+        // Update timers (attack, invulnerability, water jump, placement cooldown)
         this._updateTimers(dt);
 
         // Handle Player Input (movement, jump, attack, placement)
-        this._handleInput(dt, inputState);
+        this._handleInput(dt, inputState); // Pass dt here for placement cooldown
 
         // Apply Physics (gravity, damping, velocity calculation, collision resolution)
         this._applyPhysics(dt);
@@ -125,11 +133,20 @@ export class Player {
 
     /** Updates various timers for cooldowns and effects. */
     _updateTimers(dt) {
-        if (this.attackCooldown > 0) {
-             this.attackCooldown -= dt;
-             if (this.attackCooldown < 0) this.attackCooldown = 0; // Ensure non-negative
-        }
-        if (this.attackTimer > 0) {
+        // Decrement cooldowns, ensure they don't go negative
+        if (this.attackCooldown > 0) this.attackCooldown -= dt;
+        if (this.attackCooldown < 0) this.attackCooldown = 0;
+
+        if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt;
+        if (this.waterJumpCooldown < 0) this.waterJumpCooldown = 0;
+
+        // NEW: Decrement placement cooldown
+        if (this.placementCooldown > 0) this.placementCooldown -= dt;
+        if (this.placementCooldown < 0) this.placementCooldown = 0;
+
+
+        // Update attack duration timer and related state
+        if (this.isAttacking) { // Only count down if an attack is active
             this.attackTimer -= dt;
             if (this.attackTimer <= 0) { // Attack duration ended
                 this.isAttacking = false;
@@ -137,33 +154,71 @@ export class Player {
                 this.hitBlocksThisSwing = [];
             }
         }
-        if (this.invulnerabilityTimer > 0) {
+
+        // Update invulnerability timer
+        if (this.isInvulnerable) {
             this.invulnerabilityTimer -= dt;
             if (this.invulnerabilityTimer <= 0) { // Invulnerability ended
                 this.isInvulnerable = false;
             }
         }
-        if (this.waterJumpCooldown > 0) {
-             this.waterJumpCooldown -= dt;
-             if (this.waterJumpCooldown < 0) this.waterJumpCooldown = 0; // Ensure non-negative
-        }
     }
 
     /** Handles player input and sets desired movement/action flags/velocities. */
-    _handleInput(dt, inputState) {
-        this._handleMovement(dt, inputState);
-        // Handle attack/placement input - prioritize placement if material is selected
-        if (inputState.attack && this.isMaterialSelected()) {
-             this._handlePlacement(inputState); // Placement attempts consume attack input
-        } else if (inputState.attack) {
-             this._handleAttack(inputState); // Weapon attack attempts consume attack input
+    _handleInput(dt, inputState) { // dt is now passed for placement cooldown
+        this._handleMovement(dt, inputState); // Movement & Jump/Swim Stroke handled here
+
+        // --- Handle Attack / Use Input (Activated by inputState.attack being true) ---
+        // This logic now handles both weapon attacks and block placement based on the selected item.
+        // It triggers repeatedly as long as inputState.attack is true and respective cooldowns are ready.
+        if (inputState.attack) {
+            if (this.isMaterialSelected()) {
+                 // If a material is selected, attempt to place a block continuously while 'attack' is held
+                 this._handlePlacementHold(); // Call the new method for placement (dt is handled by internal cooldown)
+            } else if (this.isWeaponSelected()) {
+                 // If a weapon is selected, attempt to START an attack if not on cooldown and not already attacking
+                 // The attack duration is handled by attackTimer, and the cooldown by attackCooldown.
+                 // We only *initiate* the attack here if the input is held AND cooldown is ready.
+                 if (this.attackCooldown <= 0 && !this.isAttacking) {
+                      this.isAttacking = true; // Start the attack state
+                      this.hitEnemiesThisSwing = []; // Reset hit lists for this swing
+                      this.hitBlocksThisSwing = [];
+
+                      // Set attack duration and cooldown based on the equipped weapon type
+                      switch (this.selectedItem) {
+                          case Config.WEAPON_TYPE_SWORD:
+                              this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
+                              this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
+                              break;
+                          case Config.WEAPON_TYPE_SPEAR:
+                              this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
+                              this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
+                              break;
+                          case Config.WEAPON_TYPE_SHOVEL:
+                              this.attackTimer = Config.PLAYER_SHOVEL_ATTACK_DURATION;
+                              this.attackCooldown = Config.PLAYER_SHOVEL_ATTACK_COOLDOWN;
+                              break;
+                          default:
+                              // Fallback
+                              this.attackTimer = 0.1;
+                              this.attackCooldown = 0.2;
+                              break;
+                      }
+                      // IMPORTANT: We do NOT set inputState.attack = false here.
+                      // The input state should reflect the button being held.
+                 }
+            }
+             // If inputState.attack is true but neither material nor weapon is selected,
+             // or if weapon is selected but on cooldown/already attacking, nothing happens,
+             // but inputState.attack remains true. This is correct.
         }
-         // Jump input is handled within _handleMovement now
-         // _handleJumping(inputState); // Now integrated into _handleMovement
+         // If inputState.attack is false, no attack/placement attempt occurs this frame from this block.
+
     }
 
-    /** Handles horizontal movement and jumping/swimming input. */
+    /** Handles horizontal movement and jumping/swimming input based on inputState. */
      _handleMovement(dt, inputState) {
+         // Horizontal Movement
          const currentMaxSpeedX = this.isInWater ? Config.PLAYER_MAX_SPEED_X * Config.WATER_MAX_SPEED_FACTOR : Config.PLAYER_MAX_SPEED_X;
          const currentAcceleration = this.isInWater ? Config.PLAYER_MOVE_ACCELERATION * Config.WATER_ACCELERATION_FACTOR : Config.PLAYER_MOVE_ACCELERATION;
 
@@ -184,6 +239,7 @@ export class Player {
          } else {
              // Apply friction if on ground and not in water
              if (!this.isInWater && this.isOnGround) {
+                 // Calculate friction multiplier dynamically based on dt
                  const frictionFactor = Math.pow(Config.PLAYER_FRICTION_BASE, dt);
                  this.vx *= frictionFactor;
              }
@@ -194,15 +250,16 @@ export class Player {
          }
 
          // Apply horizontal water damping regardless of input if in water
-         if (this.isInWater) {
-             const horizontalDampingFactor = Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
+         if (this.isInWater && Math.abs(this.vx) > GridCollision.E_EPSILON) { // Only apply damping if there's significant velocity
+              const horizontalDampingFactor = Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
              this.vx *= horizontalDampingFactor;
+              if (Math.abs(this.vx) < GridCollision.E_EPSILON) this.vx = 0; // Snap to zero if very small
          }
 
 
          // --- Jumping / Swimming Input ---
-         // Only respond to jump input if player is not already in the middle of a jump/stroke or on cooldown
-         if (inputState.jump) { // Check if the jump button is pressed
+         // Only respond to jump input if player desires to jump AND conditions are met
+         if (inputState.jump) { // Check if the jump button is pressed (held)
              let jumpTriggered = false;
              if (this.isOnGround && !this.isInWater) {
                  // Perform a normal jump from the ground
@@ -217,94 +274,65 @@ export class Player {
                   jumpTriggered = true;
              }
 
-             // Consume the jump input immediately upon successful jump/stroke start
-             if (jumpTriggered) {
-                 inputState.jump = false;
-             }
-             // If jump input is active but couldn't trigger (e.g., airborne, on cooldown), it remains true until released or conditions are met.
+             // NOTE: inputState.jump is NOT set to false here. It remains true as long as the button is held.
+             // This allows for "hold to auto-jump" logic. The conditions (isOnGround, waterJumpCooldown)
+             // naturally gate the jumps even if the button is held down.
          }
+         // If jump input is active but couldn't trigger (e.g., airborne, on cooldown), it remains true until released or conditions are met.
      }
 
-    /** Handles attack input and triggers weapon swing if possible. */
-    _handleAttack(inputState) {
-        // Execute only if:
-        // - attack input is active
-        // - a weapon is selected (not unarmed or a material)
-        // - attack is not on cooldown
-        // - player is not already in the middle of an attack swing
-        if (this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.attackCooldown <= 0 && !this.isAttacking) {
-            this.isAttacking = true; // Start the attack state
-            this.hitEnemiesThisSwing = []; // Reset hit lists for this swing
-            this.hitBlocksThisSwing = [];
+    // REMOVED: _handleAttack now integrated into _handleInput's attack check block.
+    /* _handleAttack(inputState) { ... } */
 
-            // Set attack duration and cooldown based on the equipped weapon type
-            switch (this.selectedItem) {
-                case Config.WEAPON_TYPE_SWORD:
-                    this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
-                    this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
-                    break;
-                case Config.WEAPON_TYPE_SPEAR:
-                    this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
-                    this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
-                    break;
-                case Config.WEAPON_TYPE_SHOVEL:
-                    this.attackTimer = Config.PLAYER_SHOVEL_ATTACK_DURATION;
-                    this.attackCooldown = Config.PLAYER_SHOVEL_ATTACK_COOLDOWN;
-                    break;
-                default:
-                    // Fallback for potentially new/undefined weapons
-                    this.attackTimer = 0.1;
-                    this.attackCooldown = 0.2;
-                    break;
-            }
-             // Consume the attack input after successfully starting the attack
-            inputState.attack = false; // THIS IS CRITICAL TO PREVENT MULTIPLE SWINGS FROM ONE CLICK/TAP
-        } else if (inputState.attack) {
-            // If attack input is active but couldn't trigger (e.g., on cooldown, unarmed), consume it.
-             // This prevents the attack flag from staying true if the button is held down during cooldown.
-            inputState.attack = false;
+
+    /**
+     * Handles continuous block placement when the 'attack' input is held AND a material is selected.
+     * Attempts to place a block if the placement cooldown is ready.
+     */
+    _handlePlacementHold() {
+        // This method is called when inputState.attack is true and a material is selected.
+        // The placementCooldown is decremented in _updateTimers.
+        // Check if cooldown is ready for another placement attempt
+        if (this.placementCooldown <= 0) {
+            const materialType = this.selectedItem; // Get the selected material (already confirmed isMaterialSelected in _handleInput)
+
+            // Check if player has the material in inventory
+            if ((this.inventory[materialType] || 0) > 0) {
+                // Check if the target location is within interaction range
+                if (this._isTargetWithinRange(this.targetWorldPos)) {
+                    // Check if the target grid cell is valid for placement
+                    const targetCol = this.targetGridCell.col;
+                    const targetRow = this.targetGridCell.row;
+                    const targetBlockType = WorldData.getBlockType(targetCol, targetRow); // Handles out of bounds
+
+                    // Can place in Air, or in Water if config allows
+                    const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
+
+                    if (canPlaceHere) {
+                        // Check if placing the block would overlap the player
+                        if (!this.checkPlacementOverlap(targetCol, targetRow)) {
+                            // Check if the target cell has an adjacent solid block for support
+                            if (GridCollision.hasSolidNeighbor(targetCol, targetRow)) { // Use imported GridCollision helper
+                                // ALL CHECKS PASSED - PLACE THE BLOCK!
+                                const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType];
+                                if (blockTypeToPlace !== undefined) { // Ensure material maps to a block type
+                                    // Attempt to place the block using WorldManager's player-specific method
+                                    // WorldManager.placePlayerBlock handles grid bounds internally.
+                                    if (WorldManager.placePlayerBlock(targetCol, targetRow, blockTypeToPlace)) {
+                                        this.decrementInventory(materialType); // Reduce inventory count
+                                        // Placement successful, reset cooldown
+                                        this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
+                                        // console.log(`Placed ${materialType} at [${targetCol}, ${targetRow}]`); // Keep logs quieter
+                                    } // else: Placement failed at the WorldManager level (e.g., out of bounds, already solid)
+                                } // else: No block type mapping found for material
+                            } // else: No adjacent support.
+                        } // else: Player overlap.
+                    } // else: Target cell not empty/placeable.
+                } // else: Out of range.
+            } // else: Not enough material.
         }
-    }
-
-    /** Handles placement input and attempts to place a block if possible. */
-    _handlePlacement(inputState) {
-        // Assumes attack input is active and a material is selected (checked in _handleInput)
-        const materialType = this.selectedItem; // Get the selected material
-
-        // 1. Check if player has the material in inventory
-        if ((this.inventory[materialType] || 0) > 0) {
-            // 2. Check if the target location is within interaction range using the private helper
-            if (this._isTargetWithinRange(this.targetWorldPos)) {
-                // 3. Check if the target grid cell is valid for placement
-                const targetCol = this.targetGridCell.col;
-                const targetRow = this.targetGridCell.row;
-                const targetBlockType = WorldData.getBlockType(targetCol, targetRow);
-
-                // Can place in Air, or in Water if config allows
-                const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
-
-                if (canPlaceHere) {
-                    // 4. Check if placing the block would overlap the player
-                    if (!this.checkPlacementOverlap(targetCol, targetRow)) {
-                        // 5. Check if the target cell has an adjacent solid block for support (using the imported helper)
-                        if (hasSolidNeighbor(targetCol, targetRow)) {
-                            // ALL CHECKS PASSED - PLACE THE BLOCK!
-                            const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType];
-                            if (blockTypeToPlace !== undefined) {
-                                // Attempt to place the block using WorldManager's player-specific method
-                                if (WorldManager.placePlayerBlock(targetCol, targetRow, blockTypeToPlace)) {
-                                    this.decrementInventory(materialType); // Reduce inventory count
-                                    // Placement successful, attack input will be consumed below
-                                } // else: Placement failed at the WorldManager level (e.g., out of bounds, already solid)
-                            } // else: No block type mapping found for material
-                        } // else: No adjacent support.
-                    } // else: Player overlap.
-                } // else: Target cell not empty/placeable.
-            } // else: Out of range.
-        } // else: Not enough material.
-
-        // Consume attack input if a material was selected, regardless of placement success
-        inputState.attack = false; // THIS IS CRITICAL FOR PLACEMENT
+        // If cooldown is not ready, or checks failed, nothing happens,
+        // but inputState.attack remains true. This is correct for hold-to-place.
     }
 
 
@@ -318,13 +346,13 @@ export class Player {
         // Apply gravity if the player is not considered on the ground
         if (!this.isOnGround) {
             this.vy += currentGravity * dt;
-        } else if (this.vy > 0) {
-            // If player is on ground but has slight downward velocity (e.g., from previous frame), reset it
+        } else {
+             // If player is on ground but has slight downward velocity (e.g., from previous frame), reset it
             // Use a small threshold to avoid micro-adjustments
             if (this.vy > 0.1) this.vy = 0;
         }
 
-        // --- Apply Vertical Damping and Speed Clamping in Water ---
+        // --- Apply Vertical Damping & Clamp Speed in Water ---
         if (this.isInWater) {
             this.vy *= verticalDampingFactor; // Apply vertical drag
             // Clamp vertical speed while swimming/sinking
@@ -353,6 +381,7 @@ export class Player {
              this.vx = 0;
         }
         // Only zero vy if a Y collision occurred and velocity was significant, prevents micro-bouncing
+        // Use a small threshold (could be E_EPSILON or a slightly larger value like 0.1)
         if (collisionResult.collidedY && Math.abs(this.vy) > 0.1) {
              this.vy = 0;
         }
@@ -364,12 +393,15 @@ export class Player {
             const yBelow = this.y + this.height + checkDist;
             const rowBelow = Math.floor(yBelow / Config.BLOCK_HEIGHT);
             const colCheck = Math.floor((this.x + this.width/2) / Config.BLOCK_WIDTH); // Check center column
+            // Check for solid ground right below the stepped-up position
             if (GridCollision.isSolid(colCheck, rowBelow)) {
                 const groundSurfaceY = rowBelow * Config.BLOCK_HEIGHT;
-                 if ((this.y + this.height) < groundSurfaceY + checkDist) { // If slightly above ground surface
+                 // If player bottom is within checkDist of the potential ground surface
+                 if ((this.y + this.height) < groundSurfaceY + checkDist) {
                      this.y = groundSurfaceY - this.height; // Snap down
                      this.isOnGround = true;
-                     this.vy = 0;
+                     this.vy = 0; // Stop vertical movement after snapping
+                     // console.log("Player snapped to ground after step-up."); // Debug log
                  }
             }
          }
@@ -458,28 +490,38 @@ export class Player {
     getGhostBlockInfo() {
         // Can only show ghost if a material is selected
         if (!this.isMaterialSelected()) return null;
-        // Need valid target grid cell data
-        if (!this.targetGridCell || typeof this.targetGridCell.col !== 'number' || typeof this.targetGridCell.row !== 'number' || isNaN(this.targetGridCell.col) || isNaN(this.targetGridCell.row)) return null;
+        // Need valid target grid cell data (fall back to last valid if current is bad)
+        const targetCell = this.targetGridCell || this._lastValidTargetGridCell;
+        if (!targetCell || typeof targetCell.col !== 'number' || typeof targetCell.row !== 'number' || isNaN(targetCell.col) || isNaN(targetCell.row)) return null;
 
-        const { col, row } = this.targetGridCell;
+        const { col, row } = targetCell;
 
         // Perform the same checks as actual placement:
-        if (!this._isTargetWithinRange(this.targetWorldPos)) return null; // Must be in range
-        const targetBlockType = WorldData.getBlockType(col, row); // Handles out of bounds for block type
-        // Cannot place out of bounds or if block type is null
+        // Use the stored lastValidTargetWorldPos if targetWorldPos is bad
+        const targetWorldPosForCheck = this.targetWorldPos || this._lastValidTargetWorldPos;
+        if (!this._isTargetWithinRange(targetWorldPosForCheck)) return null; // Must be in range
+
+        // Get the block type at the target cell, handling out of bounds
+        const targetBlockType = WorldData.getBlockType(col, row);
+
+        // Cannot place out of bounds (targetBlockType will be null)
         if (targetBlockType === null) return null;
 
+        // Can place only in Air or Water (if config allows placing in water)
         const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
         if (!canPlaceHere) return null; // Target must be empty (or water if allowed)
+
         if (this.checkPlacementOverlap(col, row)) return null; // Cannot place overlapping player
-        // Use the imported helper function
-        if (!hasSolidNeighbor(col, row)) return null; // Must have adjacent support
+
+        // Must have adjacent solid support
+        if (!GridCollision.hasSolidNeighbor(col, row)) return null; // Use imported GridCollision helper
 
         // If all checks pass, determine the block type and color
-        const materialType = this.selectedItem;
-        const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType];
+        const materialType = this.selectedItem; // This is the material string
+        const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType]; // Map string to block constant
         if (blockTypeToPlace === undefined) return null; // Invalid material mapping
-        const blockColor = Config.BLOCK_COLORS[blockTypeToPlace];
+
+        const blockColor = Config.BLOCK_COLORS[blockTypeToPlace]; // Get color from block constant
         if (!blockColor) return null; // No color defined for this block type
 
         // Return information needed for drawing
@@ -514,6 +556,7 @@ export class Player {
             ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
 
             // Draw Held Weapon Visual (if weapon equipped and not currently attacking)
+            // Only draw the visual when the player is *not* in the middle of an attack animation (isAttacking is false)
             if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
                 ctx.save(); // Save context state before transformations
 
@@ -532,9 +575,10 @@ export class Player {
                     const weaponHeight = weaponConfig.height * 0.8;
                     const weaponColor = weaponConfig.color;
 
-                    // Calculate angle towards the target mouse position
-                    const targetDeltaX = this.targetWorldPos.x - playerCenterX;
-                    const targetDeltaY = this.targetWorldPos.y - playerCenterY;
+                    // Calculate angle towards the target mouse position (using last valid target if current is bad)
+                    const targetForDrawing = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; // Fallback if all target data is bad
+                    const targetDeltaX = targetForDrawing.x - playerCenterX;
+                    const targetDeltaY = targetForDrawing.y - playerCenterY;
                     const angle = Math.atan2(targetDeltaY, targetDeltaX); // Angle in radians
 
                     // Calculate position for the weapon visual based on angle and offset
@@ -554,6 +598,7 @@ export class Player {
         } // End if(shouldDrawPlayer)
 
         // Draw Attack Hitbox Visual (if currently attacking with a weapon)
+        // This is controlled by the player's internal attack timer/state (isAttacking), NOT inputState.attack
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             const hitbox = this.getAttackHitbox(); // Calculate current hitbox position/size
             if (hitbox) {
@@ -611,6 +656,18 @@ export class Player {
                 Math.ceil(Config.BLOCK_HEIGHT)
             );
 
+            // Draw outline on the ghost block
+            ctx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
+            ctx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
+            const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
+            ctx.strokeRect(
+                Math.floor(ghostX) + outlineInset,
+                Math.floor(ghostY) + outlineInset,
+                Math.ceil(Config.BLOCK_WIDTH) - Config.PLAYER_BLOCK_OUTLINE_THICKNESS,
+                Math.ceil(Config.BLOCK_HEIGHT) - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+            );
+
+
             ctx.restore(); // Restore context state (resets globalAlpha)
         }
     }
@@ -663,13 +720,16 @@ export class Player {
         // Player center coordinates
         const playerCenterX = this.x + this.width / 2;
         const playerCenterY = this.y + this.height / 2;
-        // Target world coordinates (from mouse)
-        const targetX = this.targetWorldPos.x;
-        const targetY = this.targetWorldPos.y;
+        // Target world coordinates (from mouse) - use last valid target if current is bad
+        const targetForHitbox = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; // Fallback if all target data is bad
+        const targetX = targetForHitbox.x;
+        const targetY = targetForHitbox.y;
+
         // Vector from player center to target
         const dx = targetX - playerCenterX;
         const dy = targetY - playerCenterY;
         const dist = Math.sqrt(dx * dx + dy * dy); // Distance to target
+
         // Get hitbox dimensions and reach offsets from config based on equipped weapon
         let hitboxWidth, hitboxHeight, reachX, reachY;
         switch (this.selectedItem) {
@@ -718,7 +778,7 @@ export class Player {
     /** Checks if a specific block has already been hit during the current attack swing. */
     hasHitBlockThisSwing(col, row) { const blockKey = `${col},${row}`; return this.hitBlocksThisSwing.includes(blockKey); }
     /** Registers a block as hit during the current swing. */
-    registerHitBlock(col, row) { const blockKey = `${col},${row}`; if (!this.hasHitBlockThisSwing(col, row)) { this.hitBlocksThisSwing.push(blockKey); } }
+    registerHitBlock(col, row) { const blockKey = `${col},${row}`; if (!this.hitBlocksThisSwing.includes(blockKey)) { this.hitBlocksThisSwing.push(blockKey); } }
 
     // --- Inventory & Item Methods ---
 
@@ -777,7 +837,9 @@ export class Player {
             // Cancel current action states on equip
             this.isAttacking = false;
             this.attackTimer = 0;
-            this.attackCooldown = 0; // Or maybe keep cooldown? Let's reset for now.
+            // Maybe reset attackCooldown too, depending on desired behavior
+            // this.attackCooldown = 0; // Or keep cooldown? Let's reset for now.
+            this.placementCooldown = 0; // Reset placement cooldown when switching items
             // UI update to show the new selection happens in the main loop via updatePlayerInfo
         }
         // else if (!canEquip) { console.log(`Cannot equip ${itemType}.`); } // Log if needed
@@ -910,10 +972,11 @@ export class Player {
         this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
-        // Combat
+        // Combat & Placement
         this.isAttacking = false;
         this.attackTimer = 0;
         this.attackCooldown = 0;
+        this.placementCooldown = 0; // Reset placement cooldown
         this.hitEnemiesThisSwing = [];
         this.hitBlocksThisSwing = [];
         // Inventory & Weapons
@@ -925,7 +988,10 @@ export class Player {
 
         // Targeting
         this.lastDirection = 1; // Reset facing direction
-        // targetWorldPos and targetGridCell will be updated by main loop on the first frame
+        // Reset last valid target positions
+        this._lastValidTargetWorldPos = null;
+        this._lastValidTargetGridCell = null;
+
         // Initial position validation after reset
          if (isNaN(this.x) || isNaN(this.y)) {
              console.error(`>>> Player RESET ERROR: NaN final coordinates! Resetting to center.`);
@@ -946,9 +1012,14 @@ export class Player {
         this.waterJumpCooldown = 0;
         this.isAttacking = false; // Cancel any active attack if falling out
         this.attackTimer = 0;
+        // Keep attackCooldown and placementCooldown as is? Or reset? Resetting seems safer.
+        this.attackCooldown = 0;
+        this.placementCooldown = 0;
         this.hitEnemiesThisSwing = [];
         this.hitBlocksThisSwing = [];
-
+        // Reset last valid target positions as player moved suddenly
+        this._lastValidTargetWorldPos = null;
+        this._lastValidTargetGridCell = null;
         // Initial position validation after reset
          if (isNaN(this.x) || isNaN(this.y)) {
              console.error(`>>> Player RESET POSITION ERROR: NaN final coordinates! Resetting to center.`);
@@ -956,5 +1027,4 @@ export class Player {
              this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
          }
     }
-
 } // End of Player Class

@@ -248,7 +248,6 @@ function startGame() {
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
     currentGameState = GameState.RUNNING;
     hideOverlay();
-    Input.consumeClick();
     gameStartTime = performance.now(); // record the game start time for potential future stats.
     lastTime = 0; // reset to ensure correct calculation on first frame of new game
     if (gameLoopId) { // cancel any previous animation frame loop just in case.
@@ -363,7 +362,6 @@ function gameLoop(timestamp) {
              const targetWorldPos = getMouseWorldCoords(internalMousePos);
              const targetGridCell = getMouseGridCoords(internalMousePos);
              player.update(dt, inputState, targetWorldPos, targetGridCell);
-             Input.consumeClick();
         }
         ItemManager.update(dt, player);
         EnemyManager.update(dt, player ? player.getPosition() : null);
@@ -377,19 +375,19 @@ function gameLoop(timestamp) {
             CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
         }
     } else {
-         Input.consumeClick();
+        Input.getState();
     }
     World.update(dt);
     calculateCameraPosition();
     Renderer.clear();
     const mainCtx = Renderer.getContext();
-    mainCtx.save();
-    mainCtx.scale(cameraScale, cameraScale);
-    mainCtx.translate(-cameraX, -cameraY);
-    World.draw(mainCtx);
-    GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
-    ItemManager.draw(mainCtx);
-    if (portal) {
+    mainCtx.save(); // Save context for camera transformations
+    mainCtx.scale(cameraScale, cameraScale); // Apply zoom
+    mainCtx.translate(-cameraX, -cameraY); // Apply scroll/pan
+    World.draw(mainCtx); // Draw static world (grid canvas)
+    GridRenderer.drawStaticGrid(mainCtx, isGridVisible); // Draw debug grid if enabled
+    ItemManager.draw(mainCtx); // Draw items
+        if (portal) {
         portal.setSafetyRadius(currentPortalSafetyRadius);
         portal.draw(mainCtx);
     }
@@ -403,20 +401,34 @@ function gameLoop(timestamp) {
         player.drawGhostBlock(mainCtx);
     }
     mainCtx.restore(); // restore context state to remove camera transformations
-    if (player) {
-        UI.updatePlayerInfo( // update UI based on current state
-             player.getCurrentHealth(), player.getMaxHealth(),
-             player.getInventory(),
-             player.hasWeapon(Config.WEAPON_TYPE_SWORD),
-             player.hasWeapon(Config.WEAPON_TYPE_SPEAR),
-             player.hasWeapon(Config.WEAPON_TYPE_SHOVEL)
-        );
+ // --- UI Updates ---
+    // Only update UI if the game UI elements were successfully initialized
+    if (UI.isInitialized()) { // Check if UI is ready
+        if (player) {
+            UI.updatePlayerInfo( // Update player health, inventory, weapon status
+                player.getCurrentHealth(), player.getMaxHealth(),
+                player.getInventory(),
+                player.hasWeapon(Config.WEAPON_TYPE_SWORD),
+                player.hasWeapon(Config.WEAPON_TYPE_SPEAR),
+                player.hasWeapon(Config.WEAPON_TYPE_SHOVEL) // Pass shovel status
+            );
+        } else {
+             // Optional: Clear player UI if player doesn't exist (e.g., before game start)
+             UI.updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false);
+        }
+        if (portal) { // Update portal health
+            UI.updatePortalInfo(portal.currentHealth, portal.maxHealth);
+        } else {
+            // Optional: Clear portal UI if portal doesn't exist
+            UI.updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH);
+        }
+        // Update wave timer and info
+        UI.updateWaveTimer(waveInfo); // Pass the whole waveInfo object
+        // Update settings button illumination/state
+        UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
+    } else {
+        console.error("UI not initialized, skipping UI updates.");
     }
-    if (portal) {
-        UI.updatePortalInfo(portal.currentHealth, portal.maxHealth);
-    }
-    UI.updateWaveTimer(waveInfo);
-    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
     gameLoopId = requestAnimationFrame(gameLoop);
 }
 // --- Calculate and set initial camera position, centered on the player ---
