@@ -1,13 +1,15 @@
+// root/js/worldManager.js - Manages world state, drawing, and interactions
+
 // -----------------------------------------------------------------------------
 // root/js/worldManager.js - Manages world state, drawing, and interactions
 // -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
-import * as Renderer from './renderer.js'; // Need to draw static world on canvas
+import * as Renderer from './renderer.js';
 import * as WorldData from './utils/worldData.js';
 import * as ItemManager from './itemManager.js';
 import { generateInitialWorld } from './utils/worldGenerator.js';
-import * as GridCollision from './utils/gridCollision.js'; // Import GridCollision for isSolid check
+import * as GridCollision from './utils/gridCollision.js';
 
 // -----------------------------------------------------------------------------
 // --- Water Simulation ---
@@ -33,44 +35,27 @@ function addWaterUpdateCandidate(col, row) {
             if (blockType !== null && (blockType === Config.BLOCK_AIR || blockType === Config.BLOCK_WATER))
             {
                 waterUpdateQueue.set(key, {c: col, r: row});
-            } else {
-                // if (waterUpdateQueue.has(key)) console.log(`[WaterQ] Did NOT add [${col}, ${row}]: Already in queue.`);
-                // else if (blockType === null) console.log(`[WaterQ] Did NOT add [${col}, ${r}]: Out of bounds/null type.`);
-                // else console.log(`[WaterQ] Did NOT add [${col}, ${row}]: Is Solid/Non-WaterSimulation Type (${blockType}).`);
-            }
+            } // else: console.log(`[WaterQ] Did NOT add [${col}, ${row}]: Already in queue or Solid/Non-WaterSimulation Type (${blockType}).`);
         }
     }
 }
 
 // --- Internal function to set a block in grid data AND update the static visual cache ---
-// This function is used internally by WorldManager whenever block type changes.
-// It also triggers adding the changed cell and neighbors to the water simulation queue if below water.
 function internalSetBlock(col, row, blockType, isPlayerPlaced = false) {
-    // --> OPTIONAL DEBUG LOG: internalSetBlock Call <--
-    // console.log(`[WaterMgr] internalSetBlock called for [${col}, ${row}] to type ${blockType}, player placed: ${isPlayerPlaced}.`);
-
-    // Get the block data *before* setting, potentially useful for future logic,
-    // but not strictly needed for *this* re-queueing logic if addWaterUpdateCandidate handles type filtering.
-    // const oldBlock = WorldData.getBlock(col, row);
-    // const oldBlockType = oldBlock === null ? null : (typeof oldBlock === 'number' ? oldBlock : oldBlock.type);
-
-
     // Use setBlock from WorldData to update the underlying data structure
     const success = WorldData.setBlock(col, row, blockType, isPlayerPlaced);
 
     if (success) {
         // Always update the static visual cache on block data change
-        updateStaticWorldAt(col, row);
-        // --> OPTIONAL DEBUG LOG: Block Set Success <--
-        // console.log(`[WaterMgr] Block [${col}, ${row}] set successfully. Static canvas updated.`);
+        // Pass the *new* block type to updateStaticWorldAt
+        updateStaticWorldAt(col, row); // MODIFIED: No longer need to pass blockTypeAfterUpdate here
 
-        // --- ADDED/MODIFIED: Trigger Water Simulation Update for Changed Area if below Waterline ---
+        // Trigger Water Simulation Update for Changed Area if below Waterline ---
         // If the change is at or below the water level threshold, queue this cell and its neighbors
         // for potential re-evaluation by the water simulation. addWaterUpdateCandidate
         // handles the checks for bounds and block type (only queues AIR/WATER).
         if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
             let addedToQueue = false;
-
             // Helper to add candidate and track if anything was actually added
             const tryAddCandidate = (c, r) => {
                 const initialSize = waterUpdateQueue.size;
@@ -79,7 +64,6 @@ function internalSetBlock(col, row, blockType, isPlayerPlaced = false) {
                     addedToQueue = true; // Set flag if queue size increased
                 }
             };
-
 
             // Add the changed cell itself
             tryAddCandidate(col, row);
@@ -97,8 +81,7 @@ function internalSetBlock(col, row, blockType, isPlayerPlaced = false) {
             }
         }
     } else {
-        // --> OPTIONAL DEBUG LOG: Block Set Failure <--
-        // console.warn(`[WaterMgr] Failed to set block data at [${col}, ${row}].`);
+        console.log(`[WaterMgr] Failed to set block data at [${col}, ${row}].`);
     }
     return success;
 }
@@ -131,54 +114,101 @@ function renderStaticWorldToGridCanvas() {
             }
             const blockX = c * Config.BLOCK_WIDTH;
             const blockY = r * Config.BLOCK_HEIGHT;
-            const isPlayerPlaced = block && typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false; // default to false if property is missing
+            const blockW = Math.ceil(Config.BLOCK_WIDTH); // Use Math.ceil for robustness
+            const blockH = Math.ceil(Config.BLOCK_HEIGHT);
 
-// draw block body onto GRID CANVAS using gridCtx
+            // draw block body onto GRID CANVAS using gridCtx
             gridCtx.fillStyle = blockColor;
-            gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), Math.ceil(Config.BLOCK_WIDTH), Math.ceil(Config.BLOCK_HEIGHT));
+            gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH); // Use Math.floor for origin
 
-// draw Outline if Player Placed ---
+            // draw Outline if Player Placed ---
+            const isPlayerPlaced = block && typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false; // default to false if property is missing
             if (isPlayerPlaced) {
                  gridCtx.save(); // save context state
                  gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
                  gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
-// adjust coordinates for stroke to be inside the block boundaries
-                 const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
+                // adjust coordinates for stroke to be inside the block boundaries
+                const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
                  gridCtx.strokeRect(
                      Math.floor(blockX) + outlineInset,
                      Math.floor(blockY) + outlineInset,
-                     Math.ceil(Config.BLOCK_WIDTH) - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, // Subtract stroke width from both sides
-                     Math.ceil(Config.BLOCK_HEIGHT) - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+                     blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, // Subtract stroke width from both sides
+                     blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
                  );
                  gridCtx.restore(); // restore context state
             }
+
+            // --- Draw Damage Indicators ---
+            // Check if the block object exists, has HP and maxHp properties, and is potentially damaged
+            if (block && typeof block === 'object' && block.maxHp > 0 && block.hp < block.maxHp) {
+                 const hpRatio = block.hp / block.maxHp;
+
+                 gridCtx.save(); // Save context state before drawing lines
+                 gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
+                 gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                 gridCtx.lineCap = 'square'; // Use square cap
+
+                 // Calculate the effective inset for the line path points
+                 // The stroke's center should be LINE_WIDTH / 2 from the edge.
+                 // The path point should be LINE_WIDTH from the edge.
+                 const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+
+
+                 // Draw Slash (\) if HP is <= 70%
+                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
+                      gridCtx.beginPath();
+                      // Move to inset top-left, draw to inset bottom-right
+                      gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset); // MODIFIED: Use pathInset
+                      gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset); // MODIFIED: Use pathInset
+                      gridCtx.stroke();
+                 }
+
+                 // Draw Second Line (/) if HP is <= 30% (creating an 'X')
+                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
+                      gridCtx.beginPath();
+                       // Move to inset top-right, draw to inset bottom-left
+                      gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset); // MODIFIED: Use pathInset
+                      gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset); // MODIFIED: Use pathInset
+                      gridCtx.stroke();
+                 }
+
+                 gridCtx.restore(); // Restore context state (removes line style changes)
+            }
         }
     }
+    // console.log("Initial static world rendered."); // Keep logs quieter
 }
 
 // --- Helper function to update a single block on the off-screen canvas ---
-// Clears the block's area and redraws it if it's not air.
+// Clears the block's area and redraws it if it's not air, INCLUDING DAMAGE INDICATORS.
+// MODIFIED: Removed blockTypeAfterUpdate argument.
 function updateStaticWorldAt(col, row) {
     const gridCtx = Renderer.getGridContext();
     if (!gridCtx) {
         console.error(`WorldManager: Cannot update static world at [${col}, ${row}] - grid context missing!`);
         return;
     }
-    const block = WorldData.getBlock(col, row); // Get the block data (0 for air, object for others, null for out of bounds)
+
+    // Get the block data *after* it has been updated in WorldData
+    const block = WorldData.getBlock(col, row);
+
     const blockX = col * Config.BLOCK_WIDTH;
     const blockY = row * Config.BLOCK_HEIGHT;
-    // Use Math.ceil for width/height to avoid 1-pixel gaps when clearing/redrawing
-    const blockW = Math.ceil(Config.BLOCK_WIDTH);
+    const blockW = Math.ceil(Config.BLOCK_WIDTH); // Use Math.ceil for robustness
     const blockH = Math.ceil(Config.BLOCK_HEIGHT);
 
-    // 1. Clear the area corresponding to this grid cell on the static canvas
+    // --- Clear Area ---
+    // Always clear the exact block area before redrawing (or not drawing if air)
+    // If drawing the damage lines strictly within the block bounds works,
+    // we don't need an expanded clear here.
     gridCtx.clearRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
 
     // 2. If the block is NOT air and NOT null (out of bounds), redraw it
     // WorldData.getBlock returns 0 for AIR and null for out of bounds. Any other value is an object.
+    // The drawing logic itself should still draw within the block's original bounds [blockX, blockY, blockW, blockH]
     if (block !== Config.BLOCK_AIR && block !== null) {
-        const blockType = typeof block === 'object' ? block.type : block; // Get type from object or directly if it's a number like WATER constant
-        const blockColor = Config.BLOCK_COLORS[blockType];
+        const currentBlockType = typeof block === 'object' ? block.type : block;
+        const blockColor = Config.BLOCK_COLORS[currentBlockType];
 
         if (blockColor) {
             // Draw block body
@@ -186,7 +216,6 @@ function updateStaticWorldAt(col, row) {
             gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
 
             // --- Draw Outline if Player Placed ---
-            // Check isPlayerPlaced property on the block object if it's an object
             const isPlayerPlaced = block && typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false;
             if (isPlayerPlaced) {
                  gridCtx.save(); // Save context state
@@ -196,16 +225,54 @@ function updateStaticWorldAt(col, row) {
                   gridCtx.strokeRect(
                      Math.floor(blockX) + outlineInset,
                      Math.floor(blockY) + outlineInset,
-                     blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, // Subtract stroke width from both sides
+                     blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS,
                      blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
                  );
                  gridCtx.restore(); // Restore context state
             }
-        } else {
-             console.warn(`WorldManager: No color defined for block type ${blockType} at [${col}, ${row}] during updateStaticWorldAt.`);
+
+            // --- Draw Damage Indicators (Inset) ---
+            // Check if the block object exists, has HP and maxHp properties, and is damaged
+            if (block && typeof block === 'object' && block.maxHp > 0 && block.hp < block.maxHp) {
+                 const hpRatio = block.hp / block.maxHp;
+
+                 gridCtx.save(); // Save context state before drawing lines
+                 gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
+                 gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                 gridCtx.lineCap = 'square'; // Use square cap
+
+                // Calculate the effective inset for the line path points
+                 // The stroke's center should be LINE_WIDTH / 2 from the edge.
+                 // The path point should be LINE_WIDTH from the edge.
+                 const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+
+
+                 // Draw Slash (\) if HP is <= 70%
+                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
+                      gridCtx.beginPath();
+                      // Move to inset top-left, draw to inset bottom-right
+                      gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset); // MODIFIED: Use pathInset
+                      gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset); // MODIFIED: Use pathInset
+                      gridCtx.stroke();
+                 }
+
+                 // Draw Second Line (/) if HP is <= 30% (creating an 'X')
+                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
+                      gridCtx.beginPath();
+                       // Move to inset top-right, draw to inset bottom-left
+                      gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset); // MODIFIED: Use pathInset
+                      gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset); // MODIFIED: Use pathInset
+                      gridCtx.stroke();
+                 }
+
+                 gridCtx.restore(); // Restore context state
+            }
         }
     }
+    // If block IS AIR (or null), the drawing logic for block body/indicators is skipped,
+    // and only the exact clearRect runs, leaving the area empty.
 }
+
 
 // --- Initialize World Manager ---
 export function init() {
@@ -241,7 +308,6 @@ function seedWaterUpdateQueue() {
     // console.log(`[WaterMgr] Initial water update queue size after seeding: ${waterUpdateQueue.size}`);
 }
 
-
 // Sets a player-placed block - assumes validity checks (range, clear, neighbor) are done by the caller (Player class).
 export function placePlayerBlock(col, row, blockType) {
     // Use the internalSetBlock function, marking it as player placed.
@@ -263,11 +329,19 @@ export function damageBlock(col, row, damageAmount) {
     // Apply damage
     block.hp -= damageAmount;
 
+    // --- ADDED: Update the visual state of the block on the static canvas ---
+    // This redraws the block with the potentially new damage indicator.
+    // Pass the block's current type (it's not becoming air yet)
+    updateStaticWorldAt(col, row); // MODIFIED: No longer need to pass block.type
+
     let wasDestroyed = false;
     // Check for destruction
     if (block.hp <= 0) {
         wasDestroyed = true;
-// Determine Drop Type
+        // Ensure health doesn't go below zero in data
+        block.hp = 0;
+
+        // Determine Drop Type
         let dropType = null;
         switch (block.type) { // Use the current type from the object
             case Config.BLOCK_GRASS: dropType = 'dirt'; break;
@@ -277,28 +351,35 @@ export function damageBlock(col, row, damageAmount) {
             case Config.BLOCK_WOOD: dropType = 'wood'; break;
              case Config.BLOCK_BONE: dropType = 'bone'; break;
              case Config.BLOCK_METAL: dropType = 'metal'; break;
+             // Add cases for other block types that drop items
         }
 
-// --- Spawn Item Drop (if any) ---
+        // --- Spawn Item Drop (if any) ---
         if (dropType) {
-// position slightly off-center and random within the block bounds
+            // position slightly off-center and random within the block bounds
             const dropX = col * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2);
             const dropY = row * Config.BLOCK_HEIGHT + (Config.BLOCK_HEIGHT / 2);
             const offsetX = (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.4; // random offset
             const offsetY = (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.4;
-            ItemManager.spawnItem(dropX + offsetX, dropY + offsetY, dropType);
-            // console.log(` > Spawning ${dropType} at ~${(dropX + offsetX).toFixed(1)}, ${(dropY + offsetY).toFixed(1)}`);
+
+            // Ensure dropX and dropY are valid numbers before spawning
+             if (!isNaN(dropX) && !isNaN(dropY) && typeof dropX === 'number' && typeof dropY === 'number') {
+                 ItemManager.spawnItem(dropX + offsetX, dropY + offsetY, dropType);
+                 // console.log(` > Spawning ${dropType} at ~${(dropX + offsetX).toFixed(1)}, ${(dropY + offsetY).toFixed(1)}`); // Keep logs quieter
+             } else {
+                 console.error(`>>> ITEM SPAWN FAILED: Invalid drop coordinates [${dropX}, ${dropY}] for ${dropType} from destroyed block at [${col}, ${row}].`);
+             }
         }
 
-// --- Replace Block with Air ---
+        // --- Replace Block with Air ---
         // Use internalSetBlock to change the block data AND update the visual cache.
         // Destroyed blocks are naturally occurring, so isPlayerPlaced is false.
-        // internalSetBlock now handles the water queue update AND timer reset.
+        // internalSetBlock will call updateStaticWorldAt with BLOCK_AIR.
         internalSetBlock(col, row, Config.BLOCK_AIR, false); // isPlayerPlaced = false
+
     } else {
-        // Block damaged but not destroyed: No need to update static visual cache for HP change.
-        // No block type change occurred, so internalSetBlock was not called.
-        // Water simulation does not need to be triggered for HP changes, only type changes.
+         // Block damaged but not destroyed: updateStaticWorldAt was already called above
+         // to redraw the block with the damage indicator. No further action needed here.
     }
 
     // Damage was applied, regardless of destruction
@@ -358,7 +439,7 @@ export function update(dt) {
                 const neighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // Cardinal neighbors
                 neighbors.forEach(neighbor => {
                      const nc = c + neighbor.dc;
-                     const nr = r + neighbor.dr;
+                     const nr = r + neighbor.dr; // FIX: Should be neighbor.dr not neighbor.nr
 
                      // Queue neighbor if it's within bounds, AT or below waterline, and IS WATER or AIR.
                      // The addWaterUpdateCandidate function handles the specific type check (non-solid ground) and queue check.
@@ -373,11 +454,11 @@ export function update(dt) {
                     // To prioritize downward filling, we could specifically check the neighbor ABOVE first
                     // and ONLY fill if there is water ABOVE it, OR if there is water adjacent AND the cell below is solid/water.
                     // For a simple bias, just checking *any* adjacent water is okay, but the sorting helps ensure
-                    // that lower air blocks next to water are processed earlier in the batch.
+                    // that lower air blocks next to water are processed earlier in the *next* batch.
                     const immediateNeighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // Cardinal neighbors again
                      for (const neighbor of immediateNeighbors) {
                         const nc = c + neighbor.dc;
-                        const nr = r + neighbor.nr; // FIX: Should be neighbor.dr not neighbor.nr
+                        const nr = r + neighbor.dr; // FIX: Should be neighbor.dr not neighbor.nr
                         // Check if neighbor is within bounds and is WATER
                         if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS && WorldData.getBlockType(nc, nr) === Config.BLOCK_WATER) { // Use WorldData's function directly
                             adjacentToWater = true;
@@ -389,6 +470,7 @@ export function update(dt) {
                     if (adjacentToWater) {
                         // console.log(`[WaterFill] Filling [${c}, ${r}]`);
                         // Set to WATER. internalSetBlock updates WorldData and static canvas, AND re-queues neighbors and resets timer.
+                        // internalSetBlock will call updateStaticWorldAt.
                         internalSetBlock(c, r, Config.BLOCK_WATER, false); // Water is not player-placed
                     }
                 }

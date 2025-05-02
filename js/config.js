@@ -134,6 +134,10 @@ export const MATERIAL_TO_BLOCK_TYPE = { // map inventory material strings to blo
     'metal': BLOCK_METAL,
     'bone': BLOCK_BONE, // add other placeable materials here if needed
 };
+export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.5)'; // Semi-transparent black
+export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // Thickness of the slash/X
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // Show slash when HP <= 70%
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;     // Show X when HP <= 30%
 export const GHOST_BLOCK_ALPHA = 0.5; // transparency level of preview block
 export const CAN_PLACE_IN_WATER = false; // potential future power enhancement
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)'; // outline colour of player-placed blocks
