@@ -5,7 +5,7 @@
 import * as Config from '../config.js';
 import { PerlinNoise } from './noise.js';
 import { createBlock } from './block.js';
-import { setBlockData, getBlockType, setBlock } from './worldData.js';
+import * as WorldData from './worldData.js'; // Import all of WorldData
 
 // --- Helper ---
 function lerp(t, a, b) {
@@ -13,12 +13,14 @@ function lerp(t, a, b) {
 }
 
 // --- Module State ---
-let noiseGenerator = null; // Generator instance
+let generationNoiseGenerator = null; // Generator instance for initial generation
 
 // --- Generates initial landmass (Stone/Dirt/Grass) and fills the rest with Air by modifying grid directly ---
 function generateLandmass() {
     // console.log("Generating landmass with boundary smoothing...");
-    noiseGenerator = new PerlinNoise();
+    // Use a consistent seed or a different seed for initial terrain noise
+    generationNoiseGenerator = new PerlinNoise(56789); // Example fixed seed
+
     const islandWidth = Math.floor(Config.GRID_COLS * Config.WORLD_ISLAND_WIDTH); // 200*0.8=160
     const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2);              // 200-160=40/2=20
     const islandEndCol = islandStartCol + islandWidth;                                    // 20+160=180
@@ -42,11 +44,11 @@ function generateLandmass() {
     console.log("Pass 1: Calculating initial levels...");
     for (let c = 0; c < Config.GRID_COLS; c++) {
         // Calculate base island levels (used inside island logic)
-        const noiseVal = noiseGenerator.noise(c * Config.WORLD_NOISE_SCALE);
+        const noiseVal = generationNoiseGenerator.noise(c * Config.WORLD_NOISE_SCALE);
         const heightVariation = Math.round(noiseVal * Config.WORLD_GROUND_VARIATION);
         let baseSurfaceRow = Config.WORLD_GROUND_LEVEL_MEAN + heightVariation;
 
-        const stoneNoiseVal = noiseGenerator.noise(c * Config.WORLD_NOISE_SCALE * 0.5 + 100);
+        const stoneNoiseVal = generationNoiseGenerator.noise(c * Config.WORLD_NOISE_SCALE * 0.5 + 100);
         const stoneVariation = Math.round(stoneNoiseVal * Config.WORLD_STONE_VARIATION);
         let baseStoneRow = Config.WORLD_STONE_LEVEL_MEAN + stoneVariation;
         // Clamp base stone relative to base surface
@@ -170,8 +172,7 @@ function generateLandmass() {
     } // End Pass 2
 
     // --- Pass 3: Place blocks based on final levels ---
-// --- Pass 3: Place blocks based on final levels ---
-console.log("Pass 3: Placing blocks with controlled sand depth...");
+console.log("Pass 3: Placing blocks..."); // Removed controlled sand depth log
 for (let r = 0; r < Config.GRID_ROWS; r++) {
     for (let c = 0; c < Config.GRID_COLS; c++) {
         // Use createBlock
@@ -212,10 +213,10 @@ for (let r = 0; r < Config.GRID_ROWS; r++) {
             // --- At the calculated surface level ---
             if (surfaceIsBelowWater) {
                 // Surface itself is underwater, place Sand (minimum 1 layer)
-                 if (finalStoneRow > finalSurfaceRow) {
+                 if (finalStoneRow > finalSurfaceRow) { // Ensure stone is below the surface
                     blockData = createBlock(Config.BLOCK_SAND, false); // Sand not player placed
                  } else {
-                     blockData = createBlock(Config.BLOCK_STONE, false); // Stone not player placed
+                     blockData = createBlock(Config.BLOCK_STONE, false); // Stone not player placed (surface == stone level)
                  }
             } else {
                 // Surface is above water - standard logic (Grass for island, Sand for ocean floor)
@@ -224,7 +225,7 @@ for (let r = 0; r < Config.GRID_ROWS; r++) {
         }
 
         // Set the block data using the direct method for initial generation
-        setBlockData(c, r, blockData);
+        WorldData.setBlockData(c, r, blockData);
     }
 }
     console.log("Landmass generation complete.");
@@ -243,7 +244,7 @@ function applyFloodFill(targetWaterRow) {
     for (let r = targetWaterRow; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             // Check only AIR blocks that haven't been visited/queued yet
-            if (getBlockType(c, r) === Config.BLOCK_AIR) {
+            if (WorldData.getBlockType(c, r) === Config.BLOCK_AIR) {
                 const key = `${c},${r}`;
                 if (visited.has(key)) continue;
 
@@ -266,7 +267,7 @@ function applyFloodFill(targetWaterRow) {
                     for (const { nc, nr } of neighborCoords) {
                         // Ensure neighbor is within *overall grid bounds*
                         if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
-                            if (getBlockType(nc, nr) !== Config.BLOCK_AIR) {
+                            if (WorldData.getBlockType(nc, nr) !== Config.BLOCK_AIR) {
                                 isSeedPoint = true;
                                 break; // Found a non-air neighbor, no need to check others
                             }
@@ -302,7 +303,7 @@ function applyFloodFill(targetWaterRow) {
 
         // Get current block type *again* inside the loop, as it might have been filled
         // by another path if queue contains duplicates briefly.
-        const currentBlockType = getBlockType(c,r);
+        const currentBlockType = WorldData.getBlockType(c,r);
 
         // Check bounds, ensure it's BELOW target water level, and is STILL AIR
         if (r < targetWaterRow || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS || currentBlockType !== Config.BLOCK_AIR) {
@@ -311,27 +312,34 @@ function applyFloodFill(targetWaterRow) {
 
        // Fill with water - Use the WorldData setter, which uses createBlock
        // Water is naturally occurring, so isPlayerPlaced is false
-       setBlock(c, r, Config.BLOCK_WATER, false); // Use imported setter, set isPlayerPlaced false
-       processed++;
+       // setBlock handles creating the object and setting isPlayerPlaced
+       const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // Use imported setter, set isPlayerPlaced false
+       if (success) {
+            processed++;
+            // No need to call updateStaticWorldAt during initial generation flood fill,
+            // the initial renderStaticWorldToGridCanvas happens after the fill is complete.
 
-        // Add valid AIR neighbors (must be below targetWaterRow) to the queue
-        const neighborCoords = [
-            // Only check neighbors that could potentially be filled (at or below water level)
-            { nc: c, nr: r - 1 }, { nc: c, nr: r + 1 },
-            { nc: c - 1, nr: r }, { nc: c + 1, nr: r }
-        ];
+            // Add valid AIR neighbors (must be below targetWaterRow) to the queue
+            const neighborCoords = [
+                // Only check neighbors that could potentially be filled (at or below water level)
+                { nc: c, nr: r - 1 }, { nc: c, nr: r + 1 },
+                { nc: c - 1, nr: r }, { nc: c + 1, nr: r }
+            ];
 
-        for (const { nc, nr } of neighborCoords) {
-            // Ensure neighbor is within grid bounds AND at or below water level
-            if (nr >= targetWaterRow && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
-                const nKey = `${nc},${nr}`;
-                // Check if neighbor is AIR and not visited
-                if (getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) {
-                    visited.add(nKey);
-                    queue.push({ c: nc, r: nr });
+            for (const { nc, nr } of neighborCoords) {
+                // Ensure neighbor is within grid bounds AND at or below water level
+                // MODIFIED: Relaxed the check for neighbor row - any AIR neighbor within bounds should be queued
+                // if the current cell is filling, as the neighbor could potentially *become* water.
+                 if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
+                    const nKey = `${nc},${nr}`;
+                    // Check if neighbor is AIR and not visited
+                    if (WorldData.getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) {
+                        visited.add(nKey);
+                        queue.push({ c: nc, r: nr });
+                    }
                 }
             }
-        }
+       }
     } // End while loop
     console.log(`Flood fill complete. Filled ${processed} water blocks.`);
 }
@@ -340,8 +348,11 @@ function applyFloodFill(targetWaterRow) {
  * Assumes the grid has been initialized by world-data.initializeGrid().
  */
 export function generateInitialWorld() {
-    console.time("World generated in");
+    console.time("Initial World generated in");
     generateLandmass(); // Uses the new multi-pass method
     applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
-    console.timeEnd("World generated in");
+    // REMOVED: ensureUnderwaterIntegrity(); // === NEW STEP ===
+    // NOTE: The *initial* aging pass is now called directly in WorldManager.init
+    // after generateInitialWorld and applyFloodFill are done.
+    console.timeEnd("Initial World generated in");
 }

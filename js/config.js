@@ -31,6 +31,19 @@ export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 10; // target floor level belo
 export const ISLAND_CENTER_TAPER_WIDTH = 80; // width of taper from island edge inward
 
 // =============================================================================
+// --- World Aging Parameters ---
+// =============================================================================
+export const AGING_BASE_INTENSITY = 1.0; // Base intensity for aging
+export const AGING_NOISE_SCALE = 0.03; // Scale for aging noise (controls patch size)
+export const AGING_PROB_EROSION_EXPOSED_DIRT = 0.001; // Chance for exposed dirt to erode per block
+export const AGING_PROB_EROSION_EXPOSED_SAND = 0.003; // Chance for exposed sand to erode per block (sand erodes easier)
+export const AGING_PROB_EROSION_SURFACE_STONE = 0.00005; // Small chance for surface stone erosion per block
+export const AGING_PROB_GROWTH_SURFACE_AIR = 0.005; // Chance for air on surface to become dirt/grass per block
+export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.002; // Chance for underwater air/water to become sand/dirt per block
+export const AGING_PROB_STONEIFICATION_DEEP_DIRT_SAND = 0.00002; // Chance for deep dirt/sand to become stone per block
+export const AGING_STONEIFICATION_DEPTH_THRESHOLD = 100; // Pixel depth below which stoneification can occur
+
+// =============================================================================
 // --- Delta-Time Based Physics ---
 // =============================================================================
 
@@ -204,7 +217,7 @@ export const SWORD_WIDTH = 3 * BLOCK_WIDTH; // sword: 3x1 blocks
 export const SWORD_HEIGHT = 1 * BLOCK_HEIGHT; // 12 pixels x 4 pixels
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
 export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
-export const PLAYER_SWORD_ATTACK_DAMAGE = 15; // good baseline damage 
+export const PLAYER_SWORD_ATTACK_DAMAGE = 15; // good baseline damage
 export const PLAYER_SWORD_BLOCK_DAMAGE = 0; // swords don't break blocks
 export const PLAYER_SWORD_ATTACK_REACH_X = PLAYER_WIDTH * 0.8; // reach horizontally from player center (swing arc)
 export const PLAYER_SWORD_ATTACK_REACH_Y = PLAYER_HEIGHT * 0; // slight downward offset (relative to player center)
@@ -212,7 +225,7 @@ export const PLAYER_SWORD_ATTACK_WIDTH = PLAYER_WIDTH * 1.5; // wide hitbox (arc
 export const PLAYER_SWORD_ATTACK_HEIGHT = PLAYER_HEIGHT * 0.9; // tall hitbox (arc)
 export const PLAYER_SWORD_ATTACK_DURATION = 0.2; // faster duration
 export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.3; // faster cooldown
-export const SPEAR_WIDTH = 4 * BLOCK_WIDTH; // spear: 4x1 blocks 
+export const SPEAR_WIDTH = 4 * BLOCK_WIDTH; // spear: 4x1 blocks
 export const SPEAR_HEIGHT = 1 * BLOCK_HEIGHT; // 16 pixels x 4 pixels
 export const SPEAR_COLOR = 'rgb(210, 180, 140)'; // wood-like color
 export const PLAYER_SPEAR_ATTACK_DAMAGE = 8; // slightly less damage than sword
@@ -380,6 +393,7 @@ export const WAVES = [
         duration: 117, // total wave duration in seconds
         intermissionDuration: 15.0, // total duration of intermission *after* this wave
         audioTrack: 'assets/audio/music/Wave1-350.mp3',
+        // Optional: agingIntensity: 1.0, // Can be specified per wave, defaults to AGING_BASE_INTENSITY if not present
         subWaves: [
             { // --- 1.1 ---
                 enemyGroups: [
@@ -407,6 +421,7 @@ export const WAVES = [
         duration: 137,
         intermissionDuration: 20.0,
         audioTrack: 'assets/audio/music/Wave2-300.mp3',
+        // Optional: agingIntensity: 1.2, // Example: Wave 2 could have slightly more aging
         subWaves: [
             { // --- 2.1 ---
                  enemyGroups: [
@@ -434,6 +449,7 @@ export const WAVES = [
         duration: 90,
         intermissionDuration: 25.0, // shorter intermission
         audioTrack: 'assets/audio/music/wave3.mp3', // <-- TODO: add music track here
+        // Optional: agingIntensity: 1.0, // Back to base intensity
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
@@ -456,9 +472,9 @@ export const EPOCH_MAP = {
 export const EPOCH_DISPLAY_DURATION = 4.0;
 
 // =============================================================================
-// --- Projectile Parameters (Example for Future Use) ---
+// --- Projectile Parameters (Future Use) ---
 // =============================================================================
-// 
+//
 // export const PROJECTILE_TYPES = {
 //     ENEMY_SPIT: {
 //         speed: 200,

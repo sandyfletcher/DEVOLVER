@@ -6,6 +6,8 @@ import * as Config from './config.js';
 import * as EnemyManager from './enemyManager.js';
 import * as AudioManager from './audioManager.js';
 import * as ItemManager from './itemManager.js';
+import * as WorldManager from './worldManager.js'; // Import WorldManager
+import * as UI from './ui.js'; // Import UI module for epoch text
 
 // --- Module State ---
 let currentMainWaveIndex = -1; // Index in Config.WAVES array (-1 means not started)
@@ -30,7 +32,7 @@ let warpPhaseTimer = 0;
 // Store initial/max durations for the current state (needed for UI bar)
 let currentMaxTimer = 0; // Used for UI bar denominator
 
-// Callback function to notify caller when a wave starts
+// Callback function to notify caller when a wave starts (currently used by main.js for epoch text)
 let waveStartCallback = null;
 
 // Reference to the Portal instance from main.js (needed for cleanup radius)
@@ -138,6 +140,7 @@ function startNextWave() {
     // console.log(`[WaveMgr] Starting Main Wave ${waveData.mainWaveNumber}. Duration: ${mainWaveTimer}s`);
 
     // Call the callback to notify the main loop (e.g., to show epoch text)
+    // This callback is now typically used for the *start* of the wave countdown, not the WARP phase.
     if (typeof waveStartCallback === 'function') {
         // console.log(`[WaveMgr] Calling waveStartCallback for wave ${waveData.mainWaveNumber}.`);
         waveStartCallback(waveData.mainWaveNumber);
@@ -190,7 +193,7 @@ function endWave() {
 
         currentMaxTimer = buildPhaseTimer; // Set max timer for UI to the build phase duration
         AudioManager.stopGameMusic(); // <-- Stop wave music for intermission
-        // console.log(`[WaveMgr] Transitioned to BUILDPHASE (${buildPhaseTimer.toFixed(2)}s). Next wave (${currentMainWaveIndex + 2}) starts after total ${waveIntermissionDuration.toFixed(2)}s.`);
+        console.log(`[WaveMgr] Transitioned to BUILDPHASE (${buildPhaseTimer.toFixed(2)}s). Next wave (${currentMainWaveIndex + 2}) starts after total ${waveIntermissionDuration.toFixed(2)}s.`);
     } else {
         // No more waves, transition to victory
         state = 'VICTORY';
@@ -207,7 +210,7 @@ function endWave() {
     groupStartDelayTimer = 0; // Will be set up properly when startNextWave is called later
 }
 
-// NEW: Function to trigger the cleanup logic
+// NEW: Function to trigger the cleanup logic (clearing enemies/items) AND aging logic
 function triggerWarpCleanup() {
     // console.log("[WaveMgr] Triggering Warp Cleanup...");
     if (!portalRef) {
@@ -218,11 +221,32 @@ function triggerWarpCleanup() {
     const portalCenter = portalRef.getPosition(); // Get portal center (already adjusted for size)
     const safeRadius = portalRef.safetyRadius; // Get the current safety radius
 
+    // --- Clear Enemies and Items outside the radius ---
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
+    // console.log(`[WaveMgr] Cleared entities/items outside portal radius ${safeRadius.toFixed(1)}.`);
 
-    // Optional: Add aging/erosion/growth logic here later!
-    // Example: AgingManager.applyAging(dt, portalCenter.x, portalCenter.y, safeRadius);
+    // --- NEW: Show Epoch Text during Warp ---
+    // Get the epoch for the wave that is *about* to start (the next one)
+    const nextWaveNumber = currentMainWaveIndex + 1 + 1; // waveJustCompleted + 1 (for 1-based) + 1 (for the next wave number)
+    const nextEpochYear = Config.EPOCH_MAP[nextWaveNumber];
+    if (nextEpochYear !== undefined) {
+         // Show the epoch for the *next* wave
+         UI.showEpochText(nextEpochYear); // UI handles display duration
+    } else {
+         // Fallback if no epoch defined for the next wave
+         UI.showEpochText(`Preparing Wave ${nextWaveNumber}`);
+    }
+
+    // --- NEW: Apply World Aging ---
+    // Get the data for the NEXT wave to determine its aging intensity
+    const nextWaveData = Config.WAVES[currentMainWaveIndex + 1]; // Index is current + 1
+    // Determine the aging intensity for the upcoming wave (defaults to base if not specified)
+    const agingIntensityForNextWave = nextWaveData?.agingIntensity ?? Config.AGING_BASE_INTENSITY;
+
+    // Pass the portal reference and the calculated aging intensity
+    // MODIFIED: Pass agingIntensityForNextWave instead of nextWaveNumber
+    WorldManager.applyAging(portalRef, agingIntensityForNextWave);
 }
 
 // --- Exported Functions ---
@@ -400,6 +424,13 @@ export function getCurrentWaveNumber() {
         // but this is usually sufficient for display.
         return Math.max(0, currentMainWaveIndex + 1);
      }
+    // If in WARPPHASE or BUILDPHASE, the currentMainWaveIndex is the wave that *just finished*.
+    // We want to display the NEXT wave number in the UI during intermission countdown.
+    if (state === 'BUILDPHASE' || state === 'WARPPHASE') {
+        // Return the number of the wave that just finished (currentMainWaveIndex + 1)
+        return currentMainWaveIndex + 1;
+    }
+
     return (currentMainWaveIndex < 0) ? 0 : currentMainWaveIndex + 1;
 }
 
@@ -432,18 +463,18 @@ export function getWaveInfo() {
         case 'BUILDPHASE':
             timer = buildPhaseTimer;
              // The maxTimer for BUILDPHASE is set in endWave (calculated value)
-            progressText = `Wave ${currentWaveNumber} Complete. Build Time!`; // Keep for console/debug
+            progressText = `Wave ${currentWaveNumber} Complete. Build Time!`; // Refer to completed wave
             break;
         case 'WARPPHASE':
              timer = warpPhaseTimer;
              // The maxTimer for WARPPHASE is set on entering the state (Config.WARPPHASE_DURATION)
-             progressText = `Wave ${currentWaveNumber} Complete. Warping...`; // Keep for console/debug
+             progressText = `Wave ${currentWaveNumber} Complete. Warping...`; // Refer to completed wave
              break;
         case 'GAME_OVER':
             timer = 0;
             maxTimer = 1; // Prevent division by zero in UI percent calculation
             progressText = "Game Over"; // Keep for console/debug
-            // Use the actual wave number reached before game over - getCurrentWaveNumber handles this now
+            // currentWaveNumber is handled by getCurrentWaveNumber() for Game Over
             break;
         case 'VICTORY':
             timer = 0;

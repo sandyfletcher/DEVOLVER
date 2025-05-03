@@ -202,73 +202,56 @@ export class Player {
 
     }
 
-    /** Handles horizontal movement and jumping/swimming input based on inputState. */
-     _handleMovement(dt, inputState) {
-         // Horizontal Movement
-         const currentMaxSpeedX = this.isInWater ? Config.PLAYER_MAX_SPEED_X * Config.WATER_MAX_SPEED_FACTOR : Config.PLAYER_MAX_SPEED_X;
-         const currentAcceleration = this.isInWater ? Config.PLAYER_MOVE_ACCELERATION * Config.WATER_ACCELERATION_FACTOR : Config.PLAYER_MOVE_ACCELERATION;
+    // Handles horizontal movement and jumping/water stroke
+    _handleMovement(dt, inputState) { // UNCOMMENTED THIS METHOD
+        // Horizontal Movement
+        let targetVx = 0;
+        if (inputState.left) targetVx -= Config.PLAYER_MAX_SPEED_X;
+        if (inputState.right) targetVx += Config.PLAYER_MAX_SPEED_X;
 
-         let targetVx = 0; // Target horizontal velocity based on input
-         if (inputState.left && !inputState.right) {
-             targetVx = -currentMaxSpeedX;
-         } else if (inputState.right && !inputState.left) {
-             targetVx = currentMaxSpeedX;
-         }
-
-         // Apply acceleration towards the target velocity
-         if (targetVx !== 0) {
-             // Simple acceleration: move current velocity towards target velocity
-             const acceleration = Math.sign(targetVx) * currentAcceleration;
-             this.vx += acceleration * dt;
-             // Clamp velocity to max speed for current environment, respecting direction
+        // Apply acceleration and damping
+        if (targetVx !== 0) {
+             // Accelerate towards target speed
+             // Check if currently in water (affects acceleration)
+             const acceleration = this.isInWater ? Config.PLAYER_MOVE_ACCELERATION * Config.WATER_ACCELERATION_FACTOR : Config.PLAYER_MOVE_ACCELERATION;
+             this.vx += Math.sign(targetVx) * acceleration * dt;
+             // Clamp velocity to max speed (considering water speed factor if applicable)
+             const currentMaxSpeedX = this.isInWater ? Config.PLAYER_MAX_SPEED_X * Config.WATER_MAX_SPEED_FACTOR : Config.PLAYER_MAX_SPEED_X;
              this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
-         } else {
-             // Apply friction if on ground and not in water
-             if (!this.isInWater && this.isOnGround) {
-                 // Calculate friction multiplier dynamically based on dt
-                 const frictionFactor = Math.pow(Config.PLAYER_FRICTION_BASE, dt);
-                 this.vx *= frictionFactor;
+
+             // Optional: Apply friction if changing direction or overshooting target speed
+             if (Math.sign(this.vx) !== Math.sign(targetVx) && targetVx !== 0) {
+                  // Braking friction when changing direction
+                  const brakingFactor = this.isInWater ? Math.pow(0.9, dt) : Math.pow(Config.PLAYER_FRICTION_BASE * 10, dt); // Stronger braking friction
+                  this.vx *= brakingFactor;
              }
-             // Stop completely if velocity becomes very small
-             if (Math.abs(this.vx) < 1) { // Use a small threshold to prevent jittering
+
+        } else {
+            // Apply friction when no input is given (slowing down)
+             const frictionFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : Math.pow(Config.PLAYER_FRICTION_BASE, dt); // Water vs air friction
+             this.vx *= frictionFactor;
+             // Snap to zero if velocity is very small to prevent infinite sliding
+             if (Math.abs(this.vx) < GridCollision.E_EPSILON) {
                  this.vx = 0;
              }
-         }
+        }
 
-         // Apply horizontal water damping regardless of input if in water
-         if (this.isInWater && Math.abs(this.vx) > GridCollision.E_EPSILON) { // Only apply damping if there's significant velocity
-              const horizontalDampingFactor = Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
-             this.vx *= horizontalDampingFactor;
-              if (Math.abs(this.vx) < GridCollision.E_EPSILON) this.vx = 0; // Snap to zero if very small
-         }
-
-
-         // --- Jumping / Swimming Input ---
-         // Only respond to jump input if player desires to jump AND conditions are met
-         if (inputState.jump) { // Check if the jump button is pressed (held)
-             let jumpTriggered = false;
-             if (this.isOnGround && !this.isInWater) {
-                 // Perform a normal jump from the ground
-                 this.vy = -Config.PLAYER_JUMP_VELOCITY;
-                 this.isOnGround = false; // Player is no longer on the ground
-                 jumpTriggered = true;
-             } else if (this.isInWater && this.waterJumpCooldown <= 0) {
-                  // Perform a swim stroke (upward impulse) if in water and off cooldown
-                  this.vy = -Config.WATER_SWIM_VELOCITY; // Apply upward velocity
-                  this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION; // Start cooldown
-                  this.isOnGround = false; // Ensure not considered on ground when swimming up
-                  jumpTriggered = true;
-             }
-
-             // NOTE: inputState.jump is NOT set to false here. It remains true as long as the button is held.
-             // This allows for "hold to auto-jump" logic. The conditions (isOnGround, waterJumpCooldown)
-             // naturally gate the jumps even if the button is held down.
-         }
-         // If jump input is active but couldn't trigger (e.g., airborne, on cooldown), it remains true until released or conditions are met.
-     }
-
-    // REMOVED: _handleAttack now integrated into _handleInput's attack check block.
-    /* _handleAttack(inputState) { ... } */
+        // Jump / Water Stroke
+        // Only allow jump/stroke if jump input is true AND cooldown is ready
+        // Water stroke is a separate check from isOnGround because it doesn't require being on ground.
+        if (inputState.jump && this.waterJumpCooldown <= 0) {
+            if (this.isInWater) { // Perform water stroke if in water
+                 this.vy = -Config.WATER_SWIM_VELOCITY; // Apply upward velocity
+                 this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION; // Start cooldown
+                 this.isOnGround = false; // Ensure not marked as on ground during water stroke
+            } else if (this.isOnGround) { // Perform ground jump if on ground and not in water
+                this.vy = -Config.PLAYER_JUMP_VELOCITY; // Apply upward velocity
+                this.isOnGround = false; // Player is now airborne
+                 // Ground jumps don't use waterJumpCooldown, they just require isOnGround
+            }
+             // If inputState.jump is true but neither in water nor on ground, nothing happens (no double jump etc.)
+        }
+    } // END UNCOMMENTED METHOD
 
 
     /**
@@ -285,40 +268,67 @@ export class Player {
             // Check if player has the material in inventory
             if ((this.inventory[materialType] || 0) > 0) {
                 // Check if the target location is within interaction range
-                if (this._isTargetWithinRange(this.targetWorldPos)) {
-                    // Check if the target grid cell is valid for placement
-                    const targetCol = this.targetGridCell.col;
-                    const targetRow = this.targetGridCell.row;
-                    const targetBlockType = WorldData.getBlockType(targetCol, targetRow); // Handles out of bounds
+                const targetForPlacement = this.targetWorldPos || this._lastValidTargetWorldPos;
+                if (!targetForPlacement || !this._isTargetWithinRange(targetForPlacement)) {
+                     // console.log("Placement failed: Target out of range."); // Keep logs quieter
+                     return; // Out of range
+                }
 
-                    // Can place in Air, or in Water if config allows
-                    const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
+                // Check if the target grid cell is valid for placement
+                 // Use the stored lastValidTargetGridCell if targetGridCell is bad
+                const targetCellForPlacement = this.targetGridCell || this._lastValidTargetGridCell;
+                if (!targetCellForPlacement || typeof targetCellForPlacement.col !== 'number' || typeof targetCellForPlacement.row !== 'number' || isNaN(targetCellForPlacement.col) || isNaN(targetCellForPlacement.row)) {
+                     console.warn("Placement failed: Invalid target grid cell.");
+                     return; // Invalid target cell
+                }
 
-                    if (canPlaceHere) {
-                        // Check if placing the block would overlap the player
-                        if (!this.checkPlacementOverlap(targetCol, targetRow)) {
-                            // Check if the target cell has an adjacent solid block for support
-                            if (GridCollision.hasSolidNeighbor(targetCol, targetRow)) { // Use imported GridCollision helper
-                                // ALL CHECKS PASSED - PLACE THE BLOCK!
-                                const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType];
-                                if (blockTypeToPlace !== undefined) { // Ensure material maps to a block type
-                                    // Attempt to place the block using WorldManager's player-specific method
-                                    // WorldManager.placePlayerBlock handles grid bounds internally.
-                                    if (WorldManager.placePlayerBlock(targetCol, targetRow, blockTypeToPlace)) {
-                                        this.decrementInventory(materialType); // Reduce inventory count
-                                        // Placement successful, reset cooldown
-                                        this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
-                                        // console.log(`Placed ${materialType} at [${targetCol}, ${targetRow}]`); // Keep logs quieter
-                                    } // else: Placement failed at the WorldManager level (e.g., out of bounds, already solid)
-                                } // else: No block type mapping found for material
-                            } // else: No adjacent support.
-                        } // else: Player overlap.
-                    } // else: Target cell not empty/placeable.
-                } // else: Out of range.
-            } // else: Not enough material.
+                const targetCol = targetCellForPlacement.col;
+                const targetRow = targetCellForPlacement.row;
+                const targetBlockType = WorldData.getBlockType(targetCol, targetRow); // Handles out of bounds
+
+                // Cannot place out of bounds (targetBlockType will be null)
+                 if (targetBlockType === null) {
+                     // console.log("Placement failed: Target out of bounds."); // Keep logs quieter
+                     return; // Out of bounds
+                 }
+
+
+                // Can place in Air, or in Water if config allows
+                const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
+
+                if (canPlaceHere) {
+                    // Check if placing the block would overlap the player
+                    if (!this.checkPlacementOverlap(targetCol, targetRow)) {
+                        // Check if the target cell has an adjacent solid block for support
+                        if (GridCollision.hasSolidNeighbor(targetCol, targetRow)) { // Use imported GridCollision helper
+                            // ALL CHECKS PASSED - PLACE THE BLOCK!
+                            const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType];
+                            if (blockTypeToPlace !== undefined) { // Ensure material maps to a block type
+                                // Attempt to place the block using WorldManager's player-specific method
+                                // WorldManager.placePlayerBlock handles grid bounds internally and visual/water updates.
+                                if (WorldManager.placePlayerBlock(targetCol, targetRow, blockTypeToPlace)) {
+                                    this.decrementInventory(materialType); // Reduce inventory count
+                                    // Placement successful, reset cooldown
+                                    this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
+                                    // console.log(`Placed ${materialType} at [${targetCol}, ${targetRow}]`); // Keep logs quieter
+                                } // else: Placement failed at the WorldManager level (e.g., already solid - unlikely after checks)
+                            } else {
+                                console.warn(`Placement failed: Material type "${materialType}" has no block type mapping.`);
+                            }
+                        } else {
+                             // console.log("Placement failed: No adjacent support."); // Keep logs quieter
+                        }
+                    } else {
+                         // console.log("Placement failed: Overlaps player."); // Keep logs quieter
+                    }
+                } else {
+                     // console.log(`Placement failed: Target cell [${targetCol}, ${targetRow}] is not air or placeable water.`); // Keep logs quieter
+                }
+            } // else: Not enough material handled by UI visibility/disabled state.
+             // If checks fail, the cooldown is NOT reset, allowing the player to continue holding
+             // and attempt placement again once conditions are met (e.g., move into range, collect material, cooldown ready).
         }
-        // If cooldown is not ready, or checks failed, nothing happens,
-        // but inputState.attack remains true. This is correct for hold-to-place.
+        // If placementCooldown > 0, the check `if (this.placementCooldown <= 0)` fails, and this block does nothing.
     }
 
 
@@ -330,8 +340,8 @@ export class Player {
 
         // --- Apply Gravity ---
         // Apply gravity if the player is not considered on the ground
-        if (!this.isOnGround) {
-            this.vy += currentGravity * dt;
+        if (!this.isOnGround) { // Only apply gravity if not on ground from previous step
+             this.vy += currentGravity * dt; // Add gravity acceleration
         } else {
              // If player is on ground but has slight downward velocity (e.g., from previous frame), reset it
             // Use a small threshold to avoid micro-adjustments
@@ -485,7 +495,7 @@ export class Player {
         // Perform the same checks as actual placement:
         // Use the stored lastValidTargetWorldPos if targetWorldPos is bad
         const targetWorldPosForCheck = this.targetWorldPos || this._lastValidTargetWorldPos;
-        if (!this._isTargetWithinRange(targetWorldPosForCheck)) return null; // Must be in range
+        if (!targetWorldPosForCheck || !this._isTargetWithinRange(targetWorldPosForCheck)) return null; // Must be in range
 
         // Get the block type at the target cell, handling out of bounds
         const targetBlockType = WorldData.getBlockType(col, row);
@@ -493,7 +503,7 @@ export class Player {
         // Cannot place out of bounds (targetBlockType will be null)
         if (targetBlockType === null) return null;
 
-        // Can place only in Air or Water (if config allows placing in water)
+        // Can place in Air, or in Water if config allows
         const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
         if (!canPlaceHere) return null; // Target must be empty (or water if allowed)
 
@@ -856,7 +866,7 @@ export class Player {
         // console.log(`Cannot decrement ${itemType} by ${amount}. Not enough stock or invalid type.`); // Keep logs quieter
         return false; // Material not found, count too low, or invalid type
     }
-    
+
         // NEW: Crafting Method
     /**
      * Attempts to craft a specific item if the player has the required materials.
@@ -1111,7 +1121,7 @@ export class Player {
 
         // Initial position validation after reset
          if (isNaN(this.x) || isNaN(this.y)) {
-             console.error(`>>> Player RESET ERROR: NaN final coordinates! Resetting to center.`);
+             console.error(`>>> Player RESET POSITION ERROR: NaN final coordinates! Resetting to center.`);
              this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
              this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
          }

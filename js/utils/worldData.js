@@ -52,8 +52,9 @@ export function getBlockType(col, row) {
 }
 
 /**
- * Sets a block in the grid using type. Creates the block object.
- * Handles boundary checks. This is the primary way to modify the grid.
+ * Sets a block in the grid using type. Creates the block object using createBlock.
+ * Handles boundary checks. This is the primary way to modify the grid during gameplay/events.
+ * Does NOT trigger visual updates or water queue updates - the caller (WorldManager) is responsible for that.
  * @param {number} col - Column index.
  * @param {number} row - Row index.
  * @param {number} blockType - The type ID of the block to place (e.g., Config.BLOCK_STONE).
@@ -78,8 +79,8 @@ export function setBlock(col, row, blockType, isPlayerPlaced = false) {
 
 /**
  * Directly sets the block data at given coordinates. Less safe, assumes blockData is valid.
- * Primarily intended for use by the world generator for efficiency if needed,
- * but using setBlock is generally safer. Handles boundary checks.
+ * Primarily intended for use by the world generator for efficiency during initial creation.
+ * Does NOT trigger visual updates or water queue updates.
  * @param {number} col Column index.
  * @param {number} row Row index.
  * @param {object|number} blockData The block object or BLOCK_AIR constant.

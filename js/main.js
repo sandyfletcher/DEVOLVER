@@ -50,7 +50,7 @@ const GameState = Object.freeze({
     VICTORY: 'VICTORY' // victory screen
 });
 let currentGameState = GameState.PRE_GAME;
-let previousWaveManagerState = null;
+// let previousWaveManagerState = null; // kept for reference, but removed from here
 let isAutoPaused = false; // boolean if paused due to losing tab visibility
 let isGridVisible = false;
 
@@ -268,12 +268,7 @@ function startGame() {
     // Reset UI references first, as new player/portal objects will be created.
     UI.setPlayerReference(null);
     UI.setPortalReference(null);
-    // World Init (includes generating terrain)
-    World.init(); // World init calls WorldData.initializeGrid() and generateInitialWorld()
-    // ItemManager Init (handles initial shovel spawn now)
-    ItemManager.init(); // MODIFIED: ItemManager init no longer spawns sword/spear items directly
-    // EnemyManager Init
-    EnemyManager.init();
+
     // Create Portal instance AFTER world, as position depends on world generation results
     const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2;
     // Position portal centered horizontally, slightly above mean ground level
@@ -285,6 +280,16 @@ function startGame() {
      } else {
          portal = new Portal(portalSpawnX, portalSpawnY); // Create portal
      }
+
+    // World Init (includes generating terrain and initial aging pass)
+    // World init now needs the newly created portal reference for initial aging.
+    World.init(portal);
+
+    // ItemManager Init (handles initial shovel spawn now)
+    ItemManager.init(); // MODIFIED: ItemManager init no longer spawns sword/spear items directly
+    // EnemyManager Init
+    EnemyManager.init();
+
     // Create Player instance
      try {
          // Player constructor now initializes with the shovel and unarmed state
@@ -317,7 +322,7 @@ function startGame() {
     calculateInitialCamera();
     // Reset other game state variables managed by main.js
     currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Initialize portal safety radius
-    previousWaveManagerState = null; // Initialize state tracker for WaveManager state transitions
+    // previousWaveManagerState is now managed within waveManager.js
     isAutoPaused = false; // Reset auto-pause flag
     isGridVisible = false; // Ensure grid starts hidden on new game
     // Ensure AudioManager volumes are at default/reset on game start for game/sfx music
@@ -472,6 +477,10 @@ function gameLoop(timestamp) {
         // The cancellation of gameLoopId is handled by pauseGame or handleGameOver/Victory.
         // If we reach here unexpectedly while not RUNNING, something might be wrong,
         // but the check prevents further execution of game logic.
+        // We still request the next frame if PAUSED, so the pause overlay is drawn.
+        if (currentGameState === GameState.PAUSED) {
+             gameLoopId = requestAnimationFrame(gameLoop);
+        }
         return;
     }
 
@@ -515,27 +524,33 @@ function gameLoop(timestamp) {
 
     // --- Update Core Systems ---
 
-    // Update WaveManager in ALL states (including WARPPHASE) so its internal timers progress.
+    // Update WaveManager in ALL states (including BUILD/WARP) so its internal timers progress.
+    // Capture the state *before* the update to detect transitions
+    const previousWaveManagerState = WaveManager.getWaveInfo().state;
     WaveManager.update(dt, currentGameState); // Pass current game state
-
-    // Get the latest wave info *again* after WaveManager update, as the state might have just changed (e.g., BUILD -> WARP)
-     const updatedWaveInfo = WaveManager.getWaveInfo();
-     const currentWaveManagerState = updatedWaveInfo.state;
-
-     // Logic for increasing portal safety radius - triggered ONCE at the transition from WAVE_COUNTDOWN to BUILDPHASE
-     if (currentWaveManagerState === 'BUILDPHASE' && previousWaveManagerState === 'WAVE_COUNTDOWN') {
-         // Increase the safety radius based on the config value for wave progression
-         currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
-         console.log(`Safety Radius Increased: ${currentPortalSafetyRadius}`); // Log the new radius
-     }
-     // Update the state tracker for the next frame's comparison
-     previousWaveManagerState = currentWaveManagerState;
+    const updatedWaveInfo = WaveManager.getWaveInfo(); // Get state *after* the update
+    const currentWaveManagerState = updatedWaveInfo.state;
 
 
-    // Update entity-related logic ONLY during states where gameplay occurs (NOT during WARPPHASE)
-    if (currentWaveManagerState !== 'WARPPHASE') {
+    // Logic for increasing portal safety radius - triggered ONCE at the transition from BUILDPHASE to WARPPHASE
+    // This happens *before* aging in WARPPHASE uses the radius.
+     if (currentWaveManagerState === 'WARPPHASE' && previousWaveManagerState === 'BUILDPHASE') {
+        // Increase the safety radius based on the config value for wave progression
+        currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
+        if(portal) portal.setSafetyRadius(currentPortalSafetyRadius); // Update portal instance
+        console.log(`Main: Portal Safety Radius Increased to ${currentPortalSafetyRadius.toFixed(1)}.`);
+    }
+
+
+    // --- Update entity-related logic ONLY during states where gameplay occurs (NOT during BUILD/WARP phases) ---
+    // Determine if the game state is RUNNING *and* the wave state is conducive to gameplay.
+     // Wave states where gameplay happens: PRE_WAVE, WAVE_COUNTDOWN
+     const isGameplayActive = currentGameState === GameState.RUNNING &&
+                             (currentWaveManagerState === 'PRE_WAVE' || currentWaveManagerState === 'WAVE_COUNTDOWN');
+
+     if (isGameplayActive) {
          // Update Player
-         if (player) { // Ensure player object exists
+         if (player) {
              const inputState = Input.getState(); // Get current input state (keyboard/touch buttons)
              const internalMousePos = Input.getMousePosition(); // Get mouse/touch aim position (internal canvas resolution)
              const targetWorldPos = getMouseWorldCoords(internalMousePos); // Convert aim position to world coordinates
@@ -543,8 +558,8 @@ function gameLoop(timestamp) {
              player.update(dt, inputState, targetWorldPos, targetGridCell);
          }
 
-         // Update Items
-         ItemManager.update(dt, player); // Items update (handles bobbing, gravity, player attraction)
+         // Update Items (Items continue to update and be attracted during gameplay phases)
+         ItemManager.update(dt, player);
 
          // Update Enemies
          // Pass player position for AI targeting (pass null if player doesn't exist)
@@ -560,17 +575,22 @@ function gameLoop(timestamp) {
              CollisionManager.checkPlayerAttackBlockCollisions(player); // Player attack vs blocks (digging)
              CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies()); // Player vs enemies (contact damage)
          }
-         if (portal) { // Only check portal collisions if portal exists and is alive
+         if (portal && portal.isAlive()) { // Only check portal collisions if portal exists and is alive
               // Portal damage only happens if enemies collide with it.
              CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
          }
      }
-     // Note: World update runs in ALL states (including WARPPHASE) for water flow/erosion.
-     World.update(dt); // World update handles dynamic elements like water flow or block aging (if implemented)
+     // Note: World update (water flow, potentially aging if implemented per frame) runs in ALL states.
+     World.update(dt);
 
 
     // Calculate camera position based on the player's updated position (and clamping to world bounds)
-    calculateCameraPosition();
+    // Camera follows player *only* during RUNNING state, regardless of wave phase.
+    if (currentGameState === GameState.RUNNING) { // Camera follows only when RUNNING
+        calculateCameraPosition();
+    } else { // Camera is static when PAUSED, GAME_OVER, VICTORY, PRE_GAME
+        // No camera update needed here, it stays wherever it was left.
+    }
 
 
     // --- Rendering ---
@@ -583,77 +603,84 @@ function gameLoop(timestamp) {
     mainCtx.translate(-cameraX, -cameraY); // Apply scroll/pan (translation)
 
     // Draw static world (rendered once to an off-screen canvas and drawn as an image)
-    World.draw(mainCtx);
+    World.draw(mainCtx); // This draws the updated gridCanvas
 
     // Draw debug grid if enabled (draws directly onto the main canvas)
     GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
 
-    // Draw dynamic entities and elements
-    ItemManager.draw(mainCtx); // Draw items
+    // Draw dynamic entities and elements ONLY during active gameplay or specific phases
+     // Draw items during BUILDPHASE too, as they might be picked up then.
+     if (isGameplayActive || currentWaveManagerState === 'BUILDPHASE') {
+         ItemManager.draw(mainCtx);
+     }
 
-    // Draw portal
-    if (portal) { // Ensure portal object exists
-        // Pass the current safety radius to the portal for drawing the visualization (during intermission)
-        portal.setSafetyRadius(currentPortalSafetyRadius);
-        portal.draw(mainCtx);
+    // Draw portal (always draw if exists and not destroyed)
+    if (portal) {
+         // Portal visual (and safety radius circle) should be drawn even if not gameplay active
+         portal.setSafetyRadius(currentPortalSafetyRadius); // Ensure portal has the current radius
+         portal.draw(mainCtx);
     }
 
-    // Draw enemies (ONLY draw if not in WARPPHASE) - hides enemies during warp effect
-    if (currentWaveManagerState !== 'WARPPHASE') {
-        EnemyManager.draw(mainCtx);
-    } else {
-        // Optional: Draw a static snapshot or visual effect for enemies during WARPPHASE
-        // For now, they are simply not drawn.
-    }
+    // Draw enemies ONLY during active gameplay (NOT BUILDPHASE or WARPPHASE)
+     if (isGameplayActive) { // Only draw enemies during PRE_WAVE and WAVE_COUNTDOWN
+         EnemyManager.draw(mainCtx);
+     }
 
-    // Draw player and their visual elements (like held item or placement preview)
-    if (player) { // Ensure player object exists
-        player.draw(mainCtx); // Draws player body and weapon visual/attack hitbox
-        player.drawGhostBlock(mainCtx); // Draws the block placement preview outline/fill
-    }
 
-    mainCtx.restore(); // Restore context state to remove camera transformations (important for UI drawing etc.)
+    // Draw player and their visual elements (always draw player if exists and game isn't over/victory)
+     // Draw player during RUNNING, PAUSED, PRE_GAME states
+     if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {
+         player.draw(mainCtx);
+         // Draw ghost block ONLY during active gameplay and if material is selected
+          if (isGameplayActive && player.isMaterialSelected()) {
+              player.drawGhostBlock(mainCtx);
+          }
+     }
+
+    mainCtx.restore(); // Restore context state (important for UI drawing etc.)
 
 
     // --- UI Updates ---
     // Only update UI elements if the UI system was successfully initialized.
     if (UI.isInitialized()) {
         // Update player-related UI (health bar, inventory, weapon slots)
-        if (player) { // Ensure player exists to get info
-            UI.updatePlayerInfo(
-                player.getCurrentHealth(), player.getMaxHealth(),
-                player.getInventory(), // Pass the player's current inventory object
-                player.hasWeapon(Config.WEAPON_TYPE_SWORD), // Pass boolean possession flags
-                player.hasWeapon(Config.WEAPON_TYPE_SPEAR),
-                player.hasWeapon(Config.WEAPON_TYPE_SHOVEL)
-            );
-        } else {
-             // If player doesn't exist (e.g., before game start or after game over), update UI to reflect this.
-             UI.updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false);
-        }
+        // Pass player info if player exists, otherwise zeros/empty states
+        const playerExists = !!player;
+        UI.updatePlayerInfo(
+            playerExists ? player.getCurrentHealth() : 0,
+            playerExists ? player.getMaxHealth() : Config.PLAYER_MAX_HEALTH_DISPLAY, // Use config default if no player
+            playerExists ? player.getInventory() : {},
+            playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SWORD) : false,
+            playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SPEAR) : false,
+            playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SHOVEL) : false
+        );
 
         // Update portal-related UI (health bar)
-        if (portal) { // Ensure portal exists to get info
-            UI.updatePortalInfo(portal.currentHealth, portal.maxHealth);
-        } else {
-            // If portal doesn't exist, update UI to reflect this.
-            UI.updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH);
-        }
+        const portalExists = !!portal;
+        UI.updatePortalInfo(
+            portalExists ? portal.currentHealth : 0,
+            portalExists ? portal.maxHealth : Config.PORTAL_INITIAL_HEALTH // Use config default if no portal
+        );
 
         // Update wave timer and info based on the latest wave state
-        UI.updateWaveTimer(updatedWaveInfo); // Pass the updated waveInfo object
+        UI.updateWaveTimer(updatedWaveInfo);
 
-        // Update settings button illumination/state - Called directly by toggle functions now
+        // Settings button states are updated by their toggle functions or game start/reset
         // UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 
-    } else {
-        console.error("UI not initialized, skipping UI updates.");
+        // --- Handle Epoch/Warp Overlay Display ---
+        // The epoch overlay is handled by UI.showEpochText which is called by handleWaveStart (on WAVE_COUNTDOWN start)
+        // and by triggerWarpCleanup (on WARPPHASE start).
+     } else {
+        // console.error("UI not initialized, skipping UI updates."); // Keep console less noisy
+     }
+
+
+    // Request the next frame only if game state is RUNNING or PAUSED
+    // This allows the PAUSED state to continue rendering the static overlay and background.
+    if (currentGameState === GameState.RUNNING || currentGameState === GameState.PAUSED) {
+        gameLoopId = requestAnimationFrame(gameLoop);
     }
-
-
-    // Request the next frame for the game loop, creating a continuous loop.
-    // This happens only if currentGameState is RUNNING (checked at the start of gameLoop).
-    gameLoopId = requestAnimationFrame(gameLoop);
 }
 
 
@@ -714,8 +741,9 @@ function calculateInitialCamera() {
 // Updates the camera position during gameplay, following the player and clamping to bounds.
 // Called every frame during the RUNNING state.
 function calculateCameraPosition() {
-     // Update camera only if player exists and game is in a state where camera should follow player (e.g., RUNNING or PAUSED)
-     if (player && (currentGameState === GameState.RUNNING || currentGameState === GameState.PAUSED)) {
+     // Update camera only if player exists and game is in a state where camera should follow player (e.g., RUNNING)
+     // Note: Camera is static in PAUSED, GAME_OVER, VICTORY states.
+     if (player && currentGameState === GameState.RUNNING) {
         const viewWidth = Config.CANVAS_WIDTH; // Internal canvas width
         const viewHeight = Config.CANVAS_HEIGHT; // Internal canvas height
 
@@ -855,7 +883,7 @@ function init() {
         // --- Initialize Module-Level State Variables ---
         // These variables manage the global state within main.js.
         lastTime = 0; // Critical for the first dt calculation in the game loop.
-        previousWaveManagerState = null; // Tracks the previous state of the WaveManager for transitions.
+        // previousWaveManagerState is now managed within waveManager.js
         currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Manages the portal's dynamic safety radius.
         isAutoPaused = false; // Flag to track if the game was paused automatically due to visibility change.
         isGridVisible = false; // Initial state for the debug grid (hidden).

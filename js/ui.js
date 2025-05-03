@@ -611,7 +611,8 @@ export function updateWaveTimer(waveInfo) {
     const clampedTimer = Math.max(0, Math.min(currentTimer, maxTimer));
 
     // Calculate fill percentage for the timer bar (counts down)
-    const timerPercent = (maxTimer > 0) ? (clampedTimer / maxTimer) * 100 : 0;
+    // Handle maxTimer = 0 case to prevent division by zero and show full bar
+    const timerPercent = (maxTimer > 0) ? (clampedTimer / maxTimer) * 100 : 100; // Show 100% if maxTimer is 0 (e.g. during loading/game over)
     timerBarFillEl.style.width = `${timerPercent}%`;
 
     // --- Update Timer Text Overlay based on WaveManager State ---
@@ -622,7 +623,7 @@ export function updateWaveTimer(waveInfo) {
         case 'PRE_WAVE': timerText = "FIRST WAVE IN"; break;
         case 'WAVE_COUNTDOWN': timerText = `WAVE ${mainWaveNumber} ENDS IN`; break; // Show current wave number
         case 'BUILDPHASE': timerText = "BUILD TIME"; break;
-        case 'WARPPHASE': timerText = "WARPING..."; break; // Warp phase is timed, display timer
+        case 'WARPPHASE': timerText = "WARPING..."; displayTimer = false; break; // Warp phase is timed, display timer
         case 'GAME_OVER': timerText = "GAME OVER"; displayTimer = false; break; // Game over/Victory states don't show countdown
         case 'VICTORY': timerText = "VICTORY!"; displayTimer = false; break;
         case 'LOADING': timerText = "LOADING..."; displayTimer = false; break; // Initial state placeholder

@@ -113,7 +113,7 @@ export class FlopAI {
             // --- LAND FLOPPING LOGIC ---
             // This state is reached when the enemy is on a solid block AND not in water.
             this.landJumpCooldown -= dt;
-            this.landActionTimer -= dt; // Timer for how long horizontal force is applied *after* the jump impulse
+            this.landActionTimer -= dt; // Timer for how long horizontal movement persists after a hop
 
             // Trigger a new hop if cooldown is ready and horizontal action is complete
             if (this.landJumpCooldown <= 0 && this.landActionTimer <= 0) {
