@@ -33,6 +33,7 @@ export const ISLAND_CENTER_TAPER_WIDTH = 80; // width of taper from island edge 
 // =============================================================================
 // --- World Aging Parameters ---
 // =============================================================================
+
 export const AGING_BASE_INTENSITY = 1.0; // Base intensity for aging
 export const AGING_NOISE_SCALE = 0.03; // Scale for aging noise (controls patch size)
 export const AGING_PROB_EROSION_EXPOSED_DIRT = 0.001; // Chance for exposed dirt to erode per block
@@ -44,6 +45,14 @@ export const AGING_PROB_STONEIFICATION_DEEP_DIRT_SAND = 0.00002; // Chance for d
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = 100; // Pixel depth below which stoneification can occur
 
 // =============================================================================
+// --- Camera / Viewport ---
+// =============================================================================
+
+export const MIN_CAMERA_SCALE = 0.25; // min zoom level (zoom out)
+export const MAX_CAMERA_SCALE = 3.0;  // max zoom level (zoom in)
+export const ZOOM_SPEED_FACTOR = 0.001; // how fast scrolling zooms
+
+// =============================================================================
 // --- Delta-Time Based Physics ---
 // =============================================================================
 
@@ -52,7 +61,7 @@ export const MAX_FALL_SPEED = 450; // pixels per second - general max fall speed
 export const MAX_DELTA_TIME = 0.05; // max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
 export const ENTITY_STEP_TIER1_MAX_HEIGHT_FACTOR = 1/3; // step-up allowance based on entity height, effortless step at +/- 0.33
 export const ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR = 1/2; // max height for slowed step (+/- 0.5)
-export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.7; // horizontal velocity multiplier after completing a Tier 2 step, retain 70% of horizontal speed
+export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.7; // horizontal velocity multiplier after completing a tier 2 step, retain 70% of horizontal speed
 export const WATER_GRAVITY_FACTOR = 0.4; // // water physics - reduced gravity
 export const WATER_HORIZONTAL_DAMPING = 0.1; // strong horizontal drag
 export const WATER_VERTICAL_DAMPING = 0.05;  // stronger vertical drag
@@ -69,6 +78,7 @@ export const WATER_UPDATES_PER_FRAME = 500; // max number of water cells to proc
 // =============================================================================
 // --- Audio Constants ---
 // =============================================================================
+
 export const AUDIO_SFX_POOL_SIZE = 8; // number of simultaneous sound effects allowed
 export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // default volume for game music (TODO: make adjustable)
 export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // default volume for UI music
@@ -96,20 +106,20 @@ export const AUDIO_TRACKS = {
 };
 
 // =============================================================================
-// --- Camera / Viewport ---
-// =============================================================================
-
-export const MIN_CAMERA_SCALE = 0.25; // min zoom level (zoom out)
-export const MAX_CAMERA_SCALE = 3.0;  // max zoom level (zoom in)
-export const ZOOM_SPEED_FACTOR = 0.001; // how fast scrolling zooms
-
-// =============================================================================
 // --- Block Parameters ---
 // =============================================================================
 
-export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE; // size should be 4, calculation done at top of file
+export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE; // should be 4, calculation above
 export const BLOCK_HEIGHT = BASE_BLOCK_PIXEL_SIZE;
-export const INVENTORY_MATERIALS = ['wood', 'stone', 'metal', 'dirt', 'sand', 'bone']; // be sure to add any new types here
+export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.5)'; // semi-transparent black
+export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // thickness of the slash/X
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // slash when HP <= 70%
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;     // X when HP <= 30%
+export const GHOST_BLOCK_ALPHA = 0.5; // transparency level of preview block
+export const CAN_PLACE_IN_WATER = false; // TODO: future power enhancement
+export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)'; // outline colour of player-placed blocks
+export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // 1 pixel thick
+export const INVENTORY_MATERIALS = ['wood', 'stone', 'metal', 'dirt', 'sand', 'bone']; // TODO: add new types here
 export const BLOCK_AIR = 0; // type IDs
 export const BLOCK_WATER = 1;
 export const BLOCK_SAND = 2;
@@ -145,16 +155,8 @@ export const MATERIAL_TO_BLOCK_TYPE = { // map inventory material strings to blo
     'wood': BLOCK_WOOD,
     'sand': BLOCK_SAND,
     'metal': BLOCK_METAL,
-    'bone': BLOCK_BONE, // add other placeable materials here if needed
+    'bone': BLOCK_BONE, // TODO: add other placeable materials here if needed
 };
-export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.5)'; // Semi-transparent black
-export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // Thickness of the slash/X
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // Show slash when HP <= 70%
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;     // Show X when HP <= 30%
-export const GHOST_BLOCK_ALPHA = 0.5; // transparency level of preview block
-export const CAN_PLACE_IN_WATER = false; // potential future power enhancement
-export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)'; // outline colour of player-placed blocks
-export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // 1 pixel thick
 
 // =============================================================================
 // --- Portal Parameters ---

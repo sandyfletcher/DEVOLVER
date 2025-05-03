@@ -127,116 +127,100 @@ body {
     overflow-y: auto;
     gap: 5px;
 }
-/* --- Top Info Row (Player/Portal) --- */
 #top-info-row {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    align-items: center; /* Align items vertically */
+    align-items: center;
     width: 100%;
-    flex-grow: 1; /* Allow this row to grow */
-    gap: 0.5rem; /* Gap between player and portal columns */
-    min-height: 1rem; /* Minimum height for health bars + titles */
+    flex-grow: 1;
+    gap: 0.5rem;
+    min-height: 1rem;
 }
 .top-info-column {
-    flex-basis: 50%; /* Distribute space */
+    flex-basis: 50%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    position: relative; /* Needed for absolute positioning of h2 */
+    position: relative;
 }
-/* --- Superimposed Title Styles --- */
 .top-info-column h2 {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 2; /* Above the health bar */
+    z-index: 2;
     margin: 0;
     padding: 0;
-    font-size: 1em; /* Smaller font size */
-    color: white; /* White text */
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.6); /* Shadow for readability */
+    font-size: 1em;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
     text-align: center;
-    width: 100%; /* Take full width of parent column */
-    pointer-events: none; /* Allow clicks/touches to pass through */
+    width: 100%;
+    pointer-events: none;
 }
-/* --- Health Bar Container (Common Styles) --- */
 .health-bar-container {
-    flex-grow: 1; /* Allow bar to take available width */
-    height: 25px; /* Increased height for visibility */
+    flex-grow: 1;
+    height: 25px;
     background-color: rgb(80, 80, 80);
     border: 1px solid #ccc;
     border-radius: 3px;
     overflow: hidden;
-    width: 100%; /* Take full width of parent column */
-    position: relative; /* Needed for fill */
-    z-index: 1; /* Below the title */
+    width: 100%;
+    position: relative;
+    z-index: 1;
 }
-/* --- Health Bar Fill (Common Styles) --- */
 .health-bar-fill {
     height: 100%;
-    width: 100%; /* Default to full for loading */
+    width: 100%;
     transition: width 0.2s ease-out;
 }
-/* Specific Health Bar Fill Colors */
 #player-health-bar-fill {
-    background-color: rgb(220, 40, 40); /* Red for Player */
+    background-color: rgb(220, 40, 40);
 }
 #portal-health-bar-fill {
-    background-color: rgb(100, 100, 255); /* Blue for Portal */
+    background-color: rgb(100, 100, 255);
 }
-
-
-/* --- Timer Row (Full Width Bar) --- */
 #timer-row {
-    position: relative; /* Needed for absolute text */
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 1rem; /* Minimum height for health bars + titles */
+    min-height: 1rem;
 }
-/* Timer Bar Container (inherits .health-bar-container styles) */
 #timer-bar-container {
-     /* Overrides for timer bar specific height/width */
      width: 100%;
      height: 100%;
 }
-/* Timer Bar Fill */
 #timer-bar-fill {
-    /* Inherits .health-bar-fill transition */
-    background-color: rgb(80, 180, 80); /* Greenish for Timer */
+    background-color: rgb(80, 180, 80);
 }
-/* Timer Text Overlay */
 #timer-text-overlay {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 3; /* Above the timer bar */
-    font-size: 1.1em; /* Slightly larger than titles */
+    z-index: 3;
+    font-size: 1.1em;
     color: white;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-    pointer-events: none; /* Allow clicks/touches to pass through */
+    pointer-events: none;
 }
-
-
-/* --- Game Area --- */
 #game-wrapper {
-    flex-grow: 1; /* Take up remaining space */
-    flex-basis: 0; /* Start with no base size */
+    flex-grow: 1;
+    flex-basis: 0;
     width: 100%;
-    min-height: 0; /* Necessary for flex-grow to work correctly */
+    min-height: 0;
     position: relative;
     border: 0.2rem solid white;
     box-sizing: border-box;
-    display: flex; /* Use flex to center canvas */
+    display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* Crucial to contain the canvas */
-    background-color: #111; /* Optional: Background for letterboxing */
+    overflow: hidden;
+    background-color: #111;
 }
 #game-canvas {
      display: block;
@@ -246,26 +230,24 @@ body {
      image-rendering: pixelated;
      image-rendering: crisp-edges;
 }
-/* Style for the epoch overlay text */
 #epoch-overlay {
     position: absolute;
-    top: 20%; /* Adjust vertical position as desired */
+    top: 20%;
     left: 0;
     width: 100%;
     text-align: center;
-    font-family: 'RubikIso', sans-serif; /* Match title font? Or a different one? */
-    font-size: 3em; /* Large size */
-    color: white; /* White text */
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6); /* Add shadow for readability */
-    z-index: 50; /* Make sure it's above the game canvas */
-    opacity: 0; /* Start invisible */
-    visibility: hidden; /* Start hidden to prevent interaction */
-    transition: opacity 0.5s ease-in-out; /* Fade in/out effect */
-    pointer-events: none; /* Crucial: Allows clicks/mouse events to pass through to canvas/buttons below */
+    font-family: 'RubikIso', sans-serif;
+    font-size: 3em;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+    z-index: 50;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.5s ease-in-out;
+    pointer-events: none;
 }
-
 #bottom-sidebar {
-    flex-shrink: 0; /* Don't shrink below content/min-height */
+    flex-shrink: 0;
     width: 100%;
     padding: 0.5rem 0.5rem 1.5rem 0.5rem;
     box-sizing: border-box;
@@ -379,20 +361,13 @@ body {
 .action-button.illuminated {
     background-color: white; color: black; border-color: black;
 }
-
-/* NEW: Style for settings group */
 .settings-group {
-    /* Adjust alignment/gap if needed for this specific group */
-    gap: 8px; /* Slightly smaller gap for settings buttons */
+    gap: 8px;
 }
-
-/* NEW: Style for muted audio buttons */
 .action-button.muted {
-    border-color: darkred; /* Red border */
-    color: darkred;       /* Red icon */
-    /* Optional: background-color: #333; */
+    border-color: darkred;
+    color: darkred;
 }
-
 #toggle-controls-button {
     position: absolute;
     bottom: -1px;
@@ -450,7 +425,7 @@ noscript p {
 }
 #top-sidebar::-webkit-scrollbar, #bottom-sidebar::-webkit-scrollbar {
     display: none;
-    }
+}
 #top-sidebar, #bottom-sidebar {
     -ms-overflow-style: none; scrollbar-width: none;
-    }
+}
