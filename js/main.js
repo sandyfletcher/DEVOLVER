@@ -87,7 +87,7 @@ window.updateCameraScale = function(deltaScale) {
     newScale = Math.max(effectiveMinScale, Math.min(newScale, Config.MAX_CAMERA_SCALE));
     // Apply the final clamped scale. Camera position will be re-clamped in game loop by calculateCameraPosition.
     cameraScale = newScale;
-    // console.log(`Camera Scale updated: ${oldScale.toFixed(2)} -> ${cameraScale.toFixed(2)}`); // Keep logs quieter
+    // console.log(`Camera Scale updated: ${oldScale.toFixed(2)} -> ${cameraScale.toFixed(2)}`); 
 }
 // --- Convert canvas pixel coordinates to world coordinates ---
 function getMouseWorldCoords(inputMousePos) {
@@ -349,7 +349,7 @@ function startGame() {
 function pauseGame() {
     // Only pause if currently RUNNING
     if (currentGameState !== GameState.RUNNING) {
-         // console.warn("pauseGame called but game is not RUNNING."); // Keep logs quieter
+         // console.warn("pauseGame called but game is not RUNNING."); 
          return;
     }
     console.log(">>> Pausing Game <<<");
@@ -365,7 +365,7 @@ function pauseGame() {
 function resumeGame() {
     // Only resume if the game is currently PAUSED
     if (currentGameState !== GameState.PAUSED) {
-         // console.warn("resumeGame called but game is not PAUSED."); // Keep logs quieter
+         // console.warn("resumeGame called but game is not PAUSED."); 
          return;
     }
     console.log(">>> Resuming Game <<<");
@@ -727,14 +727,14 @@ function calculateInitialCamera() {
         if (worldPixelHeight <= visibleWorldHeight) {
              cameraY = (worldPixelHeight - visibleWorldHeight) / 2;
         }
-        // console.log(`Initial Camera Set: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)}) @ scale ${cameraScale.toFixed(2)}`); // Keep logs quieter
+        // console.log(`Initial Camera Set: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)}) @ scale ${cameraScale.toFixed(2)}`); 
     }
      else {
          // If no player exists (e.g., on initial load or after game over), set default camera state (top-left corner, scale 1).
          cameraX = 0;
          cameraY = 0;
          cameraScale = 1.0;
-         // console.log("Initial Camera Set: Player not found, defaulting camera to (0,0) @ scale 1.0"); // Keep logs quieter
+         // console.log("Initial Camera Set: Player not found, defaulting camera to (0,0) @ scale 1.0"); 
      }
 }
 

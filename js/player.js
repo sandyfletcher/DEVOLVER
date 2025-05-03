@@ -270,7 +270,7 @@ export class Player {
                 // Check if the target location is within interaction range
                 const targetForPlacement = this.targetWorldPos || this._lastValidTargetWorldPos;
                 if (!targetForPlacement || !this._isTargetWithinRange(targetForPlacement)) {
-                     // console.log("Placement failed: Target out of range."); // Keep logs quieter
+                     // console.log("Placement failed: Target out of range."); 
                      return; // Out of range
                 }
 
@@ -288,7 +288,7 @@ export class Player {
 
                 // Cannot place out of bounds (targetBlockType will be null)
                  if (targetBlockType === null) {
-                     // console.log("Placement failed: Target out of bounds."); // Keep logs quieter
+                     // console.log("Placement failed: Target out of bounds."); 
                      return; // Out of bounds
                  }
 
@@ -310,19 +310,19 @@ export class Player {
                                     this.decrementInventory(materialType); // Reduce inventory count
                                     // Placement successful, reset cooldown
                                     this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
-                                    // console.log(`Placed ${materialType} at [${targetCol}, ${targetRow}]`); // Keep logs quieter
+                                    // console.log(`Placed ${materialType} at [${targetCol}, ${targetRow}]`); 
                                 } // else: Placement failed at the WorldManager level (e.g., already solid - unlikely after checks)
                             } else {
                                 console.warn(`Placement failed: Material type "${materialType}" has no block type mapping.`);
                             }
                         } else {
-                             // console.log("Placement failed: No adjacent support."); // Keep logs quieter
+                             // console.log("Placement failed: No adjacent support."); 
                         }
                     } else {
-                         // console.log("Placement failed: Overlaps player."); // Keep logs quieter
+                         // console.log("Placement failed: Overlaps player."); 
                     }
                 } else {
-                     // console.log(`Placement failed: Target cell [${targetCol}, ${targetRow}] is not air or placeable water.`); // Keep logs quieter
+                     // console.log(`Placement failed: Target cell [${targetCol}, ${targetRow}] is not air or placeable water.`); 
                 }
             } // else: Not enough material handled by UI visibility/disabled state.
              // If checks fail, the cooldown is NOT reset, allowing the player to continue holding
@@ -784,7 +784,7 @@ export class Player {
         let pickedUp = false;
         // Check item type and update player state accordingly
         if (item.type === Config.WEAPON_TYPE_SWORD) {
-            if (!this.hasSword) { this.hasSword = true; /* console.log("Player picked up the sword!"); */ pickedUp = true; } // Keep logs quieter
+            if (!this.hasSword) { this.hasSword = true; /* console.log("Player picked up the sword!"); */ pickedUp = true; } 
         } else if (item.type === Config.WEAPON_TYPE_SPEAR) {
             if (!this.hasSpear) { this.hasSpear = true; /* console.log("Player picked up the spear!"); */ pickedUp = true; }
         } else if (item.type === Config.WEAPON_TYPE_SHOVEL) {
@@ -819,7 +819,7 @@ export class Player {
     equipItem(itemType) {
         // Allow equipping unarmed state anytime
         if (itemType === Config.WEAPON_TYPE_UNARMED) {
-            // console.log("Player equipped unarmed."); // Keep logs quieter
+            // console.log("Player equipped unarmed."); 
              this.selectedItem = Config.WEAPON_TYPE_UNARMED;
              this.isAttacking = false; // Cancel attack if unequipping
              this.attackTimer = 0;
@@ -847,7 +847,7 @@ export class Player {
             return true;
         }
         // Return false if cannot equip (e.g., don't have it, or trying to equip something unknown)
-        // console.log(`Cannot equip ${itemType}. Player possession/count check failed.`); // Keep logs quieter
+        // console.log(`Cannot equip ${itemType}. Player possession/count check failed.`); 
         return false;
     }
 
@@ -855,15 +855,15 @@ export class Player {
     decrementInventory(itemType, amount = 1) { // Added optional amount parameter
         if (Config.INVENTORY_MATERIALS.includes(itemType) && (this.inventory[itemType] || 0) >= amount) {
             this.inventory[itemType] -= amount;
-            // console.log(`Decremented ${itemType} by ${amount}. New count: ${this.inventory[itemType]}.`); // Keep logs quieter
+            // console.log(`Decremented ${itemType} by ${amount}. New count: ${this.inventory[itemType]}.`); 
             // If the count reaches 0 and this material was the selected item, switch to unarmed
             if (this.inventory[itemType] === 0 && this.selectedItem === itemType) {
                  this.equipItem(Config.WEAPON_TYPE_UNARMED); // Switch to unarmed
-                 // console.log(`${itemType} depleted, switching to unarmed.`); // Keep logs quieter
+                 // console.log(`${itemType} depleted, switching to unarmed.`); 
             }
             return true; // Decrement successful
         }
-        // console.log(`Cannot decrement ${itemType} by ${amount}. Not enough stock or invalid type.`); // Keep logs quieter
+        // console.log(`Cannot decrement ${itemType} by ${amount}. Not enough stock or invalid type.`); 
         return false; // Material not found, count too low, or invalid type
     }
 
@@ -884,7 +884,7 @@ export class Player {
         // Ensure player doesn't already have the weapon (can't craft duplicates)
         // NOTE: This assumes weapons are unique items, not stackable.
         if (this.isWeaponType(itemType) && this.hasWeapon(itemType)) {
-            // console.log(`Already possess ${itemType}. Cannot craft.`); // Keep logs quieter
+            // console.log(`Already possess ${itemType}. Cannot craft.`); 
             return false; // Already have this weapon
         }
 
@@ -898,13 +898,13 @@ export class Player {
 
             if (possessedAmount < requiredAmount) {
                 hasMaterials = false;
-                // console.log(`Not enough ${requiredType}. Need ${requiredAmount}, have ${possessedAmount}.`); // Keep logs quieter
+                // console.log(`Not enough ${requiredType}. Need ${requiredAmount}, have ${possessedAmount}.`); 
                 break; // Stop checking if one ingredient is missing
             }
         }
 
         if (!hasMaterials) {
-            // console.log(`Cannot craft ${itemType}. Missing materials.`); // Keep logs quieter
+            // console.log(`Cannot craft ${itemType}. Missing materials.`); 
             return false; // Cannot craft - missing materials
         }
 
@@ -924,12 +924,12 @@ export class Player {
             case Config.WEAPON_TYPE_SWORD:
                 this.hasSword = true;
                 craftedSuccessfully = true;
-                // console.log(`Crafted Sword!`); // Keep logs quieter
+                // console.log(`Crafted Sword!`); 
                 break;
             case Config.WEAPON_TYPE_SPEAR:
                 this.hasSpear = true;
                 craftedSuccessfully = true;
-                // console.log(`Crafted Spear!`); // Keep logs quieter
+                // console.log(`Crafted Spear!`); 
                 break;
             // Add cases for other craftable items here (e.g., placeables like metal blocks if they were crafted)
             default:
@@ -1015,7 +1015,7 @@ export class Player {
                 // Use the main equip logic
                 return this.equipItem(materialType);
             } else {
-                // console.log(`Cannot select ${materialType}, count is 0.`); // Keep logs quieter
+                // console.log(`Cannot select ${materialType}, count is 0.`); 
                 // Optionally switch to unarmed if trying to select an empty slot?
                 // this.equipItem(Config.WEAPON_TYPE_UNARMED);
             }
@@ -1035,40 +1035,40 @@ export class Player {
                 // unequip it to go back to unarmed state. Shovel is an exception - maybe keep shovel equipped?
                 // Let's allow unequipping any equipped weapon by clicking its slot.
                 if (weaponType !== Config.WEAPON_TYPE_UNARMED) { // Don't unequip unarmed by clicking unarmed
-                    // console.log(`UI Click: Unequipping ${weaponType} to become unarmed.`); // Keep logs quieter
+                    // console.log(`UI Click: Unequipping ${weaponType} to become unarmed.`); 
                     return this.equipItem(Config.WEAPON_TYPE_UNARMED); // Switch to unarmed
                 }
                  // Clicking unarmed slot while unarmed does nothing
-                 // console.log("UI Click: Already unarmed."); // Keep logs quieter
+                 // console.log("UI Click: Already unarmed."); 
                  return false;
             }
             // --- Handle clicking a DIFFERENT weapon slot ---
             // 1. Check if the player already possesses the weapon
             if (this.hasWeapon(weaponType)) {
                 // Possessed, just equip it
-                 // console.log(`UI Click: Possess ${weaponType}. Equipping.`); // Keep logs quieter
+                 // console.log(`UI Click: Possess ${weaponType}. Equipping.`); 
                 return this.equipItem(weaponType); // Use main equip logic
             } else {
                 // 2. Player does NOT possess the weapon. Check if it's craftable and they have the materials.
                  const recipe = Config.CRAFTING_RECIPES[weaponType];
                  if (recipe) { // Is it a craftable item? (Only weapons are craftable for now)
                      // Attempt to craft it
-                      // console.log(`UI Click: Do not possess ${weaponType}. Attempting to craft.`); // Keep logs quieter
+                      // console.log(`UI Click: Do not possess ${weaponType}. Attempting to craft.`); 
                       const crafted = this.craftItem(weaponType); // Attempt crafting using the player's method
 
                       if (crafted) {
                           // Crafting successful! Now equip the newly crafted weapon.
-                          // console.log(`UI Click: Crafting successful! Equipping ${weaponType}.`); // Keep logs quieter
+                          // console.log(`UI Click: Crafting successful! Equipping ${weaponType}.`); 
                           return this.equipItem(weaponType);
                       } else {
                            // Crafting failed (not enough materials)
-                          // console.log(`UI Click: Crafting failed for ${weaponType}.`); // Keep logs quieter
+                          // console.log(`UI Click: Crafting failed for ${weaponType}.`); 
                            // UI might need to provide feedback (e.g. shake slot) - this will be handled in ui.js
                            return false; // Indicate selection/crafting failed
                       }
                  } else {
                       // Not a craftable item, and not possessed (e.g., shovel not spawned, or unknown weapon)
-                      // console.log(`UI Click: Cannot select ${weaponType}. Not possessed and not craftable.`); // Keep logs quieter
+                      // console.log(`UI Click: Cannot select ${weaponType}. Not possessed and not craftable.`); 
                       return false; // Cannot select
                  }
             }
@@ -1125,12 +1125,12 @@ export class Player {
              this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
              this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
          }
-         // console.log(`Player state reset. Has Shovel: ${this.hasShovel}, Equipped: ${this.selectedItem}`); // Keep logs quieter
+         // console.log(`Player state reset. Has Shovel: ${this.hasShovel}, Equipped: ${this.selectedItem}`); 
     }
 
     // --- Resets only the player's position and physics state (e.g., after falling out) ---
     resetPosition() {
-        // console.log("Player position reset (fell out)."); // Keep logs quieter
+        // console.log("Player position reset (fell out)."); 
         this.x = Config.PLAYER_START_X;
         this.y = Config.PLAYER_START_Y;
         this.vx = 0;

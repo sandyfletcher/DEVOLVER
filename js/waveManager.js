@@ -145,7 +145,7 @@ function startNextWave() {
         // console.log(`[WaveMgr] Calling waveStartCallback for wave ${waveData.mainWaveNumber}.`);
         waveStartCallback(waveData.mainWaveNumber);
     } else {
-        // console.warn("[WaveMgr] No waveStartCallback function registered."); // Keep logs quieter
+        // console.warn("[WaveMgr] No waveStartCallback function registered."); 
     }
     // --- Trigger game music playback for the new wave ---
     if (waveData.audioTrack) {

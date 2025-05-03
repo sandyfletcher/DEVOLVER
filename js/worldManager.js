@@ -218,7 +218,7 @@ function renderStaticWorldToGridCanvas() {
             }
         }
     }
-    // console.log("Initial static world rendered."); // Keep logs quieter
+    // console.log("Initial static world rendered."); 
 }
 
 // --- Helper function to update a single block on the off-screen canvas ---
@@ -633,7 +633,7 @@ export function damageBlock(col, row, damageAmount) {
             // Ensure dropX and dropY are valid numbers before spawning
              if (!isNaN(dropX) && !isNaN(dropY) && typeof dropX === 'number' && typeof dropY === 'number') {
                  ItemManager.spawnItem(dropX + offsetX, dropY + offsetY, dropType);
-                 // console.log(` > Spawning ${dropType} at ~${(dropX + offsetX).toFixed(1)}, ${(dropY + offsetY).toFixed(1)}`); // Keep logs quieter
+                 // console.log(` > Spawning ${dropType} at ~${(dropX + offsetX).toFixed(1)}, ${(dropY + offsetY).toFixed(1)}`); 
              } else {
                  console.error(`>>> ITEM SPAWN FAILED: Invalid drop coordinates [${dropX}, ${dropY}] for ${dropType} from destroyed block at [${col}, ${row}].`);
              }

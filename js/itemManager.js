@@ -195,7 +195,7 @@ export function init() {
     } else {
         console.error("Invalid Shovel spawn coords!");
     }
-    // console.log("ItemManager initialized. Shovel spawned."); // Keep logs quieter
+    // console.log("ItemManager initialized. Shovel spawned."); 
 }
 
 export function spawnItem(x, y, type) {
@@ -275,5 +275,5 @@ export function clearItemsOutsideRadius(centerX, centerY, radius) {
         return distSq <= radiusSq; // Keep the item ONLY if its center is INSIDE or EXACTLY ON the radius boundary
     });
     const removedCount = initialCount - items.length;
-    // console.log(`ItemManager: Cleared ${removedCount} items outside radius ${radius}.`); // Keep logs quieter
+    // console.log(`ItemManager: Cleared ${removedCount} items outside radius ${radius}.`); 
 }
