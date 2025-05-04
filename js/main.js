@@ -865,12 +865,10 @@ function init() {
         Renderer.init(); // Sets internal canvas resolution (from Config)
         Renderer.createGridCanvas(); // Creates off-screen canvas for static world rendering
 
-        // Initialize Audio Manager. This creates the audio elements and sets initial mute states.
-        AudioManager.init(); // This now applies initial mute state from its own flags
+        AudioManager.init(); // creates audio elements and applies initial mute state from its own flags
 
 
-        // Initialize Game UI. This finds sidebar UI elements, sets up item/weapon slots,
-        // and populates the UI.actionButtons map which Input.js relies on.
+        // Initialize Game UI. This finds sidebar UI elements, sets up item/weapon slots, and populates the UI.actionButtons map which Input.js relies on.
         if (!UI.initGameUI()) {
              throw new Error("FATAL INIT ERROR: UI initialization failed. Check console for missing sidebar elements or item slot issues.");
         }
@@ -905,8 +903,6 @@ function init() {
     } catch (error) {
         // --- Handle Fatal Initialization Errors ---
         console.error("FATAL: Initialization Error:", error);
-        // Attempt to display an error message on the screen using the overlay if possible.
-        // This provides user feedback even if the game cannot fully start.
         if (gameOverlay) {
             // Apply styles directly to make the error message prominent and override any default overlay styles.
             gameOverlay.style.width = '100%';
@@ -924,7 +920,6 @@ function init() {
             gameOverlay.style.textAlign = 'center'; // Center text
             gameOverlay.style.padding = '20px'; // Add some padding around the content
             gameOverlay.style.boxSizing = 'border-box'; // Include padding in element's total width and height
-
             // Set the HTML content of the overlay to display the error message.
             gameOverlay.innerHTML = `
                 <div id="overlay-error-content" style="display: flex; flex-direction: column; align-items: center; max-width: 600px;">
@@ -933,38 +928,26 @@ function init() {
                     <p style="font-size: 1.1em; margin-bottom: 2rem; word-break: break-word;">Error: ${error.message}</p>
                     <p style="font-size: 1em;">Please check the browser's developer console (usually by pressing F12) for more technical details and try refreshing the page.</p>
                 </div>`;
-
             // Ensure the overlay is fully visible, overriding any CSS transitions that might hide it by default.
             gameOverlay.classList.add('active'); // Assuming 'active' class sets opacity to 1
             // Apply background blur if the app container exists and is visible.
             if(appContainer) appContainer.classList.add('overlay-active');
-
-             // Attempt to stop any music that might have started during partial initialization.
-             AudioManager.stopAllMusic();
-
+                // Attempt to stop any music that might have started during partial initialization.
+                AudioManager.stopAllMusic();
         } else {
-            // If the gameOverlay element itself couldn't be found, fall back to a simple browser alert.
-            alert(`FATAL Initialization Error:\n${error.message}\nPlease check console (F12) and refresh.`);
+            alert(`FATAL Initialization Error:\n${error.message}\n`); // if gameOverlay element couldn't be found, fall back to browser alert
         }
     }
 }
 
 // --- Auto-Pause When Hidden ---
-// Handles the 'visibilitychange' event to automatically pause the game when the tab/window loses focus.
 function handleVisibilityChange() {
-    // If the document becomes hidden AND the game is currently in the RUNNING state...
     if (document.hidden && currentGameState === GameState.RUNNING) {
         console.log("Document hidden, auto-pausing game.");
-        // Set the auto-pause flag to true so we know it wasn't a user-initiated pause.
-        isAutoPaused = true;
-        // Call the pauseGame function to handle the state transition and overlay.
-        pauseGame();
-    }
-    // If the document becomes visible, we don't automatically resume here.
-    // The user must click the "Resume" button, which is handled by resumeGame().
+        isAutoPaused = true; // set auto-pause to true so we know it wasn't a user-initiated pause
+        pauseGame(); // call pauseGame function to handle state transition and overlay
+    } // if document becomes visible, we don't automatically resume - user must click button to trigger resumeGame()
 }
 
-// --- Listener to Run init Once DOM Fully Loaded ---
-// Attach the main initialization function to the 'DOMContentLoaded' event.
-// This ensures the HTML is parsed and available before the script tries to access elements.
+// --- Listener to Run init Once DOM Loaded ---
 window.addEventListener('DOMContentLoaded', init);

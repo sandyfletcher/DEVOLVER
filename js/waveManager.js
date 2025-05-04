@@ -16,30 +16,16 @@ let currentGroupIndex = 0;     // Index within the current sub-wave's enemyGroup
 let enemiesSpawnedThisGroup = 0; // Count for the current group being spawned
 let groupSpawnTimer = 0;       // Timer for delay *between* enemies in the current group
 let groupStartDelayTimer = 0;  // Timer for the delay *before* the current group starts (relative to sub-wave start)
-
-// Wave States: PRE_GAME (handled by main), PRE_WAVE, WAVE_COUNTDOWN, INTERMISSION (split), GAME_OVER, VICTORY
-// Split INTERMISSION into BUILDPHASE and WARPPHASE
 let state = 'PRE_WAVE'; // Use PRE_WAVE here as the initial state for the manager itself
-
-// Timers for specific states
 let preWaveTimer = Config.WAVE_START_DELAY; // Timer before the very first wave
 let mainWaveTimer = 0; // Timer for the total duration of the current main wave
-// NEW: Timers for the two intermission phases
 let buildPhaseTimer = 0;
 let warpPhaseTimer = 0;
-
-
-// Store initial/max durations for the current state (needed for UI bar)
 let currentMaxTimer = 0; // Used for UI bar denominator
-
-// Callback function to notify caller when a wave starts (currently used by main.js for epoch text)
-let waveStartCallback = null;
-
-// Reference to the Portal instance from main.js (needed for cleanup radius)
-let portalRef = null;
+let waveStartCallback = null; // Callback function to notify caller when a wave starts (currently used by main.js for epoch text)
+let portalRef = null; // Reference to the Portal instance from main.js (needed for cleanup radius)
 
 // --- Internal Helper Functions ---
-
 function getCurrentWaveData() {
     if (currentMainWaveIndex < 0 || currentMainWaveIndex >= Config.WAVES.length) {
         return null;
@@ -63,23 +49,17 @@ function getCurrentGroupData() {
     return subWaveData.enemyGroups[currentGroupIndex];
 }
 
-/**
- * Advances the internal spawning progression state (moves to next group or sub-wave)
- * This is called when a group finishes spawning.
- * @returns {boolean} True if successfully advanced to a new group, false if spawning is complete for the current wave.
- */
+// --- Advances the internal spawning progression state (moves to next group or sub-wave) ---
 function advanceSpawnProgression() {
     const subWaveData = getCurrentSubWaveData();
     if (!subWaveData) {
-        // This implies we finished the last sub-wave or an error occurred.
-        // Spawning for this wave cycle is complete.
+        // This implies we finished the last sub-wave or an error occurred and spawning for this wave cycle is complete.
         console.log(`[WaveMgr] Spawning complete for Wave ${currentMainWaveIndex + 1}.`);
         currentGroupIndex = -1; // Use sentinel values to indicate finished spawning
         currentSubWaveIndex = -1;
         // The state remains WAVE_COUNTDOWN until the mainWaveTimer runs out.
         return false;
     }
-
     currentGroupIndex++; // Move to the next group index
     if (currentGroupIndex < subWaveData.enemyGroups.length) {
         // Successfully moved to the next group in the current sub-wave
@@ -87,14 +67,12 @@ function advanceSpawnProgression() {
         enemiesSpawnedThisGroup = 0;
         groupSpawnTimer = 0; // Ready to spawn first enemy (after start delay)
         groupStartDelayTimer = groupData.startDelay ?? 0; // Set start delay for THIS group
-
         // console.log(`[WaveMgr] Setup Group ${currentGroupIndex + 1} (Type: ${groupData?.type}, Count: ${groupData?.count}) in Sub-Wave ${currentMainWaveIndex + 1}.${currentSubWaveIndex + 1}. Start Delay: ${groupStartDelayTimer}s`);
         return true; // Successfully set up the next group
     } else {
         // Finished all groups in the current sub-wave, move to the next sub-wave
         currentSubWaveIndex++; // Move to the next sub-wave index
         currentGroupIndex = 0; // Reset group index for the new sub-wave
-
         const nextSubWaveData = getCurrentSubWaveData();
         if (nextSubWaveData) {
             // Successfully moved to the next sub-wave
@@ -103,7 +81,6 @@ function advanceSpawnProgression() {
             enemiesSpawnedThisGroup = 0;
             groupSpawnTimer = 0;
             groupStartDelayTimer = groupData?.startDelay ?? 0; // Set start delay for the first group of the new sub-wave
-
             // console.log(`[WaveMgr] Setup Group ${currentGroupIndex + 1} (Type: ${groupData?.type}, Count: ${groupData?.count}) in Sub-Wave ${currentMainWaveIndex + 1}.${currentSubWaveIndex + 1}. Start Delay: ${groupStartDelayTimer}s`);
             return true; // Successfully set up the first group of the next sub-wave
         } else {
@@ -116,11 +93,9 @@ function advanceSpawnProgression() {
         }
     }
 }
-
-/** Starts the next main wave, sets up timers and initial spawning state. */
+// --- Starts the next main wave, sets up timers and initial spawning state ---
 function startNextWave() {
-    // Increment index to point to the *next* wave to start
-    currentMainWaveIndex++;
+    currentMainWaveIndex++; // Increment index to point to the *next* wave to start
     const waveData = getCurrentWaveData(); // Get data for the *new* current index
 
     if (!waveData) {
@@ -210,7 +185,7 @@ function endWave() {
     groupStartDelayTimer = 0; // Will be set up properly when startNextWave is called later
 }
 
-// NEW: Function to trigger the cleanup logic (clearing enemies/items) AND aging logic
+// Function to trigger the cleanup logic (clearing enemies/items) AND aging logic
 function triggerWarpCleanup() {
     // console.log("[WaveMgr] Triggering Warp Cleanup...");
     if (!portalRef) {
@@ -220,13 +195,11 @@ function triggerWarpCleanup() {
 
     const portalCenter = portalRef.getPosition(); // Get portal center (already adjusted for size)
     const safeRadius = portalRef.safetyRadius; // Get the current safety radius
-
     // --- Clear Enemies and Items outside the radius ---
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     // console.log(`[WaveMgr] Cleared entities/items outside portal radius ${safeRadius.toFixed(1)}.`);
-
-    // --- NEW: Show Epoch Text during Warp ---
+    // ---  Show Epoch Text during Warp ---
     // Get the epoch for the wave that is *about* to start (the next one)
     const nextWaveNumber = currentMainWaveIndex + 1 + 1; // waveJustCompleted + 1 (for 1-based) + 1 (for the next wave number)
     const nextEpochYear = Config.EPOCH_MAP[nextWaveNumber];
@@ -237,22 +210,18 @@ function triggerWarpCleanup() {
          // Fallback if no epoch defined for the next wave
          UI.showEpochText(`Preparing Wave ${nextWaveNumber}`);
     }
-
-    // --- NEW: Apply World Aging ---
+    // --- Apply World Aging ---
     // Get the data for the NEXT wave to determine its aging intensity
     const nextWaveData = Config.WAVES[currentMainWaveIndex + 1]; // Index is current + 1
     // Determine the aging intensity for the upcoming wave (defaults to base if not specified)
     const agingIntensityForNextWave = nextWaveData?.agingIntensity ?? Config.AGING_BASE_INTENSITY;
-
     // Pass the portal reference and the calculated aging intensity
-    // MODIFIED: Pass agingIntensityForNextWave instead of nextWaveNumber
-    WorldManager.applyAging(portalRef, agingIntensityForNextWave);
+    WorldManager.applyAging(portalRef, agingIntensityForNextWave); // MODIFIED: Pass agingIntensityForNextWave instead of nextWaveNumber
 }
 
 // --- Exported Functions ---
 
-/** Initializes the wave manager to its default state. */
-// NEW: Accept an optional callback and portal reference
+// --- Initializes the wave manager to its default state, accepts an optional callback and portal reference ---
 export function init(callback = null, portalObject = null) {
     currentMainWaveIndex = -1; // Start before the first wave
     currentSubWaveIndex = 0;
@@ -283,9 +252,7 @@ export function reset(callback = null, portalObject = null) {
 export function update(dt, gameState) {
     // No longer check state === 'GAME_OVER' or 'VICTORY' here; main.js handles that transition now.
     // WaveManager update logic *only* runs if gameState is 'RUNNING'.
-
-    // --- ONLY UPDATE TIMERS IF GAME IS RUNNING ---
-    if (gameState === 'RUNNING') {
+    if (gameState === 'RUNNING') { // --- ONLY UPDATE TIMERS IF GAME IS RUNNING ---
         switch (state) {
             case 'PRE_WAVE':
                 preWaveTimer -= dt;
@@ -335,7 +302,7 @@ export function update(dt, gameState) {
                 // maxTimer remains waveData.duration (set in startNextWave)
                 break;
 
-            // --- NEW INTERMISSION PHASES ---
+            // --- INTERMISSION PHASES ---
             case 'BUILDPHASE':
                 buildPhaseTimer -= dt;
                 if (buildPhaseTimer <= 0) {
@@ -348,7 +315,6 @@ export function update(dt, gameState) {
                 }
                 // maxTimer remains buildPhaseDuration (set in endWave) - it doesn't change during BUILDPHASE
                 break;
-
             case 'WARPPHASE':
                  warpPhaseTimer -= dt;
                  if (warpPhaseTimer <= 0) {
@@ -358,9 +324,6 @@ export function update(dt, gameState) {
                  }
                  // maxTimer remains Config.WARPPHASE_DURATION (set on entering this state)
                  break;
-
-            // GAME_OVER and VICTORY states are handled by main.js, this update function won't run in those states
-
             default:
                 console.error("Unknown wave state:", state);
                 // In a robust game, you might want a more graceful recovery or a fatal error display

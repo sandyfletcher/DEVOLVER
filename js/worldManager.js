@@ -14,22 +14,14 @@ import { PerlinNoise } from './utils/noise.js'; // Import Perlin Noise
 // --- World State & Simulation ---
 // -----------------------------------------------------------------------------
 
-// --- Water Simulation ---
-// --- Use a Map to store coordinates that need checking, preventing duplicates ---
-let waterUpdateQueue = new Map(); // Map: "col,row" -> {c, r}
-let waterPropagationTimer = 0;     // Timer to control spread speed
-
-// --- Aging Logic ---
-let agingNoiseGenerator = null; // Dedicated noise instance for aging
-
+let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
+let waterPropagationTimer = 0; // timer to control spread speed
+let agingNoiseGenerator = null; // dedicated noise instance for aging
 // --- Initialize World Manager ---
-// NOW ACCEPTS PORTAL REFERENCE FOR INITIAL AGING
 export function init(portalRef) {
     console.time("WorldManager initialized");
     WorldData.initializeGrid();
-    // generateInitialWorld now handles filling water and ensuring underwater integrity
-    generateInitialWorld(); // World generator now handles landmass + flood fill
-
+    generateInitialWorld(); // world generator now handles landmass + flood fill
     const gridCanvas = Renderer.getGridCanvas();
     if (!gridCanvas) {
         console.error("FATAL: Grid Canvas not found! Ensure Renderer.createGridCanvas() runs before World.init().");
@@ -39,30 +31,16 @@ export function init(portalRef) {
             throw new Error("Fallback grid canvas creation failed.");
         }
     }
-    // Initial rendering *before* aging is useful for debugging generation results
-    renderStaticWorldToGridCanvas();
-
-    // --- Initialize aging noise ---
-    // Use a consistent seed or a different seed calculation for aging noise
-    agingNoiseGenerator = new PerlinNoise(12345); // Example fixed seed
-
-    // --- Apply initial aging after generation ---
-    // Call aging with the provided portal reference and a specific wave number/intensity for initial state
-    // Pass the BASE aging intensity for the initial aging pass before Wave 1 starts.
+    renderStaticWorldToGridCanvas(); // initial rendering *before* aging is useful for debugging generation results
+    agingNoiseGenerator = new PerlinNoise(12345); // currently using a fixed seed for aging calculation
     console.log("Applying initial world aging...");
-    applyAging(portalRef, Config.AGING_BASE_INTENSITY); // Apply aging with base intensity
+    applyAging(portalRef, Config.AGING_BASE_INTENSITY); // apply aging with base intensity
     console.log("Initial world aging complete.");
-
-    // IMPORTANT: Re-render static world after aging, as aging changes blocks.
-    renderStaticWorldToGridCanvas();
-
-    seedWaterUpdateQueue(); // Seed the water simulation after world generation AND initial aging
-    // console.timeEnd("WorldManager initialized");
+    renderStaticWorldToGridCanvas(); // re-render static world after aging
+    seedWaterUpdateQueue(); // seed the water simulation after world generation AND initial aging
 }
-
 // --- Add coordinates to the water update queue ---
-// Only adds cells that are within bounds, at or below the water line threshold,
-// not already in the queue, AND are types that participate in water simulation (AIR or WATER).
+// Only adds cells that are within bounds, at or below the water line threshold, not already in the queue, AND are types that participate in water simulation (AIR or WATER).
 function addWaterUpdateCandidate(col, row) {
     // Check if within bounds and at or below the water line threshold
     if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
@@ -106,16 +84,13 @@ function internalSetBlock(col, row, blockType, isPlayerPlaced = false) {
                     addedToQueue = true; // Set flag if queue size increased
                 }
             };
-
             // Add the changed cell itself
             tryAddCandidate(col, row);
-
             // Add neighbors - necessary to propagate water away from a new solid block,
             // or into/away from a newly created AIR/WATER block.
             const neighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // Cardinal neighbors
             neighbors.forEach(neighbor => tryAddCandidate(col + neighbor.dc, row + neighbor.dr));
-
-            // --- CRITICAL FIX: Reset the propagation timer IF any candidates were added ---
+            // --- Reset the propagation timer IF any candidates were added ---
             // This ensures the water simulation loop processes the change very soon.
             if (addedToQueue) {
                 waterPropagationTimer = 0; // Force the timer to zero
@@ -147,7 +122,6 @@ function renderStaticWorldToGridCanvas() {
             const block = worldGrid[r][c];
             // Directly check for BLOCK_AIR (number 0) or null/undefined
             if (!block || typeof block === 'number' && block === Config.BLOCK_AIR) continue;
-
             const blockType = typeof block === 'object' ? block.type : block; // Get type property or use block value
             const blockColor = Config.BLOCK_COLORS[blockType];
             if (!blockColor) {
@@ -158,11 +132,9 @@ function renderStaticWorldToGridCanvas() {
             const blockY = r * Config.BLOCK_HEIGHT;
             const blockW = Math.ceil(Config.BLOCK_WIDTH); // Use Math.ceil for robustness
             const blockH = Math.ceil(Config.BLOCK_HEIGHT);
-
             // draw block body onto GRID CANVAS using gridCtx
             gridCtx.fillStyle = blockColor;
             gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH); // Use Math.floor for origin
-
             // draw Outline if Player Placed ---
             const isPlayerPlaced = block && typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false; // default to false if property is missing
             if (isPlayerPlaced) {
@@ -179,23 +151,18 @@ function renderStaticWorldToGridCanvas() {
                  );
                  gridCtx.restore(); // restore context state
             }
-
             // --- Draw Damage Indicators ---
             // Check if the block object exists, has HP and maxHp properties, and is potentially damaged
             if (block && typeof block === 'object' && block.maxHp > 0 && block.hp < block.maxHp) {
                  const hpRatio = block.hp / block.maxHp;
-
                  gridCtx.save(); // Save context state before drawing lines
                  gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
                  gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
                  gridCtx.lineCap = 'square'; // Use square cap
-
                  // Calculate the effective inset for the line path points
                  // The stroke's center should be LINE_WIDTH / 2 from the edge.
                  // The path point should be LINE_WIDTH from the edge.
                  const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-
-
                  // Draw Slash (\) if HP is <= 70%
                  if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
                       gridCtx.beginPath();
@@ -204,7 +171,6 @@ function renderStaticWorldToGridCanvas() {
                       gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset); // MODIFIED: Use pathInset
                       gridCtx.stroke();
                  }
-
                  // Draw Second Line (/) if HP is <= 30% (creating an 'X')
                  if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
                       gridCtx.beginPath();
@@ -213,7 +179,6 @@ function renderStaticWorldToGridCanvas() {
                       gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset); // MODIFIED: Use pathInset
                       gridCtx.stroke();
                  }
-
                  gridCtx.restore(); // Restore context state
             }
         }
@@ -230,7 +195,6 @@ export function updateStaticWorldAt(col, row) { // EXPORTED for applyAging to us
         console.error(`WorldManager: Cannot update static world at [${col}, ${row}] - grid context missing!`);
         return;
     }
-
     // Get the block data *after* it has been updated in WorldData
     const block = WorldData.getBlock(col, row);
 
