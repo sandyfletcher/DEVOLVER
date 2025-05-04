@@ -5,282 +5,191 @@
 import * as Config from '../config.js';
 import { PerlinNoise } from './noise.js';
 import { createBlock } from './block.js';
-import * as WorldData from './worldData.js'; // Import all of WorldData
+import * as WorldData from './worldData.js';
 
-// --- Helper ---
 function lerp(t, a, b) {
     return a + t * (b - a);
 }
 
-// --- Module State ---
-let generationNoiseGenerator = null; // Generator instance for initial generation
+let generationNoiseGenerator = null;
 
-// --- Generates initial landmass (Stone/Dirt/Grass) and fills the rest with Air by modifying grid directly ---
-function generateLandmass() {
-    // console.log("Generating landmass with boundary smoothing...");
-    // Use a consistent seed or a different seed for initial terrain noise
-    generationNoiseGenerator = new PerlinNoise(56789); // Example fixed seed
-
+function generateLandmass() { // generates initial landmass and fills the rest with air by modifying grid directly
+    generationNoiseGenerator = new PerlinNoise(56789); // using consistent fixed seed or can switch for initial terrain noise
     const islandWidth = Math.floor(Config.GRID_COLS * Config.WORLD_ISLAND_WIDTH); // 200*0.8=160
-    const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2);              // 200-160=40/2=20
-    const islandEndCol = islandStartCol + islandWidth;                                    // 20+160=180
-    const islandTaperWidth = 80; // Taper from island edge towards center
-    // Ocean level constants from Config (ensure they are defined there)
-    const OCEAN_FLOOR_ROW_NEAR_ISLAND = Config.WORLD_WATER_LEVEL_ROW_TARGET + 5;
+    const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2); // 200-160=40/2=20
+    const islandEndCol = islandStartCol + islandWidth; // 20+160=180
+    const islandTaperWidth = 80; // taper from island edge towards center
+    const OCEAN_FLOOR_ROW_NEAR_ISLAND = Config.WORLD_WATER_LEVEL_ROW_TARGET + 5; // ocean level constants from Config (ensure they are defined there)
     const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;
     const deepOceanFloorStartRow = Math.min(Config.GRID_ROWS - 3, Config.WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(Config.GRID_ROWS * 0.1));
     const deepOceanStoneStartRow = deepOceanFloorStartRow + 8;
-
-    // Edge taper constants
-    const edgeTaperWidth = Math.floor(Config.GRID_COLS * 0.15);
-    const edgeStoneLevelTarget = Config.GRID_ROWS + 5; // Target stone level AT THE EDGE (below map)
-    const edgeFloorLevelTarget = deepOceanFloorStartRow + 10; // Target floor level below deep ocean floor at edge
-    const islandCenterTaperWidth = Config.ISLAND_CENTER_TAPER_WIDTH; // Use config value
-
-    // Intermediate storage for calculated levels
-    let worldLevels = Array(Config.GRID_COLS).fill(null);
-
-    // --- Pass 1: Calculate all levels (Island or Ocean) ---
+    const edgeTaperWidth = Math.floor(Config.GRID_COLS * 0.15); // edge taper constants
+    const edgeStoneLevelTarget = Config.GRID_ROWS + 5; // target stone level AT THE EDGE (below map)
+    const edgeFloorLevelTarget = deepOceanFloorStartRow + 10; // target floor level below deep ocean floor at edge
+    const islandCenterTaperWidth = Config.ISLAND_CENTER_TAPER_WIDTH;
+    let worldLevels = Array(Config.GRID_COLS).fill(null); // intermediate storage for calculated levels
     console.log("Pass 1: Calculating initial levels...");
     for (let c = 0; c < Config.GRID_COLS; c++) {
-        // Calculate base island levels (used inside island logic)
-        const noiseVal = generationNoiseGenerator.noise(c * Config.WORLD_NOISE_SCALE);
+        const noiseVal = generationNoiseGenerator.noise(c * Config.WORLD_NOISE_SCALE); // calculate base island levels (used inside island logic)
         const heightVariation = Math.round(noiseVal * Config.WORLD_GROUND_VARIATION);
         let baseSurfaceRow = Config.WORLD_GROUND_LEVEL_MEAN + heightVariation;
-
         const stoneNoiseVal = generationNoiseGenerator.noise(c * Config.WORLD_NOISE_SCALE * 0.5 + 100);
         const stoneVariation = Math.round(stoneNoiseVal * Config.WORLD_STONE_VARIATION);
         let baseStoneRow = Config.WORLD_STONE_LEVEL_MEAN + stoneVariation;
-        // Clamp base stone relative to base surface
-        baseStoneRow = Math.max(baseSurfaceRow + 3, baseStoneRow);
-
+        baseStoneRow = Math.max(baseSurfaceRow + 3, baseStoneRow); // clamp base stone relative to base surface
         let calcSurfaceRow, calcStoneRow;
         let isOceanColumn = !(c >= islandStartCol && c < islandEndCol);
-
         if (!isOceanColumn) {
-            // --- Inside Island Calculation ---
-            const distToIslandEdge = Math.min(c - islandStartCol, (islandEndCol - 1) - c);
-            calcSurfaceRow = baseSurfaceRow; // Start with base levels
+            const distToIslandEdge = Math.min(c - islandStartCol, (islandEndCol - 1) - c); // inside island calculation
+            calcSurfaceRow = baseSurfaceRow; // start with base levels
             calcStoneRow = baseStoneRow;
-
-            // Apply island taper if within the taper zone
-            if (distToIslandEdge < islandTaperWidth && islandTaperWidth > 0) {
-                // Use linear blend for simplicity first, pow(0.75) can be added back later if needed
-                const islandBlend = Math.max(0, distToIslandEdge) / islandTaperWidth;
-                // Blend from Ocean levels (at edge, blend=0) towards Base levels (inland, blend=1)
-                calcSurfaceRow = Math.round(lerp(islandBlend, OCEAN_FLOOR_ROW_NEAR_ISLAND, baseSurfaceRow));
+            if (distToIslandEdge < islandTaperWidth && islandTaperWidth > 0) { // apply island taper if within the taper zone
+                const islandBlend = Math.max(0, distToIslandEdge) / islandTaperWidth; // use linear blend for simplicity, pow(0.75) can be added back later if needed
+                calcSurfaceRow = Math.round(lerp(islandBlend, OCEAN_FLOOR_ROW_NEAR_ISLAND, baseSurfaceRow)); // blend from ocean levels (blend=0 at edge) towards base levels (blend=1 inland)
                 calcStoneRow = Math.round(lerp(islandBlend, OCEAN_STONE_ROW_NEAR_ISLAND, baseStoneRow));
             }
-            // Clamp final island levels after taper
-            calcSurfaceRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, calcSurfaceRow));
-            calcStoneRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, calcStoneRow)); // Keep island stone on map
-            calcStoneRow = Math.max(calcSurfaceRow + 1, calcStoneRow); // Ensure stone below surface
-
+            calcSurfaceRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, calcSurfaceRow)); // clamp final island levels after taper
+            calcStoneRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, calcStoneRow)); // keep island stone on map
+            calcStoneRow = Math.max(calcSurfaceRow + 1, calcStoneRow); // ensure stone below surface
         } else {
-            // --- Outside Island Calculation ---
-            let currentOceanFloorLevel = deepOceanFloorStartRow;
+            let currentOceanFloorLevel = deepOceanFloorStartRow; // outside island calculation
             let currentOceanStoneLevel = deepOceanStoneStartRow;
             const distFromIslandEdge = (c < islandStartCol) ? islandStartCol - c : c - (islandEndCol - 1);
-            // Transition from near-island ocean levels to deep ocean levels
-            const deepOceanTransitionWidth = islandStartCol / 2; // Or some other value
-
+            const deepOceanTransitionWidth = islandStartCol / 2; // transition from near-island ocean levels to deep ocean levels
             if (distFromIslandEdge > 0 && distFromIslandEdge < deepOceanTransitionWidth && deepOceanTransitionWidth > 0) {
                  const deepBlend = Math.min(1.0, distFromIslandEdge / deepOceanTransitionWidth);
-                 // Blend from Near Island levels (blend=0) towards Deep Ocean levels (blend=1)
-                 currentOceanFloorLevel = Math.round(lerp(deepBlend, OCEAN_FLOOR_ROW_NEAR_ISLAND, deepOceanFloorStartRow));
+                 currentOceanFloorLevel = Math.round(lerp(deepBlend, OCEAN_FLOOR_ROW_NEAR_ISLAND, deepOceanFloorStartRow)); // blend from Near Island level (0) towards Deep Ocean level (1)
                  currentOceanStoneLevel = Math.round(lerp(deepBlend, OCEAN_STONE_ROW_NEAR_ISLAND, deepOceanStoneStartRow));
-            } else if (distFromIslandEdge <= 0) { // Closest to island
+            } else if (distFromIslandEdge <= 0) { // closest to island
                  currentOceanFloorLevel = OCEAN_FLOOR_ROW_NEAR_ISLAND;
                  currentOceanStoneLevel = OCEAN_STONE_ROW_NEAR_ISLAND;
             }
-
-            // Apply absolute edge taper (blends towards off-map/deep edge targets)
-            const distFromAbsoluteEdge = Math.min(c, Config.GRID_COLS - 1 - c);
-            let finalOceanStoneLevel = currentOceanStoneLevel; // Start with level from deep/near blend
+            const distFromAbsoluteEdge = Math.min(c, Config.GRID_COLS - 1 - c); // apply absolute edge taper (blends towards off-map/deep edge targets)
+            let finalOceanStoneLevel = currentOceanStoneLevel; // start with level from deep/near blend
             let finalOceanFloorLevel = currentOceanFloorLevel;
-
             if (distFromAbsoluteEdge < edgeTaperWidth && edgeTaperWidth > 0) {
                 const edgeBlend = Math.pow(Math.min(1.0, distFromAbsoluteEdge / edgeTaperWidth), 0.5);
-                // Blend from Edge Target levels (blend=0) towards Current Ocean levels (blend=1)
-                finalOceanStoneLevel = Math.round(lerp(edgeBlend, edgeStoneLevelTarget, currentOceanStoneLevel));
+                finalOceanStoneLevel = Math.round(lerp(edgeBlend, edgeStoneLevelTarget, currentOceanStoneLevel)); // blend from Edge Target levels (blend=0) towards Current Ocean levels (blend=1)
                 finalOceanFloorLevel = Math.round(lerp(edgeBlend, edgeFloorLevelTarget, currentOceanFloorLevel));
             }
-
-            // Assign final calculated ocean levels
-            calcSurfaceRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, finalOceanFloorLevel)); // Ocean surface is sand/floor
-            calcStoneRow = Math.max(0, Math.min(Config.GRID_ROWS, finalOceanStoneLevel)); // Ocean stone can be off map
-            // Ensure stone is below surface if stone is on the map
-            if (calcStoneRow < Config.GRID_ROWS) {
+            calcSurfaceRow = Math.max(0, Math.min(Config.GRID_ROWS - 1, finalOceanFloorLevel)); // assign final calculated ocean levels, surface is sand/floor
+            calcStoneRow = Math.max(0, Math.min(Config.GRID_ROWS, finalOceanStoneLevel)); // ocean stone can be off map
+            if (calcStoneRow < Config.GRID_ROWS) { // ensure stone is below surface if stone is on the map
                  calcStoneRow = Math.max(calcSurfaceRow + 1, calcStoneRow);
             }
         }
-
-        // Store calculated levels for this column
-        worldLevels[c] = { surface: calcSurfaceRow, stone: calcStoneRow, isOcean: isOceanColumn };
-
-    } // End Pass 1
-
-    // --- Pass 2: Smooth the boundary ---
+        worldLevels[c] = { surface: calcSurfaceRow, stone: calcStoneRow, isOcean: isOceanColumn }; // store calculated levels for this column
+    }
     console.log("Pass 2: Smoothing boundaries...");
-    const smoothingWidth = 20; // How many columns INTO the island to blend with ocean values, Adjust this for a wider/narrower smoothed beach transition
+    const smoothingWidth = 20; // how many columns INTO the island to blend with ocean values, adjust this for a wider/narrower smoothed beach transition
     for (let i = 0; i < smoothingWidth; i++) {
-        // --- Left Boundary ---
         const islandCol = islandStartCol + i;
-        const oceanCol = islandStartCol - 1; // Always reference the closest ocean column
-
+        const oceanCol = islandStartCol - 1; // always reference the closest ocean column
         if (islandCol < islandEndCol && oceanCol >= 0 && worldLevels[islandCol] && worldLevels[oceanCol]) {
-            // Blend factor: 0 = pure ocean, 1 = pure island original calc
-            // We want less ocean influence as we go deeper into the island
-            const blendFactor = (i + 1) / (smoothingWidth + 1); // Simple linear blend for now
-
-            // Get original calculated island levels and the reference ocean level
+            const blendFactor = (i + 1) / (smoothingWidth + 1); // simple linear blend: 0 = pure ocean, 1 = pure island original calc
             const originalIslandSurface = worldLevels[islandCol].surface;
             const originalIslandStone = worldLevels[islandCol].stone;
             const refOceanSurface = worldLevels[oceanCol].surface;
             const refOceanStone = worldLevels[oceanCol].stone;
-
-            // Apply blend: Lerp from ocean reference towards original island calc
             worldLevels[islandCol].surface = Math.round(lerp(blendFactor, refOceanSurface, originalIslandSurface));
             worldLevels[islandCol].stone = Math.round(lerp(blendFactor, refOceanStone, originalIslandStone));
-
-            // Re-apply clamps after smoothing
             worldLevels[islandCol].surface = Math.max(0, Math.min(Config.GRID_ROWS - 1, worldLevels[islandCol].surface));
-            worldLevels[islandCol].stone = Math.max(0, Math.min(Config.GRID_ROWS - 1, worldLevels[islandCol].stone)); // Keep stone on map
+            worldLevels[islandCol].stone = Math.max(0, Math.min(Config.GRID_ROWS - 1, worldLevels[islandCol].stone)); // keep stone on map
             worldLevels[islandCol].stone = Math.max(worldLevels[islandCol].surface + 1, worldLevels[islandCol].stone);
         }
-
-        // --- Right Boundary ---
         const islandColR = islandEndCol - 1 - i;
-        const oceanColR = islandEndCol; // Always reference the closest ocean column
-
+        const oceanColR = islandEndCol; // reference closest ocean column
          if (islandColR >= islandStartCol && oceanColR < Config.GRID_COLS && worldLevels[islandColR] && worldLevels[oceanColR]) {
             const blendFactor = (i + 1) / (smoothingWidth + 1);
-
             const originalIslandSurfaceR = worldLevels[islandColR].surface;
             const originalIslandStoneR = worldLevels[islandColR].stone;
             const refOceanSurfaceR = worldLevels[oceanColR].surface;
             const refOceanStoneR = worldLevels[oceanColR].stone;
-
             worldLevels[islandColR].surface = Math.round(lerp(blendFactor, refOceanSurfaceR, originalIslandSurfaceR));
             worldLevels[islandColR].stone = Math.round(lerp(blendFactor, refOceanStoneR, originalIslandStoneR));
-
-            // Re-apply clamps after smoothing
-            worldLevels[islandColR].surface = Math.max(0, Math.min(Config.GRID_ROWS - 1, worldLevels[islandColR].surface));
-            worldLevels[islandColR].stone = Math.max(0, Math.min(Config.GRID_ROWS - 1, worldLevels[islandColR].stone)); // Keep stone on map
+            worldLevels[islandColR].surface = Math.max(0, Math.min(Config.GRID_ROWS - 1, worldLevels[islandColR].surface)); // re-apply clamps after smoothing
+            worldLevels[islandColR].stone = Math.max(0, Math.min(Config.GRID_ROWS - 1, worldLevels[islandColR].stone)); // keep stone on map
             worldLevels[islandColR].stone = Math.max(worldLevels[islandColR].surface + 1, worldLevels[islandColR].stone);
         }
-    } // End Pass 2
-
-    // --- Pass 3: Place blocks based on final levels ---
-console.log("Pass 3: Placing blocks..."); // Removed controlled sand depth log
-for (let r = 0; r < Config.GRID_ROWS; r++) {
-    for (let c = 0; c < Config.GRID_COLS; c++) {
-        // Use createBlock
-        let blockData = createBlock(Config.BLOCK_AIR, false); // Default to AIR, NOT player placed
-        const levels = worldLevels[c];
-        if (!levels) {
-            console.warn(`Missing level data for column ${c}`);
-            continue;
-        }
-
-        const finalSurfaceRow = levels.surface;
-        const finalStoneRow = levels.stone;
-        const surfaceIsBelowWater = finalSurfaceRow >= Config.WORLD_WATER_LEVEL_ROW_TARGET;
-
-        if (r >= finalStoneRow && finalStoneRow < Config.GRID_ROWS) {
-            // Place Stone below the calculated stone level
-            blockData = createBlock(Config.BLOCK_STONE, false); // Stone not player placed
-
-        } else if (r > finalSurfaceRow && r < finalStoneRow) {
-            // --- Between stone and surface level ---
-             if (surfaceIsBelowWater) {
-                const distSurfaceBelowWater = finalSurfaceRow - Config.WORLD_WATER_LEVEL_ROW_TARGET;
-                let maxAllowedSandDepth = Math.max(1, Math.min(4, 1 + Math.floor(distSurfaceBelowWater / 1)));
-                const currentDepth = r - finalSurfaceRow;
-
-                if (currentDepth <= maxAllowedSandDepth) {
-                    blockData = createBlock(Config.BLOCK_SAND, false); // Sand not player placed
-                } else {
-                    // Exceeded allowed sand depth, place what would normally be here
-                    blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT, false); // Sand/Dirt not player placed
+    }
+    console.log("Pass 3: Placing blocks...");
+    for (let r = 0; r < Config.GRID_ROWS; r++) {
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+            let blockData = createBlock(Config.BLOCK_AIR, false); // default to AIR / not player placed)
+            const levels = worldLevels[c];
+            if (!levels) {
+                console.warn(`Missing level data for column ${c}`);
+                continue;
+            }
+            const finalSurfaceRow = levels.surface;
+            const finalStoneRow = levels.stone;
+            const surfaceIsBelowWater = finalSurfaceRow >= Config.WORLD_WATER_LEVEL_ROW_TARGET;
+            if (r >= finalStoneRow && finalStoneRow < Config.GRID_ROWS) {
+                blockData = createBlock(Config.BLOCK_STONE, false); // place stone below calculated stone level 
+            } else if (r > finalSurfaceRow && r < finalStoneRow) {
+                if (surfaceIsBelowWater) { // between stone and surface level
+                    const distSurfaceBelowWater = finalSurfaceRow - Config.WORLD_WATER_LEVEL_ROW_TARGET;
+                    let maxAllowedSandDepth = Math.max(1, Math.min(4, 1 + Math.floor(distSurfaceBelowWater / 1)));
+                    const currentDepth = r - finalSurfaceRow;
+                    if (currentDepth <= maxAllowedSandDepth) { // sand
+                        blockData = createBlock(Config.BLOCK_SAND, false);
+                    } else { // exceeded allowed sand depth, place what would normally be here
+                        blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT, false);
+                    }
+                } else { // surface is above water - standard logic (dirt for island, sand for ocean floor)
+                    blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT, false);
                 }
-            } else {
-                // Surface is above water - standard logic (Dirt for island, Sand for ocean floor)
-                blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_DIRT, false); // Sand/Dirt not player placed
+            } else if (r === finalSurfaceRow) { // at calculated surface level
+                if (surfaceIsBelowWater) { // surface itself is underwater, place Sand (minimum 1 layer)
+                    if (finalStoneRow > finalSurfaceRow) { // ensure stone is below the surface
+                        blockData = createBlock(Config.BLOCK_SAND, false); // sand not player placed
+                    } else {
+                        blockData = createBlock(Config.BLOCK_STONE, false); // stone not player placed (surface == stone level)
+                    }
+                } else { // surface is above water - standard logic (Grass for island, Sand for ocean floor)
+                    blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_GRASS, false); // Grass/Sand not player placed
+                }
             }
-
-        } else if (r === finalSurfaceRow) {
-            // --- At the calculated surface level ---
-            if (surfaceIsBelowWater) {
-                // Surface itself is underwater, place Sand (minimum 1 layer)
-                 if (finalStoneRow > finalSurfaceRow) { // Ensure stone is below the surface
-                    blockData = createBlock(Config.BLOCK_SAND, false); // Sand not player placed
-                 } else {
-                     blockData = createBlock(Config.BLOCK_STONE, false); // Stone not player placed (surface == stone level)
-                 }
-            } else {
-                // Surface is above water - standard logic (Grass for island, Sand for ocean floor)
-                blockData = createBlock(levels.isOcean ? Config.BLOCK_SAND : Config.BLOCK_GRASS, false); // Grass/Sand not player placed
-            }
+            // Set the block data using the direct method for initial generation
+            WorldData.setBlockData(c, r, blockData);
         }
-
-        // Set the block data using the direct method for initial generation
-        WorldData.setBlockData(c, r, blockData);
     }
 }
-    console.log("Landmass generation complete.");
-} // End generateLandmass
 
-// --- Flood Fill Function (No Changes Needed) ---
-function applyFloodFill(targetWaterRow) {
+function applyFloodFill(targetWaterRow) { // flood fill function
     console.log(`Applying flood fill up to row ${targetWaterRow}...`);
     const queue = [];
-    const visited = new Set(); // Track visited cells: "c,r"
-
-    // --- MODIFIED SEEDING LOGIC ---
-    // Iterate through all cells at or below the target water row.
-    // Find AIR blocks that should initiate a fill (either at edge/bottom or bordering non-AIR).
+    const visited = new Set(); // track visited cells: "c,r"
     console.log("Seeding flood fill points...");
-    for (let r = targetWaterRow; r < Config.GRID_ROWS; r++) {
+    for (let r = targetWaterRow; r < Config.GRID_ROWS; r++) { // iterate through all cells at or below target water row, find AIR blocks that should initiate a fill (either at edge/bottom or bordering non-AIR)
         for (let c = 0; c < Config.GRID_COLS; c++) {
-            // Check only AIR blocks that haven't been visited/queued yet
-            if (WorldData.getBlockType(c, r) === Config.BLOCK_AIR) {
+            if (WorldData.getBlockType(c, r) === Config.BLOCK_AIR) { // check only AIR blocks that haven't been visited/queued yet
                 const key = `${c},${r}`;
                 if (visited.has(key)) continue;
-
                 let isSeedPoint = false;
-
-                // Condition 1: Is it at the boundary of the grid? (Bottom or Sides)
-                if (r === Config.GRID_ROWS - 1 || c === 0 || c === Config.GRID_COLS - 1) {
+                if (r === Config.GRID_ROWS - 1 || c === 0 || c === Config.GRID_COLS - 1) { // condition 1: at boundary of the grid? (Bottom or Sides)
                     isSeedPoint = true;
-                } else {
-                    // Condition 2: Check cardinal neighbors. If any neighbor is NOT AIR,
-                    // this AIR block borders something solid (or already filled water)
-                    // and should be a seed point for this pocket.
+                } else { // condition 2: cardinal neighbours - if any neighbour is NOT AIR, this AIR block borders something solid (or already filled water) and should be a seed point for this pocket
                     const neighborCoords = [
-                        { nc: c, nr: r - 1 }, // Check above (even above water level)
-                        { nc: c, nr: r + 1 }, // Check below
-                        { nc: c - 1, nr: r }, // Check left
-                        { nc: c + 1, nr: r }  // Check right
+                        { nc: c, nr: r - 1 }, // check above (even above water level)
+                        { nc: c, nr: r + 1 }, // below
+                        { nc: c - 1, nr: r }, // left
+                        { nc: c + 1, nr: r }  // right
                     ];
-
-                    for (const { nc, nr } of neighborCoords) {
-                        // Ensure neighbor is within *overall grid bounds*
+                    for (const { nc, nr } of neighborCoords) { // ensure neighbour is within *overall grid bounds*
                         if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
                             if (WorldData.getBlockType(nc, nr) !== Config.BLOCK_AIR) {
                                 isSeedPoint = true;
-                                break; // Found a non-air neighbor, no need to check others
+                                break; // found a non-air neighbour, no need to check others
                             }
                         } else {
-                             // Neighbor is out of bounds (meaning current cell IS at an edge), treat as non-air border
+                             // neighbour is out of bounds (meaning current cell IS at an edge), treat as non-air border
                              isSeedPoint = true;
                              break;
                         }
                     }
                 }
-
-                // If it qualifies as a seed point, add to queue and mark visited
-                if (isSeedPoint) {
+                if (isSeedPoint) { // if it qualifies as a seed point, add to queue and mark visited
                     queue.push({ c, r });
                     visited.add(key);
                 }
@@ -288,71 +197,39 @@ function applyFloodFill(targetWaterRow) {
         }
     }
     console.log(`Flood fill seeded with ${queue.length} points.`);
-    // --- END MODIFIED SEEDING LOGIC ---
-
-
-    // Standard BFS continues from here...
-    let processed = 0;
+    let processed = 0; // standard BFS continues from here
     while (queue.length > 0) {
-        // Optimization log
         if (queue.length > 10000 && queue.length % 5000 === 0) {
             console.log(`Flood fill queue size: ${queue.length}, Processed: ${processed}`);
         }
-
         const { c, r } = queue.shift();
-
-        // Get current block type *again* inside the loop, as it might have been filled
-        // by another path if queue contains duplicates briefly.
-        const currentBlockType = WorldData.getBlockType(c,r);
-
-        // Check bounds, ensure it's BELOW target water level, and is STILL AIR
-        if (r < targetWaterRow || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS || currentBlockType !== Config.BLOCK_AIR) {
+        const currentBlockType = WorldData.getBlockType(c,r); // get current block type *again* inside the loop, as it might have been filled by another path if queue contains duplicates briefly.
+        if (r < targetWaterRow || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS || currentBlockType !== Config.BLOCK_AIR) { // check bounds, ensure it's BELOW target water level, and is STILL AIR
             continue;
        }
-
-       // Fill with water - Use the WorldData setter, which uses createBlock
-       // Water is naturally occurring, so isPlayerPlaced is false
-       // setBlock handles creating the object and setting isPlayerPlaced
-       const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // Use imported setter, set isPlayerPlaced false
+       const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // fill with water
        if (success) {
             processed++;
-            // No need to call updateStaticWorldAt during initial generation flood fill,
-            // the initial renderStaticWorldToGridCanvas happens after the fill is complete.
-
-            // Add valid AIR neighbors (must be below targetWaterRow) to the queue
-            const neighborCoords = [
-                // Only check neighbors that could potentially be filled (at or below water level)
-                { nc: c, nr: r - 1 }, { nc: c, nr: r + 1 },
+            const neighborCoords = [ // sdd valid AIR neighbours (must be below targetWaterRow) to the queue
+                { nc: c, nr: r - 1 }, { nc: c, nr: r + 1 }, // only check neighbours that could potentially be filled (at or below water level)
                 { nc: c - 1, nr: r }, { nc: c + 1, nr: r }
             ];
-
-            for (const { nc, nr } of neighborCoords) {
-                // Ensure neighbor is within grid bounds AND at or below water level
-                // MODIFIED: Relaxed the check for neighbor row - any AIR neighbor within bounds should be queued
-                // if the current cell is filling, as the neighbor could potentially *become* water.
+            for (const { nc, nr } of neighborCoords) { // ensure neighbor is within grid bounds AND at/below water level - any AIR neighbor within bounds should be queued if current cell is filling, as neighbor could potentially *become* water
                  if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
                     const nKey = `${nc},${nr}`;
-                    // Check if neighbor is AIR and not visited
-                    if (WorldData.getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) {
+                    if (WorldData.getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) { // check if neighbor is AIR and not visited
                         visited.add(nKey);
                         queue.push({ c: nc, r: nr });
                     }
                 }
             }
        }
-    } // End while loop
+    }
     console.log(`Flood fill complete. Filled ${processed} water blocks.`);
 }
-/**
- * Runs the entire world generation process, step-by-step.
- * Assumes the grid has been initialized by world-data.initializeGrid().
- */
-export function generateInitialWorld() {
+export function generateInitialWorld() { // runs and times the world generation process
     console.time("Initial World generated in");
-    generateLandmass(); // Uses the new multi-pass method
+    generateLandmass();
     applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
-    // REMOVED: ensureUnderwaterIntegrity(); // === NEW STEP ===
-    // NOTE: The *initial* aging pass is now called directly in WorldManager.init
-    // after generateInitialWorld and applyFloodFill are done.
     console.timeEnd("Initial World generated in");
 }
