@@ -4,7 +4,6 @@
 
 import * as Config from './config.js';
 import { Enemy } from './enemy.js';
-import * as World from './worldManager.js';
 import * as GridCollision from './utils/gridCollision.js';
 
 let enemies = [];
@@ -108,38 +107,54 @@ export function trySpawnEnemy(enemyType) {
     }
 }
 
-// --- Update active and remove inactive enemies, Passes necessary context (player position, all enemies) to each enemy's update ---
+// --- Update active and remove inactive enemies ... ---
 export function update(dt, playerPosition) {
     // Filter active enemies ONCE to pass to individual updates for separation checks
-    const activeEnemies = enemies.filter(enemy => enemy.isActive);
+    // Separation should only consider enemies that are *not* dying.
+    const activeEnemiesForSeparation = enemies.filter(enemy => enemy && enemy.isActive && !enemy.isDying);
+
     // Update loop (iterate backwards for safe removal)
     for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
-        if (enemy.isActive) {
-            // Enemy's update method now uses its internal AI strategy
-            enemy.update(dt, playerPosition, activeEnemies);
-        }
-        // Remove if inactive AFTER update (could become inactive during update)
+         // Ensure enemy is valid before accessing properties
+         if (!enemy) {
+              console.warn(`EnemyManager.update: Found invalid enemy at index ${i}, removing.`);
+              enemies.splice(i, 1);
+              continue;
+         }
+
+        // Update the enemy instance. Its internal update handles isDying state and setting isActive=false.
+        enemy.update(dt, playerPosition, activeEnemiesForSeparation); // Pass the filtered list for separation
+
+        // Remove if inactive AFTER update (enemy.update sets isActive=false when death anim finishes)
         if (!enemies[i].isActive) {
             // console.log(`Removing inactive enemy: ${enemies[i].displayName} (Index ${i})`);
             enemies.splice(i, 1);
         }
     }
 }
+
 // --- Draws all active enemies onto the canvas ---
 export function draw(ctx) {
+    // Draw loop now includes enemies in the isDying state because enemy.isActive is true during dying.
+    // enemy.draw() handles the isDying state internally.
     enemies.forEach(enemy => {
-        enemy.draw(ctx);
+         // Add defensive check before drawing
+        if(enemy && (enemy.isActive || enemy.isDying)){ // Draw if active OR dying
+             enemy.draw(ctx);
+        }
     });
 }
+
 // --- Returns array containing all active and inactive enemy instances, primarily for collision checks ---
+// Collision checks should filter for !enemy.isDying internally.
 export function getEnemies() {
     return enemies;
 }
 // --- Calculates and returns count of currently active enemies for WaveManager ---
 export function getLivingEnemyCount() {
-    // Could optimize slightly by maintaining a count, but filter is clear
-    return enemies.filter(enemy => enemy.isActive).length;
+    // Count enemies that are currently active AND NOT in the dying animation state
+    return enemies.filter(enemy => enemy && enemy.isActive && !enemy.isDying).length;
 }
 // --- Removes all enemies from the manager ---
 export function clearAllEnemies() {
@@ -150,18 +165,18 @@ export function clearEnemiesOutsideRadius(centerX, centerY, radius) {
     const radiusSq = radius * radius; // Compare squared distances for efficiency
     const initialCount = enemies.length;
     enemies = enemies.filter(enemy => {
-        if (!enemy || !enemy.isActive || typeof enemy.x !== 'number' || typeof enemy.y !== 'number' || isNaN(enemy.x) || isNaN(enemy.y)) {
-             // Remove invalid or already inactive enemies defensively
-             console.warn("EnemyManager: Found invalid/inactive enemy data during cleanup, removing.", enemy);
+        // Keep valid enemies ONLY if their center is INSIDE or EXACTLY ON the radius boundary
+        // Do NOT check isActive or isDying here, we want to clear *all* enemies outside the radius, regardless of state
+        if (!enemy || typeof enemy.x !== 'number' || typeof enemy.y !== 'number' || isNaN(enemy.x) || isNaN(enemy.y)) {
+             // Remove invalid enemies defensively
+             console.warn("EnemyManager: Found invalid enemy data during cleanup, removing.", enemy);
             return false;
         }
-        // Check distance from enemy's center to the center point
-        const enemyCenterX = enemy.x + enemy.width / 2;
+        const enemyCenterX = enemy.x + enemy.width / 2; // Check distance from enemy's center to the center point
         const enemyCenterY = enemy.y + enemy.height / 2;
         const dx = enemyCenterX - centerX;
         const dy = enemyCenterY - centerY;
         const distSq = dx * dx + dy * dy;
-        // Keep the enemy ONLY if its center is INSIDE or EXACTLY ON the radius boundary
         return distSq <= radiusSq;
     });
     const removedCount = initialCount - enemies.length;

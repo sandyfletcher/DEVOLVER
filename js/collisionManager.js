@@ -9,13 +9,21 @@ import * as GridCollision from './utils/gridCollision.js'; // Needed for coordin
 // --- Private Utility Function ---
 function checkRectOverlap(rect1, rect2) {
     if (!rect1 || !rect2) {
-        console.warn("Collision check skipped: Invalid rect provided.", rect1, rect2);
+        // console.warn("Collision check skipped: Invalid rect provided.", rect1, rect2); // Too noisy
         return false;
     }
+    // Ensure rect properties are numbers before checking
+     if (typeof rect1.x !== 'number' || typeof rect1.y !== 'number' || typeof rect1.width !== 'number' || typeof rect1.height !== 'number' ||
+         typeof rect2.x !== 'number' || typeof rect2.y !== 'number' || typeof rect2.width !== 'number' || typeof rect2.height !== 'number' ||
+         isNaN(rect1.x) || isNaN(rect1.y) || isNaN(rect1.width) || isNaN(rect1.height) ||
+         isNaN(rect2.x) || isNaN(rect2.y) || isNaN(rect2.width) || isNaN(rect2.height)) {
+         // console.warn("Collision check skipped: Rect properties are not valid numbers.", rect1, rect2); // Too noisy
+         return false;
+     }
     return rect1.x < rect2.x + rect2.width &&
            rect1.x + rect1.width > rect2.x &&
            rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
+           rect1.y + rect1.height > rect2.y; // Corrected rect1.height here
 }
 
 // --- Exported Collision Check Functions ---
@@ -27,13 +35,16 @@ function checkRectOverlap(rect1, rect2) {
  * @param {ItemManager} itemManager - The ItemManager instance (to remove picked up items).
  */
 export function checkPlayerItemCollisions(player, items, itemManager) {
-    if (!player || !items || !itemManager || player.getCurrentHealth() <= 0) return; // Add health check
+    // Player must be active (not removed) and NOT currently in the dying animation to pick up items
+    // player.isActive is true during the dying animation.
+    if (!player || !player.isActive || player.isDying || !items || !itemManager) return;
 
     const playerRect = player.getRect();
     // Loop backwards for safe removal
     for (let i = items.length - 1; i >= 0; i--) {
         const item = items[i];
-        if (!item || !item.isActive) continue; // Check if item is active
+        // Item must be active
+        if (!item || !item.isActive) continue;
 
         const itemRect = item.getRect();
         if (checkRectOverlap(playerRect, itemRect)) {
@@ -54,22 +65,26 @@ export function checkPlayerItemCollisions(player, items, itemManager) {
  * @param {Array<Enemy>} enemies - An array of active enemy objects.
  */
 export function checkPlayerAttackEnemyCollisions(player, enemies) {
-       // Check if player is alive, attacking, and capable of damaging enemies
-       const currentEnemyDamage = player.getCurrentAttackDamage(); // Damage vs enemies
-       if (!player || !enemies || !player.isAttacking || player.getCurrentHealth() <= 0 || currentEnemyDamage <= 0) {
-           return; // Exit if not attacking, dead, or weapon does 0 enemy damage
+       // Check if player is active, attacking, capable of damaging enemies, and NOT dying
+       const currentEnemyDamage = player?.getCurrentAttackDamage() ?? 0; // Get damage (handle null player)
+       // Add check for !player.isActive and !player.isDying
+       if (!player || !player.isActive || player.isDying || !enemies || !player.isAttacking || currentEnemyDamage <= 0) {
+           return; // Exit if player isn't capable of attacking/damaging, or is dying
        }
     const attackHitbox = player.getAttackHitbox();
-    if (!attackHitbox) return;
+    if (!attackHitbox) return; // Exit if player doesn't have a valid attack hitbox (e.g., unarmed)
 
     for (const enemy of enemies) {
-        if (!enemy || !enemy.isActive) continue;
+        // Enemy must be active and NOT dying to take damage
+        if (!enemy || !enemy.isActive || enemy.isDying) continue;
 
         if (checkRectOverlap(attackHitbox, enemy.getRect())) {
+            // Collision detected! Apply damage to enemy.
+            // Check if this enemy has already been hit by this specific attack swing
             if (!player.hasHitEnemyThisSwing(enemy)) {
                                // Use the enemy-specific damage amount
-                               enemy.takeDamage(currentEnemyDamage);
-                player.registerHitEnemy(enemy);
+                               enemy.takeDamage(currentEnemyDamage); // Enemy's takeDamage handles flashing/death transition
+                player.registerHitEnemy(enemy); // Register the hit
             }
         }
     }
@@ -82,14 +97,15 @@ export function checkPlayerAttackEnemyCollisions(player, enemies) {
  * @param {Player} player - The player object.
  */
 export function checkPlayerAttackBlockCollisions(player) {
-    // Check if player is alive, attacking, and capable of damaging blocks
-    const currentBlockDamage = player.getCurrentBlockDamage(); // Damage vs blocks
-    if (!player || !player.isAttacking || player.getCurrentHealth() <= 0 || currentBlockDamage <= 0) {
-        return; // Exit if not attacking, dead, or weapon does 0 block damage (e.g., sword/spear)
+    // Check if player is active, attacking, capable of damaging blocks, and NOT dying
+    const currentBlockDamage = player?.getCurrentBlockDamage() ?? 0; // Damage vs blocks (handle null player)
+     // Add check for !player.isActive and !player.isDying
+    if (!player || !player.isActive || player.isDying || !player.isAttacking || currentBlockDamage <= 0) {
+        return; // Exit if player isn't capable of attacking/damaging, or is dying
     }
 
     const attackHitbox = player.getAttackHitbox();
-    if (!attackHitbox) return;
+    if (!attackHitbox) return; // Exit if player doesn't have a valid attack hitbox
 
     // Determine the range of grid cells overlapped by the hitbox
     const minCol = Math.max(0, Math.floor(attackHitbox.x / Config.BLOCK_WIDTH));
@@ -122,23 +138,25 @@ export function checkPlayerAttackBlockCollisions(player) {
  * @param {Array<Enemy>} enemies - An array of active enemy objects.
  */
 export function checkPlayerEnemyCollisions(player, enemies) {
-    if (!player || !enemies || player.isInvulnerable || player.getCurrentHealth() <= 0) {
+    // Player must be active, not invulnerable, and NOT dying to take damage
+    if (!player || !player.isActive || player.isDying || player.isInvulnerable || !enemies) {
         return;
     }
 
     const playerRect = player.getRect();
     for (const enemy of enemies) {
-        if (!enemy || !enemy.isActive) continue;
+        // Enemy must be active and NOT dying to deal damage
+        if (!enemy || !enemy.isActive || enemy.isDying) continue;
 
         if (checkRectOverlap(playerRect, enemy.getRect())) {
             // Collision detected!
-            // NEW: Get the current contact damage by calling the enemy's method
+            // Get the current contact damage by calling the enemy's method
             const damageAmount = enemy.getCurrentContactDamage();
 
             // Only apply damage if the determined amount is greater than 0
             if (damageAmount > 0) {
                 // console.log(`CollisionManager: Player collided with ${enemy.displayName}. Applying ${damageAmount} damage.`);
-                player.takeDamage(damageAmount);
+                player.takeDamage(damageAmount); // Player's takeDamage handles invulnerability and death transition
 
                 // Important: Break after first hit in a frame to prevent multiple damage instances.
                 // Player's takeDamage handles invulnerability timer.
@@ -163,8 +181,8 @@ export function checkEnemyPortalCollisions(enemies, portal) {
     const portalRect = portal.getRect();
 
     for (const enemy of enemies) {
-        // Check if enemy is valid and active
-        if (!enemy || !enemy.isActive) continue;
+        // Check if enemy is valid, active, and NOT dying
+        if (!enemy || !enemy.isActive || enemy.isDying) continue;
 
         // Perform collision check
         if (checkRectOverlap(enemy.getRect(), portalRect)) {
@@ -176,7 +194,7 @@ export function checkEnemyPortalCollisions(enemies, portal) {
 
             // Only damage if the enemy actually deals base contact damage
             if (damageAmount > 0) {
-                portal.takeDamage(damageAmount);
+                portal.takeDamage(damageAmount); // Portal's takeDamage handles health reduction and death transition
                 // Optional: Add a cooldown or flag to enemy to prevent spamming damage every frame
                 // For now, simple continuous contact damage is applied.
                 // console.log(`CollisionManager: Enemy (${enemy.displayName}) collided with Portal. Applying ${damageAmount} damage.`);

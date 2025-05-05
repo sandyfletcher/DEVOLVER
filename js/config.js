@@ -53,6 +53,21 @@ export const MAX_CAMERA_SCALE = 3.0;  // max zoom level (zoom in)
 export const ZOOM_SPEED_FACTOR = 0.001; // how fast scrolling zooms
 
 // =============================================================================
+// --- Animation Parameters ---
+// =============================================================================
+
+// Enemy Death Animation
+export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // Total time for enemy death (swell + pop)
+export const ENEMY_SWELL_DURATION = 0.3; // Time for the swell part (peak reached at 0.3s)
+export const ENEMY_SWELL_SCALE = 1.5; // Max scale factor during the swell
+
+// Player Death Animation
+export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time for player death (spin + swell + pop)
+export const PLAYER_SPIN_DURATION = 1.0; // Time for the spinning part
+export const PLAYER_SPIN_FRAMES = 6; // Number of visual steps in the spin (e.g., 6 steps for 60-degree increments)
+// Swell parameters for player death will reuse enemy swell parameters
+
+// =============================================================================
 // --- Delta-Time Based Physics ---
 // =============================================================================
 

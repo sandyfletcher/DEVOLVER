@@ -39,8 +39,8 @@ let restartButtonVictory = null;
 let gameOverStatsTextP = null;
 let victoryStatsTextP = null;
 let btnToggleGrid = null;
-let btnMuteMusic = null;
-let btnMuteSfx = null;
+let muteMusicButtonEl = null;
+let muteSfxButtonEl = null;
 // --- Game State Enum ---
 const GameState = Object.freeze({
     PRE_GAME: 'PRE_GAME', // title screen
@@ -50,7 +50,6 @@ const GameState = Object.freeze({
     VICTORY: 'VICTORY' // victory screen
 });
 let currentGameState = GameState.PRE_GAME;
-// let previousWaveManagerState = null; // kept for reference, but removed from here
 let isAutoPaused = false; // boolean if paused due to losing tab visibility
 let isGridVisible = false;
 
@@ -87,7 +86,7 @@ window.updateCameraScale = function(deltaScale) {
     newScale = Math.max(effectiveMinScale, Math.min(newScale, Config.MAX_CAMERA_SCALE));
     // Apply the final clamped scale. Camera position will be re-clamped in game loop by calculateCameraPosition.
     cameraScale = newScale;
-    // console.log(`Camera Scale updated: ${oldScale.toFixed(2)} -> ${cameraScale.toFixed(2)}`); 
+    // console.log(`Camera Scale updated: ${oldScale.toFixed(2)} -> ${cameraScale.toFixed(2)}`);
 }
 // --- Convert canvas pixel coordinates to world coordinates ---
 function getMouseWorldCoords(inputMousePos) {
@@ -142,14 +141,14 @@ function toggleMusicMute() {
     const newState = AudioManager.toggleMusicMute(); // Toggle mute state in AudioManager
     console.log(`Main: Music is now ${newState ? 'muted' : 'unmuted'}.`);
     // Update UI button appearance immediately
-    UI.updateSettingsButtonStates(isGridVisible, newState, AudioManager.getSfxMutedState());
+    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
 }
 // --- Toggle SFX mute ---
 // Exposed globally for UI/Input buttons
 window.toggleSfxMute = toggleSfxMute;
 function toggleSfxMute() {
     const newState = AudioManager.toggleSfxMute(); // Toggle mute state in AudioManager
-    console.log(`Main: SFX is now ${newState ? 'muted' : 'unmuted'}.`);
+    console.log(`Main: SFX is now ${isSfxMuted ? 'muted' : 'unmuted'}.`);
     // Update UI button appearance immediately
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
 }
@@ -266,8 +265,8 @@ function startGame() {
     console.log(">>> Initializing New Game <<<");
     // --- Reset/Initialize Core Systems ---
     // Reset UI references first, as new player/portal objects will be created.
-    UI.setPlayerReference(null);
-    UI.setPortalReference(null);
+    UI.setPlayerReference(null); // Clear old reference, will be set after new player is created
+    UI.setPortalReference(null); // Clear old reference, will be set after new portal is created
 
     // Create Portal instance AFTER world, as position depends on world generation results
     const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2;
@@ -322,7 +321,6 @@ function startGame() {
     calculateInitialCamera();
     // Reset other game state variables managed by main.js
     currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Initialize portal safety radius
-    // previousWaveManagerState is now managed within waveManager.js
     isAutoPaused = false; // Reset auto-pause flag
     isGridVisible = false; // Ensure grid starts hidden on new game
     // Ensure AudioManager volumes are at default/reset on game start for game/sfx music
@@ -349,7 +347,7 @@ function startGame() {
 function pauseGame() {
     // Only pause if currently RUNNING
     if (currentGameState !== GameState.RUNNING) {
-         // console.warn("pauseGame called but game is not RUNNING."); 
+         // console.warn("pauseGame called but game is not RUNNING.");
          return;
     }
     console.log(">>> Pausing Game <<<");
@@ -365,7 +363,7 @@ function pauseGame() {
 function resumeGame() {
     // Only resume if the game is currently PAUSED
     if (currentGameState !== GameState.PAUSED) {
-         // console.warn("resumeGame called but game is not PAUSED."); 
+         // console.warn("resumeGame called but game is not PAUSED.");
          return;
     }
     console.log(">>> Resuming Game <<<");
@@ -382,12 +380,14 @@ function resumeGame() {
 
     // Restart the game loop if it's not already running
     if (!gameLoopId) {
+        // The requestAnimationFrame call is now at the top of gameLoop, so it will be called regardless of state.
+        // We just need to ensure the loop *is* running if it was cancelled (e.g. by pauseGame).
         gameLoopId = requestAnimationFrame(gameLoop);
     }
     // Note: lastTime should *not* be reset here, requestAnimationFrame will provide a correct timestamp.
 }
 
-// Handles the transition to the game over state. Triggered by gameLoop when player/portal health <= 0.
+// Handles the transition to the game over state. Triggered by gameLoop when player/portal health <= 0 or player death anim finishes.
 function handleGameOver() {
     // Prevent multiple calls if already in the GAME_OVER state
     if (currentGameState === GameState.GAME_OVER) return;
@@ -399,8 +399,8 @@ function handleGameOver() {
     WaveManager.setGameOver();
 
     // Clear all enemies and items from the game world immediately
-    EnemyManager.clearAllEnemies();
-    // Passing Infinity radius clears all items regardless of position
+    // Use Infinity radius to clear all items and enemies regardless of their state or location.
+    EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
     ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
 
     // Show the game over overlay and handle audio transitions
@@ -419,7 +419,7 @@ function handleGameOver() {
     lastTime = 0;
 }
 
-// Handles the transition to the victory state. Triggered by gameLoop when WaveManager signals all waves cleared.
+// Handles the transition to the victory state. Triggered by gameLoop when WaveManager signals all waves cleared and enemies are gone.
 function handleVictory() {
      // Prevent multiple calls if already in the VICTORY state
      if (currentGameState === GameState.VICTORY) return;
@@ -431,7 +431,7 @@ function handleVictory() {
      WaveManager.setVictory();
 
      // Clear all enemies and items
-     EnemyManager.clearAllEnemies();
+     EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
      ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
 
      // Show the victory overlay and handle audio transitions
@@ -471,129 +471,137 @@ function restartGame() {
 
 // --- Main game loop function, called by requestAnimationFrame ---
 function gameLoop(timestamp) {
-    // If the game state is not RUNNING, do not execute the game logic or request the next frame.
-    // The loop will be resumed by resumeGame or startGame.
-    if (currentGameState !== GameState.RUNNING) {
-        // The cancellation of gameLoopId is handled by pauseGame or handleGameOver/Victory.
-        // If we reach here unexpectedly while not RUNNING, something might be wrong,
-        // but the check prevents further execution of game logic.
-        // We still request the next frame if PAUSED, so the pause overlay is drawn.
-        if (currentGameState === GameState.PAUSED) {
-             gameLoopId = requestAnimationFrame(gameLoop);
-        }
-        return;
-    }
+
+    // Request the next frame *before* any state changes or logic updates.
+    // This ensures the loop continues regardless of state, allowing static PAUSED/Overlay screens to be drawn.
+    gameLoopId = requestAnimationFrame(gameLoop);
 
     // Calculate delta time (time elapsed since last frame in seconds)
     let dt;
-    if (lastTime === 0) {
-        // Special case for the first frame or after a long pause: dt is 0
+    // If lastTime is 0 or the game state is not RUNNING, set dt to 0.
+    // This prevents large jumps in timers/physics after pauses or on the first frame.
+    if (lastTime === 0 || currentGameState !== GameState.RUNNING) {
         dt = 0;
     } else {
-        // Calculate actual delta time from the timestamp provided by requestAnimationFrame
+        // Calculate actual delta time when RUNNING
         dt = (timestamp - lastTime) / 1000; // Convert milliseconds to seconds
-        // Clamp dt to prevent physics instability if frame rate drops significantly (e.g., tab switch, debugging pause)
+        // Clamp dt to prevent physics instability if frame rate drops significantly
         dt = Math.min(dt, Config.MAX_DELTA_TIME);
     }
-    // Update lastTime for the next frame's calculation
-    lastTime = timestamp;
 
-    // --- Check for Game Over/Victory Conditions ---
-    // Check if player or portal health has dropped to zero or below.
-    // These checks trigger a state change via handleGameOver/handleVictory.
-    // If a state change occurs, the functions below will return early, and the next frame won't be requested until restart/resume.
-    if (player && player.getCurrentHealth() <= 0) {
-        console.log("Main: Player health zero. Triggering Game Over.");
-        handleGameOver();
-        return; // Stop execution of this frame
-    }
-    if (portal && !portal.isAlive()) {
-        console.log("Main: Portal health zero. Triggering Game Over.");
-        handleGameOver();
-        return; // Stop execution of this frame
+    // Only update lastTime if the game is currently RUNNING.
+    // This correctly calculates dt when resuming from PAUSED.
+    if (currentGameState === GameState.RUNNING) {
+         lastTime = timestamp;
+    } else {
+         // lastTime is intentionally NOT updated if not RUNNING.
+         // When resuming, the next timestamp will be compared against the old lastTime,
+         // providing the correct duration of the pause *after* dt was 0 during the pause.
     }
 
-    // Check if WaveManager signals all waves are cleared.
-    const waveInfo = WaveManager.getWaveInfo(); // Get latest wave info *before* updating WaveManager below
-    if (waveInfo.allWavesCleared) {
-         console.log("Main: WaveManager signals all waves cleared. Triggering Victory.");
-         handleVictory();
-         return; // Stop execution of this frame
-    }
+    // --- Game Logic (Only runs if currentGameState === GameState.RUNNING) ---
+    // If the game state is not RUNNING, skip all the update logic below.
+    // Rendering and UI updates (which may depend on WaveManager state) still happen after this block.
+    if (currentGameState === GameState.RUNNING) {
+
+        // Update WaveManager in ALL states (including BUILD/WARP) so its internal timers progress.
+        // Capture the state *before* the update to detect transitions
+        const previousWaveManagerState = WaveManager.getWaveInfo().state;
+        WaveManager.update(dt, currentGameState); // Pass current game state
+        const updatedWaveInfo = WaveManager.getWaveInfo(); // Get state *after* the update
+        const currentWaveManagerState = updatedWaveInfo.state;
 
 
-    // --- Update Core Systems ---
-
-    // Update WaveManager in ALL states (including BUILD/WARP) so its internal timers progress.
-    // Capture the state *before* the update to detect transitions
-    const previousWaveManagerState = WaveManager.getWaveInfo().state;
-    WaveManager.update(dt, currentGameState); // Pass current game state
-    const updatedWaveInfo = WaveManager.getWaveInfo(); // Get state *after* the update
-    const currentWaveManagerState = updatedWaveInfo.state;
-
-
-    // Logic for increasing portal safety radius - triggered ONCE at the transition from BUILDPHASE to WARPPHASE
-    // This happens *before* aging in WARPPHASE uses the radius.
-     if (currentWaveManagerState === 'WARPPHASE' && previousWaveManagerState === 'BUILDPHASE') {
-        // Increase the safety radius based on the config value for wave progression
-        currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
-        if(portal) portal.setSafetyRadius(currentPortalSafetyRadius); // Update portal instance
-        console.log(`Main: Portal Safety Radius Increased to ${currentPortalSafetyRadius.toFixed(1)}.`);
-    }
-
-
-    // --- Update entity-related logic ONLY during states where gameplay occurs (NOT during BUILD/WARP phases) ---
-    // Determine if the game state is RUNNING *and* the wave state is conducive to gameplay.
-     // Wave states where gameplay happens: PRE_WAVE, WAVE_COUNTDOWN
-     const isGameplayActive = currentGameState === GameState.RUNNING &&
-                             (currentWaveManagerState === 'PRE_WAVE' || currentWaveManagerState === 'WAVE_COUNTDOWN');
-
-     if (isGameplayActive) {
-         // Update Player
-         if (player) {
-             const inputState = Input.getState(); // Get current input state (keyboard/touch buttons)
-             const internalMousePos = Input.getMousePosition(); // Get mouse/touch aim position (internal canvas resolution)
-             const targetWorldPos = getMouseWorldCoords(internalMousePos); // Convert aim position to world coordinates
-             const targetGridCell = getMouseGridCoords(internalMousePos); // Convert aim position to grid coordinates
-             player.update(dt, inputState, targetWorldPos, targetGridCell);
+        // Logic for increasing portal safety radius - triggered ONCE at the transition from BUILDPHASE to WARPPHASE
+        // This happens *before* aging in WARPPHASE uses the radius.
+         // WaveManager now handles triggering the cleanup/aging within its update() when entering WARPPHASE.
+         if (currentWaveManagerState === 'WARPPHASE' && previousWaveManagerState === 'BUILDPHASE') {
+            // Increase the safety radius based on the config value for wave progression
+            currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
+            if(portal) portal.setSafetyRadius(currentPortalSafetyRadius); // Update portal instance
+            console.log(`Main: Portal Safety Radius Increased to ${currentPortalSafetyRadius.toFixed(1)}.`);
+            // Trigger cleanup and aging here when entering WARPPHASE (handled in WaveManager)
+            // WaveManager.triggerWarpCleanup(); // WaveManager now calls this internally
          }
 
-         // Update Items (Items continue to update and be attracted during gameplay phases)
-         ItemManager.update(dt, player);
+        // --- Update Entities ---
+        // Entities update their positions, states, timers, animations etc.
+        // They handle their own internal logic based on isActive/isDying flags.
+        // Pass input only if player is capable of receiving it (active and not dying).
+        // Pass player ref/pos only if player is capable of interacting/being targeted.
 
-         // Update Enemies
-         // Pass player position for AI targeting (pass null if player doesn't exist)
-         EnemyManager.update(dt, player ? player.getPosition() : null);
+        // Update Player
+        if (player) {
+            // Get input state only if player is interactable
+            const inputState = player && player.isActive && !player.isDying ? Input.getState() : {}; // Check player validity and state here
+            // Get mouse/target positions always, even if player is dying (for drawing maybe, though player.draw handles it)
+            const internalMousePos = Input.getMousePosition(); // Mouse pos is always tracked by Input module
+            const targetWorldPos = getMouseWorldCoords(internalMousePos);
+            const targetGridCell = getMouseGridCoords(internalMousePos);
+            player.update(dt, inputState, targetWorldPos, targetGridCell);
+        }
 
-
-         // --- Collision Detection ---
-         // Perform collision checks *after* all entities have updated their positions and states (like `isAttacking`).
-         // Ensure entities involved in collisions exist.
-         if (player) { // Only check player collisions if player exists
-             CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager); // Player vs items (pickup)
-             CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies()); // Player attack vs enemies
-             CollisionManager.checkPlayerAttackBlockCollisions(player); // Player attack vs blocks (digging)
-             CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies()); // Player vs enemies (contact damage)
-         }
-         if (portal && portal.isAlive()) { // Only check portal collisions if portal exists and is alive
-              // Portal damage only happens if enemies collide with it.
-             CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
-         }
-     }
-     // Note: World update (water flow, potentially aging if implemented per frame) runs in ALL states.
-     World.update(dt);
-
-
-    // Calculate camera position based on the player's updated position (and clamping to world bounds)
-    // Camera follows player *only* during RUNNING state, regardless of wave phase.
-    if (currentGameState === GameState.RUNNING) { // Camera follows only when RUNNING
+        // *** ADDED/MOVED: Calculate and update camera position after player update, only if game is running ***
+        // The calculateCameraPosition function now handles the player.isActive check internally.
         calculateCameraPosition();
-    } else { // Camera is static when PAUSED, GAME_OVER, VICTORY, PRE_GAME
-        // No camera update needed here, it stays wherever it was left.
-    }
+
+        // Update Enemies
+        // Pass player position for AI targeting only if player is interactable
+        const playerPosForEnemies = (player && player.isActive && !player.isDying) ? player.getPosition() : null; // Check player validity and state here
+        // Enemies update their state even if dying (to run animation timer)
+        EnemyManager.update(dt, playerPosForEnemies);
+
+        // Update Items
+        // Pass player reference for item attraction only if player is interactable
+        const playerRefForItems = (player && player.isActive && !player.isDying) ? player : null; // Check player validity and state here
+        // Items update their state even if not attracted
+        ItemManager.update(dt, playerRefForItems);
+
+        // World update (water flow, aging triggered by WaveManager)
+        World.update(dt);
+
+
+        // --- Collision Detection (Only happens if RUNNING) ---
+        // Collision checks occur *after* entity positions and states (like isAttacking, isDying) are updated.
+        // CollisionManager functions themselves check if entities are !isDying before applying damage or interaction.
+        if (player) { // Only check player collisions if player object exists (checks !player.isActive, !player.isDying internally)
+            CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager); // Player vs items (pickup)
+            CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies()); // Player attack vs enemies
+            CollisionManager.checkPlayerAttackBlockCollisions(player); // Player attack vs blocks (digging)
+            CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies()); // Player vs enemies (contact damage)
+        }
+        // Check enemy collisions with portal if portal exists and is alive
+        if (portal && portal.isAlive()) {
+             CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
+        }
+
+        // --- Check for Game Over/Victory Conditions (After all updates and collisions) ---
+        // Check if player is *no longer active* (meaning their death animation has finished).
+        if (player && !player.isActive) {
+            console.log("Main: Player inactive (death animation finished). Triggering Game Over.");
+            handleGameOver();
+            // No return needed; the next frame's check will cause it to exit the logic section.
+        }
+        // Check if the portal has been destroyed.
+        if (portal && portal.isAlive && !portal.isAlive()) { // Add check for portal.isAlive existence first
+            console.log("Main: Portal health zero. Triggering Game Over.");
+            handleGameOver();
+            // No return needed.
+        }
+
+        // Check if WaveManager signals all waves are cleared AND there are no *living* enemies remaining.
+        const livingEnemies = EnemyManager.getLivingEnemyCount(); // This correctly excludes enemies currently in dying animation
+        if (updatedWaveInfo.allWavesCleared && livingEnemies === 0) {
+             console.log("Main: WaveManager signals all waves cleared and no living enemies remaining. Triggering Victory.");
+             handleVictory();
+             // No return needed.
+        }
+
+    } // --- End of Game Logic (Runs only if currentGameState === GameState.RUNNING) ---
 
 
     // --- Rendering ---
+    // Rendering happens regardless of the RUNNING state, allowing static PAUSED/Overlay screens to be drawn.
     Renderer.clear(); // Clear the main canvas and fill with background color
     const mainCtx = Renderer.getContext(); // Get the 2D rendering context
 
@@ -608,11 +616,9 @@ function gameLoop(timestamp) {
     // Draw debug grid if enabled (draws directly onto the main canvas)
     GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
 
-    // Draw dynamic entities and elements ONLY during active gameplay or specific phases
-     // Draw items during BUILDPHASE too, as they might be picked up then.
-     if (isGameplayActive || currentWaveManagerState === 'BUILDPHASE') {
-         ItemManager.draw(mainCtx);
-     }
+    // Draw dynamic entities and elements
+    // Draw items (Items should be drawn regardless of wave state if present)
+    ItemManager.draw(mainCtx);
 
     // Draw portal (always draw if exists and not destroyed)
     if (portal) {
@@ -621,34 +627,41 @@ function gameLoop(timestamp) {
          portal.draw(mainCtx);
     }
 
-    // Draw enemies ONLY during active gameplay (NOT BUILDPHASE or WARPPHASE)
-     if (isGameplayActive) { // Only draw enemies during PRE_WAVE and WAVE_COUNTDOWN
-         EnemyManager.draw(mainCtx);
-     }
+    // Draw enemies (Draw if active OR dying - Enemy.draw handles this internally)
+    // Draw enemies regardless of RUNNING state, if they exist and are dying/active for animation
+    EnemyManager.draw(mainCtx);
 
 
-    // Draw player and their visual elements (always draw player if exists and game isn't over/victory)
-     // Draw player during RUNNING, PAUSED, PRE_GAME states
-     if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {
-         player.draw(mainCtx);
-         // Draw ghost block ONLY during active gameplay and if material is selected
-          if (isGameplayActive && player.isMaterialSelected()) {
+    // Draw player and their visual elements (Draw if active OR dying - Player.draw handles this internally)
+    // Draw player regardless of RUNNING state (except GAME_OVER/VICTORY where player object might be null or irrelevant)
+    if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {
+         player.draw(mainCtx); // player.draw handles isActive/isDying internally
+
+         // Draw ghost block ONLY during active gameplay phases and if material is selected AND player is interactable
+         const waveInfoAtDraw = WaveManager.getWaveInfo(); // Get current wave state info for rendering decisions
+         const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
+         const isGameplayActiveAtDraw = currentWaveManagerStateAtDraw === 'PRE_WAVE' || currentWaveManagerStateAtDraw === 'WAVE_COUNTDOWN';
+         // Check player validity and state again before drawing ghost block
+         const playerIsInteractableAtDraw = player && player.isActive && !player.isDying;
+
+         // Ghost block requires player to be interactive (alive, not dying) AND in a gameplay active phase AND a material is selected
+         if (playerIsInteractableAtDraw && isGameplayActiveAtDraw && player.isMaterialSelected()) {
               player.drawGhostBlock(mainCtx);
-          }
-     }
+         }
+    }
 
     mainCtx.restore(); // Restore context state (important for UI drawing etc.)
 
 
     // --- UI Updates ---
-    // Only update UI elements if the UI system was successfully initialized.
+    // UI updates should run every frame regardless of RUNNING state to reflect timers, health, etc.
     if (UI.isInitialized()) {
         // Update player-related UI (health bar, inventory, weapon slots)
-        // Pass player info if player exists, otherwise zeros/empty states
-        const playerExists = !!player;
+        // Pass player info even if player is dying or inactive so UI can show 0 health
+        const playerExists = !!player; // Check if player object exists
         UI.updatePlayerInfo(
             playerExists ? player.getCurrentHealth() : 0,
-            playerExists ? player.getMaxHealth() : Config.PLAYER_MAX_HEALTH_DISPLAY, // Use config default if no player
+            playerExists ? player.getMaxHealth() : Config.PLAYER_MAX_HEALTH_DISPLAY,
             playerExists ? player.getInventory() : {},
             playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SWORD) : false,
             playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SPEAR) : false,
@@ -656,31 +669,24 @@ function gameLoop(timestamp) {
         );
 
         // Update portal-related UI (health bar)
-        const portalExists = !!portal;
+        const portalExists = !!portal; // Check if portal object exists
         UI.updatePortalInfo(
             portalExists ? portal.currentHealth : 0,
-            portalExists ? portal.maxHealth : Config.PORTAL_INITIAL_HEALTH // Use config default if no portal
+            portalExists ? portal.maxHealth : Config.PORTAL_INITIAL_HEALTH
         );
 
         // Update wave timer and info based on the latest wave state
-        UI.updateWaveTimer(updatedWaveInfo);
+        UI.updateWaveTimer(WaveManager.getWaveInfo()); // Always update UI timer based on latest info
 
         // Settings button states are updated by their toggle functions or game start/reset
-        // UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
-
-        // --- Handle Epoch/Warp Overlay Display ---
-        // The epoch overlay is handled by UI.showEpochText which is called by handleWaveStart (on WAVE_COUNTDOWN start)
-        // and by triggerWarpCleanup (on WARPPHASE start).
+        // UI.updateSettingsButtonStates(...)
      } else {
         // console.error("UI not initialized, skipping UI updates."); // Keep console less noisy
      }
 
 
-    // Request the next frame only if game state is RUNNING or PAUSED
-    // This allows the PAUSED state to continue rendering the static overlay and background.
-    if (currentGameState === GameState.RUNNING || currentGameState === GameState.PAUSED) {
-        gameLoopId = requestAnimationFrame(gameLoop);
-    }
+    // The recursive requestAnimationFrame call is at the very top of the function.
+    // If we reach here, the next frame has already been requested.
 }
 
 
@@ -715,11 +721,11 @@ function calculateInitialCamera() {
         const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
 
         // Clamp the target camera position to stay within the valid world bounds.
-        cameraX = Math.max(0, Math.min(targetX, maxCameraX));
+        cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
         cameraY = Math.max(0, Math.min(targetY, maxCameraY));
 
         // --- Center Camera If World is Smaller Than Viewport ---
-        // If the world is narrower than the visible area at the current scale, center the camera horizontally.
+        // If the world is narrower than the visible area, center the camera horizontally.
         if (worldPixelWidth <= visibleWorldWidth) {
              cameraX = (worldPixelWidth - visibleWorldWidth) / 2;
         }
@@ -727,66 +733,70 @@ function calculateInitialCamera() {
         if (worldPixelHeight <= visibleWorldHeight) {
              cameraY = (worldPixelHeight - visibleWorldHeight) / 2;
         }
-        // console.log(`Initial Camera Set: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)}) @ scale ${cameraScale.toFixed(2)}`); 
-    }
+        // console.log(`Initial Camera Set: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)}) @ scale ${cameraScale.toFixed(2)}`);
+     }
      else {
          // If no player exists (e.g., on initial load or after game over), set default camera state (top-left corner, scale 1).
          cameraX = 0;
          cameraY = 0;
          cameraScale = 1.0;
-         // console.log("Initial Camera Set: Player not found, defaulting camera to (0,0) @ scale 1.0"); 
+         // console.log("Initial Camera Set: Player not found, defaulting camera to (0,0) @ scale 1.0");
      }
 }
 
 // Updates the camera position during gameplay, following the player and clamping to bounds.
-// Called every frame during the RUNNING state.
+// Called every frame DURING THE RUNNING STATE, AFTER entity updates.
 function calculateCameraPosition() {
-     // Update camera only if player exists and game is in a state where camera should follow player (e.g., RUNNING)
-     // Note: Camera is static in PAUSED, GAME_OVER, VICTORY states.
-     if (player && currentGameState === GameState.RUNNING) {
-        const viewWidth = Config.CANVAS_WIDTH; // Internal canvas width
-        const viewHeight = Config.CANVAS_HEIGHT; // Internal canvas height
-
-        // Calculate the visible area of the world at the current camera scale.
-        const visibleWorldWidth = viewWidth / cameraScale;
-        const visibleWorldHeight = viewHeight / cameraScale;
-
-        // Calculate the target camera position to center the view on the player's center.
-        const playerCenterX = player.x + player.width / 2;
-        const playerCenterY = player.y + player.height / 2;
-        let targetX = playerCenterX - (visibleWorldWidth / 2);
-        let targetY = playerCenterY - (visibleWorldHeight / 2);
-
-        // For now, the camera directly follows the player. Add smooth lerping here later if desired.
-        cameraX = targetX;
-        cameraY = targetY;
-
-        // --- Clamp Camera Position to World Boundaries ---
-        // Calculate the actual size of the world in pixels.
-        const worldPixelWidth = getWorldPixelWidth();
-        const worldPixelHeight = getWorldPixelHeight();
-
-        // Determine the maximum scroll position.
-        const maxCameraX = Math.max(0, worldPixelWidth - visibleWorldWidth);
-        const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
-
-        // Clamp the camera position to stay within the valid world bounds.
-        cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
-        cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
-
-        // --- Center Camera If World is Smaller Than Viewport ---
-        // If the world is narrower than the visible area, center the camera horizontally.
-        if (worldPixelWidth <= visibleWorldWidth) {
-             cameraX = (worldPixelWidth - visibleWorldWidth) / 2;
-        }
-        // If the world is shorter than the visible area, center the camera vertically.
-        if (worldPixelHeight <= visibleWorldHeight) {
-             cameraY = (worldPixelHeight - visibleWorldHeight) / 2;
-        }
-         // console.log(`Camera Pos: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)})`); // Too noisy
+    // *** MODIFIED: Only calculate if player object exists AND is active ***
+    // The camera should follow during the dying animation (isActive is still true).
+    // It should stop following once isActive is false (death animation finished).
+    if (!player || !player.isActive) {
+         // If player is not active, the camera should stop following.
+         // Its position remains whatever it was in the last frame player was active.
+         // console.log("calculateCameraPosition: Player not active, camera not following.");
+         return; // Stop execution of the function if player is not active
     }
-    // If player doesn't exist, camera position/scale remains at its last or initial state.
-    // If game state is GAME_OVER or VICTORY, camera also remains static.
+
+    const viewWidth = Config.CANVAS_WIDTH; // Internal canvas width
+    const viewHeight = Config.CANVAS_HEIGHT; // Internal canvas height
+
+    // Calculate the visible area of the world at the current camera scale.
+    const visibleWorldWidth = viewWidth / cameraScale;
+    const visibleWorldHeight = viewHeight / cameraScale;
+
+    // Calculate the target camera position to center the view on the player's center.
+    const playerCenterX = player.x + player.width / 2;
+    const playerCenterY = player.y + player.height / 2;
+    let targetX = playerCenterX - (visibleWorldWidth / 2);
+    let targetY = playerCenterY - (visibleWorldHeight / 2);
+
+    // For now, the camera directly follows the player. Add smooth lerping here later if desired.
+    cameraX = targetX;
+    cameraY = targetY;
+
+    // --- Clamp Camera Position to World Boundaries ---
+    // Calculate the actual size of the world in pixels.
+    const worldPixelWidth = getWorldPixelWidth();
+    const worldPixelHeight = getWorldPixelHeight();
+
+    // Determine the maximum scroll position.
+    const maxCameraX = Math.max(0, worldPixelWidth - visibleWorldWidth);
+    const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
+
+    // Clamp the camera position to stay within the valid world bounds.
+    cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
+    cameraY = Math.max(0, Math.min(targetY, maxCameraY));
+
+    // --- Center Camera If World is Smaller Than Viewport ---
+    // If the world is narrower than the visible area, center the camera horizontally.
+    if (worldPixelWidth <= visibleWorldWidth) {
+         cameraX = (worldPixelWidth - visibleWorldWidth) / 2;
+    }
+    // If the world is shorter than the visible area, center the camera vertically.
+    if (worldPixelHeight <= visibleWorldHeight) {
+         cameraY = (worldPixelHeight - visibleWorldHeight) / 2;
+    }
+     // console.log(`Camera Pos: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)})`); // Too noisy
 }
 
 // --- Initialization Function ---
@@ -811,8 +821,8 @@ function init() {
 
         // Get Settings Button References
         btnToggleGrid = document.getElementById('btn-toggle-grid');
-        btnMuteMusic = document.getElementById('btn-mute-music');
-        btnMuteSfx = document.getElementById('btn-mute-sfx');
+        muteMusicButtonEl = document.getElementById('btn-mute-music');
+        muteSfxButtonEl = document.getElementById('btn-mute-sfx');
 
         // --- Verify Essential DOM Elements Are Found ---
         // Combine all required elements for a single check.
@@ -820,7 +830,7 @@ function init() {
              appContainer, gameOverlay,
              startGameButton, resumeButton, restartButtonGameOver, restartButtonVictory,
              gameOverStatsTextP, victoryStatsTextP,
-             btnToggleGrid, btnMuteMusic, btnMuteSfx // Include settings buttons
+             btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl // Include settings buttons (using correct variable names now)
         ];
 
         // Use `some()` to check if *any* element in the list is missing.
@@ -831,7 +841,7 @@ function init() {
                  'startGameButton (#start-game-button)', 'resumeButton (#resume-button)',
                  'restartButtonGameOver (#restart-button-overlay)', 'restartButtonVictory (#restart-button-overlay-victory)',
                  'gameOverStatsTextP (#gameover-stats-text)', 'victoryStatsTextP (#victory-stats-text)',
-                 'btnToggleGrid (#btn-toggle-grid)', 'btnMuteMusic (#btn-mute-music)', 'btnMuteSfx (#btn-mute-sfx)' // Names for settings buttons
+                 'btnToggleGrid (#btn-toggle-grid)', 'muteMusicButtonEl (#btn-mute-music)', 'muteSfxButtonEl (#btn-mute-sfx)' // Names for settings buttons
              ];
              const missing = requiredElements
                  .map((el, i) => el ? null : elementNames[i])
@@ -851,8 +861,8 @@ function init() {
         // Setup Event Listeners for Settings Buttons (NEW)
         // These listeners call the corresponding toggle functions defined above.
         btnToggleGrid.addEventListener('click', toggleGridDisplay);
-        btnMuteMusic.addEventListener('click', toggleMusicMute);
-        btnMuteSfx.addEventListener('click', toggleSfxMute);
+        muteMusicButtonEl.addEventListener('click', toggleMusicMute);
+        muteSfxButtonEl.addEventListener('click', toggleSfxMute);
 
 
         // --- Initialize Core Systems that DON'T Depend on Game Objects (Player, Portal) ---
@@ -881,7 +891,6 @@ function init() {
         // --- Initialize Module-Level State Variables ---
         // These variables manage the global state within main.js.
         lastTime = 0; // Critical for the first dt calculation in the game loop.
-        // previousWaveManagerState is now managed within waveManager.js
         currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Manages the portal's dynamic safety radius.
         isAutoPaused = false; // Flag to track if the game was paused automatically due to visibility change.
         isGridVisible = false; // Initial state for the debug grid (hidden).
