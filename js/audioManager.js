@@ -67,7 +67,7 @@ export function setVolume(type, volume) {
             if (gameMusicAudio && !isMusicMuted) { // Only apply if not muted
                  gameMusicAudio.volume = gameVolume;
             }
-            // console.log(`AudioManager: Game volume set to ${gameVolume.toFixed(2)}`); 
+            // console.log(`AudioManager: Game volume set to ${gameVolume.toFixed(2)}`);
             break;
         case 'ui':
             uiVolume = clampedVolume;
@@ -75,7 +75,7 @@ export function setVolume(type, volume) {
             if (uiMusicAudio && !isMusicMuted) { // Only apply if not muted
                  uiMusicAudio.volume = uiVolume;
             }
-            // console.log(`AudioManager: UI volume set to ${uiVolume.toFixed(2)}`); 
+            // console.log(`AudioManager: UI volume set to ${uiVolume.toFixed(2)}`);
             break;
         case 'sfx':
             sfxVolume = clampedVolume;
@@ -83,7 +83,7 @@ export function setVolume(type, volume) {
             if (!isSfxMuted) { // Only apply if not muted
                 sfxAudioPool.forEach(sfx => sfx.volume = sfxVolume);
             }
-            // console.log(`AudioManager: SFX volume set to ${sfxVolume.toFixed(2)}`); 
+            // console.log(`AudioManager: SFX volume set to ${sfxVolume.toFixed(2)}`);
             break;
         case 'master':
             // This would require scaling the individual volumes
@@ -186,7 +186,7 @@ export function playGameMusic(trackPath) {
             gameMusicAudio.volume = isMusicMuted ? 0 : gameVolume;
         });
     } else {
-         // console.log("AudioManager: gameMusicAudio.play() did not return a promise."); 
+         // console.log("AudioManager: gameMusicAudio.play() did not return a promise.");
          // Ensure volume is still correct if muted:
          gameMusicAudio.volume = isMusicMuted ? 0 : gameVolume;
     }
@@ -195,7 +195,7 @@ export function playGameMusic(trackPath) {
 
 // Plays a specific UI/Menu music track. Pauses game music if currently playing.
 export function playUIMusic(trackPath) {
-    // console.log(`AudioManager: Requesting to play UI music: ${trackPath}`); 
+    // console.log(`AudioManager: Requesting to play UI music: ${trackPath}`);
     if (!uiMusicAudio || !gameMusicAudio) {
          console.error("AudioManager: playUIMusic failed, audio elements not ready.");
         return;
@@ -203,13 +203,13 @@ export function playUIMusic(trackPath) {
 
     // If game music is currently playing (not paused and has started), pause it.
     if (gameMusicAudio && !gameMusicAudio.paused && gameMusicAudio.currentTime > 0) {
-        // console.log(`AudioManager: Game music is playing. Pausing game music before starting UI music.`); 
+        // console.log(`AudioManager: Game music is playing. Pausing game music before starting UI music.`);
         pauseGameMusic(); // Use the simplified pause function
     }
 
     // If no track path is provided, stop current UI music.
     if (!trackPath) {
-         // console.log("AudioManager: Empty trackPath provided for UI music, stopping current UI music."); 
+         // console.log("AudioManager: Empty trackPath provided for UI music, stopping current UI music.");
         stopUIMusic(); // This logs its action internally
         return;
     }
@@ -219,13 +219,13 @@ export function playUIMusic(trackPath) {
 
     if (uiMusicAudio.src === trackUrl && uiMusicAudio.currentTime > 0 && !uiMusicAudio.ended) {
         // It's the same UI track and it's been played.
-        // console.log(`AudioManager: UI music track ${trackPath} is already the current track.`); 
+        // console.log(`AudioManager: UI music track ${trackPath} is already the current track.`);
          // If it's the same track, ensure it's playing/unpaused, respecting mute state.
          if (uiMusicAudio.paused) {
-             // console.log(`AudioManager: Current UI track ${trackPath} is paused, attempting to unpause.`); 
+             // console.log(`AudioManager: Current UI track ${trackPath} is paused, attempting to unpause.`);
              resumeUIMusic(); // Use the existing UI resume function (handles mute internally)
          } else {
-             // console.log(`AudioManager: Current UI track ${trackPath} is already playing.`); 
+             // console.log(`AudioManager: Current UI track ${trackPath} is already playing.`);
               // Ensure volume is correct (applies mute state)
              uiMusicAudio.volume = isMusicMuted ? 0 : uiVolume;
          }
@@ -233,7 +233,7 @@ export function playUIMusic(trackPath) {
     }
 
     // New UI track requested, stop current UI music before loading.
-    // console.log("AudioManager: New UI music track requested, stopping current UI music."); 
+    // console.log("AudioManager: New UI music track requested, stopping current UI music.");
     stopUIMusic();
 
     // Set the new UI track source and attempt to play.
@@ -241,12 +241,12 @@ export function playUIMusic(trackPath) {
     currentUITrackPath = trackPath;
     uiMusicAudio.volume = isMusicMuted ? 0 : uiVolume; // Set volume *before* play attempt
 
-    // console.log(`AudioManager: UI music source set to ${trackPath}. Attempting to play...`); 
+    // console.log(`AudioManager: UI music source set to ${trackPath}. Attempting to play...`);
 
     const playPromise = uiMusicAudio.play();
     if (playPromise !== undefined) {
         playPromise.then(() => {
-            // console.log(`AudioManager: UI music playback started successfully: ${trackPath}`); 
+            // console.log(`AudioManager: UI music playback started successfully: ${trackPath}`);
         }).catch(error => {
             console.warn(`AudioManager: UI music playback blocked for ${trackPath}:`, error);
             // UI music will start when a subsequent user gesture occurs *and* playUIMusic is called again.
@@ -254,7 +254,7 @@ export function playUIMusic(trackPath) {
              uiMusicAudio.volume = isMusicMuted ? 0 : uiVolume;
         });
     } else {
-        // console.log("AudioManager: uiMusicAudio.play() did not return a promise."); 
+        // console.log("AudioManager: uiMusicAudio.play() did not return a promise.");
          // Ensure volume is still correct if muted:
          uiMusicAudio.volume = isMusicMuted ? 0 : uiVolume;
     }
@@ -263,13 +263,13 @@ export function playUIMusic(trackPath) {
 
 /** Stops the current game music track and resets playback time. */
 export function stopGameMusic() {
-    // console.log(`AudioManager: Stopping game music. Current track: ${currentGameTrackPath}`); 
+    // console.log(`AudioManager: Stopping game music. Current track: ${currentGameTrackPath}`);
     if (gameMusicAudio) {
         gameMusicAudio.pause();
         gameMusicAudio.currentTime = 0;
         const stoppedTrack = currentGameTrackPath; // Store before nulling
         currentGameTrackPath = null;
-        // console.log(`AudioManager: Game music stopped. Track "${stoppedTrack}" reset.`); 
+        // console.log(`AudioManager: Game music stopped. Track "${stoppedTrack}" reset.`);
     } else {
         console.warn("AudioManager: stopGameMusic called but gameMusicAudio is null.");
     }
@@ -277,12 +277,12 @@ export function stopGameMusic() {
 
 /** Pauses the current game music track. */
 export function pauseGameMusic() {
-    // console.log(`AudioManager: Pausing game music. Current track: ${currentGameTrackPath}, Time: ${gameMusicAudio?.currentTime?.toFixed(2) ?? 'N/A'}`); 
+    // console.log(`AudioManager: Pausing game music. Current track: ${currentGameTrackPath}, Time: ${gameMusicAudio?.currentTime?.toFixed(2) ?? 'N/A'}`);
     if (gameMusicAudio && !gameMusicAudio.paused) {
         gameMusicAudio.pause();
-        // console.log(`AudioManager: Game music paused. Track "${currentGameTrackPath}" at ${gameMusicAudio.currentTime.toFixed(2)}s.`); 
+        // console.log(`AudioManager: Game music paused. Track "${currentGameTrackPath}" at ${gameMusicAudio.currentTime.toFixed(2)}s.`);
     } else {
-        // console.log("AudioManager: pauseGameMusic called but game music was already paused or null."); 
+        // console.log("AudioManager: pauseGameMusic called but game music was already paused or null.");
     }
 }
 
@@ -292,17 +292,17 @@ export function pauseGameMusic() {
  */
 // Renamed from resumeGameMusic for clarity - it unpauses, it doesn't "resume the game".
 export function unpauseGameMusic() {
-    // console.log(`AudioManager: Attempting to unpause game music. Paused: ${gameMusicAudio?.paused}, Track: ${currentGameTrackPath}, Muted: ${isMusicMuted}`); 
+    // console.log(`AudioManager: Attempting to unpause game music. Paused: ${gameMusicAudio?.paused}, Track: ${currentGameTrackPath}, Muted: ${isMusicMuted}`);
      // Check if there's an audio element, a track source is set, and it's currently paused.
      if (gameMusicAudio && currentGameTrackPath && gameMusicAudio.paused) {
-         // console.log(`AudioManager: Conditions met for unpausing game music. Attempting to play "${currentGameTrackPath}" from ${gameMusicAudio.currentTime.toFixed(2)}s...`); 
+         // console.log(`AudioManager: Conditions met for unpausing game music. Attempting to play "${currentGameTrackPath}" from ${gameMusicAudio.currentTime.toFixed(2)}s...`);
         // Ensure the volume is set correctly *before* calling play, which respects the mute state.
         gameMusicAudio.volume = isMusicMuted ? 0 : gameVolume; // Apply the correct volume based on mute state
 
         const playPromise = gameMusicAudio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                // console.log(`AudioManager: Game music unpaused successfully: ${currentGameTrackPath}`); 
+                // console.log(`AudioManager: Game music unpaused successfully: ${currentGameTrackPath}`);
             }).catch(error => {
                 console.warn(`AudioManager: Game music unpause blocked for ${currentGameTrackPath}:`, error);
                  // If playback is blocked (e.g., no user gesture), the element will remain paused.
@@ -310,12 +310,12 @@ export function unpauseGameMusic() {
                  gameMusicAudio.volume = isMusicMuted ? 0 : gameVolume;
             });
         } else {
-             // console.log("AudioManager: gameMusicAudio.play() did not return a promise during unpause attempt."); 
+             // console.log("AudioManager: gameMusicAudio.play() did not return a promise during unpause attempt.");
              // Ensure volume is still 0 if it became muted
              gameMusicAudio.volume = isMusicMuted ? 0 : gameVolume;
         }
     } else {
-         // console.log("AudioManager: Game music not unpaused (conditions not met)."); 
+         // console.log("AudioManager: Game music not unpaused (conditions not met).");
          // If music is muted, ensure the volume is 0 even if it wasn't paused but just had volume set to 0
          // (e.g. if setVolume was called with 0 while muted, or if paused while muted).
          if (gameMusicAudio && isMusicMuted) {
@@ -328,13 +328,13 @@ export function unpauseGameMusic() {
 
 /** Stops the current UI/Menu music track and resets playback time. */
 export function stopUIMusic() {
-    // console.log(`AudioManager: Stopping UI music. Current track: ${currentUITrackPath}`); 
+    // console.log(`AudioManager: Stopping UI music. Current track: ${currentUITrackPath}`);
     if (uiMusicAudio) {
         uiMusicAudio.pause();
         uiMusicAudio.currentTime = 0;
         const stoppedTrack = currentUITrackPath; // Store before nulling
         currentUITrackPath = null;
-        // console.log(`AudioManager: UI music stopped. Track "${stoppedTrack}" reset.`); 
+        // console.log(`AudioManager: UI music stopped. Track "${stoppedTrack}" reset.`);
     } else {
         console.warn("AudioManager: stopUIMusic called but uiMusicAudio is null.");
     }
@@ -342,40 +342,40 @@ export function stopUIMusic() {
 
 /** Pauses the current UI/Menu music track. */
 export function pauseUIMusic() {
-     // console.log(`AudioManager: Pausing UI music. Current track: ${currentUITrackPath}, Time: ${uiMusicAudio?.currentTime?.toFixed(2) ?? 'N/A'}`); 
+     // console.log(`AudioManager: Pausing UI music. Current track: ${currentUITrackPath}, Time: ${uiMusicAudio?.currentTime?.toFixed(2) ?? 'N/A'}`);
      if (uiMusicAudio && !uiMusicAudio.paused) {
         uiMusicAudio.pause();
-        // console.log(`AudioManager: UI music paused. Track "${currentUITrackPath}" at ${uiMusicAudio.currentTime.toFixed(2)}s.`); 
+        // console.log(`AudioManager: UI music paused. Track "${currentUITrackPath}" at ${uiMusicAudio.currentTime.toFixed(2)}s.`);
     } else {
-        // console.log("AudioManager: pauseUIMusic called but UI music was already paused or null."); 
+        // console.log("AudioManager: pauseUIMusic called but UI music was already paused or null.");
     }
 }
 
 /** Resumes the paused UI/Menu music track. */
 export function resumeUIMusic() {
-    // console.log(`AudioManager: Attempting to resume UI music. paused=${uiMusicAudio?.paused}, track=${currentUITrackPath}, Muted: ${isMusicMuted}`); 
+    // console.log(`AudioManager: Attempting to resume UI music. paused=${uiMusicAudio?.paused}, track=${currentUITrackPath}, Muted: ${isMusicMuted}`);
      // REMOVED the !isMusicMuted check from this main IF condition.
      if (uiMusicAudio && uiMusicAudio.paused && currentUITrackPath) {
-         // console.log(`AudioManager: Conditions met for resuming UI music. Attempting to play "${currentUITrackPath}" from ${uiMusicAudio.currentTime.toFixed(2)}s...`); 
+         // console.log(`AudioManager: Conditions met for resuming UI music. Attempting to play "${currentUITrackPath}" from ${uiMusicAudio.currentTime.toFixed(2)}s...`);
         // Ensure the volume is set correctly *before* calling play, which respects the mute state.
         uiMusicAudio.volume = isMusicMuted ? 0 : uiVolume; // Apply the correct volume based on mute state
 
         const playPromise = uiMusicAudio.play();
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                // console.log(`AudioManager: UI music resumed successfully: ${currentUITrackPath}`); 
+                // console.log(`AudioManager: UI music resumed successfully: ${currentUITrackPath}`);
             }).catch(error => {
                 console.warn(`AudioManager: UI music resume blocked for ${currentUITrackPath}:`, error);
                 // Ensure volume is still 0 if it became muted right after calling play()
                  uiMusicAudio.volume = isMusicMuted ? 0 : uiVolume;
             });
         } else {
-             // console.log("AudioManager: uiMusicAudio.play() did not return a promise during resume attempt."); 
+             // console.log("AudioManager: uiMusicAudio.play() did not return a promise during resume attempt.");
               // Ensure volume is still 0 if it became muted
               uiMusicAudio.volume = isMusicMuted ? 0 : uiVolume;
         }
     } else {
-         // console.log("AudioManager: UI music not resumed (conditions not met)."); 
+         // console.log("AudioManager: UI music not resumed (conditions not met).");
          // If music is muted, ensure the volume is 0 even if it wasn't paused but just had volume set to 0
          if (uiMusicAudio && isMusicMuted) {
              uiMusicAudio.volume = 0;
@@ -385,7 +385,7 @@ export function resumeUIMusic() {
 
 /** Stops ALL music (both game and UI). */
 export function stopAllMusic() {
-    // console.log("AudioManager: Stopping all music."); 
+    // console.log("AudioManager: Stopping all music.");
     stopGameMusic(); // This logs its action
     stopUIMusic();   // This logs its action
 }
@@ -394,12 +394,12 @@ export function stopAllMusic() {
 export function playSound(sfxPath, volume = sfxVolume) {
     // ADDED: Check if SFX is muted before attempting to play
     if (isSfxMuted) {
-        // console.log(`AudioManager: SFX muted, skipping play: ${sfxPath}`); 
+        // console.log(`AudioManager: SFX muted, skipping play: ${sfxPath}`);
         return;
     }
 
     if (!sfxPath || !sfxAudioPool.length) {
-        // console.warn(`AudioManager: playSound called with invalid path or empty pool: ${sfxPath}`); 
+        // console.warn(`AudioManager: playSound called with invalid path or empty pool: ${sfxPath}`);
         return;
     }
     // Find an available audio element (paused or ended)
@@ -413,7 +413,7 @@ export function playSound(sfxPath, volume = sfxVolume) {
         // If the source is different or not set, update it
         if (!availableSfx.src || availableSfx.src !== sfxUrl) {
              availableSfx.src = sfxPath; // Set src using the potentially relative path
-             // console.log(`AudioManager: SFX pool element source set to ${sfxPath}`); 
+             // console.log(`AudioManager: SFX pool element source set to ${sfxPath}`);
         }
 
         // Ensure volume is set, respecting the global sfxVolume (which respects mute state if called externally)
@@ -426,7 +426,7 @@ export function playSound(sfxPath, volume = sfxVolume) {
         const playPromise = availableSfx.play();
          if (playPromise !== undefined) {
             playPromise.then(() => {
-                // console.log(`AudioManager: Playing SFX: ${sfxPath}`); 
+                // console.log(`AudioManager: Playing SFX: ${sfxPath}`);
             }).catch(error => {
                  // This is less likely for short SFX triggered by direct input,
                  // but can happen. Log it.
@@ -436,12 +436,12 @@ export function playSound(sfxPath, volume = sfxVolume) {
                 if (isSfxMuted) availableSfx.volume = 0;
             });
         } else {
-             // console.log("AudioManager: SFX play() did not return a promise."); 
+             // console.log("AudioManager: SFX play() did not return a promise.");
               if (isSfxMuted) availableSfx.volume = 0;
         }
 
     } else {
-        // console.warn(`AudioManager: SFX pool exhausted. Could not play ${sfxPath}`); 
+        // console.warn(`AudioManager: SFX pool exhausted. Could not play ${sfxPath}`);
     }
 }
 
