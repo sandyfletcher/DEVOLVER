@@ -9,6 +9,9 @@ import { PerlinNoise } from './utils/noise.js'; // Import noise utility
 import * as WorldData from './utils/worldData.js'; // Import world data access
 import * as GridCollision from './utils/gridCollision.js'; // Import solid checks, hasSolidNeighbor
 import { createBlock } from './utils/block.js'; // Import createBlock
+// NEW: Import WorldManager for water simulation interaction
+import * as WorldManager from './worldManager.js'; // Import WorldManager
+
 
 // --- Module State ---
 let agingNoiseGenerator = null; // dedicated noise instance for aging
@@ -69,18 +72,35 @@ function getWaterDepthAbove(c, r) {
     return depth;
 }
 
+// NEW: Helper function to queue changed cells and their neighbors for water updates
+function queueWaterCandidatesAroundChange(c, r) {
+    let candidateAdded = false;
+    // Add the changed cell itself
+    candidateAdded = WorldManager.addWaterUpdateCandidate(c, r) || candidateAdded;
+    // Add cardinal neighbors
+    candidateAdded = WorldManager.addWaterUpdateCandidate(c, r - 1) || candidateAdded;
+    candidateAdded = WorldManager.addWaterUpdateCandidate(c, r + 1) || candidateAdded;
+    candidateAdded = WorldManager.addWaterUpdateCandidate(c - 1, r) || candidateAdded;
+    candidateAdded = WorldManager.addWaterUpdateCandidate(c + 1, r) || candidateAdded;
+
+    // If any candidate was added, reset the water timer to trigger an immediate update
+    if (candidateAdded) {
+        WorldManager.resetWaterPropagationTimer();
+    }
+}
+
 
 // --- Main Aging Function ---
 /**
  * Applies aging effects (erosion, growth, stoneification, etc.) to the world grid.
  * Aging is probabilistic and influenced by intensity, environment.
  * Protected radius around the portal is applied *only if* portalRef is provided.
- * Does NOT update visuals or water queue directly, but returns list of changed cells.
+ * Returns list of coordinates {c, r} that were changed by aging (for static world visual updates).
  * @param {Portal | null} portalRef - Reference to the Portal instance (or null if none).
  * @param {number} intensityFactor - Multiplier for aging probabilities.
  * @returns {Array<{c: number, r: number}>} - An array of grid coordinates {c, r} that were changed by aging.
  */
-export function applyAging(portalRef, intensityFactor) { // MODIFIED: portalRef can be null
+export function applyAging(portalRef, intensityFactor) {
     if (!agingNoiseGenerator) {
          console.error("Aging noise generator not initialized!");
          return []; // Return empty array on error
@@ -104,7 +124,7 @@ export function applyAging(portalRef, intensityFactor) { // MODIFIED: portalRef 
     // Get portal position and calculate protected radius *only if portalRef is provided*
     let portalX = -Infinity, portalY = -Infinity;
     let protectedRadiusSq = 0; // Default to 0 radius (effectively no protection) if no portal
-    if (portalRef) { // MODIFIED: Only use portal ref if it's provided
+    if (portalRef) { // Only use portal ref if it's provided
         const portalPos = portalRef.getPosition(); // Gets the center of the portal rectangle
         portalX = portalPos.x;
         portalY = portalPos.y;
@@ -125,12 +145,7 @@ export function applyAging(portalRef, intensityFactor) { // MODIFIED: portalRef 
         for (let c = 0; c < Config.GRID_COLS; c++) {
 
             // --- Protected Zone Check (Only if portalRef is provided) ---
-            // The check is now ONLY performed if portalRef exists. If portalRef is null,
-            // the `if (distSqToPortal < protectedRadiusSq)` check will evaluate to false
-            // because protectedRadiusSq is 0, and the condition `distSqToPortal < 0` is never true
-            // (unless distSqToPortal is negative, which is impossible for a squared distance).
-            // However, a more explicit check is safer and clearer:
-            if (portalRef) { // MODIFIED: Wrap the protected zone check inside this if
+            if (portalRef) { // Wrap the protected zone check inside this if
                  const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
                  const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
                  const dx = blockCenterX - portalX;
@@ -153,7 +168,7 @@ export function applyAging(portalRef, intensityFactor) { // MODIFIED: portalRef 
 
             const originalType = (typeof block === 'object') ? block.type : block;
             let newType = originalType; // Start assuming no change
-            const isPlayerPlaced = typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false; // Preserve playerPlaced status
+            // isPlayerPlaced is not needed here, as aging changes always result in non-player-placed blocks
 
             const depth = r * Config.BLOCK_HEIGHT; // Calculate depth in pixels
 
@@ -229,11 +244,6 @@ export function applyAging(portalRef, intensityFactor) { // MODIFIED: portalRef 
                         if (Math.random() < sedimentationBelowProb) {
                             // Change the block below to SAND
                             const newBlockBelowType = Config.BLOCK_SAND;
-                            // We need to preserve the isPlayerPlaced status of the block being *converted*, not the sand.
-                            // However, the sand being *placed* by this rule is considered naturally occurring sediment, so it's not player-placed.
-                            // Let's get the original block data below to check its player-placed status.
-                             const originalBlockBelowData = WorldData.getBlock(c, r + 1); // Get the original block data object below
-                             const originalBlockBelowIsPlayerPlaced = typeof originalBlockBelowData === 'object' ? (originalBlockBelowData.isPlayerPlaced ?? false) : false; // Check its player-placed status
 
                             // When converting, the NEW block at (c, r+1) is SAND and is *not* player-placed, regardless of the original block below.
                             const success = WorldData.setBlock(c, r + 1, newBlockBelowType, false); // New sand is NOT player-placed
@@ -245,6 +255,8 @@ export function applyAging(portalRef, intensityFactor) { // MODIFIED: portalRef 
                                     changedCells.set(changedKey, { c, r: r + 1 });
                                      // console.log(`[${c},${r+1}] ${Config.BLOCK_COLORS[blockBelowType]} converted to SAND by SAND above (Water Depth: ${waterDepth}, Prob: ${sedimentationBelowProb.toFixed(5)}).`);
                                 }
+                                // NEW: Queue this specific change location AND its neighbors for water updates
+                                queueWaterCandidatesAroundChange(c, r + 1);
                             } else {
                                 console.error(`Aging failed to set block data at [${c}, ${r+1}] to SAND during sedimentation below rule.`);
                             }
@@ -356,13 +368,15 @@ export function applyAging(portalRef, intensityFactor) { // MODIFIED: portalRef 
                      } else {
                           // console.log(`Aging changed [${c}, ${r}] from ${originalType} to ${newType}, already in changed list.`); // Debug log - This shouldn't happen if rules are mutually exclusive for `newType !== originalType`
                      }
+                    // NEW: Queue this specific change location AND its neighbors for water updates
+                    queueWaterCandidatesAroundChange(c, r);
                 } else {
                      console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
                 }
             }
         }
     }
-    console.log(`Aging pass complete. ${changedCells.size} blocks changed.`);
+    console.log(`Aging pass complete. ${changedCells.size} unique blocks changed.`);
     // Convert map values back to an array
     const changedCellsArray = Array.from(changedCells.values());
 
@@ -370,5 +384,9 @@ export function applyAging(portalRef, intensityFactor) { // MODIFIED: portalRef 
     // This helps WorldManager/Renderer update the static canvas more efficiently for cascading changes
     changedCellsArray.sort((a, b) => b.r - a.r);
 
-    return changedCellsArray; // Return the array of unique changed cells
+    // Note: The waterPropagationTimer reset is handled by queueWaterCandidatesAroundChange,
+    // which is called for *each* successful block change near water.
+    // This ensures an immediate water update pass is triggered if *any* relevant block changed.
+
+    return changedCellsArray; // Return the array of unique changed cells for static world visual updates
 }

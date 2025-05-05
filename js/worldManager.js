@@ -8,21 +8,12 @@ import * as WorldData from './utils/worldData.js';
 import * as ItemManager from './itemManager.js';
 import { generateInitialWorld } from './utils/worldGenerator.js';
 import * as GridCollision from './utils/gridCollision.js';
-// REMOVE: import { PerlinNoise } from './utils/noise.js'; // Noise is now in AgingManager
 import { createBlock } from './utils/block.js';
-// REMOVE: agingNoiseGenerator = null; // Moved to AgingManager
-// REMOVE: import * as WorldManager from './worldManager.js'; // Self-import no longer needed
-
-// NEW: Import AgingManager
-// Note: WorldManager does NOT depend on AgingManager for the main game loop logic.
-// WaveManager calls AgingManager, then calls WorldManager to update visuals/water.
-// WorldManager.init will call AgingManager.init.
 import * as AgingManager from './agingManager.js';
 
-
+// --- Module State ---
 let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
 let waterPropagationTimer = 0; // timer to control spread speed
-
 
 export function init(portalRef) {
     console.log("Initializing WorldManager...");
@@ -30,11 +21,7 @@ export function init(portalRef) {
     generateInitialWorld(); // world generator now handles landmass + flood fill
 
     // Initialize AgingManager
-    AgingManager.init();
-
-    // The initial aging passes now happen *after* flood fill during the game start sequence.
-    // The logic for applying initial aging passes has moved to main.js or WaveManager.js
-    // Let's assume main.js/WaveManager will trigger the initial aging after WorldManager.init.
+    AgingManager.init(); // Ensure AgingManager init is called
 
     const gridCanvas = Renderer.getGridCanvas();
     if (!gridCanvas) {
@@ -48,19 +35,13 @@ export function init(portalRef) {
         console.warn("Renderer.createGridCanvas() was called as a fallback during WorldManager.init.");
     }
 
-    // Render once immediately after generation and initial aging (which happens outside this function now)
-    // Call renderStaticWorldToGridCanvas() in main.js *after* WorldManager.init and initial aging.
-    // renderStaticWorldToGridCanvas(); // REMOVED from here
-
-    // Seed the water simulation after world generation AND initial aging (also happens outside now)
-    // Call seedWaterUpdateQueue() in main.js *after* WorldManager.init and initial aging.
-    // seedWaterUpdateQueue(); // REMOVED from here
+    // Initial rendering and seeding handled by main.js or WaveManager now.
 
     console.log("WorldManager initialized.");
 }
 
 // Helper function to add cell to water update queue
-function addWaterUpdateCandidate(col, row) {
+export function addWaterUpdateCandidate(col, row) { // EXPORTED THIS HELPER
     // Check if within bounds and at or below the water line threshold (or just above for falling water)
     if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5 && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
         const key = `${col},${row}`;
@@ -76,8 +57,16 @@ function addWaterUpdateCandidate(col, row) {
     return false; // Indicates no candidate was added
 }
 
+// NEW: Export function to reset the water propagation timer
+export function resetWaterPropagationTimer() {
+     waterPropagationTimer = 0;
+     // console.log("Water propagation timer reset."); // Too noisy
+}
+
+
 // This function is responsible for updating the *visual* representation of a single block
 export function updateStaticWorldAt(col, row) {
+    // ... (no changes needed here) ...
     const gridCtx = Renderer.getGridContext();
     if (!gridCtx) {
         console.error(`WorldManager: Cannot update static world at [${col}, ${row}] - grid context missing!`);
@@ -155,6 +144,7 @@ export function updateStaticWorldAt(col, row) {
 
 // Expose the internal rendering function
 export function renderStaticWorldToGridCanvas() { // draw entire static world to off-screen canvas
+    // ... (no changes needed here) ...
     console.log("WorldManager: Rendering static world to grid canvas...");
     const gridCtx = Renderer.getGridContext();
     const gridCanvas = Renderer.getGridCanvas();
@@ -242,6 +232,7 @@ export function renderStaticWorldToGridCanvas() { // draw entire static world to
 }
 
 export function seedWaterUpdateQueue() { // seed queue with initial water blocks and adjacent air candidates below waterline
+    // ... (no changes needed here, logic is sound for a full re-seed) ...
     console.log("WorldManager: Seeding water update queue...");
     waterUpdateQueue.clear(); // start fresh
     // Start seeding from slightly above the waterline target to catch falling water
@@ -290,6 +281,7 @@ export function seedWaterUpdateQueue() { // seed queue with initial water blocks
 }
 
 export function placePlayerBlock(col, row, blockType) { // sets player-placed block - assumes validity checks (range, clear, neighbor) are done by the Player class
+    // ... (no changes needed here, already queues water candidates and resets timer) ...
     const success = WorldData.setBlock(col, row, blockType, true); // WorldData.setBlock uses createBlock which handles HP/maxHP
     if (success) {
         updateStaticWorldAt(col, row); // update visual cache
@@ -314,6 +306,7 @@ export function placePlayerBlock(col, row, blockType) { // sets player-placed bl
 }
 
 export function damageBlock(col, row, damageAmount) { // applies damage to block at given coordinates - if block drops to 0 HP, replace with AIR and drop material
+    // ... (no changes needed here, already queues water candidates and resets timer on destruction) ...
     if (damageAmount <= 0) return false; // zero damage dealt
     const block = WorldData.getBlock(col, row);
 
@@ -395,6 +388,7 @@ export function damageBlock(col, row, damageAmount) { // applies damage to block
 }
 
 export function draw(ctx) { // draw pre-rendered static world onto main canvas
+    // ... (no changes needed here) ...
     if (!ctx) { console.error("WorldManager.draw: No drawing context provided!"); return; }
     const gridCanvas = Renderer.getGridCanvas();
     if (gridCanvas) {
@@ -450,6 +444,7 @@ export function update(dt) { // handles dynamic world state like water flow
                          const nc = c + neighbor.dc;
                          const nr = r + neighbor.dr;
                          // addWaterUpdateCandidate handles the bounds, type (AIR/WATER), and existence checks
+                         // Use the EXPORTED version here now
                          addWaterUpdateCandidate(nc, nr);
                     });
                  }
@@ -465,7 +460,7 @@ export function update(dt) { // handles dynamic world state like water flow
                          const immediateNeighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // cardinal neighbours again
                          for (const neighbor of immediateNeighbors) {
                             const nc = c + neighbor.dc;
-                            const nr = r + neighbor.dr;
+                            const nr = r + neighbor.nr; // Corrected typo: neighbor.dr instead of neighbor.nr
                             // Check if neighbor is within bounds and is WATER
                             if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS && WorldData.getBlockType(nc, nr) === Config.BLOCK_WATER) {
                                 adjacentToWater = true;
