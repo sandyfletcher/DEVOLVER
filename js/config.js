@@ -37,21 +37,18 @@ export const ISLAND_CENTER_TAPER_WIDTH = 80; // width of taper from island edge 
 
 export const AGING_BASE_INTENSITY = 1.0; // Base intensity for aging
 export const AGING_NOISE_SCALE = 0.03; // Scale for aging noise (controls patch size)
-export const AGING_PROB_GRASS_GROWTH = 0.8; // Chance for DIRT -> GRASS if exposed to AIR and NOT WATER
-export const AGING_PROB_WATER_EROSION_DIRT_GRASS = 0.8; // Chance for DIRT/GRASS -> SAND if exposed to WATER
+export const AGING_PROB_GRASS_GROWTH = 0.9; // Chance for DIRT -> GRASS if exposed to AIR and NOT WATER
+export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9; // chance for Air/Water below waterline to become SAND
+export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9; // chance for Air/Water below waterline to become SAND
+export const AGING_PROB_WATER_EROSION_DIRT_GRASS = 0.9; // chance for DIRT/GRASS -> SAND if exposed to WATER
 export const AGING_PROB_WATER_EROSION_SAND = 0.00001; // Chance for SAND -> WATER/AIR if exposed to WATER (Sand erodes faster underwater)
-export const AGING_PROB_AIR_EROSION_SAND = 0.001; // Chance for SAND -> AIR if exposed to AIR (Wind erosion)
-export const AGING_PROB_STONEIFICATION_DEEP = 0.0001; // Reduced chance for DIRT/SAND/GRASS -> STONE if deep enough
-export const AGING_PROB_EROSION_SURFACE_STONE = 0.0001; // Small chance for exposed STONE -> AIR (very slow weathering)
-export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.0001; // Base chance for Air/Water below waterline to become SAND (OLD RULE - keeping for now)
-// NEW Sand Sedimentation Below rule parameters (MOVED DOWN):
-export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.0005; // Base chance for a SAND block to convert the block below it
+export const AGING_PROB_AIR_EROSION_SAND = 0.0001; // Chance for SAND -> AIR if exposed to AIR (Wind erosion)
+export const AGING_PROB_STONEIFICATION_DEEP = 0.000001; // Decreased from 0.00002
+export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001; // Small chance for exposed STONE -> AIR (very slow weathering)
+export const AGING_STONEIFICATION_DEPTH_THRESHOLD = 900; // pixel depth below which stoneification can occur (Below waterline)
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth above to influence probability (user request: 4+)
-// AGING_MATERIAL_CONVERSION_FACTORS defined below BLOCK_ constants
-
-export const AGING_STONEIFICATION_DEPTH_THRESHOLD = 700; // Increased Pixel depth below which stoneification can occur (Below waterline)
 export const AGING_INITIAL_PASSES = 350; // Number of aging passes when the world is first generated
-export const AGING_DEFAULT_PASSES_PER_WAVE = 1; // Default number of aging passes between waves if not specified per wave
+export const AGING_DEFAULT_PASSES_PER_WAVE = 44; // Default number of aging passes between waves if not specified per wave
 export const WARPPHASE_DURATION = 5.0; //  Fixed duration of the Warp/Cleanup phase (seconds)
 
 // =============================================================================
@@ -183,7 +180,7 @@ export const MATERIAL_TO_BLOCK_TYPE = { // map inventory material strings to blo
     'bone': BLOCK_BONE, // TODO: add other placeable materials here if needed
 };
 
-// Sand Sedimentation Below Convertible Materials (MOVED DOWN)
+// Sand Sedimentation Below Convertible Materials
 export const AGING_MATERIAL_CONVERSION_FACTORS = { // Materials below sand that can be converted. Factors set to 1.0 for equal chance.
     [BLOCK_DIRT]: 1.0, // Dirt is convertible
     [BLOCK_GRASS]: 1.0, // Grass is convertible
@@ -432,7 +429,7 @@ export const WAVES = [
         intermissionDuration: 15.0, // total duration of intermission *after* this wave
         audioTrack: 'assets/audio/music/Wave1-350.mp3',
         agingIntensity: 1.0, // Can be specified per wave
-        agingPasses: 50, // NEW: Number of aging passes for the INTERMISSION *after* this wave
+        agingPasses: 50, // Number of aging passes for the INTERMISSION *after* this wave
         subWaves: [
             { // --- 1.1 ---
                 enemyGroups: [
@@ -461,7 +458,7 @@ export const WAVES = [
         intermissionDuration: 20.0,
         audioTrack: 'assets/audio/music/Wave2-300.mp3',
         agingIntensity: 1.2, // Example: Wave 2 could have slightly more aging
-        agingPasses: 100, // NEW: More aging passes
+        agingPasses: 100, // More aging passes
         subWaves: [
             { // --- 2.1 ---
                  enemyGroups: [
@@ -490,7 +487,7 @@ export const WAVES = [
         intermissionDuration: 25.0, // shorter intermission
         audioTrack: 'assets/audio/music/wave3.mp3', // <-- TODO: add music track here
         agingIntensity: 1.0, // Back to base intensity
-        agingPasses: 150, // NEW: Even more aging
+        agingPasses: 150, // Even more aging
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },

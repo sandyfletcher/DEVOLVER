@@ -15,7 +15,7 @@ import * as WaveManager from './waveManager.js';
 import * as GridCollision from './utils/gridCollision.js';
 import * as GridRenderer from './utils/grid.js';
 import * as AudioManager from './audioManager.js';
-import * as AgingManager from './agingManager.js';
+import * as AgingManager from './agingManager.js'; // Ensure AgingManager is imported
 import { Portal } from './portal.js';
 
 // =============================================================================
@@ -310,7 +310,8 @@ function startGame() {
     for (let i = 0; i < initialAgingPasses; i++) {
          // Use the base aging intensity for initial passes
          // AgingManager.applyAging returns a list of {c,r} changed cells
-         const changedCellsInPass = AgingManager.applyAging(portal, Config.AGING_BASE_INTENSITY);
+         // MODIFIED: Pass null for the portal reference during the initial aging pass
+         const changedCellsInPass = AgingManager.applyAging(null, Config.AGING_BASE_INTENSITY);
 
          // Add the changed cells from this pass to the overall list for initial aging
          changedCellsInPass.forEach(({ c, r }) => {
@@ -645,7 +646,7 @@ function gameLoop(timestamp) {
             // No return needed; the next frame's check will cause it to exit the logic section.
         }
 
-        // Check if WaveManager signals all waves are cleared AND there are no *living* enemies remaining.
+        // Check if WaveManager signals all waves cleared AND there are no *living* enemies remaining.
         const livingEnemies = EnemyManager.getLivingEnemyCount(); // This correctly excludes enemies currently in dying animation
         if (updatedWaveInfo.allWavesCleared && livingEnemies === 0) {
              console.log("Main: WaveManager signals all waves cleared and no living enemies remaining. Triggering Victory.");
@@ -736,7 +737,7 @@ function gameLoop(timestamp) {
         UI.updateWaveTimer(WaveManager.getWaveInfo()); // Always update UI timer based on latest info
 
         // Settings button states are updated by their toggle functions or game start/reset
-        // UI.updateSettingsButtonStates(...)
+        // UI.updateSettingsButtonStates(...); // This call is handled by main.js
      } else {
         // console.error("UI not initialized, skipping UI updates."); // Keep console less noisy
      }
