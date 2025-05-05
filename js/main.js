@@ -8,13 +8,14 @@ import * as Input from './input.js';
 import * as Config from './config.js';
 import * as Renderer from './renderer.js';
 import * as CollisionManager from './collisionManager.js';
-import * as World from './worldManager.js';
+import * as WorldManager from './worldManager.js';
 import * as ItemManager from './itemManager.js';
 import * as EnemyManager from './enemyManager.js';
 import * as WaveManager from './waveManager.js';
 import * as GridCollision from './utils/gridCollision.js';
 import * as GridRenderer from './utils/grid.js';
 import * as AudioManager from './audioManager.js';
+import * as AgingManager from './agingManager.js';
 import { Portal } from './portal.js';
 
 // =============================================================================
@@ -114,13 +115,14 @@ function getMouseGridCoords(inputMousePos) {
 // Used to display the epoch text overlay.
 function handleWaveStart(waveNumber) {
     console.log(`Main: Starting Wave ${waveNumber}`);
-    const epochYear = Config.EPOCH_MAP[waveNumber];
-    if (epochYear !== undefined) {
-        UI.showEpochText(epochYear);
-    } else {
-        console.warn(`Main: No epoch defined in Config.EPOCH_MAP for wave ${waveNumber}.`);
-        UI.showEpochText(`Wave ${waveNumber} Starting`); // fallback naming by wave number
-    }
+    // Epoch text is now triggered by WaveManager when entering WARPPHASE
+    // const epochYear = Config.EPOCH_MAP[waveNumber];
+    // if (epochYear !== undefined) {
+    //     UI.showEpochText(epochYear);
+    // } else {
+    //     console.warn(`Main: No epoch defined in Config.EPOCH_MAP for wave ${waveNumber}.`);
+    //     UI.showEpochText(`Wave ${waveNumber} Starting`); // fallback naming by wave number
+    // }
      // Optionally play wave music here if not already started by WaveManager
      // WaveManager now handles starting the music track associated with the wave config.
 }
@@ -148,7 +150,7 @@ function toggleMusicMute() {
 window.toggleSfxMute = toggleSfxMute;
 function toggleSfxMute() {
     const newState = AudioManager.toggleSfxMute(); // Toggle mute state in AudioManager
-    console.log(`Main: SFX is now ${isSfxMuted ? 'muted' : 'unmuted'}.`);
+    console.log(`Main: SFX is now ${isSfxMuted ? 'muted' : 'unmuted'}.`); // Corrected log message
     // Update UI button appearance immediately
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
 }
@@ -173,15 +175,20 @@ function showOverlay(stateToShow) {
         AudioManager.stopGameMusic();
     }
     // Reset UI music volume to default whenever showing an overlay
-    AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
+    AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME); // Ensure UI music volume is consistent
     // Add class corresponding to desired state and handle state-specific logic/audio
     switch (stateToShow) {
         case GameState.PRE_GAME:
             gameOverlay.classList.add('show-title');
+            // Play title music if defined
             if (Config.AUDIO_TRACKS.title) {
-                AudioManager.playUIMusic(Config.AUDIO_TRACKS.title); // play title music
+                // AudioManager.playUIMusic(Config.AUDIO_TRACKS.title); // TODO: Uncomment when title music track is added
             } else {
-                console.warn("Title music track not defined in Config.AUDIO_TRACKS.");
+                 console.warn("Title music track not defined in Config.AUDIO_TRACKS.");
+                 // Play a default UI music or be silent if no title track
+                 if (Config.AUDIO_TRACKS.pause) { // Fallback to pause music if title isn't defined
+                      AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
+                 }
             }
             break;
         case GameState.PAUSED:
@@ -202,10 +209,15 @@ function showOverlay(stateToShow) {
             } else {
                 console.warn("ShowOverlay: gameover-stats-text element not found.");
             }
+            // Play game over music if defined
             if (Config.AUDIO_TRACKS.gameOver) {
-                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver); // Play game over music
+                 // AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver); // TODO: Uncomment when game over music track is added
             } else {
                  console.warn("Game Over music track not defined in Config.AUDIO_TRACKS.");
+                 // Fallback to pause music if gameover music isn't defined
+                  if (Config.AUDIO_TRACKS.pause) {
+                       AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
+                  }
             }
             break;
         case GameState.VICTORY:
@@ -227,6 +239,9 @@ function showOverlay(stateToShow) {
             console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}`);
             // As a fallback, maybe show the title screen?
              gameOverlay.classList.add('show-title');
+             if (Config.AUDIO_TRACKS.pause) { // Fallback to pause music
+                  AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
+             }
             break;
     }
     // Make the overlay container visible and apply the blur/dim effect to the background container
@@ -243,6 +258,7 @@ function hideOverlay() {
     gameOverlay.classList.remove('active'); // remove the 'active' class to trigger fade-out animation
     appContainer.classList.remove('overlay-active'); // remove the 'overlay-active' class to remove blur/dim
     AudioManager.stopUIMusic();
+    // Resume game music if the state is RUNNING (handled by AudioManager.unpauseGameMusic within hideOverlay call in resumeGame)
 }
 
 // =============================================================================
@@ -280,9 +296,45 @@ function startGame() {
          portal = new Portal(portalSpawnX, portalSpawnY); // Create portal
      }
 
-    // World Init (includes generating terrain and initial aging pass)
-    // World init now needs the newly created portal reference for initial aging.
-    World.init(portal);
+    // World Init (includes generating terrain and initial flood fill, but NOT initial aging)
+    WorldManager.init(portal); // Pass portalRef for potential use within WorldManager init (e.g. initial aging if it were there)
+
+    // --- Apply Initial World Aging Passes AFTER generation and flood fill ---
+    // Now that WorldManager and AgingManager are initialized, and the world is generated/flooded,
+    // we can apply the initial aging passes here, passing the portal reference.
+    const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1; // Use default if config missing or invalid
+    console.log(`Applying initial world aging (${initialAgingPasses} passes) after generation...`);
+    let totalChangedCellsInitialAging = 0;
+    const changedCellsInitialAging = new Map(); // Use a Map to collect unique changes
+
+    for (let i = 0; i < initialAgingPasses; i++) {
+         // Use the base aging intensity for initial passes
+         // AgingManager.applyAging returns a list of {c,r} changed cells
+         const changedCellsInPass = AgingManager.applyAging(portal, Config.AGING_BASE_INTENSITY);
+
+         // Add the changed cells from this pass to the overall list for initial aging
+         changedCellsInPass.forEach(({ c, r }) => {
+             const key = `${c},${r}`;
+             if (!changedCellsInitialAging.has(key)) {
+                 changedCellsInitialAging.set(key, { c, r });
+                 totalChangedCellsInitialAging++;
+             }
+         });
+    }
+    console.log(`Initial world aging complete. Total unique cells changed: ${totalChangedCellsInitialAging}`);
+
+    // --- Update Visuals and Water Simulation after Initial Aging ---
+    // Update the static world canvas for all cells changed during initial aging
+    changedCellsInitialAging.forEach(({ c, r }) => {
+        WorldManager.updateStaticWorldAt(c, r); // Update the static visual representation
+    });
+
+    // Re-render the entire static world canvas once after all initial aging changes are drawn
+    WorldManager.renderStaticWorldToGridCanvas();
+
+    // Seed the water simulation queue based on the final world state after initial aging and rendering
+    WorldManager.seedWaterUpdateQueue();
+
 
     // ItemManager Init (handles initial shovel spawn now)
     ItemManager.init(); // MODIFIED: ItemManager init no longer spawns sword/spear items directly
@@ -515,14 +567,17 @@ function gameLoop(timestamp) {
         // Logic for increasing portal safety radius - triggered ONCE at the transition from BUILDPHASE to WARPPHASE
         // This happens *before* aging in WARPPHASE uses the radius.
          // WaveManager now handles triggering the cleanup/aging within its update() when entering WARPPHASE.
+         // Main.js no longer needs to explicitly call AgingManager.applyAging or cleanup here.
+         // Main.js only needs to update the portal instance's radius state for drawing purposes.
          if (currentWaveManagerState === 'WARPPHASE' && previousWaveManagerState === 'BUILDPHASE') {
             // Increase the safety radius based on the config value for wave progression
             currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
-            if(portal) portal.setSafetyRadius(currentPortalSafetyRadius); // Update portal instance
+            // Update the portal instance's internal safety radius value for drawing and internal checks
+            if(portal) portal.setSafetyRadius(currentPortalSafetyRadius);
             console.log(`Main: Portal Safety Radius Increased to ${currentPortalSafetyRadius.toFixed(1)}.`);
-            // Trigger cleanup and aging here when entering WARPPHASE (handled in WaveManager)
-            // WaveManager.triggerWarpCleanup(); // WaveManager now calls this internally
+            // Cleanup/Aging logic is now handled by WaveManager's triggerWarpCleanup which is called on state transition
          }
+
 
         // --- Update Entities ---
         // Entities update their positions, states, timers, animations etc.
@@ -558,7 +613,8 @@ function gameLoop(timestamp) {
         ItemManager.update(dt, playerRefForItems);
 
         // World update (water flow, aging triggered by WaveManager)
-        World.update(dt);
+        // WorldManager.update handles water flow only now. Aging is triggered by WaveManager.
+        WorldManager.update(dt);
 
 
         // --- Collision Detection (Only happens if RUNNING) ---
@@ -571,22 +627,22 @@ function gameLoop(timestamp) {
             CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies()); // Player vs enemies (contact damage)
         }
         // Check enemy collisions with portal if portal exists and is alive
-        if (portal && portal.isAlive()) {
+        if (portal && portal.isAlive()) { // Add check for portal.isAlive method
              CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
         }
 
         // --- Check for Game Over/Victory Conditions (After all updates and collisions) ---
         // Check if player is *no longer active* (meaning their death animation has finished).
-        if (player && !player.isActive) {
-            console.log("Main: Player inactive (death animation finished). Triggering Game Over.");
+        // Also check if the portal has been destroyed. Either condition triggers Game Over.
+        // Game Over transition is now handled by main.js checking these conditions.
+        if ((player && !player.isActive) || (portal && !portal.isAlive())) { // Corrected portal check
+            if (player && !player.isActive) {
+                console.log("Main: Player inactive (death animation finished). Triggering Game Over.");
+            } else if (portal && !portal.isAlive()) {
+                console.log("Main: Portal health zero. Triggering Game Over.");
+            }
             handleGameOver();
             // No return needed; the next frame's check will cause it to exit the logic section.
-        }
-        // Check if the portal has been destroyed.
-        if (portal && portal.isAlive && !portal.isAlive()) { // Add check for portal.isAlive existence first
-            console.log("Main: Portal health zero. Triggering Game Over.");
-            handleGameOver();
-            // No return needed.
         }
 
         // Check if WaveManager signals all waves are cleared AND there are no *living* enemies remaining.
@@ -611,7 +667,7 @@ function gameLoop(timestamp) {
     mainCtx.translate(-cameraX, -cameraY); // Apply scroll/pan (translation)
 
     // Draw static world (rendered once to an off-screen canvas and drawn as an image)
-    World.draw(mainCtx); // This draws the updated gridCanvas
+    WorldManager.draw(mainCtx); // This draws the updated gridCanvas
 
     // Draw debug grid if enabled (draws directly onto the main canvas)
     GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
@@ -623,8 +679,8 @@ function gameLoop(timestamp) {
     // Draw portal (always draw if exists and not destroyed)
     if (portal) {
          // Portal visual (and safety radius circle) should be drawn even if not gameplay active
-         portal.setSafetyRadius(currentPortalSafetyRadius); // Ensure portal has the current radius
-         portal.draw(mainCtx);
+         // portal.safetyRadius is already updated by main.js when radius increases.
+         portal.draw(mainCtx); // Portal draw uses its internal radius state
     }
 
     // Draw enemies (Draw if active OR dying - Enemy.draw handles this internally)
@@ -642,6 +698,7 @@ function gameLoop(timestamp) {
          const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
          const isGameplayActiveAtDraw = currentWaveManagerStateAtDraw === 'PRE_WAVE' || currentWaveManagerStateAtDraw === 'WAVE_COUNTDOWN';
          // Check player validity and state again before drawing ghost block
+         // Player must be alive and not dying to place blocks
          const playerIsInteractableAtDraw = player && player.isActive && !player.isDying;
 
          // Ghost block requires player to be interactive (alive, not dying) AND in a gameplay active phase AND a material is selected
@@ -665,7 +722,7 @@ function gameLoop(timestamp) {
             playerExists ? player.getInventory() : {},
             playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SWORD) : false,
             playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SPEAR) : false,
-            playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SHOVEL) : false
+            playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SHOVEL) : false // Pass shovel status
         );
 
         // Update portal-related UI (health bar)
@@ -693,7 +750,7 @@ function gameLoop(timestamp) {
 // Calculates and sets the initial camera position, centering it on the player.
 // Called ONCE at the start of a new game.
 function calculateInitialCamera() {
-     if (player) { // Only calculate if player object exists
+     if (player && player.isActive) { // Only calculate if player object exists AND is active
         const viewWidth = Config.CANVAS_WIDTH; // Internal rendering width (matches canvas.width)
         const viewHeight = Config.CANVAS_HEIGHT; // Internal rendering height (matches canvas.height)
 
@@ -721,8 +778,8 @@ function calculateInitialCamera() {
         const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
 
         // Clamp the target camera position to stay within the valid world bounds.
-        cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
-        cameraY = Math.max(0, Math.min(targetY, maxCameraY));
+        cameraX = Math.max(0, Math.min(targetX, maxCameraX)); // Clamp targetX
+        cameraY = Math.max(0, Math.min(targetY, maxCameraY)); // Clamp targetY
 
         // --- Center Camera If World is Smaller Than Viewport ---
         // If the world is narrower than the visible area, center the camera horizontally.
@@ -736,11 +793,11 @@ function calculateInitialCamera() {
         // console.log(`Initial Camera Set: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)}) @ scale ${cameraScale.toFixed(2)}`);
      }
      else {
-         // If no player exists (e.g., on initial load or after game over), set default camera state (top-left corner, scale 1).
+         // If no player exists or is not active (e.g., on initial load or after game over), set default camera state (top-left corner, scale 1).
          cameraX = 0;
          cameraY = 0;
          cameraScale = 1.0;
-         // console.log("Initial Camera Set: Player not found, defaulting camera to (0,0) @ scale 1.0");
+         // console.log("Initial Camera Set: Player not active or not found, defaulting camera to (0,0) @ scale 1.0");
      }
 }
 

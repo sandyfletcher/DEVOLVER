@@ -8,150 +8,106 @@ import * as WorldData from './utils/worldData.js';
 import * as ItemManager from './itemManager.js';
 import { generateInitialWorld } from './utils/worldGenerator.js';
 import * as GridCollision from './utils/gridCollision.js';
-import { PerlinNoise } from './utils/noise.js';
+// REMOVE: import { PerlinNoise } from './utils/noise.js'; // Noise is now in AgingManager
+import { createBlock } from './utils/block.js';
+// REMOVE: agingNoiseGenerator = null; // Moved to AgingManager
+// REMOVE: import * as WorldManager from './worldManager.js'; // Self-import no longer needed
+
+// NEW: Import AgingManager
+// Note: WorldManager does NOT depend on AgingManager for the main game loop logic.
+// WaveManager calls AgingManager, then calls WorldManager to update visuals/water.
+// WorldManager.init will call AgingManager.init.
+import * as AgingManager from './agingManager.js';
+
 
 let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
 let waterPropagationTimer = 0; // timer to control spread speed
-let agingNoiseGenerator = null; // dedicated noise instance for aging
+
 
 export function init(portalRef) {
-    WorldData.initializeGrid();
+    console.log("Initializing WorldManager...");
+    WorldData.initializeGrid(); // Ensure grid is initialized first
     generateInitialWorld(); // world generator now handles landmass + flood fill
+
+    // Initialize AgingManager
+    AgingManager.init();
+
+    // The initial aging passes now happen *after* flood fill during the game start sequence.
+    // The logic for applying initial aging passes has moved to main.js or WaveManager.js
+    // Let's assume main.js/WaveManager will trigger the initial aging after WorldManager.init.
+
     const gridCanvas = Renderer.getGridCanvas();
     if (!gridCanvas) {
-        console.error("FATAL: Grid Canvas not found! Ensure Renderer.createGridCanvas() runs before World.init().");
-        console.warn("Attempting fallback grid canvas creation.");
+        console.error("FATAL: Grid Canvas not found! Ensure Renderer.createGridCanvas() runs before WorldManager.init().");
+        // Attempt fallback grid canvas creation if not found. This might mean Renderer.init wasn't called first.
         Renderer.createGridCanvas();
         if (!Renderer.getGridCanvas()) {
-            throw new Error("Fallback grid canvas creation failed.");
+            // If fallback fails, throw a critical error as rendering cannot proceed.
+            throw new Error("FATAL: Renderer.createGridCanvas() failed during WorldManager.init fallback.");
         }
+        console.warn("Renderer.createGridCanvas() was called as a fallback during WorldManager.init.");
     }
-    renderStaticWorldToGridCanvas(); // initial rendering *before* aging is useful for debugging generation results
-    agingNoiseGenerator = new PerlinNoise(12345); // currently using a fixed seed for aging calculation
-    console.log("Applying initial world aging...");
-    applyAging(portalRef, Config.AGING_BASE_INTENSITY); // apply aging with base intensity
-    console.log("Initial world aging complete.");
-    renderStaticWorldToGridCanvas(); // re-render static world after aging
-    seedWaterUpdateQueue(); // seed the water simulation after world generation AND initial aging
+
+    // Render once immediately after generation and initial aging (which happens outside this function now)
+    // Call renderStaticWorldToGridCanvas() in main.js *after* WorldManager.init and initial aging.
+    // renderStaticWorldToGridCanvas(); // REMOVED from here
+
+    // Seed the water simulation after world generation AND initial aging (also happens outside now)
+    // Call seedWaterUpdateQueue() in main.js *after* WorldManager.init and initial aging.
+    // seedWaterUpdateQueue(); // REMOVED from here
+
+    console.log("WorldManager initialized.");
 }
-function addWaterUpdateCandidate(col, row) { // add to update queue if within bounds, within waterline threshold, not already queued, and are AIR or WATER
-    if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) { // check if within bounds and at or below the water line threshold
+
+// Helper function to add cell to water update queue
+function addWaterUpdateCandidate(col, row) {
+    // Check if within bounds and at or below the water line threshold (or just above for falling water)
+    if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5 && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
         const key = `${col},${row}`;
-        if (!waterUpdateQueue.has(key)) { // check if the cell is already in the queue to avoid duplicates
-            const blockType = WorldData.getBlockType(col, row); // get the block type to check if it's a type that participates in water simulation
-            if (blockType !== null && (blockType === Config.BLOCK_AIR || blockType === Config.BLOCK_WATER)) { // add to queue only if it's BLOCK_AIR or BLOCK_WATER
-                waterUpdateQueue.set(key, {c: col, r: row});
+        // Check if the cell is already in the queue to avoid duplicates and is AIR or WATER
+        if (!waterUpdateQueue.has(key)) {
+            const blockType = WorldData.getBlockType(col, row);
+            if (blockType !== null && (blockType === Config.BLOCK_AIR || blockType === Config.BLOCK_WATER)) {
+                 waterUpdateQueue.set(key, {c: col, r: row});
+                 return true; // Indicates a candidate was added
             }
         }
     }
+    return false; // Indicates no candidate was added
 }
-function internalSetBlock(col, row, blockType, isPlayerPlaced = false) { // creates a block in grid data and trigger redraw
-    const success = WorldData.setBlock(col, row, blockType, isPlayerPlaced); // use setBlock from WorldData to update the underlying data structure
-    if (success) {
-        updateStaticWorldAt(col, row); // update the static visual cache on block data change.
-        if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET) { // trigger water simulation if below waterline
-            let addedToQueue = false;
-            const tryAddCandidate = (c, r) => { // helper to add candidate and track if anything was actually added
-                const initialSize = waterUpdateQueue.size;
-                addWaterUpdateCandidate(c, r); // handle bound, type, and existence checks
-                if (waterUpdateQueue.size > initialSize) {
-                    addedToQueue = true; // flag if queue size increased
-                }
-            };
-            tryAddCandidate(col, row); // add changed cell
-            const neighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // propagate water away from new solid block, or into/away from a new AIR/WATER block
-            neighbors.forEach(neighbor => tryAddCandidate(col + neighbor.dc, row + neighbor.dr));
-            if (addedToQueue) { // reset the propagation timer IF any candidates were added
-                waterPropagationTimer = 0; // force timer to zero
-            }
-        }
-    } else {
-        console.log(`[WaterMgr] Failed to set block data at [${col}, ${row}].`);
-    }
-    return success;
-}
-function renderStaticWorldToGridCanvas() { // draw entire static world to off-screen canvas
-    const gridCtx = Renderer.getGridContext();
-    const gridCanvas = Renderer.getGridCanvas();
-    if (!gridCtx || !gridCanvas) {
-        console.error("WorldManager: Cannot render static world - grid canvas/context missing!");
-        return;
-    }
-    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height); // clear entire off-screen canvas first
-    const worldGrid = WorldData.getGrid(); 
-    for (let r = 0; r < Config.GRID_ROWS; r++) { // iterate through grid data
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-            const block = worldGrid[r][c];
-            if (!block || typeof block === 'number' && block === Config.BLOCK_AIR) continue; // check for BLOCK_AIR (number 0) or null/undefined
-            const blockType = typeof block === 'object' ? block.type : block; // get type property or use block value
-            const blockColor = Config.BLOCK_COLORS[blockType];
-            if (!blockColor) {
-                console.error(`No color defined for block type ${blockType} at [${c}, ${r}]`);
-                continue;
-            }
-            const blockX = c * Config.BLOCK_WIDTH;
-            const blockY = r * Config.BLOCK_HEIGHT;
-            const blockW = Math.ceil(Config.BLOCK_WIDTH);
-            const blockH = Math.ceil(Config.BLOCK_HEIGHT);
-            gridCtx.fillStyle = blockColor; // draw block body onto grid canvas using gridCtx
-            gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
-            const isPlayerPlaced = block && typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false; // draw outline if player placed
-            if (isPlayerPlaced) {
-                gridCtx.save(); // save context state
-                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
-                gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
-                const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2; // adjust coordinates for stroke to be inside the block boundaries
-                gridCtx.strokeRect(
-                    Math.floor(blockX) + outlineInset,
-                    Math.floor(blockY) + outlineInset,
-                    blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, // subtract stroke width from both sides
-                    blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
-                );
-                gridCtx.restore(); // restore context state
-            }
-            if (block && typeof block === 'object' && block.maxHp > 0 && block.hp < block.maxHp) { // draw damage indicators if block object exists and has HP properties, 
-                const hpRatio = block.hp / block.maxHp;             
-                gridCtx.save(); // save context state before drawing lines
-                gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
-                gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-                gridCtx.lineCap = 'square'; // use square cap
-                const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH; // calculate effective inset for line path points
-                if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) { // draw slash (\) if HP is <= 70%
-                    gridCtx.beginPath();
-                    gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset); // move to inset top-left, draw to inset bottom-right
-                    gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
-                    gridCtx.stroke();
-                }
-                if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) { // draw second line (/) if HP is <= 30% (creating an 'X')
-                    gridCtx.beginPath();
-                    gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset); // move to inset top-right, draw to inset bottom-left
-                    gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset);
-                    gridCtx.stroke();
-                }
-                gridCtx.restore(); // restore context state
-            }
-        }
-    }
-}
-export function updateStaticWorldAt(col, row) { // clear block's area and redraw it (if not air), including damage indicators
+
+// This function is responsible for updating the *visual* representation of a single block
+export function updateStaticWorldAt(col, row) {
     const gridCtx = Renderer.getGridContext();
     if (!gridCtx) {
         console.error(`WorldManager: Cannot update static world at [${col}, ${row}] - grid context missing!`);
         return;
     }
-    const block = WorldData.getBlock(col, row); // get block data *after* it has been updated in WorldData
+    // Get block data *after* it has been updated in WorldData
+    const block = WorldData.getBlock(col, row);
     const blockX = col * Config.BLOCK_WIDTH;
     const blockY = row * Config.BLOCK_HEIGHT;
-    const blockW = Math.ceil(Config.BLOCK_WIDTH); // use Math.ceil for robustness
+    const blockW = Math.ceil(Config.BLOCK_WIDTH);
     const blockH = Math.ceil(Config.BLOCK_HEIGHT);
-    gridCtx.clearRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH); // always clear exact block area before redrawing
-    if (block !== Config.BLOCK_AIR && block !== null) { // if block is NOT air and NOT null (out of bounds), redraw it
-        const currentBlockType = typeof block === 'object' ? block.type : block;
+
+    // Always clear exact block area before redrawing
+    gridCtx.clearRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
+
+    // If block is NOT air and NOT null (out of bounds), redraw it
+    if (block !== Config.BLOCK_AIR && block !== null && block !== undefined) {
+        // Ensure block is an object to get type and other properties
+         const currentBlockType = typeof block === 'object' && block !== null ? block.type : block;
+
+         // Skip drawing if it's still just the number 0 for AIR (should be handled above, but safety)
+         if (currentBlockType === Config.BLOCK_AIR) return;
+
         const blockColor = Config.BLOCK_COLORS[currentBlockType];
         if (blockColor) {
             gridCtx.fillStyle = blockColor; // draw block body
             gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
-            const isPlayerPlaced = block && typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false; // draw outline if player placed
+
+            // Draw outline if player placed (check if block is an object and has property)
+            const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
             if (isPlayerPlaced) {
                  gridCtx.save(); // save context state
                  gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
@@ -165,344 +121,279 @@ export function updateStaticWorldAt(col, row) { // clear block's area and redraw
                  );
                  gridCtx.restore(); // restore context state
             }
-            if (block && typeof block === 'object' && block.maxHp > 0 && block.hp < block.maxHp) { // draw inset damage indicators
+
+            // Draw damage indicators if block is an object with HP and is damaged
+            if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp) {
                  const hpRatio = block.hp / block.maxHp;
-                 gridCtx.save(); // save context state before drawing lines
-                 gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
-                 gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-                 gridCtx.lineCap = 'square'; // use square cap
-                 const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH; // calculate effective inset for line path points
-                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) { // draw slash (\) if HP is <= 70%
+                 // Only draw indicators if damage is significant enough based on thresholds
+                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
+                     gridCtx.save(); // save context state before drawing lines
+                     gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
+                     gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                     gridCtx.lineCap = 'square'; // use square cap
+                     const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH; // calculate effective inset for line path points
+
+                      // Draw slash (\)
                       gridCtx.beginPath();
                       gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset); // move to inset top-left, draw to inset bottom-right
                       gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
                       gridCtx.stroke();
+
+                      // Draw second line (/) if HP is <= 30% (creating an 'X')
+                      if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
+                          gridCtx.beginPath();
+                          gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset); // move to inset top-right
+                          gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset); // draw to inset bottom-left
+                          gridCtx.stroke();
+                      }
+                     gridCtx.restore(); // restore context state
                  }
-                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) { // draw second line (/) if HP is <= 30% (creating an 'X')
-                      gridCtx.beginPath();
-                      gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset); // move to inset top-right
-                      gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset); // draw to inset bottom-left
-                      gridCtx.stroke();
-                 }
-                 gridCtx.restore(); // restore context state
             }
         }
     }
 }
-function seedWaterUpdateQueue() { // seed queue with initial water blocks and adjacent air candidates below waterline
-    waterUpdateQueue.clear(); // start fresh
-    for (let r = Config.WORLD_WATER_LEVEL_ROW_TARGET; r < Config.GRID_ROWS; r++) {
-        for (let c = 0; c < Config.GRID_COLS; c++) { // add any block AT or below the waterline threshold that is AIR or WATER
-            addWaterUpdateCandidate(c, r); // handles bounds, queue.has check, and whether block type is valid for being in the queue
-        }
-    }
-}
-export function applyAging(portalRef, intensityFactor) {
-    if (!agingNoiseGenerator) {
-         console.error("Aging noise generator not initialized!");
-         return;
-    }
 
-    const grid = WorldData.getGrid(); // Get grid array
-    if (!grid || grid.length === 0 || grid[0].length === 0) {
-        console.error("World grid is not available or empty for aging.");
+// Expose the internal rendering function
+export function renderStaticWorldToGridCanvas() { // draw entire static world to off-screen canvas
+    console.log("WorldManager: Rendering static world to grid canvas...");
+    const gridCtx = Renderer.getGridContext();
+    const gridCanvas = Renderer.getGridCanvas();
+    if (!gridCtx || !gridCanvas) {
+        console.error("WorldManager: Cannot render static world - grid canvas/context missing!");
         return;
     }
-
-    const clampedIntensity = Math.max(0.0, intensityFactor); // Ensure non-negative intensity
-    // If intensity is effectively zero, skip the whole process.
-    if (clampedIntensity <= 0) {
-        console.log("Aging intensity is zero, skipping aging pass.");
-        return;
-    }
-
-    console.log(`Applying Aging (Intensity: ${clampedIntensity.toFixed(2)})`);
-
-    // Get portal position and calculate protected radius
-    let portalX = -Infinity, portalY = -Infinity;
-    let protectedRadiusSq = 0; // Default to 0 radius if no portal
-    if (portalRef) {
-        const portalPos = portalRef.getPosition(); // Gets the center of the portal rectangle
-        portalX = portalPos.x;
-        portalY = portalPos.y;
-        const currentSafetyRadius = portalRef.safetyRadius; // Use the dynamic safety radius from the portal instance
-        protectedRadiusSq = currentSafetyRadius * currentSafetyRadius; // Square it for distance comparison
-    } else {
-        // Fallback to screen center and a default radius if no portal reference is provided.
-        // This shouldn't happen in normal gameplay flow once portal is initialized,
-        // but it's a safeguard.
-        portalX = Config.CANVAS_WIDTH / 2;
-        portalY = Config.CANVAS_HEIGHT / 2;
-        protectedRadiusSq = Config.PORTAL_SAFETY_RADIUS * Config.PORTAL_SAFETY_RADIUS; // Use initial config value as fallback
-        console.warn(`No Portal Ref: Using Screen Center for Protected Zone: Center (${portalX.toFixed(1)}, ${portalY.toFixed(1)}), Radius ${Math.sqrt(protectedRadiusSq).toFixed(1)}`);
-    }
-
-    let changesCount = 0; // track how many blocks change
-
-    // Iterate through ALL cells - we still need to check every cell to see if it's outside the radius
+    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height); // clear entire off-screen canvas first
+    const worldGrid = WorldData.getGrid();
+    // Iterate through grid data
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
+            const block = worldGrid[r]?.[c]; // Use optional chaining for safety
 
-            // --- Protected Zone Check ---
-            const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
-            const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
-            const dx = blockCenterX - portalX;
-            const dy = blockCenterY - portalY;
-            const distSqToPortal = dx * dx + dy * dy;
+            // Check for BLOCK_AIR (number 0) or null/undefined
+            if (block === Config.BLOCK_AIR || block === null || block === undefined) continue;
 
-            // If the block is within the protected zone, skip it entirely.
-            if (distSqToPortal <= protectedRadiusSq) {
-                continue;
-            }
-            // --- End Protected Zone Check ---
+            // Ensure block is an object to get type and other properties
+            const blockType = typeof block === 'object' && block !== null ? block.type : block;
 
+            // Skip drawing if it's still just the number 0 for AIR (should be handled above, but safety)
+            if (blockType === Config.BLOCK_AIR) continue;
 
-            // --- Aging Logic (Only applies to blocks OUTSIDE the protected zone) ---
-
-            const block = WorldData.getBlock(c, r); // Get block data (object or AIR constant)
-            // If it's null (out of bounds) or already air, we generally don't change it *itself*.
-            // However, other blocks changing can affect AIR blocks (e.g. erosion creates AIR, sedimentation fills AIR).
-            // We still need to process rules that might CHANGE the block *into* AIR, or fill it *from* AIR.
-            // The current structure handles this: the switch processes `originalType`, and if `newType` is different, it's set.
-            // So, AIR itself doesn't age based on `case Config.BLOCK_AIR:`, but other blocks can become AIR.
-            // We still need to check `block === null` for out of bounds safety.
-            if (block === null) continue; // Skip out of bounds (getBlock returns null)
-
-
-            const originalType = (typeof block === 'object') ? block.type : block;
-
-            let newType = originalType; // Start assuming no change
-
-            const depth = r * Config.BLOCK_HEIGHT; // Calculate depth in pixels
-
-            // Use Perlin noise value to add local variation to probability *scaling*.
-            // It makes aging more likely in some noisy patches than others, even outside the radius.
-            const noiseVal = agingNoiseGenerator.noise(c * Config.AGING_NOISE_SCALE + r * Config.AGING_NOISE_SCALE * 0.1);
-            const scaledNoise = (noiseVal + 1) / 2; // Scale noise to [0, 1]
-
-
-            // Check if the block directly below is solid or if it's the bottom row.
-            const hasSolidBelow = GridCollision.isSolid(c, r + 1) || r + 1 >= Config.GRID_ROWS;
-
-
-            // --- Aging Rules Switch ---
-            // These rules now use random chance again, scaled by noise, intensity, and local conditions.
-
-            switch (originalType) {
-                case Config.BLOCK_AIR:
-                    // Rules for AIR blocks: Can become Dirt/Grass (growth) or Sand (sedimentation).
-                    // Only happens if there's solid ground below
-                    if (hasSolidBelow) {
-                         if (r < Config.WORLD_WATER_LEVEL_ROW_TARGET) { // ABOVE the initial water line (Growth)
-                            // Growth Probability: Base chance * noise (for patchiness) * intensity
-                             const growthProb = Config.AGING_PROB_GROWTH_SURFACE_AIR * scaledNoise * clampedIntensity;
-                              if (Math.random() < growthProb) { // Apply random chance
-                                   // Grow Grass if neighbor below is Dirt/Grass, otherwise grow Dirt.
-                                   const blockBelowType = WorldData.getBlockType(c, r+1);
-                                    if(blockBelowType === Config.BLOCK_DIRT || blockBelowType === Config.BLOCK_GRASS) {
-                                        newType = Config.BLOCK_GRASS;
-                                    } else {
-                                        newType = Config.BLOCK_DIRT;
-                                    }
-                              }
-                         } else { // AT or BELOW the initial water line (Sedimentation)
-                            // Sedimentation Probability: Happens if there's solid ground below.
-                            // Influenced by noise and intensity, and slightly by adjacent solids.
-                             const adjacentSolids = (GridCollision.isSolid(c, r - 1) ? 1 : 0) + (GridCollision.isSolid(c, r + 1) ? 1 : 0) + (GridCollision.isSolid(c - 1, r) ? 1 : 0) + (GridCollision.isSolid(c + 1, r) ? 1 : 0);
-                            const sedimentationProb = Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER * scaledNoise * clampedIntensity * (1 + adjacentSolids * 0.2); // Include adjacent influence
-                            if (Math.random() < sedimentationProb) { // Apply random chance
-                                newType = Config.BLOCK_SAND; // Turns into Sand
-                            }
-                        }
-                    }
-                    break;
-
-                case Config.BLOCK_WATER:
-                    // Rules for WATER blocks: Can become Sand (sedimentation).
-                    // Only apply aging to water below the initial water line.
-                    if (r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
-                        // Sedimentation Probability: Same logic as AIR sedimentation underwater.
-                        if (hasSolidBelow) {
-                            const adjacentSolids = (GridCollision.isSolid(c, r - 1) ? 1 : 0) + (GridCollision.isSolid(c, r + 1) ? 1 : 0) + (GridCollision.isSolid(c - 1, r) ? 1 : 0) + (GridCollision.isSolid(c + 1, r) ? 1 : 0);
-                            const sedimentationProb = Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER * scaledNoise * clampedIntensity * (1 + adjacentSolids * 0.2); // Include adjacent influence
-                            if (Math.random() < sedimentationProb) { // Apply random chance
-                                newType = Config.BLOCK_SAND; // Turns into Sand
-                            }
-                        }
-                    }
-                    break;
-
-                case Config.BLOCK_DIRT: // Intentional fall-through to handle GRASS similarly for deep aging
-                case Config.BLOCK_GRASS:
-                    // Rules for DIRT/GRASS: Can erode (if exposed) or stoneify (if deep).
-                    // Check if exposed to AIR or WATER (any cardinal neighbor).
-                    const isExposedDirtGrass = WorldData.getBlockType(c, r - 1) === Config.BLOCK_AIR || WorldData.getBlockType(c, r - 1) === Config.BLOCK_WATER ||
-                                      WorldData.getBlockType(c, r + 1) === Config.BLOCK_AIR || WorldData.getBlockType(c, r + 1) === Config.BLOCK_WATER ||
-                                      WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR || WorldData.getBlockType(c - 1, r) === Config.BLOCK_WATER ||
-                                      WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR || WorldData.getBlockType(c + 1, r) === Config.BLOCK_WATER;
-
-                    // Erosion: Primarily above water.
-                    if (isExposedDirtGrass && r < Config.WORLD_WATER_LEVEL_ROW_TARGET) {
-                         // Erosion Probability: Base chance * noise * intensity
-                         const erosionProb = Config.AGING_PROB_EROSION_EXPOSED_DIRT * scaledNoise * clampedIntensity;
-                          if (Math.random() < erosionProb) { // Apply random chance
-                              newType = Config.BLOCK_AIR; // Erodes to Air
-                          }
-                    }
-                    // Stoneification: Happens only at sufficient depth.
-                    else if (depth > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) {
-                        // Stoneification Probability: Base chance * noise * intensity
-                        const stoneProb = Config.AGING_PROB_STONEIFICATION_DEEP_DIRT_SAND * scaledNoise * clampedIntensity;
-                         if (Math.random() < stoneProb) { // Apply random chance
-                             newType = Config.BLOCK_STONE; // Turns to Stone
-                         }
-                    }
-                    // TODO: Underwater dirt/grass could erode into Sand or turn to Sand?
-                    break;
-
-                case Config.BLOCK_SAND:
-                    // Rules for SAND: Can erode (if exposed) or stoneify (if deep).
-                    // Check if exposed to AIR or WATER (any cardinal neighbor).
-                    const isExposedSand =   WorldData.getBlockType(c, r - 1) === Config.BLOCK_AIR || WorldData.getBlockType(c, r - 1) === Config.BLOCK_WATER ||
-                                            WorldData.getBlockType(c, r + 1) === Config.BLOCK_AIR || WorldData.getBlockType(c, r + 1) === Config.BLOCK_WATER ||
-                                            WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR || WorldData.getBlockType(c - 1, r) === Config.BLOCK_WATER ||
-                                            WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR || WorldData.getBlockType(c + 1, r) === Config.BLOCK_WATER;
-
-                    // Erosion: Sand erodes more easily than dirt.
-                    if (isExposedSand) {
-                        // Erosion Probability: Higher base chance * noise * intensity
-                        const erosionProb = Config.AGING_PROB_EROSION_EXPOSED_SAND * scaledNoise * clampedIntensity;
-                        if (Math.random() < erosionProb) { // Apply random chance
-                            // Erodes to Water if underwater, Air if above water.
-                            newType = r >= Config.WORLD_WATER_LEVEL_ROW_TARGET ? Config.BLOCK_WATER : Config.BLOCK_AIR;
-                        }
-                    }
-                    // Stoneification: Same depth conditions as Dirt/Grass.
-                    else if (depth > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) {
-                        // Stoneification Probability: Base chance * noise * intensity
-                        const stoneProb = Config.AGING_PROB_STONEIFICATION_DEEP_DIRT_SAND * scaledNoise * clampedIntensity;
-                        if (Math.random() < stoneProb) { // Apply random chance
-                            newType = Config.BLOCK_STONE; // Turns to Stone
-                        }
-                    }
-                    break;
-
-                // TODO: Add rules for other block types (Wood, Metal, Bone, etc.)
-                // Example: Stone surface erosion (rare)
-                case Config.BLOCK_STONE:
-                     const isSurfaceStone = WorldData.getBlockType(c, r-1) === Config.BLOCK_AIR || WorldData.getBlockType(c, r-1) === Config.BLOCK_WATER;
-                     if (isSurfaceStone) {
-                          const stoneErosionProb = Config.AGING_PROB_EROSION_SURFACE_STONE * scaledNoise * clampedIntensity;
-                          if (Math.random() < stoneErosionProb) { // Apply random chance
-                              newType = Config.BLOCK_AIR; // Or maybe turn to Sand?
-                          }
-                     }
-                    break;
-                // Add cases for WOOD, METAL, BONE aging here, using similar patterns (check exposure/depth, apply probability scaled by noise/intensity)
-
-                default:
-                    // Block types that currently have no specific aging rules remain unchanged.
-                    // This includes player-placed blocks *outside* the radius if they don't have a specific rule defined here.
-                    break;
+            const blockColor = Config.BLOCK_COLORS[blockType];
+            if (!blockColor) {
+                // console.error(`No color defined for block type ${blockType} at [${c}, ${r}]`); // Too noisy
+                continue; // Skip drawing if no color
             }
 
-            // --- Apply Change and Update Visuals/Water ---
-            // If the aging rule decided to change the block type
-            if (newType !== originalType) {
-                // Preserve the playerPlaced status of the original block if it existed and was player-placed
-                const isPlayerPlaced = typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false;
+            const blockX = c * Config.BLOCK_WIDTH;
+            const blockY = r * Config.BLOCK_HEIGHT;
+            const blockW = Math.ceil(Config.BLOCK_WIDTH);
+            const blockH = Math.ceil(Config.BLOCK_HEIGHT);
 
-                // Update the block data in the grid. setBlock handles creating the block object structure and HP.
-                const success = WorldData.setBlock(c, r, newType, isPlayerPlaced);
+            // Draw block body onto grid canvas using gridCtx
+            gridCtx.fillStyle = blockColor;
+            gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
 
-                if (success) {
-                    updateStaticWorldAt(c, r); // Redraw this single block on the static canvas
+            // Draw outline if player placed (check if block is an object and has property)
+            const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
+            if (isPlayerPlaced) {
+                gridCtx.save(); // save context state
+                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
+                gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
+                const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2; // adjust coordinates for stroke to be inside the block boundaries
+                gridCtx.strokeRect(
+                    Math.floor(blockX) + outlineInset,
+                    Math.floor(blockY) + outlineInset,
+                    blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, // subtract stroke width from both sides
+                    blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+                );
+                gridCtx.restore(); // restore context state
+            }
 
-                    // If the change is below the water line, queue it and its neighbors for water simulation updates
-                    // Water propagation is still needed even with probabilistic aging, as changes can create new spaces for water.
-                    if (r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
-                        addWaterUpdateCandidate(c, r); // Queue the changed cell itself
-                        // Queue adjacent cells as they might now border the water simulation area or need updates
-                        addWaterUpdateCandidate(c, r - 1);
-                        addWaterUpdateCandidate(c, r + 1);
-                        addWaterUpdateCandidate(c - 1, r);
-                        addWaterUpdateCandidate(c + 1, r);
-                        // Reset the water propagation timer to force an immediate update cycle
-                        waterPropagationTimer = 0;
-                    }
-                    changesCount++; // Increment the count of changes
-                }
+            // Draw damage indicators if block is an object with HP and is damaged
+            if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp) {
+                 const hpRatio = block.hp / block.maxHp;
+                 // Only draw indicators if damage is significant enough based on thresholds
+                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
+                     gridCtx.save(); // save context state before drawing lines
+                     gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
+                     gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                     gridCtx.lineCap = 'square'; // use square cap
+                     const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH; // calculate effective inset for line path points
+
+                      // Draw slash (\)
+                      gridCtx.beginPath();
+                      gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset); // move to inset top-left, draw to inset bottom-right
+                      gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
+                      gridCtx.stroke();
+
+                      // Draw second line (/) if HP is <= 30% (creating an 'X')
+                      if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
+                          gridCtx.beginPath();
+                          gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset); // move to inset top-right
+                          gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset); // draw to inset bottom-left
+                          gridCtx.stroke();
+                      }
+                     gridCtx.restore(); // restore context state
+                 }
             }
         }
     }
-    console.log(`Aging pass complete. ${changesCount} blocks changed.`);
+    console.log("WorldManager: Static world rendered.");
+}
+
+export function seedWaterUpdateQueue() { // seed queue with initial water blocks and adjacent air candidates below waterline
+    console.log("WorldManager: Seeding water update queue...");
+    waterUpdateQueue.clear(); // start fresh
+    // Start seeding from slightly above the waterline target to catch falling water
+    for (let r = Config.WORLD_WATER_LEVEL_ROW_TARGET - 5; r < Config.GRID_ROWS; r++) { // Increased the buffer above waterline slightly
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+             // Add any block AT or below the waterline threshold that is AIR or WATER, or solid blocks near water
+             // More robust seeding: Add water blocks AND adjacent air/water blocks to the queue
+             const blockType = WorldData.getBlockType(c, r);
+             if (blockType === Config.BLOCK_WATER) {
+                 addWaterUpdateCandidate(c, r);
+                 // Also add neighbors of water blocks
+                 addWaterUpdateCandidate(c, r-1); // Even neighbors above water can be candidates if they turn to AIR/WATER later
+                 addWaterUpdateCandidate(c, r+1);
+                 addWaterUpdateCandidate(c-1, r);
+                 addWaterUpdateCandidate(c+1, r);
+             } else if (blockType === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // Add air below waterline + buffer as potential fill candidates
+                 addWaterUpdateCandidate(c, r);
+             }
+             // Also add neighbors of solid blocks near the water line, as destroying them can create new AIR space for water
+             if (GridCollision.isSolid(c, r) && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) {
+                  addWaterUpdateCandidate(c, r-1);
+                  addWaterUpdateCandidate(c, r+1);
+                  addWaterUpdateCandidate(c-1, r);
+                  addWaterUpdateCandidate(c+1, r);
+             }
+        }
+    }
+    // Ensure any player-placed blocks near water also trigger neighbor checks
+    const grid = WorldData.getGrid();
+    grid.forEach((rowArray, r) => {
+        if (r < Config.WORLD_WATER_LEVEL_ROW_TARGET - 5 || r >= Config.GRID_ROWS) return; // Optimization
+        rowArray.forEach((block, c) => {
+            if (typeof block === 'object' && block.isPlayerPlaced) {
+                 addWaterUpdateCandidate(c, r-1);
+                 addWaterUpdateCandidate(c, r+1);
+                 addWaterUpdateCandidate(c-1, r);
+                 addWaterUpdateCandidate(c+1, r);
+            }
+        });
+    });
+
+
+     console.log(`WorldManager: Seeded Water Update Queue with ${waterUpdateQueue.size} candidates.`);
+     // Reset timer so water simulation starts immediately after seeding
+     waterPropagationTimer = 0;
 }
 
 export function placePlayerBlock(col, row, blockType) { // sets player-placed block - assumes validity checks (range, clear, neighbor) are done by the Player class
-    const success = WorldData.setBlock(col, row, blockType, true);
+    const success = WorldData.setBlock(col, row, blockType, true); // WorldData.setBlock uses createBlock which handles HP/maxHP
     if (success) {
         updateStaticWorldAt(col, row); // update visual cache
-        if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET) { // trigger water sim if below waterline
-             addWaterUpdateCandidate(col, row); // queue changed block
-             addWaterUpdateCandidate(col, row - 1); // queue neighbours
-             addWaterUpdateCandidate(col, row + 1);
-             addWaterUpdateCandidate(col - 1, row);
-             addWaterUpdateCandidate(col + 1, row);
-             waterPropagationTimer = 0; // reset timer
+        // Trigger water sim if block placement is at or near the waterline by adding neighbors to queue
+        // Note: We add neighbors of the *new* block, and potentially the block itself if it's water
+        if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) {
+             let candidateAdded = false;
+             candidateAdded = addWaterUpdateCandidate(col, row) || candidateAdded; // queue changed block itself if it's water
+             candidateAdded = addWaterUpdateCandidate(col, row - 1) || candidateAdded; // queue neighbours
+             candidateAdded = addWaterUpdateCandidate(col, row + 1) || candidateAdded;
+             candidateAdded = addWaterUpdateCandidate(col - 1, row) || candidateAdded;
+             candidateAdded = addWaterUpdateCandidate(col + 1, row) || candidateAdded;
+
+             if(candidateAdded) {
+                 waterPropagationTimer = 0; // reset timer to force immediate water update
+             }
         }
+    } else {
+         console.error(`WorldManager placePlayerBlock failed to set block at [${col}, ${row}]`);
     }
     return success;
 }
+
 export function damageBlock(col, row, damageAmount) { // applies damage to block at given coordinates - if block drops to 0 HP, replace with AIR and drop material
     if (damageAmount <= 0) return false; // zero damage dealt
     const block = WorldData.getBlock(col, row);
-    if (!block || typeof block !== 'object' || block.type === Config.BLOCK_AIR || block.type === Config.BLOCK_WATER || !block.hasOwnProperty('hp') || block.hp === Infinity) {
-        return false; // check if block is a valid object and breakable
+
+    // Check if block is a valid object, is breakable, and is not already at 0 HP
+    if (!block || typeof block !== 'object' || block.type === Config.BLOCK_AIR || block.type === Config.BLOCK_WATER || !block.hasOwnProperty('hp') || block.maxHp <= 0 || block.hp <= 0 || block.hp === Infinity) {
+         // console.log(`Attempted to damage unbreakable/already broken block at [${col}, ${row}]. Type: ${typeof block === 'object' ? block.type : block}`); // Too noisy
+        return false;
     }
+
+    // Ensure HP is a number before subtracting
+    if (typeof block.hp !== 'number' || isNaN(block.hp)) {
+         console.error(`Invalid HP type for block at [${col}, ${row}]. HP: ${block.hp}. Resetting HP and skipping damage.`); // Use row variable
+         block.hp = block.maxHp; // Reset HP to prevent infinite errors
+         return false; // Cannot damage
+    }
+
+
     block.hp -= damageAmount; // apply damage
     updateStaticWorldAt(col, row); // redraw the block on the static canvas with updated damage indicator
+
     let wasDestroyed = false;
     if (block.hp <= 0) { // check for destruction
         wasDestroyed = true;
         block.hp = 0; // ensure health doesn't go below zero in data
-        let dropType = null; // determine drop type
-        switch (block.type) { // use current type from object
-            case Config.BLOCK_GRASS: dropType = 'dirt'; break;
+
+        // Determine drop type based on the type *before* it was destroyed
+        let dropType = null;
+        switch (block.type) {
+            case Config.BLOCK_GRASS: dropType = 'dirt'; break; // Grass drops dirt
             case Config.BLOCK_DIRT:  dropType = 'dirt'; break;
             case Config.BLOCK_STONE: dropType = 'stone'; break;
             case Config.BLOCK_SAND:  dropType = 'sand'; break;
             case Config.BLOCK_WOOD: dropType = 'wood'; break;
-             case Config.BLOCK_BONE: dropType = 'bone'; break;
-             case Config.BLOCK_METAL: dropType = 'metal'; break;
-             // TODO: add other block types and their drops
+            case Config.BLOCK_BONE: dropType = 'bone'; break;
+            case Config.BLOCK_METAL: dropType = 'metal'; break;
+            // Add other block types and their drops
         }
+
         if (dropType) { // spawn drop (if any)
-            const dropX = col * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2); // position slightly off-center and random within the block bounds
+            // Position slightly off-center and random within the block bounds
+            const dropX = col * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2);
             const dropY = row * Config.BLOCK_HEIGHT + (Config.BLOCK_HEIGHT / 2);
             const offsetX = (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.4; // random offset
             const offsetY = (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.4;
-             if (!isNaN(dropX) && !isNaN(dropY) && typeof dropX === 'number' && typeof dropY === 'number') { // ensure coordinates are valid before spawning
-                 ItemManager.spawnItem(dropX + offsetX, dropY + offsetY, dropType);
+
+             // Ensure coordinates are valid before spawning item
+             const finalDropX = dropX + offsetX;
+             const finalDropY = dropY + offsetY;
+             if (!isNaN(finalDropX) && !isNaN(finalDropY) && typeof finalDropX === 'number' && typeof finalDropY === 'number') {
+                 ItemManager.spawnItem(finalDropX, finalDropY, dropType);
              } else {
-                 console.error(`ITESPAWN FAILED: Invalid drop coordinates [${dropX}, ${dropY}] for ${dropType} from destroyed block at [${col}, ${row}].`);
+                 console.error(`ITEM SPAWN FAILED: Invalid drop coordinates [${finalDropX}, ${finalDropY}] for ${dropType} from destroyed block at [${col}, ${row}].`);
              }
         }
-        const isPlayerPlaced = typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false; // replace block with air
-        const success = WorldData.setBlock(col, row, Config.BLOCK_AIR, isPlayerPlaced); // keep playerPlaced status
+
+        // Replace the block with AIR, preserving playerPlaced status if it was player-placed
+        // WorldData.setBlock handles creating the new block data object for AIR
+        const success = WorldData.setBlock(col, row, Config.BLOCK_AIR, typeof block === 'object' ? (block.isPlayerPlaced ?? false) : false);
+
         if (success) { // WorldData.setBlock returned true
             updateStaticWorldAt(col, row); // update/ clear block area static visual cache
-             if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET) { // trigger water simulation
-                 addWaterUpdateCandidate(col, row); // queue changed block itself
-                 addWaterUpdateCandidate(col, row - 1); // and neighbors
-                 addWaterUpdateCandidate(col, row + 1);
-                 addWaterUpdateCandidate(col - 1, row);
-                 addWaterUpdateCandidate(col + 1, row);
-                 waterPropagationTimer = 0; // reset timer
+            // Trigger water simulation if the destruction is at or near the waterline
+             if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // Check a few rows above
+                 let candidateAdded = false;
+                 candidateAdded = addWaterUpdateCandidate(col, row) || candidateAdded; // queue changed block itself if it's water (unlikely to be water after destruction)
+                 candidateAdded = addWaterUpdateCandidate(col, row - 1) || candidateAdded; // and neighbors
+                 candidateAdded = addWaterUpdateCandidate(col, row + 1) || candidateAdded;
+                 candidateAdded = addWaterUpdateCandidate(col - 1, row) || candidateAdded;
+                 candidateAdded = addWaterUpdateCandidate(col + 1, row) || candidateAdded;
+                 if(candidateAdded) {
+                     waterPropagationTimer = 0; // reset timer
+                 }
              }
+        } else {
+             console.error(`WorldManager damageBlock failed to set AIR at [${col}, ${row}] after destruction.`);
         }
     }
-    return true; // damage applied, regardless of destruction
+    return true; // damage applied, regardless of destruction status
 }
+
 export function draw(ctx) { // draw pre-rendered static world onto main canvas
     if (!ctx) { console.error("WorldManager.draw: No drawing context provided!"); return; }
     const gridCanvas = Renderer.getGridCanvas();
@@ -512,69 +403,128 @@ export function draw(ctx) { // draw pre-rendered static world onto main canvas
         console.error("WorldManager.draw: Cannot draw world, grid canvas is not available!");
     }
 }
+
 export function update(dt) { // handles dynamic world state like water flow
          waterPropagationTimer = Math.max(0, waterPropagationTimer - dt); // ensure timer doesn't go massively negative if frame rate drops
-        if (waterPropagationTimer <= 0 && waterUpdateQueue.size > 0) { // only process water flow if there are candidates and a timer ready
+        // Only process water flow if there are candidates and a timer ready
+        if (waterPropagationTimer <= 0 && waterUpdateQueue.size > 0) {
             waterPropagationTimer = Config.WATER_PROPAGATION_DELAY; // reset timer
-            const candidatesToProcess = Array.from(waterUpdateQueue.values()).slice(0, Config.WATER_UPDATES_PER_FRAME); // process candidates from queue in a slicable array
-            candidatesToProcess.sort((a, b) => b.r - a.r); // sort candidates to process cells in lower rows (higher 'r' value) first
-            candidatesToProcess.forEach(({c, r}) => { // remove processed candidates from queue before processing batch to prevent infinite re-queuing
+
+            // Process a limited number of candidates per frame to prevent physics collapse
+            // Convert map values to array to easily slice and iterate
+            const candidatesArray = Array.from(waterUpdateQueue.values());
+
+            // Sort candidates to process cells in lower rows (higher 'r' value) first for more natural downward flow
+            candidatesArray.sort((a, b) => b.r - a.r);
+
+            // Select the batch to process this frame
+            const candidatesToProcess = candidatesArray.slice(0, Config.WATER_UPDATES_PER_FRAME);
+
+            // Remove processed candidates from queue *before* processing the batch
+            // This prevents infinite re-queuing of the same cell in the current batch if it doesn't change type
+            candidatesToProcess.forEach(({c, r}) => {
                 const key = `${c},${r}`;
                 waterUpdateQueue.delete(key);
             });
-            candidatesToProcess.forEach(({c, r}) => { // process batch of candidates
-                if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return; // recheck bounds, as blocks may've been changed since queueing
-                const currentBlockType = WorldData.getBlockType(c, r); // add neighbours below waterline to the queue
-                const neighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // cardinal neighbours
-                neighbors.forEach(neighbor => {
-                     const nc = c + neighbor.dc;
-                     const nr = r + neighbor.dr;
-                     addWaterUpdateCandidate(nc, nr);
-                });
-                if (currentBlockType === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) { // only process filling if current cell is still AIR
-                    let adjacentToWater = false; // check current neighbours for water
-                    const immediateNeighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // cardinal neighbours again
-                     for (const neighbor of immediateNeighbors) {
-                        const nc = c + neighbor.dc;
-                        const nr = r + neighbor.dr;
-                        if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS && WorldData.getBlockType(nc, nr) === Config.BLOCK_WATER) { // check if neighbour is WATER within bounds
-                            adjacentToWater = true;
-                            break; // found water neighbour
+
+            // Process the batch of candidates
+            candidatesToProcess.forEach(({c, r}) => {
+                // Recheck bounds, as blocks may've been changed since queueing
+                if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return;
+
+                const currentBlockType = WorldData.getBlockType(c, r); // get current block type
+
+                // Queue neighbors below waterline to the queue for potential updates
+                // This ensures changes propagate. Queueing neighbors of AIR/WATER blocks.
+                // Or queue neighbors of solid blocks that might cause water to pool.
+                 const neighborsToQueue = [
+                     { dc: 0, dr: 1 }, { dc: 0, dr: -1 },
+                     { dc: 1, dr: 0 }, { dc: -1, dr: 0 }
+                 ]; // Cardinal neighbours
+
+                 // Add neighbors of the *current* block being processed if it's water or near the waterline
+                 // This ensures surrounding cells are re-evaluated based on this cell's state *after* its potential type change (or if it was just processed)
+                 // Check is at/below waterline threshold for optimization
+                 if (r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) {
+                    neighborsToQueue.forEach(neighbor => {
+                         const nc = c + neighbor.dc;
+                         const nr = r + neighbor.dr;
+                         // addWaterUpdateCandidate handles the bounds, type (AIR/WATER), and existence checks
+                         addWaterUpdateCandidate(nc, nr);
+                    });
+                 }
+
+
+                // --- Water Flow Logic ---
+                // Only process flow/filling if current cell is AIR or WATER and below waterline
+                 if (r >= Config.WORLD_WATER_LEVEL_ROW_TARGET -5 && r < Config.GRID_ROWS) { // Apply water logic slightly above waterline threshold too
+
+                     if (currentBlockType === Config.BLOCK_AIR) {
+                         // If current cell is AIR, check if it should be filled by adjacent WATER
+                         let adjacentToWater = false;
+                         const immediateNeighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // cardinal neighbours again
+                         for (const neighbor of immediateNeighbors) {
+                            const nc = c + neighbor.dc;
+                            const nr = r + neighbor.dr;
+                            // Check if neighbor is within bounds and is WATER
+                            if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS && WorldData.getBlockType(nc, nr) === Config.BLOCK_WATER) {
+                                adjacentToWater = true;
+                                break; // found water neighbour
+                            }
+                        }
+                        if (adjacentToWater) {
+                            // If adjacent to water, this AIR block becomes WATER
+                            const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // water flows; not player-placed
+                            if (success) {
+                                updateStaticWorldAt(c, r); // Redraw the block
+                                 // Queue neighbors (already done above, but ensuring they are candidates is key)
+                                 // Forcing timer reset is handled once below after the batch.
+                            }
                         }
                     }
-                    if (adjacentToWater) {
-                        const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // water flows; not player-placed
-                        if (success) {
-                            updateStaticWorldAt(c, r); // queue neighbours for water spread
-                            addWaterUpdateCandidate(c, r-1); // above
-                            addWaterUpdateCandidate(c, r+1); // below
-                            addWaterUpdateCandidate(c-1, r); // left
-                            addWaterUpdateCandidate(c+1, r); // right
-                            waterPropagationTimer = 0; // reset timer
+
+                    if (currentBlockType === Config.BLOCK_WATER) {
+                        // If current cell is WATER, check if it should flow downwards or sideways
+
+                        const blockBelowType = WorldData.getBlockType(c, r + 1);
+                        // Flow Down: If there is AIR directly below this WATER block
+                        if (blockBelowType === Config.BLOCK_AIR) {
+                            // Queue the AIR block below. The next water update cycle will process it and turn it to WATER.
+                            addWaterUpdateCandidate(c, r + 1); // This will ensure the cell below is considered for filling
                         }
-                    }
-                }
-                if (currentBlockType === Config.BLOCK_WATER) { // logic for WATER to propagate
-                    const blockBelowType = WorldData.getBlockType(c, r + 1); // if there is AIR directly below this water block, queue that AIR block.
-                    if (blockBelowType === Config.BLOCK_AIR) {
-                        addWaterUpdateCandidate(c, r + 1); // queue air block below
-                    }
-                    const blockBelow = WorldData.getBlock(c, r + 1); // check for sideways flow over solid ground: if block below is solid OR water AND side block is air
-                    const blockBelowResolvedType = blockBelow?.type ?? Config.BLOCK_AIR; // use resolved type, handle null/0
-                    const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR); // is block below something that would act as a "floor"?
-                    if (isBelowSolidOrWater) { // if there's solid ground or water directly below, water can try to flow sideways
-                        if (WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR) { // check left
-                            addWaterUpdateCandidate(c - 1, r); // queue air block to left
+
+                        // Flow Sideways: If block below is solid or water AND side block is AIR
+                        const blockBelow = WorldData.getBlock(c, r + 1); // Get block data for the one below
+                        const blockBelowResolvedType = blockBelow?.type ?? Config.BLOCK_AIR; // Get type, default to AIR if null/undefined
+                        // Is block below something that would act as a "floor" for sideways flow? (Any solid block or another water block)
+                        const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR);
+
+                        if (isBelowSolidOrWater) {
+                             // Check left
+                            if (WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR) {
+                                addWaterUpdateCandidate(c - 1, r); // Queue air block to left
+                            }
+                             // Check right
+                            if (WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR) {
+                                addWaterUpdateCandidate(c + 1, r); // Queue air block to right
+                            }
                         }
-                        if (WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR) { // check right
-                            addWaterUpdateCandidate(c + 1, r); // queue air block to right
-                        }
-                    }
-                }
-            });
+                    } // End if currentBlockType === BLOCK_WATER
+
+                } // End if block is at or below waterline threshold + buffer
+            }); // End candidatesToProcess.forEach
+
+
+             // Reset the propagation timer *after* processing the batch if *any* candidate was processed.
+             // This keeps the simulation running as long as there's potential for flow.
+             if(candidatesToProcess.length > 0) {
+                 // waterPropagationTimer = 0; // Moved outside the loop, reset once per propagation tick.
+             }
+
+
         } else if (waterPropagationTimer <= 0 && waterUpdateQueue.size === 0) {
-           // console.log("[WaterMgr] Water update timer ready, but queue is empty.");
+           // console.log("[WaterMgr] Water update timer ready, but queue is empty."); // Too noisy
         } else if (waterPropagationTimer > 0) {
-           // console.log(`[WaterMgr] Water update timer active: ${waterPropagationTimer.toFixed(2)}s remaining.`);
+           // console.log(`[WaterMgr] Water update timer active: ${waterPropagationTimer.toFixed(2)}s remaining.`); // Too noisy
         }
-    }
+}

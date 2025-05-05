@@ -14,11 +14,12 @@ export const WORLD_ISLAND_WIDTH = 0.8; // width of island as a percentage
 export const WORLD_WATER_LEVEL = 0.15; // water covers bottom 15%, could be raised for environmental chaos
 export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL)); // water level = +/- row 170
 export const WORLD_GROUND_LEVEL_MEAN = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // mean ground level (surface) = row 150
-const STONE_DEPTH_BELOW_GROUND = 15; // how deep stone starts below the average ground level
+export const STONE_DEPTH_BELOW_GROUND = 15; // how deep stone starts below the average ground level
 export const WORLD_STONE_LEVEL_MEAN = WORLD_GROUND_LEVEL_MEAN + STONE_DEPTH_BELOW_GROUND; // mean stone level (row 165)
 export const WORLD_GROUND_VARIATION = 3; // variations and noise scale
 export const WORLD_STONE_VARIATION = 3; // adjustable noise amount
 export const WORLD_NOISE_SCALE = 0.05;
+// These determine the shape of the ocean floor/stone layers, but WorldGenerator will now fill them with DIRT and STONE initially.
 export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5; // ocean tapering +/- row 175
 export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // +/- row 183
 export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1); // +/- 20 rows below water level
@@ -36,13 +37,22 @@ export const ISLAND_CENTER_TAPER_WIDTH = 80; // width of taper from island edge 
 
 export const AGING_BASE_INTENSITY = 1.0; // Base intensity for aging
 export const AGING_NOISE_SCALE = 0.03; // Scale for aging noise (controls patch size)
-export const AGING_PROB_EROSION_EXPOSED_DIRT = 0.001; // Chance for exposed dirt to erode per block
-export const AGING_PROB_EROSION_EXPOSED_SAND = 0.003; // Chance for exposed sand to erode per block (sand erodes easier)
-export const AGING_PROB_EROSION_SURFACE_STONE = 0.00005; // Small chance for surface stone erosion per block
-export const AGING_PROB_GROWTH_SURFACE_AIR = 0.005; // Chance for air on surface to become dirt/grass per block
-export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.002; // Chance for underwater air/water to become sand/dirt per block
-export const AGING_PROB_STONEIFICATION_DEEP_DIRT_SAND = 0.00002; // Chance for deep dirt/sand to become stone per block
-export const AGING_STONEIFICATION_DEPTH_THRESHOLD = 100; // Pixel depth below which stoneification can occur
+export const AGING_PROB_GRASS_GROWTH = 0.8; // Chance for DIRT -> GRASS if exposed to AIR and NOT WATER
+export const AGING_PROB_WATER_EROSION_DIRT_GRASS = 0.8; // Chance for DIRT/GRASS -> SAND if exposed to WATER
+export const AGING_PROB_WATER_EROSION_SAND = 0.00001; // Chance for SAND -> WATER/AIR if exposed to WATER (Sand erodes faster underwater)
+export const AGING_PROB_AIR_EROSION_SAND = 0.001; // Chance for SAND -> AIR if exposed to AIR (Wind erosion)
+export const AGING_PROB_STONEIFICATION_DEEP = 0.0001; // Reduced chance for DIRT/SAND/GRASS -> STONE if deep enough
+export const AGING_PROB_EROSION_SURFACE_STONE = 0.0001; // Small chance for exposed STONE -> AIR (very slow weathering)
+export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.0001; // Base chance for Air/Water below waterline to become SAND (OLD RULE - keeping for now)
+// NEW Sand Sedimentation Below rule parameters (MOVED DOWN):
+export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.0005; // Base chance for a SAND block to convert the block below it
+export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth above to influence probability (user request: 4+)
+// AGING_MATERIAL_CONVERSION_FACTORS defined below BLOCK_ constants
+
+export const AGING_STONEIFICATION_DEPTH_THRESHOLD = 700; // Increased Pixel depth below which stoneification can occur (Below waterline)
+export const AGING_INITIAL_PASSES = 350; // Number of aging passes when the world is first generated
+export const AGING_DEFAULT_PASSES_PER_WAVE = 1; // Default number of aging passes between waves if not specified per wave
+export const WARPPHASE_DURATION = 5.0; //  Fixed duration of the Warp/Cleanup phase (seconds)
 
 // =============================================================================
 // --- Camera / Viewport ---
@@ -172,6 +182,19 @@ export const MATERIAL_TO_BLOCK_TYPE = { // map inventory material strings to blo
     'metal': BLOCK_METAL,
     'bone': BLOCK_BONE, // TODO: add other placeable materials here if needed
 };
+
+// Sand Sedimentation Below Convertible Materials (MOVED DOWN)
+export const AGING_MATERIAL_CONVERSION_FACTORS = { // Materials below sand that can be converted. Factors set to 1.0 for equal chance.
+    [BLOCK_DIRT]: 1.0, // Dirt is convertible
+    [BLOCK_GRASS]: 1.0, // Grass is convertible
+    [BLOCK_STONE]: 1.0, // Stone is convertible (with equal chance now)
+    [BLOCK_BONE]: 1.0, // Bone is convertible
+    [BLOCK_WOOD]: 1.0, // Wood is convertible
+    [BLOCK_METAL]: 1.0, // Metal is convertible? (Decide if metal should be convertible)
+    // Add factors for other materials here if they can be converted by sand.
+    // Materials not listed implicitly have a factor of 0 (cannot be converted by this rule)
+};
+
 
 // =============================================================================
 // --- Portal Parameters ---
@@ -401,16 +424,15 @@ export const ENEMY_STATS = { // detailed stats - enemy and AI constructors read 
 // --- Wave Scripting ---
 // =============================================================================
 
-export const WAVE_START_DELAY = 10.0; // seconds before the very first wave starts
-export const WARPPHASE_DURATION = 5.0; // fixed duration for the warp/cleanup phase
-export const WAVE_ENEMY_SPAWN_DELAY = 0.5; // default delay if not specified in group
+export const WAVE_START_DELAY = 5.0; // seconds before the very first wave starts
 export const WAVES = [
     { // === 1 ===
         mainWaveNumber: 1, // for UI references
         duration: 117, // total wave duration in seconds
         intermissionDuration: 15.0, // total duration of intermission *after* this wave
         audioTrack: 'assets/audio/music/Wave1-350.mp3',
-        // Optional: agingIntensity: 1.0, // Can be specified per wave, defaults to AGING_BASE_INTENSITY if not present
+        agingIntensity: 1.0, // Can be specified per wave
+        agingPasses: 50, // NEW: Number of aging passes for the INTERMISSION *after* this wave
         subWaves: [
             { // --- 1.1 ---
                 enemyGroups: [
@@ -438,7 +460,8 @@ export const WAVES = [
         duration: 137,
         intermissionDuration: 20.0,
         audioTrack: 'assets/audio/music/Wave2-300.mp3',
-        // Optional: agingIntensity: 1.2, // Example: Wave 2 could have slightly more aging
+        agingIntensity: 1.2, // Example: Wave 2 could have slightly more aging
+        agingPasses: 100, // NEW: More aging passes
         subWaves: [
             { // --- 2.1 ---
                  enemyGroups: [
@@ -466,7 +489,8 @@ export const WAVES = [
         duration: 90,
         intermissionDuration: 25.0, // shorter intermission
         audioTrack: 'assets/audio/music/wave3.mp3', // <-- TODO: add music track here
-        // Optional: agingIntensity: 1.0, // Back to base intensity
+        agingIntensity: 1.0, // Back to base intensity
+        agingPasses: 150, // NEW: Even more aging
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
@@ -474,19 +498,6 @@ export const WAVES = [
     }
     // ===  ... 7ish more waves afterwards ===
 ];
-
-// =============================================================================
-// --- Epoch Mapping & Display ---
-// =============================================================================
-// Map wave number (1-based) to the epoch year (in millions of years)
-export const EPOCH_MAP = {
-    1: 350, // Wave 1 = 350 Million Years Ago
-    2: 300, // Wave 2 = 300 Million Years Ago
-    3: 90,  // Wave 3 = 90 Million Years Ago
-    // Add mappings for subsequent waves as needed
-};
-// Duration the epoch text is displayed for each wave start (in seconds)
-export const EPOCH_DISPLAY_DURATION = 4.0;
 
 // =============================================================================
 // --- Projectile Parameters (Future Use) ---
