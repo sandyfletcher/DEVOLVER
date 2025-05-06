@@ -55,18 +55,36 @@ body {
     transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 .overlay-content {
-    display: none;
+    display: none; /* Hide all content divs by default */
     flex-direction: column;
     align-items: center;
     width: 80%;
     max-width: 500px;
 }
+
+/* Show specific content divs based on overlay state */
 #game-overlay.show-title #overlay-title-content,
+#game-overlay.show-mainmenu #overlay-mainmenu-content, /* Added */
+#game-overlay.show-settings #overlay-settings-content, /* Added */
+#game-overlay.show-cutscene #overlay-cutscene-content, /* Added */
 #game-overlay.show-pause #overlay-pause-content,
 #game-overlay.show-gameover #overlay-gameover-content,
 #game-overlay.show-victory #overlay-victory-content {
-    display: flex;
+    display: flex; /* Show the content div */
+    /* For cutscene, flex-direction might be row or you handle image display differently */
+    /* Let's make cutscene content take full overlay space */
+     #game-overlay.show-cutscene #overlay-cutscene-content {
+         width: 100%;
+         height: 100%;
+         max-width: none; /* Allow it to fill */
+         justify-content: center;
+         align-items: center;
+         /* Images inside will be positioned/controlled */
+         position: relative; /* Needed for absolute positioning of images */
+     }
 }
+
+
 #game-overlay h1 {
     font-family: 'RubikIso', sans-serif;
     font-size: 3.5em;
@@ -88,10 +106,12 @@ body {
 #game-overlay button:active {
     transform: scale(0.97);
 }
-#restart-button-overlay {
+#restart-button-overlay,
+#restart-button-overlay-pause { /* ADDED ID FOR PAUSE RESTART BUTTON */
     background-color: darkred; color: white; border-color: #ffaaaa;
 }
-#restart-button-overlay:hover {
+#restart-button-overlay:hover,
+#restart-button-overlay-pause:hover { /* ADDED ID FOR PAUSE RESTART BUTTON */
     background-color: red;
 }
 #restart-button-overlay-victory {
@@ -428,3 +448,38 @@ noscript p {
 #top-sidebar, #bottom-sidebar {
     -ms-overflow-style: none; scrollbar-width: none;
 }
+
+/* Styles for the Cutscene Content */
+#overlay-cutscene-content {
+    position: relative; /* Needed for absolute positioning of images */
+    overflow: hidden; /* Hide parts of images that exceed bounds */
+}
+
+.cutscene-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain; /* Scale image to fit within the container */
+    /* object-fit: cover;  <-- Use cover if you want the image to fill and potentially crop */
+    opacity: 0; /* Hide images by default */
+    transition: opacity 1s ease-in-out; /* Fade transition */
+}
+
+.cutscene-image.active {
+    opacity: 1; /* Show active image */
+    z-index: 1; /* Bring active image to front */
+}
+
+/* Optional: Style for a skip button if added later */
+/*
+#cutscene-skip-button {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10; // Ensure it's above images
+    padding: 8px 15px;
+    font-size: 1em;
+}
+*/

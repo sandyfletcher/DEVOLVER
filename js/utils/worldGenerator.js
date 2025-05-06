@@ -18,7 +18,6 @@ function generateLandmass() { // generates initial landmass and fills the rest w
     const islandWidth = Math.floor(Config.GRID_COLS * Config.WORLD_ISLAND_WIDTH); // 200*0.8=160
     const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2); // 200-160=40/2=20
     const islandEndCol = islandStartCol + islandWidth; // 20+160=180
-    // OCEAN_FLOOR_ROW_NEAR_ISLAND and OCEAN_STONE_ROW_NEAR_ISLAND now just define levels for the shape
     const OCEAN_FLOOR_ROW_NEAR_ISLAND = Config.WORLD_WATER_LEVEL_ROW_TARGET + 5; // ocean tapering +/- row 175
     const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // +/- row 183
     const deepOceanFloorStartRow = Math.min(Config.GRID_ROWS - 3, Config.WORLD_WATER_LEVEL_ROW_TARGET + Math.floor(Config.GRID_ROWS * 0.1));
@@ -212,8 +211,8 @@ function applyFloodFill(targetWaterRow) { // flood fill function
             continue; // Skip if out of bounds, above water line, or already filled
         }
 
-        // Fill with water
-       const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // water blocks are not player-placed
+       const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // fill with water (not player-placed)
+
        if (success) {
             processed++;
             // Add valid AIR neighbours (must be at or below targetWaterRow) to the queue
@@ -225,8 +224,7 @@ function applyFloodFill(targetWaterRow) { // flood fill function
                  // Ensure neighbor is within grid bounds AND at/below target water level
                  if (nr >= targetWaterRow && nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
                     const nKey = `${nc},${nr}`;
-                    // Check if neighbor is AIR and not visited yet
-                    if (WorldData.getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) {
+                    if (WorldData.getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) { // check if neighbor is AIR and not visited yet
                         visited.add(nKey);
                         queue.push({ c: nc, r: nr });
                     }
@@ -237,10 +235,9 @@ function applyFloodFill(targetWaterRow) { // flood fill function
     console.log(`Flood fill complete. Filled ${processed} water blocks.`);
 }
 
-export function generateInitialWorld() { // runs and times the world generation process
+export function generateInitialWorld() { // run world generation process
     console.time("Initial World generated in");
-    // Initialize grid with AIR first
-    WorldData.initializeGrid(); // Ensure grid is clean slate before generating landmass
+    WorldData.initializeGrid(); // initialize grid with clean slate of only AIR before generating landmass
     generateLandmass();
     applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
     console.timeEnd("Initial World generated in");

@@ -63,20 +63,55 @@
                 </div>
             </aside>
             <div id="game-overlay">
+                <!-- Title Screen Content (Existing) -->
                 <div id="overlay-title-content" class="overlay-content">
                     <h1>DEVOLVER</h1>
-                    <button id="start-game-button">START GAME</button>
+                    <!-- This button will now go to the main menu -->
+                    <button id="start-game-button">START</button>
                 </div>
+
+                <!-- New: Main Menu Content -->
+                <div id="overlay-mainmenu-content" class="overlay-content">
+                    <h2>MAIN MENU</h2>
+                    <button id="mainmenu-start-game-button">START GAME</button>
+                    <button id="mainmenu-settings-button">SETTINGS</button>
+                </div>
+
+                 <!-- New: Settings Menu Content (Roughed Out) -->
+                 <div id="overlay-settings-content" class="overlay-content">
+                     <h2>SETTINGS</h2>
+                     <button>AUDIO</button>
+                     <button>CONTROLS</button>
+                     <button>CREDITS</button>
+                     <button id="settings-back-button">BACK</button>
+                 </div>
+
+                 <!-- New: Intro Cutscene Content -->
+                 <div id="overlay-cutscene-content" class="overlay-content">
+                     <!-- Image elements for the slideshow -->
+                     <!-- CSS will control which is visible and how they transition -->
+                     <!-- Using 100% width/height for fill, object-fit: contain or cover in CSS -->
+                     <img id="cutscene-image-1" class="cutscene-image" src="assets/gendimage1.png" alt="Cutscene Image 1">
+                     <img id="cutscene-image-2" class="cutscene-image" src="assets/gendimage2.png" alt="Cutscene Image 2">
+                     <img id="cutscene-image-3" class="cutscene-image" src="assets/gendimage1.png" alt="Cutscene Image 3">
+                     <img id="cutscene-image-4" class="cutscene-image" src="assets/gendimage2.png" alt="Cutscene Image 4">
+                     <button id="cutscene-skip-button">SKIP</button>
+                 </div>
+
+
+                <!-- Pause Content (Existing) -->
                  <div id="overlay-pause-content" class="overlay-content">
                      <h2>PAUSED</h2>
                      <button id="resume-button">RESUME</button>
-                     <!-- TODO: add mute/restart here later -->
+                     <button id="restart-button-overlay-pause" class="pause-restart-button">RESTART</button>
                  </div>
+                <!-- Game Over Content (Existing) -->
                 <div id="overlay-gameover-content" class="overlay-content">
                     <h2>GAME OVER</h2>
                     <p id="gameover-stats-text">You survived X waves!</p>
                     <button id="restart-button-overlay">TRY AGAIN</button>
                 </div>
+                <!-- Victory Content (Existing) -->
                 <div id="overlay-victory-content" class="overlay-content">
                     <h2>VICTORY!</h2>
                     <p id="victory-stats-text">You cleared all waves!</p>

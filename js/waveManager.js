@@ -6,9 +6,8 @@ import * as Config from './config.js';
 import * as EnemyManager from './enemyManager.js';
 import * as AudioManager from './audioManager.js';
 import * as ItemManager from './itemManager.js';
-import * as WorldManager from './worldManager.js'; // Import WorldManager (still needed for world state updates)
+import * as WorldManager from './worldManager.js';
 import * as UI from './ui.js';
-// NEW: Import AgingManager
 import * as AgingManager from './agingManager.js';
 
 

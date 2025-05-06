@@ -35,7 +35,7 @@ export const ISLAND_CENTER_TAPER_WIDTH = 80; // width of taper from island edge 
 // --- World Aging Parameters ---
 // =============================================================================
 
-export const AGING_BASE_INTENSITY = 1.0; // Base intensity for aging
+export const AGING_BASE_INTENSITY = 1.0; // default algorithm intensity
 export const AGING_NOISE_SCALE = 0.03; // Scale for aging noise (controls patch size)
 export const AGING_PROB_GRASS_GROWTH = 0.9; // Chance for DIRT -> GRASS if exposed to AIR and NOT WATER
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9; // chance for Air/Water below waterline to become SAND
@@ -47,9 +47,9 @@ export const AGING_PROB_STONEIFICATION_DEEP = 0.000001; // Decreased from 0.0000
 export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001; // Small chance for exposed STONE -> AIR (very slow weathering)
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = 900; // pixel depth below which stoneification can occur (Below waterline)
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth above to influence probability (user request: 4+)
-export const AGING_INITIAL_PASSES = 350; // Number of aging passes when the world is first generated
-export const AGING_DEFAULT_PASSES_PER_WAVE = 44; // Default number of aging passes between waves if not specified per wave
-export const WARPPHASE_DURATION = 5.0; //  Fixed duration of the Warp/Cleanup phase (seconds)
+export const AGING_INITIAL_PASSES = 35; // Number of aging passes when the world is first generated
+export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default number of aging passes between waves if not specified per wave
+export const WARPPHASE_DURATION = 5.0; //  fixed duration of WARP PHASE in seconds
 
 // =============================================================================
 // --- Camera / Viewport ---
@@ -66,7 +66,7 @@ export const ZOOM_SPEED_FACTOR = 0.001; // how fast scrolling zooms
 // Enemy Death Animation
 export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // Total time for enemy death (swell + pop)
 export const ENEMY_SWELL_DURATION = 0.3; // Time for the swell part (peak reached at 0.3s)
-export const ENEMY_SWELL_SCALE = 1.5; // Max scale factor during the swella   
+export const ENEMY_SWELL_SCALE = 1.5; // Max scale factor during the swell
 // Player Death Animation // Swell parameters for player death will reuse enemy swell parameters
 export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time for player death (spin + swell + pop)
 export const PLAYER_SPIN_DURATION = 1.0; // Time for the spinning part
@@ -109,6 +109,7 @@ export const AUDIO_TRACKS = {
     pause: 'assets/audio/music/Pause.mp3',
     // gameOver: 'assets/audio/gameover_music.mp3', // TODO: add game over music
     victory: 'assets/audio/music/Victory.mp3',
+    // introMusic: 'assets/audio/music/Intro.mp3', // TODO: Add intro music track
 // ---Sound Effects ---
     // player_hit: 'assets/audio/sfx/player_hit.wav', // TODO: add sfx
     // enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
@@ -509,3 +510,20 @@ export const WAVES = [
 //         applyGravity: true,
 //     }
 // };
+
+// =============================================================================
+// --- Cutscene Parameters ---
+// =============================================================================
+
+export const CUTSCENE_IMAGE_PATHS = [
+    'assets/gendimage1.png', // replace
+    'assets/gendimage2.png',
+    'assets/gendimage1.png',
+    'assets/gendimage2.png',
+];
+export const CUTSCENE_IMAGE_DURATION = 5.0; // Seconds each image is displayed
+// =============================================================================
+// --- Debug/Development Flags ---
+// =============================================================================
+
+export const DEBUG_SKIP_CUTSCENE = false; // Set to true to skip the cutscene for faster testing
