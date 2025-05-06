@@ -47,14 +47,15 @@ function isExposedTo(c, r, exposedType) {
 }
 
 // Helper function to find the first solid block below a given coordinate (still useful for the OLD sedimentation rule)
-function findFirstSolidBlockBelow(c, r) {
-    for (let checkR = r + 1; checkR < Config.GRID_ROWS; checkR++) {
-        if (GridCollision.isSolid(c, checkR)) {
-            return checkR;
-        }
-    }
-    return -1;
-}
+// NOTE: This function is not strictly needed for the NEW Rule 1.5 logic as we iterate downwards from the source sand block
+// function findFirstSolidBlockBelow(c, r) {
+//     for (let checkR = r + 1; checkR < Config.GRID_ROWS; checkR++) {
+//         if (GridCollision.isSolid(c, checkR)) {
+//             return checkR;
+//         }
+//     }
+//     return -1;
+// }
 
 // Helper function to calculate the number of contiguous WATER blocks directly above a cell
 function getWaterDepthAbove(c, r) {
@@ -167,25 +168,21 @@ export function applyAging(portalRef, intensityFactor) {
             if (block === null) continue;
 
             const originalType = (typeof block === 'object') ? block.type : block;
-            let newType = originalType; // Start assuming no change
-            // isPlayerPlaced is not needed here, as aging changes always result in non-player-placed blocks
-
-            const depth = r * Config.BLOCK_HEIGHT; // Calculate depth in pixels
+            let newType = originalType; // Start assuming no change at (c, r)
 
             // Get neighbor types for exposure checks
             const neighborTypes = getNeighborTypes(c, r);
             const isExposedToAir = isExposedTo(c, r, Config.BLOCK_AIR);
             const isExposedToWater = isExposedTo(c, r, Config.BLOCK_WATER);
-            // Needs solid below check including boundary
-            // const hasSolidBelow_rPlus1 = GridCollision.isSolid(c, r + 1) || r + 1 >= Config.GRID_ROWS; // This was only used by OLD sand sed rule
+            const waterDepthAbove = getWaterDepthAbove(c, r); // Get water depth above (c, r)
 
 
-            // --- Aging Rules Switch (Prioritized Order) ---
-            // We apply rules sequentially based on priority. If a rule changes the block, we stop processing rules for this block.
+            // --- Aging Rules Switch (Prioritized Order for changes AT (c, r)) ---
+            // We apply rules sequentially based on priority. If a rule changes the block *at (c, r)*, we stop processing rules for *this block at (c, r)* in this pass.
 
             // Rule 1: SAND Erosion (Highest Priority)
             if (originalType === Config.BLOCK_SAND) {
-                 if (isExposedToWater) {
+                 if (waterDepthAbove > 0) { // Check for water directly above
                       const erosionProb = Config.AGING_PROB_WATER_EROSION_SAND * clampedIntensity;
                       if (Math.random() < erosionProb) {
                            newType = Config.BLOCK_WATER; // Sand exposed to water becomes Water
@@ -202,75 +199,10 @@ export function applyAging(portalRef, intensityFactor) {
                  // If it didn't apply, newType === originalType, and we fall through to the next rule.
             }
 
-            // Rule 1.5: SAND Sedimentation Below
-            // Apply only if the block wasn't changed by Rule 1 and is SAND.
-            if (newType === originalType && originalType === Config.BLOCK_SAND) {
-
-                // Get the block immediately below (c, r+1)
-                const blockBelow = WorldData.getBlock(c, r + 1);
-
-                // Skip if out of bounds below OR if the block below is already SAND or AIR or WATER
-                // Use a more explicit check: is it a block that exists and is NOT sand, air, or water?
-                if (blockBelow !== null &&
-                    (typeof blockBelow === 'object' ?
-                         (blockBelow.type !== Config.BLOCK_SAND && blockBelow.type !== Config.BLOCK_AIR && blockBelow.type !== Config.BLOCK_WATER) :
-                         (blockBelow !== Config.BLOCK_AIR && blockBelow !== Config.BLOCK_WATER) // Case where it's the AIR constant (0)
-                    )
-                   ) {
-
-                    const blockBelowType = typeof blockBelow === 'object' ? blockBelow.type : blockBelow; // Get the actual type or AIR constant
-
-                    // Check if this material type is included in the convertible factors map (implicitly checks if factor > 0)
-                    // This check remains, but the VALUE is always 1.0 now in config for these types.
-                    const isConvertibleMaterial = Config.AGING_MATERIAL_CONVERSION_FACTORS[blockBelowType] !== undefined;
-
-                    // Only proceed if the material below is convertible
-                    if (isConvertibleMaterial) {
-                        // Get the contiguous water depth directly above this SAND block
-                        const waterDepth = getWaterDepthAbove(c, r);
-
-                        // Calculate the water influence multiplier
-                        // Capped at max influence depth, then normalized between 0 and 1
-                        const maxInfluenceDepth = Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH;
-                        // Multiplier is 0 if waterDepth is 0, 1/MAX if waterDepth is 1, ..., 1.0 if waterDepth >= MAX
-                        const waterInfluenceMultiplier = maxInfluenceDepth > 0 ? Math.min(waterDepth, maxInfluenceDepth) / maxInfluenceDepth : 0;
-
-
-                        // Calculate the final probability for this SAND block to convert the block below
-                        // Removed multiplication by materialFactor for equal chance
-                        const sedimentationBelowProb = Config.AGING_PROB_SAND_SEDIMENTATION_BELOW * clampedIntensity * waterInfluenceMultiplier;
-
-                        // Apply random chance
-                        if (Math.random() < sedimentationBelowProb) {
-                            // Change the block below to SAND
-                            const newBlockBelowType = Config.BLOCK_SAND;
-
-                            // When converting, the NEW block at (c, r+1) is SAND and is *not* player-placed, regardless of the original block below.
-                            const success = WorldData.setBlock(c, r + 1, newBlockBelowType, false); // New sand is NOT player-placed
-
-                            if (success) {
-                                // Add the changed cell (r+1) to the list, avoiding duplicates
-                                const changedKey = `${c},${r+1}`;
-                                if (!changedCells.has(changedKey)) {
-                                    changedCells.set(changedKey, { c, r: r + 1 });
-                                     // console.log(`[${c},${r+1}] ${Config.BLOCK_COLORS[blockBelowType]} converted to SAND by SAND above (Water Depth: ${waterDepth}, Prob: ${sedimentationBelowProb.toFixed(5)}).`);
-                                }
-                                // NEW: Queue this specific change location AND its neighbors for water updates
-                                queueWaterCandidatesAroundChange(c, r + 1);
-                            } else {
-                                console.error(`Aging failed to set block data at [${c}, ${r+1}] to SAND during sedimentation below rule.`);
-                            }
-                        }
-                    } // End if isConvertibleMaterial
-                } // End if blockBelow is valid and potentially convertible
-            } // End NEW Rule 1.5
-
-
             // Rule 2: DIRT/GRASS Water Erosion -> SAND
-            // Apply only if the block wasn't changed by previous rules (including Rule 1.5 modifications at r+1) and is DIRT/GRASS at (c, r).
-            // IMPORTANT: This rule applies to the block at (c, r), not below it.
+            // Apply only if the block wasn't changed by previous rules and is DIRT/GRASS at (c, r).
             if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_GRASS)) {
-                 if (isExposedToWater) {
+                 if (waterDepthAbove > 0) { // Check for water directly above
                       const erosionProb = Config.AGING_PROB_WATER_EROSION_DIRT_GRASS * clampedIntensity;
                       if (Math.random() < erosionProb) {
                            newType = Config.BLOCK_SAND; // DIRT/GRASS exposed to water becomes SAND
@@ -303,6 +235,7 @@ export function applyAging(portalRef, intensityFactor) {
             // Apply only if the block wasn't changed by previous rules and is DIRT, GRASS, or SAND
             // AND it's below the configured depth threshold.
             if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_GRASS || originalType === Config.BLOCK_SAND)) {
+                const depth = r * Config.BLOCK_HEIGHT; // Calculate depth in pixels
                 if (depth > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) { // Only happens at sufficient depth
                     const stoneProb = Config.AGING_PROB_STONEIFICATION_DEEP * clampedIntensity; // Use the reduced probability from config
                      if (Math.random() < stoneProb) {
@@ -330,8 +263,16 @@ export function applyAging(portalRef, intensityFactor) {
             // CHANGED from AIR/WATER to just AIR based on a previous user request, but keeping the rule number.
             if (newType === originalType && originalType === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
                  // This rule needs *some* solid block below or at the bottom of the map to act as a base for sedimentation.
-                 const firstSolidRowBelow = findFirstSolidBlockBelow(c, r); // Finds solid below or -1
+                 // Find first solid block below, handling out of bounds correctly
+                 let firstSolidRowBelow = -1;
+                 for (let checkR = r + 1; checkR < Config.GRID_ROWS; checkR++) {
+                     if (GridCollision.isSolid(c, checkR)) {
+                         firstSolidRowBelow = checkR;
+                         break;
+                     }
+                 }
                  const hasSolidBelowOrIsBottom = (firstSolidRowBelow !== -1) || (r === Config.GRID_ROWS - 1);
+
 
                  if (hasSolidBelowOrIsBottom) {
                      // If there's solid ground below or this is the bottom row, apply sedimentation chance
@@ -345,16 +286,11 @@ export function applyAging(portalRef, intensityFactor) {
             // TODO: Add rules for other block types (Wood, Metal, Bone, etc.) aging here
 
 
-            // --- Apply Change and Record ---
-            // If the aging rule decided to change the block type at (c, r)
-            // Note: Rule 1.5 modifies block at (c, r+1) and adds it to changedCells directly.
-            // This section handles changes to the block at (c, r) by rules 1, 2, 3, 4, 5, or 6.
+            // --- Apply Change to (c, r) and Record ---
+            // If any rule above decided to change the block type at (c, r)
             if (newType !== originalType) {
-                // Create the new block data object, preserving playerPlaced status if changing type
-                // IMPORTANT: Player-placed status should generally NOT be preserved when a block *changes* type due to aging.
-                // Aging represents natural processes. Only block placement should use the playerPlaced flag.
-                // Remove the `isPlayerPlaced` preservation here. Aged blocks are natural.
-                const newBlockData = createBlock(newType, false); // Always mark as not player-placed when aging changes type
+                // Create the new block data object, mark as not player-placed as aging is a natural process.
+                const newBlockData = createBlock(newType, false);
 
                 // Update the block data in the grid using the direct setter as we already have the block data object
                 const success = WorldData.setBlockData(c, r, newBlockData);
@@ -365,8 +301,6 @@ export function applyAging(portalRef, intensityFactor) {
                      if (!changedCells.has(changedKey)) {
                          changedCells.set(changedKey, { c, r });
                          // console.log(`Aging changed [${c}, ${r}] from ${originalType} to ${newType}.`); // Debug log
-                     } else {
-                          // console.log(`Aging changed [${c}, ${r}] from ${originalType} to ${newType}, already in changed list.`); // Debug log - This shouldn't happen if rules are mutually exclusive for `newType !== originalType`
                      }
                     // NEW: Queue this specific change location AND its neighbors for water updates
                     queueWaterCandidatesAroundChange(c, r);
@@ -374,8 +308,73 @@ export function applyAging(portalRef, intensityFactor) {
                      console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
                 }
             }
-        }
-    }
+
+            // --- NEW Rule 1.5: SAND Sedimentation Downwards from (c, r) ---
+            // This rule applies to blocks *below* (c, r), assuming the block at (c, r) is SAND
+            // Check if the block at (c, r) is SAND (using original type as other rules might have changed it)
+            if (originalType === Config.BLOCK_SAND) {
+                // Check if there is contiguous water directly above this sand block
+                // We already calculated waterDepthAbove earlier
+                if (waterDepthAbove > 0) {
+                    // Determine the maximum depth sand can sediment downwards from (c, r)
+                    // This is limited by the water depth above and the config max depth
+                    const maxSandDepthBelow = Math.min(waterDepthAbove, Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH);
+
+                    // Iterate downwards from 1 layer below (c, r) up to the calculated max depth
+                    for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelow; potentialDepth++) {
+                        const nr = r + potentialDepth; // Row index of the potential sand layer
+
+                        // Check bounds for the target cell below
+                        if (nr >= Config.GRID_ROWS) {
+                            break; // Stop checking further down if out of bounds
+                        }
+
+                        // Get the block type at the target cell (c, nr)
+                        const targetBlockType = WorldData.getBlockType(c, nr);
+
+                        // Check if the target block type is a convertible material (exists in map)
+                        const isConvertibleMaterial = Config.AGING_MATERIAL_CONVERSION_FACTORS[targetBlockType] !== undefined;
+
+                        if (isConvertibleMaterial) {
+                            // Apply the probabilistic chance for this layer to convert
+                            const sedimentationProb = Config.AGING_PROB_SAND_SEDIMENTATION_BELOW * clampedIntensity;
+
+                            if (Math.random() < sedimentationProb) {
+                                // Convert the block at (c, nr) to SAND
+                                const newBlockBelowType = Config.BLOCK_SAND;
+                                const success = WorldData.setBlock(c, nr, newBlockBelowType, false); // New sand is NOT player-placed
+
+                                if (success) {
+                                    // Add the changed cell (c, nr) to the list, avoiding duplicates
+                                    const changedKey = `${c},${nr}`;
+                                    if (!changedCells.has(changedKey)) {
+                                        changedCells.set(changedKey, { c, r: nr });
+                                        // console.log(`[${c},${nr}] converted to SAND by SAND above (Depth: ${potentialDepth}, Water Depth: ${waterDepthAbove}, Prob: ${sedimentationProb.toFixed(5)}).`);
+                                    }
+                                    // Queue this specific change location AND its neighbors for water updates
+                                    queueWaterCandidatesAroundChange(c, nr);
+                                } else {
+                                    console.error(`Aging failed to set block data at [${c}, ${nr}] to SAND during sedimentation below rule.`);
+                                }
+                            }
+                            // Note: If the probability failed, we still continue checking deeper layers below (c, r) in this pass.
+                            // The loop continues to the next potentialDepth <= maxSandDepthBelow.
+
+                        } else {
+                            // If the block at (c, nr) is NOT a convertible material (e.g., AIR, WATER, existing SAND,
+                            // or a solid type not listed in the conversion factors map),
+                            // stop checking further down *from this specific sand block at (c, r)* in this aging pass.
+                            // Sand cannot sediment through non-convertible blocks.
+                            // console.log(`Stopping sand sedimentation from [${c}, ${r}] at depth ${potentialDepth} due to non-convertible block type ${targetBlockType} at [${c}, ${nr}].`);
+                            break; // Exit the potentialDepth loop for this (c, r) block
+                        }
+                    } // End loop over potentialDepth <= maxSandDepthBelow
+                } // End if waterDepthAbove > 0
+            } // End if originalType === BLOCK_SAND
+
+        } // End inner loop over columns
+    } // End outer loop over rows
+
     console.log(`Aging pass complete. ${changedCells.size} unique blocks changed.`);
     // Convert map values back to an array
     const changedCellsArray = Array.from(changedCells.values());
