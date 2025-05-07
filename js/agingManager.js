@@ -127,7 +127,8 @@ export function applyAging(portalRef, intensityFactor) {
         const portalPos = portalRef.getPosition(); // Gets the center of the portal rectangle
         portalX = portalPos.x;
         portalY = portalPos.y;
-        const currentSafetyRadius = portalRef.safetyRadius; // Use the dynamic safety radius from the portal instance
+        // Portal safetyRadius is now scaled in config based on BASE_BLOCK_PIXEL_SIZE
+        const currentSafetyRadius = portalRef.safetyRadius;
         protectedRadiusSq = currentSafetyRadius * currentSafetyRadius; // Square it for distance comparison
         // console.log(`Protected Zone Active: Center (${portalX.toFixed(1)}, ${portalY.toFixed(1)}), Radius ${Math.sqrt(protectedRadiusSq).toFixed(1)}`); // Debug log
     } else {
@@ -145,6 +146,7 @@ export function applyAging(portalRef, intensityFactor) {
 
             // --- Protected Zone Check (Only if portalRef is provided) ---
             if (portalRef) { // Wrap the protected zone check inside this if
+                 // Calculate block center in world pixels
                  const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
                  const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
                  const dx = blockCenterX - portalX;
@@ -231,10 +233,10 @@ export function applyAging(portalRef, intensityFactor) {
 
             // Rule 4: Deep Stoneification (Lowest Priority for material types)
             // Apply only if the block wasn't changed by previous rules and is DIRT, GRASS, or SAND
-            // AND it's below the configured depth threshold.
+            // AND it's below the configured depth threshold (scaled in config).
             if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_GRASS || originalType === Config.BLOCK_SAND)) {
-                const depth = r * Config.BLOCK_HEIGHT; // Calculate depth in pixels
-                if (depth > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) { // Only happens at sufficient depth
+                const depthInPixels = r * Config.BLOCK_HEIGHT; // Calculate depth in pixels using current block height
+                if (depthInPixels > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) { // Only happens at sufficient depth (using scaled threshold)
                     const stoneProb = Config.AGING_PROB_STONEIFICATION_DEEP * clampedIntensity; // Use the reduced probability from config
                      if (Math.random() < stoneProb) {
                          newType = Config.BLOCK_STONE; // Turns to Stone
@@ -315,11 +317,11 @@ export function applyAging(portalRef, intensityFactor) {
                 // We already calculated waterDepthAbove earlier
                 if (waterDepthAbove > 0) {
                     // Determine the maximum depth sand can sediment downwards from (c, r)
-                    // This is limited by the water depth above and the config max depth
-                    const maxSandDepthBelow = Math.min(waterDepthAbove, Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH);
+                    // This is limited by the water depth above and the config max depth (in blocks)
+                    const maxSandDepthBelowInBlocks = Math.min(waterDepthAbove, Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH);
 
                     // Iterate downwards from 1 layer below (c, r) up to the calculated max depth
-                    for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelow; potentialDepth++) {
+                    for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelowInBlocks; potentialDepth++) {
                         const nr = r + potentialDepth; // Row index of the potential sand layer
 
                         // Check bounds for the target cell below
@@ -356,7 +358,7 @@ export function applyAging(portalRef, intensityFactor) {
                                 }
                             }
                             // Note: If the probability failed, we still continue checking deeper layers below (c, r) in this pass.
-                            // The loop continues to the next potentialDepth <= maxSandDepthBelow.
+                            // The loop continues to the next potentialDepth <= maxSandDepthBelowInBlocks.
 
                         } else {
                             // If the block at (c, nr) is NOT a convertible material (e.g., AIR, WATER, existing SAND,
@@ -366,7 +368,7 @@ export function applyAging(portalRef, intensityFactor) {
                             // console.log(`Stopping sand sedimentation from [${c}, ${r}] at depth ${potentialDepth} due to non-convertible block type ${targetBlockType} at [${c}, ${nr}].`);
                             break; // Exit the potentialDepth loop for this (c, r) block
                         }
-                    } // End loop over potentialDepth <= maxSandDepthBelow
+                    } // End loop over potentialDepth <= maxSandDepthBelowInBlocks
                 } // End if waterDepthAbove > 0
             } // End if originalType === BLOCK_SAND
 

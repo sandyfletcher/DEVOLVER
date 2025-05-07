@@ -9,11 +9,15 @@ class Item {
         this.x = x;
         this.y = y;
         this.type = type;
-        this.width = config?.width ?? Math.floor(Config.BLOCK_WIDTH);
-        this.height = config?.height ?? Math.floor(Config.BLOCK_HEIGHT);
-        this.color = config?.color ?? 'magenta';
-        this.bobbleAmount = config?.bobbleAmount ?? Config.ITEM_BOBBLE_AMOUNT;
-        this.bobbleSpeed = config?.bobbleSpeed ?? Config.ITEM_BOBBLE_SPEED;
+        // Dimensions are defined in blocks in config, scale them here to pixels
+        const itemConfig = Config.ITEM_CONFIG[this.type] || {}; // Get item config, handle if type is unknown
+        this.width = itemConfig.width ?? Math.floor(Config.BLOCK_WIDTH);
+        this.height = itemConfig.height ?? Math.floor(Config.BLOCK_HEIGHT);
+
+        this.color = itemConfig.color ?? 'magenta';
+        this.bobbleAmount = itemConfig.bobbleAmount ?? Config.ITEM_BOBBLE_AMOUNT; // Relative factor, no pixel scaling needed here
+        this.bobbleSpeed = itemConfig.bobbleSpeed ?? Config.ITEM_BOBBLE_SPEED; // Time-based, no scaling needed here
+
         this.vx = 0;
         this.vy = 0;
         this.isOnGround = false;
@@ -32,7 +36,7 @@ class Item {
 
         // --- Environment State ---
         // Check water status first as it affects physics params
-        this.isInWater = GridCollision.isEntityInWater(this);
+        this.isInWater = GridCollision.isEntityInWater(this); // isEntityInWater handles scaling implicitly
 
         // --- Check for Player Attraction ---
         // Reset attraction flag and assume no attraction until checks pass below
@@ -51,13 +55,19 @@ class Item {
             dy = playerCenterY - itemCenterY; // Vector FROM item TO player
             distSq = dx * dx + dy * dy; // squared distance
 
-            const attractRadiusSq = Config.PLAYER_ITEM_ATTRACT_RADIUS * Config.PLAYER_ITEM_ATTRACT_RADIUS;
-            const pickupRangeSq = Config.PLAYER_INTERACTION_RANGE_SQ; // use player pickup range
+            // Use scaled attraction radius and pickup range from config
+            const attractRadiusSq = Config.PLAYER_ITEM_ATTRACT_RADIUS_SQ; // Using the pre-calculated squared value
+            const pickupRangeSq = Config.PLAYER_INTERACTION_RANGE_SQ; // Using the pre-calculated squared value
 
             // Attract if within radius but outside immediate pickup range
-            if (distSq < attractRadiusSq && distSq > pickupRangeSq) {
-                this.isAttracted = true;
-            }
+            // Use a small epsilon for distance comparison to avoid floating point issues near the boundary
+             if (distSq < attractRadiusSq && distSq > pickupRangeSq + GridCollision.E_EPSILON) {
+                 this.isAttracted = true;
+             } else if (distSq <= pickupRangeSq + GridCollision.E_EPSILON) {
+                 // If item is very close or inside pickup range, stop attraction movement
+                 // The collision check in CollisionManager will handle actual pickup.
+                 this.isAttracted = false; // Stop physics movement once very close
+             }
         }
 
         // --- PHYSICS MODES: Attracted (Phase through blocks) vs. Standard (Collide with blocks) ---
@@ -66,29 +76,29 @@ class Item {
             // --- Attracted Physics (Phasing) ---
             this.isOnGround = false; // Not considered on ground when phasing
             const dist = Math.sqrt(distSq); // dist, dx, dy already calculated above
-            // If the item is very close to the player center, snap velocity to zero
-            if (dist < Config.PLAYER_INTERACTION_RANGE + GridCollision.E_EPSILON) { // Use pickup range as snap threshold
-                 this.vx = 0;
-                 this.vy = 0;
-            } else if (dist > GridCollision.E_EPSILON) { // Avoid division by zero
+
+            if (dist > GridCollision.E_EPSILON) { // Avoid division by zero
                  const normX = dx / dist; // Normalized vector towards player
                  const normY = dy / dist;
-                 // Set velocity directly towards the player with a fixed speed
+                 // Set velocity directly towards the player with a fixed speed (using scaled speed from config)
                  this.vx = normX * Config.PLAYER_ITEM_ATTRACT_SPEED;
                  this.vy = normY * Config.PLAYER_ITEM_ATTRACT_SPEED;
-                 // Optional: Apply some damping even when attracted to prevent infinite acceleration if returning to standard mode
-                 // const attractedDampingFactor = Math.pow(0.8, dt);
-                 // this.vx *= attractedDampingFactor;
-                 // this.vy *= attractedDampingFactor;
+            } else {
+                // If dist is tiny, snap velocity to zero
+                 this.vx = 0;
+                 this.vy = 0;
             }
+
             // Apply movement based on the velocity set above
             this.x += this.vx * dt;
             this.y += this.vy * dt;
+
         } else {
             // --- Standard Physics (Collision) ---
-            // Apply Gravity if NOT on ground
+            // Apply Gravity if NOT on ground (using scaled gravity from config)
+            // GRAVITY_ACCELERATION and WATER_GRAVITY_FACTOR are scaled/defined in config
             const effectiveGravity = Config.GRAVITY_ACCELERATION * (this.isInWater ? Config.WATER_GRAVITY_FACTOR : 1.0);
-            if (!this.isOnGround) { // Only apply gravity if not on ground
+            if (!this.isOnGround) { // Only apply gravity if not on ground from previous step
                  this.vy += effectiveGravity * dt; // Add gravity acceleration
             } else {
                  // If player is on ground but has slight downward velocity (e.g., from previous frame), reset it
@@ -97,29 +107,35 @@ class Item {
             }
             // Apply standard water damping if in water AND not attracted
             if (this.isInWater) {
-                 const horizontalDampingFactor = Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
-                 const verticalDampingFactor = Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
+                 // WATER_HORIZONTAL_DAMPING and WATER_VERTICAL_DAMPING are factors, no scaling needed
+                 const horizontalDampingFactor = Math.pow(Config.WATER_HORIZONTAL_Damping, dt);
+                 const verticalDampingFactor = Math.pow(Config.WATER_VERTICAL_Damping, dt);
                  this.vx *= horizontalDampingFactor;
                  this.vy *= verticalDampingFactor;
             }
             // Apply Standard Speed Clamping (Air fall, Water sink/swim limits)
+            // MAX_FALL_SPEED, WATER_MAX_SINK_SPEED, WATER_MAX_SWIM_UP_SPEED are scaled in config
             if (this.isInWater) {
                  this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);
                  this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
                  // Optional: Clamp horizontal speed in water if not attracted?
-                 // this.vx = Math.max(-Config.WATER_MAX_SPEED_FACTOR * Config.MAX_HORIZONTAL_ITEM_SPEED, Math.min(Config.WATER_MAX_SPEED_FACTOR * Config.MAX_HORIZONTAL_ITEM_SPEED, this.vx));
+                 // This isn't defined in config with a specific item speed, so keep it simple for now.
             } else {
                  // Clamp fall speed in air
                  this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
                  // Optional: Clamp horizontal speed in air if not attracted?
-                 // this.vx = Math.max(-Config.MAX_HORIZONTAL_ITEM_SPEED, Math.min(Config.MAX_HORIZONTAL_ITEM_SPEED, this.vx));
-            }
+             }
+
             // Calculate potential movement after applying standard physics and clamping
             const potentialMoveX = this.vx * dt;
             const potentialMoveY = this.vy * dt;
+
             // Resolve collision with grid - this updates this.x and this.y
+            // GridCollision.collideAndResolve handles entity dimensions and movement amounts (both in pixels)
             const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+
             this.isOnGround = collisionResult.isOnGround; // Update ground status from collision result
+
             // Zero out velocity component if collideAndResolve indicated a collision
             if (collisionResult.collidedX) {
                  this.vx = 0;
@@ -135,7 +151,7 @@ class Item {
         }
         // --- Final velocity snap-to-zero ---
         // Snap small velocities to zero to prevent jittering from float errors
-        // Apply this to both modes? Or just standard mode? Let's apply to standard mode.
+        // Apply this to standard mode.
          if (!this.isAttracted) { // Only snap small velocities to zero in standard mode
               if (Math.abs(this.vx) < GridCollision.E_EPSILON) this.vx = 0;
               if (Math.abs(this.vy) < GridCollision.E_EPSILON) this.vy = 0;
@@ -156,14 +172,15 @@ class Item {
         }
         let drawY = this.y;
         // Apply bobble effect only when on ground AND not in water AND not attracted
+        // bobbleAmount is a factor relative to height (which is scaled), so visual bobbing scales
         if (this.isOnGround && !this.isInWater && !this.isAttracted) {
              // Increment offset based on time. Use a fixed time step (like 1/60) for bobble consistency
-             this.bobbleOffset = (this.bobbleOffset + this.bobbleSpeed * (1/60)) % (Math.PI * 2);
+             this.bobbleOffset = (this.bobbleOffset + this.bobbleSpeed * (1/60)) % (Math.PI * 2); // bobbleSpeed is time-based
              drawY += Math.sin(this.bobbleOffset) * this.bobbleAmount * this.height;
         } else if (this.isAttracted) {
              // Optional: Apply a faster, smaller bobble when attracted for visual flair
-             const attractedBobbleSpeed = this.bobbleSpeed * 3; // Faster
-             const attractedBobbleAmount = this.bobbleAmount * 0.5; // Smaller
+             const attractedBobbleSpeed = this.bobbleSpeed * 3; // Time-based
+             const attractedBobbleAmount = this.bobbleAmount * 0.5; // Relative factor
              this.bobbleOffset = (this.bobbleOffset + attractedBobbleSpeed * (1/60)) % (Math.PI * 2);
              drawY += Math.sin(this.bobbleOffset) * attractedBobbleAmount * this.height;
         }
@@ -189,10 +206,10 @@ let items = []; // Array containing active Item instances
 export function init() {
     items = [];
     // Get the Y coordinate of the mean ground level in world pixels
-    const meanGroundWorldY = Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT;
+    const meanGroundWorldY = Config.WORLD_GROUND_LEVEL_MEAN_ROW * Config.BLOCK_HEIGHT; // Use new mean row constant
     // ONLY SPAWN THE SHOVEL INITIALLY
     const shovelSpawnX = Config.CANVAS_WIDTH * 0.5 - Config.SHOVEL_WIDTH / 2; // Spawn Shovel at center, even higher up
-    const shovelSpawnY = meanGroundWorldY - Config.SHOVEL_HEIGHT - (15 * Config.BLOCK_HEIGHT); // Example: 15 blocks above mean ground
+    const shovelSpawnY = meanGroundWorldY - Config.SHOVEL_HEIGHT - (15 * Config.BLOCK_HEIGHT); // Example: 15 blocks above mean ground (pixel offset)
     // Ensure spawn points are valid numbers after calculation
     if (!isNaN(shovelSpawnX) && !isNaN(shovelSpawnY)) {
         spawnItem(shovelSpawnX, shovelSpawnY, Config.WEAPON_TYPE_SHOVEL);
@@ -246,7 +263,7 @@ export function update(dt, player) {
 export function draw(ctx) {
     items.forEach(item => {
          // Add defensive check before drawing
-        if(item && item.isActive){
+        if(item && item.isActive){ // Draw if active
              item.draw(ctx); // Item's own draw method checks isActive and NaN coords internally
         } else if (item) {
              // console.log(`ItemManager.draw: Skipping inactive item of type ${item.type}`); // Too noisy
@@ -271,7 +288,7 @@ export function clearItemsOutsideRadius(centerX, centerY, radius) {
             console.warn("ItemManager: Found invalid item data during cleanup, removing.", item);
             return false;
         }
-        const itemCenterX = item.x + item.width / 2; // Check distance from item's center to the center point
+        const itemCenterX = item.x + item.width / 2; // Check distance from item's center to the center point (item.width/height are scaled)
         const itemCenterY = item.y + item.height / 2;
         const dx = itemCenterX - centerX;
         const dy = itemCenterY - centerY;
