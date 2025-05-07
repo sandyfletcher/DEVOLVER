@@ -274,6 +274,10 @@ export function draw(ctx) {
 export function getItems() {
     return items;
 }
+export function clearAllItems() { // removes all items from  manager ---
+    items = []; // Simply re-initialize the internal array
+    console.log("ItemManager: Cleared all items."); // Optional log
+}
 // removeItem function remains the same
 export function removeItem(itemToRemove) {
     items = items.filter(item => item !== itemToRemove);

@@ -4,7 +4,7 @@
 // --- Core Block / Pixel Size ---
 // =============================================================================
 // Define the base size of a block in pixels. This is the fundamental unit.
-export const BASE_BLOCK_PIXEL_SIZE = 4; // desired block size (4px, 8px, 16px, etc.)
+export const BASE_BLOCK_PIXEL_SIZE = 16; // desired block size (4px, 8px, 16px, etc.)
 
 // Derived block dimensions (should always be equal to BASE_BLOCK_PIXEL_SIZE)
 // Keeping these separate allows for potential non-square blocks later if needed.

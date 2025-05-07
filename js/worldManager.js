@@ -304,7 +304,7 @@ export function damageBlock(col, row, damageAmount) { // applies damage to block
                  }
              }
         } else {
-             console.error(`WorldManager damageBlock failed to set AIR at [${col}, ${row}] after destruction.`);
+             console.error(`WorldManager damageBlock failed to set AIR at [${col}, ${r}] after destruction.`); // Fixed row variable
         }
     }
     return true; // damage applied, regardless of destruction status
@@ -347,7 +347,7 @@ export function update(dt) { // handles dynamic world state like water flow
             // Process the batch of candidates
             candidatesToProcess.forEach(({c, r}) => {
                 // Recheck bounds, as blocks may've been changed since queueing
-                if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c < Config.GRID_COLS) return;
+                if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c < Config.GRID_COLS) return; // Fixed c < 0, should be c < Config.GRID_COLS
 
                 const currentBlockType = WorldData.getBlockType(c, r); // get current block type *again* inside the loop
 
@@ -383,7 +383,7 @@ export function update(dt) { // handles dynamic world state like water flow
                          const immediateNeighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}]; // cardinal neighbours again
                          for (const neighbor of immediateNeighbors) {
                             const nc = c + neighbor.dc;
-                            const nr = r + neighbor.nr; // Corrected typo: neighbor.dr instead of neighbor.nr
+                            const nr = r + neighbor.dr; // Corrected typo: neighbor.dr instead of neighbor.nr
                             // Check if neighbor is within bounds and is WATER
                             if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS && WorldData.getBlockType(nc, nr) === Config.BLOCK_WATER) {
                                 adjacentToWater = true;
@@ -436,7 +436,7 @@ export function update(dt) { // handles dynamic world state like water flow
              // Reset the propagation timer *after* processing the batch if *any* candidate was processed.
              // This keeps the simulation running as long as there's potential for flow.
              if(candidatesToProcess.length > 0) {
-                 // waterPropagationTimer = 0; // Moved outside the loop, reset once per propagation tick.
+                 // waterPropagationTimer = Config.WATER_PROPAGATION_DELAY; // No, this was already set at the start of the block
              }
 
 

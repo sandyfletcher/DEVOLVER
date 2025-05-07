@@ -15,7 +15,7 @@ import * as WaveManager from './waveManager.js';
 import * as GridCollision from './utils/gridCollision.js';
 import * as GridRenderer from './utils/grid.js';
 import * as AudioManager from './audioManager.js';
-import * as AgingManager from './agingManager.js'; // Ensure AgingManager is imported
+import * as AgingManager from './agingManager.js';
 import { Portal } from './portal.js';
 
 // =============================================================================
@@ -27,39 +27,31 @@ let gameStartTime = 0; // track when the current game started for playtime/stats
 let portal = null;
 let gameLoopId = null; // requestAnimationFrame ID for pausing
 let lastTime = 0; // time since last frame
-
 let currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS;
 let cameraX = 0;
 let cameraY = 0;
 let cameraScale = 1.0; // 1 = normal zoom
-
 let appContainer = null;
 let gameOverlay = null;
 let epochOverlayEl = null;
-
-// Overlay Button References (Updated and Expanded)
-let titleStartButton = null; // Original start button (now goes to Main Menu)
-let mainmenuStartGameButton = null; // New button to start the actual game (via cutscene)
-let mainmenuSettingsButton = null; // New button to go to settings
-let settingsBackButton = null; // New button to go back from settings
+let titleStartButton = null;
+let mainmenuStartGameButton = null;
+let mainmenuSettingsButton = null;
+let settingsBackButton = null;
 let resumeButton = null;
 let restartButtonGameOver = null;
 let restartButtonVictory = null;
-let restartButtonPause = null; // Pause restart button
+let restartButtonPause = null; // pause restart button
 let gameOverStatsTextP = null;
 let victoryStatsTextP = null;
-
-// Settings Button References (already here)
 let btnToggleGrid = null;
 let muteMusicButtonEl = null;
 let muteSfxButtonEl = null;
-
-// Cutscene Variables (NEW)
-let cutsceneImages = []; // Array of HTMLImageElements
+let cutsceneImages = []; // array of HTMLImageElements
 let currentCutsceneImageIndex = 0;
 let cutsceneTimer = 0;
 let cutsceneDurationPerImage = Config.CUTSCENE_IMAGE_DURATION;
-
+let cutsceneSkipButton = null;
 
 // --- Game State Enum (Expanded) ---
 const GameState = Object.freeze({
@@ -73,7 +65,6 @@ const GameState = Object.freeze({
     VICTORY: 'VICTORY'          // victory screen
 });
 let currentGameState = GameState.PRE_GAME; // Initial state
-
 let isAutoPaused = false; // boolean if paused due to losing tab visibility
 let isGridVisible = false;
 
@@ -99,26 +90,18 @@ window.updateCameraScale = function(deltaScale) {
     const internalCanvasHeight = Config.CANVAS_HEIGHT;
     const worldPixelWidth = getWorldPixelWidth(); // world dimensions
     const worldPixelHeight = getWorldPixelHeight();
-    // Calculate minimum scale required to make world fill viewport (no black bars if world is large enough)
-    // Avoid division by zero if world dimensions are somehow 0
-    const scaleToFitWidth = (worldPixelWidth > 0) ? internalCanvasWidth / worldPixelWidth : 1;
+    const scaleToFitWidth = (worldPixelWidth > 0) ? internalCanvasWidth / worldPixelWidth : 1; // calculate minimum required to fill viewport (no black bars) - avoid division by zero if dimensions somehow are
     const scaleToFitHeight = (worldPixelHeight > 0) ? internalCanvasHeight / worldPixelHeight : 1;
     const minScaleRequired = Math.max(scaleToFitWidth, scaleToFitHeight);
-    // The effective minimum scale is the LARGER of the configured minimum and the required scale to fill the view.
-    const effectiveMinScale = Math.max(Config.MIN_CAMERA_SCALE, minScaleRequired);
-    // Clamp the new scale between the effective minimum and the configured maximum.
-    newScale = Math.max(effectiveMinScale, Math.min(newScale, Config.MAX_CAMERA_SCALE));
-    // Apply the final clamped scale. Camera position will be re-clamped in game loop by calculateCameraPosition.
-    cameraScale = newScale;
-    // console.log(`Camera Scale updated: ${oldScale.toFixed(2)} -> ${cameraScale.toFixed(2)}`);
+    const effectiveMinScale = Math.max(Config.MIN_CAMERA_SCALE, minScaleRequired); // The effective minimum scale is the LARGER of the configured minimum and the required scale to fill the view.
+    newScale = Math.max(effectiveMinScale, Math.min(newScale, Config.MAX_CAMERA_SCALE)); // Clamp the new scale between the effective minimum and the configured maximum.
+    cameraScale = newScale; // Apply the final clamped scale. Camera position will be re-clamped in game loop by calculateCameraPosition.
 }
 // --- Convert canvas pixel coordinates to world coordinates ---
 function getMouseWorldCoords(inputMousePos) {
     // Ensure inputMousePos is valid
     if (!inputMousePos || typeof inputMousePos.x !== 'number' || typeof inputMousePos.y !== 'number' || isNaN(inputMousePos.x) || isNaN(inputMousePos.y)) {
-         // console.warn("getMouseWorldCoords: Invalid input mouse position.", inputMousePos); // Too noisy
-         // Return center of the viewport in world coordinates as a fallback
-         return {
+         return { // return center of the viewport in world coordinates as a fallback
              x: cameraX + (Config.CANVAS_WIDTH / 2) / cameraScale,
              y: cameraY + (Config.CANVAS_HEIGHT / 2) / cameraScale
          };
@@ -429,6 +412,26 @@ function updateCutscene(dt) {
         }
     }
 }
+
+// ADDED: Skips the cutscene and immediately starts the game.
+function skipCutscene() {
+     // Only skip if currently in the cutscene state
+     if (currentGameState !== GameState.CUTSCENE) {
+         console.warn("skipCutscene called but game is not in CUTSCENE state.");
+         return;
+     }
+     console.log(">>> [main.js] Skipping Cutscene <<<");
+
+     // Stop cutscene audio (handled by initializeAndRunGame/hideOverlay, but safety)
+     AudioManager.stopUIMusic();
+
+     // Immediately transition to game initialization and RUNNING state
+     initializeAndRunGame();
+}
+
+// Expose skipCutscene globally so it can be called directly by the button's click listener
+window.skipCutscene = skipCutscene;
+
 
 // (Renamed from the original startGame) - Initializes all game systems and starts the RUNNING state.
 // Triggered ONLY at the end of the cutscene, or directly if cutscene is skipped.
@@ -1175,13 +1178,16 @@ function init() {
         restartButtonPause = document.getElementById('restart-button-overlay-pause'); // Pause restart button
         gameOverStatsTextP = document.getElementById('gameover-stats-text');
         victoryStatsTextP = document.getElementById('victory-stats-text');
+        // ADDED: Get Cutscene Skip Button Reference
+        cutsceneSkipButton = document.getElementById('cutscene-skip-button');
+
 
         // Get Settings Button References (already here)
         btnToggleGrid = document.getElementById('btn-toggle-grid');
         muteMusicButtonEl = document.getElementById('btn-mute-music');
         muteSfxButtonEl = document.getElementById('btn-mute-sfx');
 
-        // Get Epoch Overlay Element (already here)
+        // Find Epoch Overlay Element (already here)
         epochOverlayEl = document.getElementById('epoch-overlay');
 
         // Get Cutscene Image Elements (NEW)
@@ -1205,6 +1211,8 @@ function init() {
              gameOverStatsTextP, victoryStatsTextP,
              btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl,
              epochOverlayEl,
+             // ADDED: Cutscene Skip Button
+             cutsceneSkipButton
              // Note: Not strictly requiring cutscene images to allow fallback, but good to log if missing
         ];
 
@@ -1218,7 +1226,8 @@ function init() {
                  'restartButtonPause (#restart-button-overlay-pause)',
                  'gameOverStatsTextP (#gameover-stats-text)', 'victoryStatsTextP (#victory-stats-text)',
                  'btnToggleGrid (#btn-toggle-grid)', 'muteMusicButtonEl (#btn-mute-music)', 'muteSfxButtonEl (#btn-mute-sfx)',
-                 'epochOverlayEl (#epoch-overlay)'
+                 'epochOverlayEl (#epoch-overlay)',
+                 'cutsceneSkipButton (#cutscene-skip-button)' // Added skip button name
              ];
              const missing = requiredElements
                  .map((el, i) => el ? null : elementNames[i])
@@ -1239,6 +1248,9 @@ function init() {
         restartButtonGameOver.addEventListener('click', restartGame); // Game Over restart goes to Main Menu
         restartButtonVictory.addEventListener('click', restartGame); // Victory restart goes to Main Menu
         restartButtonPause.addEventListener('click', restartGame); // Pause restart goes to Main Menu
+
+        // ADDED: Listener for Cutscene Skip Button
+        cutsceneSkipButton.addEventListener('click', skipCutscene);
 
 
         // Setup Event Listeners for Settings Buttons (already here)
