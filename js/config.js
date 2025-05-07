@@ -77,6 +77,20 @@ export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001;
 export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
 
+// =============================================================================
+// --- Aging Animation Parameters --- (NEW)
+// =============================================================================
+
+export const AGING_ANIMATION_ENABLED = true; // Master switch for the visual aging
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 5; // Max number of blocks animating simultaneously
+export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
+export const AGING_ANIMATION_SWELL_DURATION = 0.25; // Duration (seconds) of the "swell" part
+export const AGING_ANIMATION_POP_DURATION = 0.1;  // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
+export const AGING_ANIMATION_SWELL_SCALE = 1.8;   // Max scale factor during swell (e.g., 1.5x size)
+export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
+export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (briefly)
+
+
 export const WARPPHASE_DURATION = 5.0; // Fixed duration of WARP PHASE in seconds (time-based).
 
 // =============================================================================
@@ -256,7 +270,7 @@ export const PLAYER_ITEM_ATTRACT_RADIUS_SQ = PLAYER_ITEM_ATTRACT_RADIUS * PLAYER
 export const PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SEC = 60; // Base speed for attracted items in block widths/sec.
 export const PLAYER_ITEM_ATTRACT_SPEED = PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixels/sec.
 
-export const PLAYER_PLACEMENT_COOLDOWN = 0.05; // seconds between block placement
+export const PLAYER_PLACEMENT_COOLDOWN = 0.01; // seconds between block placement
 
 // =============================================================================
 // --- Items & Weapons ---

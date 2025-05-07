@@ -9,6 +9,7 @@ import * as ItemManager from './itemManager.js';
 import * as WorldManager from './worldManager.js';
 import * as UI from './ui.js';
 import * as AgingManager from './agingManager.js';
+import * as WorldData from './utils/worldData.js'
 
 
 // --- Module State ---
@@ -190,80 +191,86 @@ function endWave() {
     groupStartDelayTimer = 0; // Will be set up properly when startNextWave is called later
 }
 
-/** Function to trigger the cleanup logic (clearing enemies/items) AND aging logic */
+// NEW: Helper to capture the current state of the grid (types only)
+function captureCurrentGridState() {
+    const grid = WorldData.getGrid();
+    return grid.map(row => row.map(block => (typeof block === 'object' ? block.type : block)));
+}
+
+// NEW: Helper to diff two grid states
+function diffGrids(gridStateBefore, gridStateAfterSnapshot) {
+    const changes = [];
+    for (let r = 0; r < Config.GRID_ROWS; r++) {
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+            const typeBefore = gridStateBefore[r]?.[c]; // Use optional chaining
+            const blockAfter = gridStateAfterSnapshot[r]?.[c]; // Get the block object/value
+            const typeAfter = (typeof blockAfter === 'object' && blockAfter !== null) ? blockAfter.type : blockAfter;
+
+            if (typeBefore !== undefined && typeAfter !== undefined && typeBefore !== typeAfter) {
+                changes.push({ c, r, oldBlockType: typeBefore, newBlockType: typeAfter });
+            }
+        }
+    }
+    return changes;
+}
+
+
+/** Function to trigger aging, animation queuing, and entity cleanup */
 function triggerWarpCleanup() {
-    // console.log("[WaveMgr] Triggering Warp Cleanup...");
+    console.log("[WaveMgr] Triggering Warp Cleanup...");
     if (!portalRef) {
         console.error("[WaveMgr] Warp Cleanup failed: Portal reference is null.");
-        // Cannot proceed without portal ref for protected zone
         return;
     }
 
-    // --- Determine Aging Parameters for the Upcoming Wave ---
-    const nextWaveIndex = currentMainWaveIndex + 1; // Index of the wave *after* the one that just ended
-    const nextWaveData = Config.WAVES[nextWaveIndex]; // Get config for the next wave
+    const nextWaveIndex = currentMainWaveIndex + 1;
+    const nextWaveData = Config.WAVES[nextWaveIndex];
 
-    // --- Apply Aging Passes ---
-    if (nextWaveData) { // Only apply aging if there is a next wave defined
-         // Retrieve aging passes and intensity from the NEXT wave's config
-         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE; // Number of passes from config, with default
-         const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY; // Intensity from config, with default
+    if (nextWaveData) {
+        const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
+        const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
 
-         console.log(`[WaveMgr] Applying aging for upcoming Wave ${nextWaveData.mainWaveNumber} (${passes} passes, intensity ${intensity.toFixed(2)})...`);
+        console.log(`[WaveMgr] Preparing aging for upcoming Wave ${nextWaveData.mainWaveNumber} (${passes} passes, intensity ${intensity.toFixed(2)})...`);
 
-         let totalChangedCells = 0;
-         const changedCellsThisWarp = new Map(); // Use a Map to store unique {c, r} affected by aging in this warp phase
+        // 1. Capture grid state BEFORE aging
+        const gridStateBeforeAging = captureCurrentGridState();
 
-         // --- Perform Multiple Aging Passes using AgingManager ---
-         for (let i = 0; i < passes; i++) {
-              // Call the AgingManager's applyAging function. It returns a list of changed cells.
-              const changedCellsInPass = AgingManager.applyAging(portalRef, intensity);
+        // 2. Perform Multiple Aging Passes (AgingManager modifies WorldData directly)
+        for (let i = 0; i < passes; i++) {
+            AgingManager.applyAging(portalRef, intensity);
+        }
+        console.log(`[WaveMgr] Aging passes complete for Wave ${nextWaveData.mainWaveNumber}. WorldData updated.`);
 
-              // Add the changed cells from this pass to the overall list for this warp phase
-              changedCellsInPass.forEach(({ c, r }) => {
-                  const key = `${c},${r}`;
-                   // Only add if not already recorded in this warp phase
-                   if (!changedCellsThisWarp.has(key)) {
-                       changedCellsThisWarp.set(key, {c, r});
-                       totalChangedCells++;
-                   }
-              });
-         }
+        // 3. Diff grids to find net changes for animation
+        const finalGridState = WorldData.getGrid(); // Get the current state of the world grid
+        const proposedVisualChanges = diffGrids(gridStateBeforeAging, finalGridState);
+        
+        console.log(`[WaveMgr] Found ${proposedVisualChanges.length} net visual changes for animation.`);
 
-         console.log(`[WaveMgr] Aging for Wave ${nextWaveData.mainWaveNumber} complete. Total unique cells changed: ${totalChangedCells}`);
-
-         // --- Update Visuals for ALL Changed Cells ---
-         // Iterate through the unique changed cells list for this warp phase
-         changedCellsThisWarp.forEach(({c, r}) => {
-             WorldManager.updateStaticWorldAt(c, r); // Update the static visual representation
-         });
+        // 4. Add proposed changes to WorldManager's animation queue
+        if (proposedVisualChanges.length > 0) {
+            WorldManager.addProposedAgingChanges(proposedVisualChanges);
+        }
+        // If animations are disabled in config, addProposedAgingChanges handles direct static updates.
 
     } else {
-         console.log("[WaveMgr] No next wave defined, skipping aging.");
+         console.log("[WaveMgr] No next wave defined, skipping aging process.");
     }
 
-    // --- Post-Aging World Updates ---
-    // Re-render the static world canvas ONCE after all aging passes and individual cell updates are complete
-    WorldManager.renderStaticWorldToGridCanvas();
-
-    // Re-seed the water simulation queue ONCE after all aging passes and re-render
-    // This ensures water flow simulates correctly based on the new terrain layout.
-    WorldManager.seedWaterUpdateQueue();
-
-
-    // --- Clear Enemies and Items Outside the Radius ---
-    // This happens after aging and re-rendering. Items/enemies shouldn't affect or be affected by aging rules themselves.
-    const portalCenter = portalRef.getPosition(); // Get portal center (already adjusted for size)
-    const safeRadius = portalRef.safetyRadius; // Get the current safety radius
+    // 5. Clear Enemies and Items Outside the Portal's Safety Radius (can happen regardless of aging)
+    const portalCenter = portalRef.getPosition();
+    const safeRadius = portalRef.safetyRadius;
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     console.log(`[WaveMgr] Cleared entities/items outside portal radius ${safeRadius.toFixed(1)}.`);
 
-    // --- Show Epoch Text during Warp ---
-    // Show the epoch for the *next* wave, indicating the era the player is transitioning into.
-    if (nextWaveData !== null) { // Only show epoch if there *is* a next wave
+    // 6. Show Epoch Text
+    if (nextWaveData) {
          UI.showEpochText(Config.EPOCH_MAP[nextWaveData.mainWaveNumber] ?? `Preparing Wave ${nextWaveData.mainWaveNumber}`);
     }
+
+    // The renderStaticWorldToGridCanvas() and seedWaterUpdateQueue() calls will now happen
+    // at the END of the WARPPHASE timer in the main update loop of WaveManager.
 }
 
 // --- Exported Functions ---
@@ -334,7 +341,7 @@ export function update(dt, gameState) {
                 // --- Handle Enemy Spawning Progression within WAVE_COUNTDOWN (Remains the same) ---
                 const subWaveData = getCurrentSubWaveData();
                 const groupData = getCurrentGroupData();
-                if (subWaveData && groupData && currentGroupIndex !== -1) { // Add check for currentGroupIndex !== -1
+                if (subWaveData && groupData && currentGroupIndex !== -1) { 
                     if (groupStartDelayTimer > 0) {
                         groupStartDelayTimer -= dt;
                     } else {
@@ -344,67 +351,55 @@ export function update(dt, gameState) {
                                 const spawned = EnemyManager.trySpawnEnemy(groupData.type);
                                 if (spawned) {
                                     enemiesSpawnedThisGroup++;
-                                    groupSpawnTimer = groupData.delayBetween ?? Config.WAVE_ENEMY_SPAWN_DELAY; // Use default if missing in config
-                                    // Immediately queue next spawn if delay is 0 and more enemies are needed
+                                    groupSpawnTimer = groupData.delayBetween ?? Config.WAVE_ENEMY_SPAWN_DELAY; 
                                      if (groupSpawnTimer <= 0 && enemiesSpawnedThisGroup < groupData.count) {
                                           groupSpawnTimer = 0;
                                      }
                                 } else {
-                                    // If spawn failed (e.g., max enemies), wait a little before trying again
                                     groupSpawnTimer = 0.2;
                                 }
                             }
                         } else {
-                            advanceSpawnProgression(); // Move to next group/subwave if current group is done
+                            advanceSpawnProgression(); 
                         }
                     }
                 }
-                // maxTimer remains waveData.duration (set in startNextWave)
                 break;
-
-            // --- INTERMISSION PHASES ---
             case 'BUILDPHASE':
-                // --- DEBUG LOG: Before decrementing buildPhaseTimer ---
-                // console.log(`[WaveMgr::update] State: BUILDPHASE. Before decrement: ${buildPhaseTimer.toFixed(2)}`);
                 buildPhaseTimer -= dt;
-                // --- DEBUG LOG: After decrementing buildPhaseTimer ---
-                // console.log(`[WaveMgr::update] State: BUILDPHASE. After decrement: ${buildPhaseTimer.toFixed(2)}`);
-
                 if (buildPhaseTimer <= 0) {
-                    buildPhaseTimer = 0; // Ensure non-negative
-                    state = 'WARPPHASE'; // Transition to Warp Phase
-                    warpPhaseTimer = Config.WARPPHASE_DURATION; // Start warp timer (uses global fixed value)
-                    currentMaxTimer = Config.WARPPHASE_DURATION; // Set max timer for UI to the warp phase duration
-                    console.log(`[WaveMgr] Transitioned to WARPPHASE (${warpPhaseTimer.toFixed(2)}s).`); // Log before cleanup to separate
-                    triggerWarpCleanup(); // === Call cleanup function on transition ===
-                    console.log(`[WaveMgr] Cleanup triggered for WARPPHASE.`);
+                    buildPhaseTimer = 0;
+                    state = 'WARPPHASE';
+                    warpPhaseTimer = Config.WARPPHASE_DURATION;
+                    currentMaxTimer = Config.WARPPHASE_DURATION;
+                    console.log(`[WaveMgr] Transitioned to WARPPHASE (${warpPhaseTimer.toFixed(2)}s).`);
+                    triggerWarpCleanup(); // Call cleanup (which now queues animations)
+                    console.log(`[WaveMgr] Aging animation queuing triggered for WARPPHASE.`);
                 }
-                // maxTimer remains buildPhaseDuration (set in endWave) - it doesn't change during BUILDPHASE
                 break;
             case 'WARPPHASE':
-                 // --- DEBUG LOG: Before decrementing warpPhaseTimer ---
-                // console.log(`[WaveMgr::update] State: WARPPHASE. Before decrement: ${warpPhaseTimer.toFixed(2)}`);
                  warpPhaseTimer -= dt;
-                 // --- DEBUG LOG: After decrementing warpPhaseTimer ---
-                 // console.log(`[WaveMgr::update] State: WARPPHASE. After decrement: ${warpPhaseTimer.toFixed(2)}`);
-
                  if (warpPhaseTimer <= 0) {
-                     warpPhaseTimer = 0; // Ensure non-negative
-                     console.log("[WaveMgr] warpPhaseTimer <= 0. Starting next wave or victory.");
+                     warpPhaseTimer = 0;
+                     console.log("[WaveMgr] WARPPHASE timer ended.");
+
+                     // Finalize any ongoing aging animations immediately
+                     if (Config.AGING_ANIMATION_ENABLED) {
+                         WorldManager.finalizeAllAgingAnimations();
+                     }
+                     
+                     // Now that all WorldData changes are visually committed (or forced),
+                     // re-render the entire static canvas and seed water.
+                     console.log("[WaveMgr] Rendering final static world and seeding water queue after WARPPHASE.");
+                     WorldManager.renderStaticWorldToGridCanvas();
+                     WorldManager.seedWaterUpdateQueue();
+                     
                      startNextWave(); // Transition to next WAVE_COUNTDOWN or VICTORY
-                     // Note: startNextWave sets its own state and maxTimer, so no need to break
                  }
-                 // maxTimer remains Config.WARPPHASE_DURATION (set on entering this state)
                  break;
             default:
-                // States like PRE_GAME, MAIN_MENU, SETTINGS_MENU, PAUSED, GAME_OVER, VICTORY
-                // Timers are not decremented here because the outer if(gameState === 'RUNNING') is false.
-                // This is the intended behavior.
                 break;
         }
-    } else {
-         // --- DEBUG LOG: WaveManager Update - NOT Running ---
-        // console.log(`[WaveMgr::update] NOT in RUNNING state (${gameState}). Timers frozen. Internal state: ${state}, preWaveTimer: ${preWaveTimer.toFixed(2)}`);
     }
 }
 
@@ -483,82 +478,65 @@ export function getCurrentWaveNumber() {
 /** Returns an object containing relevant wave info for UI or other systems. */
 export function getWaveInfo() {
     let timer = 0;
-    let progressText = ""; // Still keep progress text for debugging/potential future use
-    let currentWaveNumber = getCurrentWaveNumber(); // Get 1-based number for display
-    let maxTimer = currentMaxTimer; // Use the current max timer
+    let progressText = ""; 
+    let currentWaveNumber = getCurrentWaveNumber(); 
+    let maxTimer = currentMaxTimer; 
 
-    // Determine current timer and progress text based on state
     switch (state) {
         case 'PRE_WAVE':
             timer = preWaveTimer;
-            maxTimer = Config.WAVE_START_DELAY; // Explicitly use the config value for pre-wave
-            progressText = "First Wave Incoming"; // Keep for console/debug
-            // currentWaveNumber calculation already handles showing 1 during PRE_WAVE
+            maxTimer = Config.WAVE_START_DELAY; 
+            progressText = "First Wave Incoming"; 
             break;
         case 'WAVE_COUNTDOWN':
             timer = mainWaveTimer;
-            // The maxTimer for WAVE_COUNTDOWN is set in startNextWave (waveData.duration)
-            progressText = `Wave ${currentWaveNumber} Active`; // Show current wave number
-            // Optional: Add enemy count or spawning progress to progressText if needed for debug
+            progressText = `Wave ${currentWaveNumber} Active`; 
             const livingEnemies = EnemyManager.getLivingEnemyCount();
             if (livingEnemies > 0) {
                  progressText += ` (${livingEnemies} Enemies Left)`;
             } else {
-                 // Only show "Clearing..." if the timer is not yet zero.
-                 // If timer is zero and enemies are clearing, the state should transition soon.
-                 // Let's check if the timer is near zero OR if spawning is complete for this wave.
                  const waveData = getCurrentWaveData();
                  const spawningComplete = waveData && currentSubWaveIndex === -1 && currentGroupIndex === -1;
-
                  if (livingEnemies === 0 && timer <= 5 && spawningComplete) {
-                      // If timer is low, no living enemies, and spawning is done, show "Intermission Soon!"
                        progressText = "Intermission Soon!";
                  } else if (livingEnemies === 0) {
-                     // If no living enemies but timer is high (e.g., early in wave), maybe indicate waiting?
-                     // Or assume logic error / no enemies configured for this wave part. Let's stick to enemies left count or Clearing/Soon.
-                      progressText += ` (Clearing...)`; // Still clearing if count is 0 but timer hasn't hit 0
+                      progressText += ` (Clearing...)`; 
                  } else {
-                     // Should not reach here if livingEnemies > 0 is false
-                      progressText = `Wave ${currentWaveNumber} Active`; // Fallback
+                      progressText = `Wave ${currentWaveNumber} Active`; 
                  }
             }
             break;
         case 'BUILDPHASE':
             timer = buildPhaseTimer;
-             // The maxTimer for BUILDPHASE is set in endWave (calculated value)
-            progressText = `Build Time for Wave ${currentWaveNumber}!`; // Refer to UPCOMING wave number
+            progressText = `Build Time for Wave ${currentWaveNumber}!`; 
             break;
         case 'WARPPHASE':
              timer = warpPhaseTimer;
-             // The maxTimer for WARPPHASE is set on entering the state (Config.WARPPHASE_DURATION)
-             progressText = `Warping to Wave ${currentWaveNumber}...`; // Refer to UPCOMING wave number
+             // Check if aging animations are still running
+             let animStatus = "";
+             if (Config.AGING_ANIMATION_ENABLED && !WorldManager.areAgingAnimationsComplete()) {
+                 animStatus = " (Animating...)";
+             }
+             progressText = `Warping to Wave ${currentWaveNumber}${animStatus}...`; 
              break;
         case 'GAME_OVER':
-            timer = 0;
-            maxTimer = 1; // Prevent division by zero in UI percent calculation
-            progressText = "Game Over"; // Keep for console/debug
-            // currentWaveNumber is handled by getCurrentWaveNumber() for Game Over
+            timer = 0; maxTimer = 1; progressText = "Game Over"; 
             break;
         case 'VICTORY':
-            timer = 0;
-            maxTimer = 1; // Prevent division by zero
-            progressText = "Victory!"; // Keep for console/debug
-            // currentWaveNumber is handled by getCurrentWaveNumber() for Victory (shows total waves)
+            timer = 0; maxTimer = 1; progressText = "Victory!"; 
             break;
         default:
-             timer = 0;
-             maxTimer = 1; // Avoid division by zero
-             progressText = '---'; // Keep for console/debug
+             timer = 0; maxTimer = 1; progressText = '---'; 
              break;
     }
 
     return {
-        state: state, // Pass the actual state string
-        mainWaveNumber: currentWaveNumber, // The 1-based wave number relevant to the current state
-        timer: timer, // Time remaining in the current state
-        maxTimer: maxTimer, // Initial duration of the current state (for UI bar width)
-        progressText: progressText, // Keep for debug/console
-        isGameOver: state === 'GAME_OVER', // Use direct state check for game over
-        allWavesCleared: state === 'VICTORY' // Use direct state check for victory
+        state: state, 
+        mainWaveNumber: currentWaveNumber, 
+        timer: timer, 
+        maxTimer: maxTimer, 
+        progressText: progressText, 
+        isGameOver: state === 'GAME_OVER', 
+        allWavesCleared: state === 'VICTORY' 
     };
 }
