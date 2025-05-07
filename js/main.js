@@ -65,6 +65,7 @@ const GameState = Object.freeze({
     VICTORY: 'VICTORY'          // victory screen
 });
 let currentGameState = GameState.PRE_GAME; // Initial state
+
 let isAutoPaused = false; // boolean if paused due to losing tab visibility
 let isGridVisible = false;
 
@@ -90,18 +91,26 @@ window.updateCameraScale = function(deltaScale) {
     const internalCanvasHeight = Config.CANVAS_HEIGHT;
     const worldPixelWidth = getWorldPixelWidth(); // world dimensions
     const worldPixelHeight = getWorldPixelHeight();
-    const scaleToFitWidth = (worldPixelWidth > 0) ? internalCanvasWidth / worldPixelWidth : 1; // calculate minimum required to fill viewport (no black bars) - avoid division by zero if dimensions somehow are
+    // Calculate minimum scale required to make world fill viewport (no black bars if world is large enough)
+    // Avoid division by zero if world dimensions are somehow 0
+    const scaleToFitWidth = (worldPixelWidth > 0) ? internalCanvasWidth / worldPixelWidth : 1;
     const scaleToFitHeight = (worldPixelHeight > 0) ? internalCanvasHeight / worldPixelHeight : 1;
     const minScaleRequired = Math.max(scaleToFitWidth, scaleToFitHeight);
-    const effectiveMinScale = Math.max(Config.MIN_CAMERA_SCALE, minScaleRequired); // The effective minimum scale is the LARGER of the configured minimum and the required scale to fill the view.
-    newScale = Math.max(effectiveMinScale, Math.min(newScale, Config.MAX_CAMERA_SCALE)); // Clamp the new scale between the effective minimum and the configured maximum.
-    cameraScale = newScale; // Apply the final clamped scale. Camera position will be re-clamped in game loop by calculateCameraPosition.
+    // The effective minimum scale is the LARGER of the configured minimum and the required scale to fill the view.
+    const effectiveMinScale = Math.max(Config.MIN_CAMERA_SCALE, minScaleRequired);
+    // Clamp the new scale between the effective minimum and the configured maximum.
+    newScale = Math.max(effectiveMinScale, Math.min(newScale, Config.MAX_CAMERA_SCALE));
+    // Apply the final clamped scale. Camera position will be re-clamped in game loop by calculateCameraPosition.
+    cameraScale = newScale;
+    // console.log(`Camera Scale updated: ${oldScale.toFixed(2)} -> ${cameraScale.toFixed(2)}`);
 }
 // --- Convert canvas pixel coordinates to world coordinates ---
 function getMouseWorldCoords(inputMousePos) {
     // Ensure inputMousePos is valid
     if (!inputMousePos || typeof inputMousePos.x !== 'number' || typeof inputMousePos.y !== 'number' || isNaN(inputMousePos.x) || isNaN(inputMousePos.y)) {
-         return { // return center of the viewport in world coordinates as a fallback
+         // console.warn("getMouseWorldCoords: Invalid input mouse position.", inputMousePos); // Too noisy
+         // Return center of the viewport in world coordinates as a fallback
+         return {
              x: cameraX + (Config.CANVAS_WIDTH / 2) / cameraScale,
              y: cameraY + (Config.CANVAS_HEIGHT / 2) / cameraScale
          };
@@ -308,7 +317,6 @@ function hideOverlay() {
 
 // Function triggered by the initial Title Screen START button
 function startGame() {
-    console.log(">>> [main.js] Title Screen START clicked. Showing Main Menu <<<");
     showMainMenu(); // Transition to the Main Menu state
 }
 
@@ -322,33 +330,21 @@ function showMainMenu() {
 
     currentGameState = GameState.MAIN_MENU;
     showOverlay(GameState.MAIN_MENU);
-    console.log(">>> [main.js] Game State: MAIN_MENU <<<");
 }
 
 // Shows the Settings Menu
 function showSettingsMenu() {
     currentGameState = GameState.SETTINGS_MENU;
     showOverlay(GameState.SETTINGS_MENU);
-    console.log(">>> [main.js] Game State: SETTINGS_MENU <<<");
 }
 
 // Starts the Intro Cutscene (triggered by Main Menu START GAME button)
 function startCutscene() {
-    // Skip cutscene if debug flag is true
-    if (Config.DEBUG_SKIP_CUTSCENE) {
-        console.log(">>> [main.js] DEBUG: Skipping cutscene, starting game directly <<<");
-        initializeAndRunGame(); // Jump directly to game initialization
-        return;
-    }
-
-    console.log(">>> [main.js] Starting Cutscene <<<");
     currentGameState = GameState.CUTSCENE;
     showOverlay(GameState.CUTSCENE); // Show cutscene overlay
-
     // Initialize cutscene state
     currentCutsceneImageIndex = 0;
     cutsceneTimer = cutsceneDurationPerImage; // Timer for the first image
-
     // Hide all cutscene images initially
     cutsceneImages.forEach(img => {
         img.classList.remove('active');
@@ -373,7 +369,6 @@ function startCutscene() {
     //      AudioManager.playUIMusic(Config.AUDIO_TRACKS.introMusic);
     // }
 
-    console.log(">>> [main.js] Game State: CUTSCENE <<<");
 }
 
 // Updates the cutscene timer and switches images
@@ -420,7 +415,6 @@ function skipCutscene() {
          console.warn("skipCutscene called but game is not in CUTSCENE state.");
          return;
      }
-     console.log(">>> [main.js] Skipping Cutscene <<<");
 
      // Stop cutscene audio (handled by initializeAndRunGame/hideOverlay, but safety)
      AudioManager.stopUIMusic();
@@ -445,8 +439,7 @@ function initializeAndRunGame() {
           console.warn(`[main.js] initializeAndRunGame called from unexpected state: ${currentGameState}. Allowing, but investigate.`);
      }
 
-    try { // <--- ADD THIS TRY BLOCK
-        console.log(">>> [main.js] Initializing New Game <<<");
+    try {
     // --- Reset/Initialize Core Systems ---
     // Reset UI references first, as new player/portal objects will be created.
     UI.setPlayerReference(null); // Clear old reference, will be set after new player is created
@@ -455,7 +448,7 @@ function initializeAndRunGame() {
     // Create Portal instance AFTER world, as position depends on world generation results
     const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2;
     // Position portal centered horizontally, slightly above mean ground level
-    const portalSpawnY = (Config.WORLD_GROUND_LEVEL_MEAN * Config.BLOCK_HEIGHT) - Config.PORTAL_HEIGHT - (Config.PORTAL_SPAWN_Y_OFFSET_BLOCKS * Config.BLOCK_HEIGHT);
+    const portalSpawnY = (Config.WORLD_GROUND_LEVEL_MEAN_ROW * Config.BLOCK_HEIGHT) - Config.PORTAL_HEIGHT - (Config.PORTAL_SPAWN_Y_OFFSET_BLOCKS * Config.BLOCK_HEIGHT);
     // Defensive check for calculated spawn Y
     if (isNaN(portalSpawnY) || portalSpawnY < 0) {
          console.error("[main.js] FATAL: Invalid Portal Spawn Y calculation! Defaulting position.");
@@ -815,7 +808,7 @@ function gameLoop(timestamp) {
             // console.log("Updating WaveManager..."); // Already added logs like this
             const previousWaveManagerState = WaveManager.getWaveInfo().state;
             WaveManager.update(dt, currentGameState); // Pass real dt and current state
-            const updatedWaveInfo = WaveManager.getWaveInfo();
+            const updatedWaveInfo = WaveManager.getWaveInfo(); // Get updated info after WaveManager.update()
             const currentWaveManagerState = updatedWaveInfo.state;
 
 
@@ -847,7 +840,7 @@ function gameLoop(timestamp) {
                 // Input module now handles checking its own state flags, which are set by listeners *regardless* of GameState.
                 // Player update function needs to decide whether to process input based on its own state (isActive, !isDying).
                 const inputState = Input.getState(); // Always get raw input state
-                // Get mouse/target positions always, even if player is dying (for drawing maybe, though player.draw handles it)
+                // Get mouse/target positions always, even if player is dying (for drawing maybe, although player.draw handles it)
                 const internalMousePos = Input.getMousePosition(); // Mouse pos is always tracked by Input module
                 const targetWorldPos = getMouseWorldCoords(internalMousePos);
                 const targetGridCell = getMouseGridCoords(internalMousePos);
@@ -899,22 +892,18 @@ function gameLoop(timestamp) {
             // Also check if the portal has been destroyed. Either condition triggers Game Over.
             // Game Over transition is now handled by main.js checking these conditions.
             // console.log("Checking Game Over/Victory Conditions..."); // ADDED LOG
-            if ((player && !player.isActive) || (portal && !portal.isAlive())) { // Corrected portal check
-                if (player && !player.isActive) {
-                    console.log("Main: Player inactive (death animation finished). Triggering Game Over.");
-                } else if (portal && !portal.isAlive()) {
-                    console.log("Main: Portal health zero. Triggering Game Over.");
-                }
-                handleGameOver(); // Transition to Game Over state
-                // No return needed; the state change means next frame will skip the RUNNING block.
-            }
 
+            // Check for Game Over
+            if ((player && !player.isActive) || (portal && !portal.isAlive())) {
+                console.log("Main: Player inactive or Portal destroyed. Triggering Game Over.");
+                handleGameOver(); // This sets currentGameState = GameState.GAME_OVER
+            }
+            // Check for Victory, only if NOT already Game Over
             // Check if WaveManager signals all waves cleared AND there are no *living* enemies remaining.
-            const livingEnemies = EnemyManager.getLivingEnemyCount(); // This correctly excludes enemies currently in dying animation
-            if (updatedWaveInfo.allWavesCleared && livingEnemies === 0) {
+            // FIX: Changed the second if to else if to prioritize Game Over
+            else if (updatedWaveInfo.allWavesCleared && livingEnemies === 0) {
                  console.log("Main: WaveManager signals all waves cleared and no living enemies remaining. Triggering Victory.");
                  handleVictory(); // Transition to Victory state
-                 // No return needed.
             }
 
         // **MODIFIED: Now this is the else if**
@@ -1128,20 +1117,16 @@ function calculateCameraPosition() {
     // For now, the camera directly follows the player. Add smooth lerping here later if desired.
     cameraX = targetX;
     cameraY = targetY;
-
     // --- Clamp Camera Position to World Boundaries ---
     // Calculate the actual size of the world in pixels.
     const worldPixelWidth = getWorldPixelWidth();
     const worldPixelHeight = getWorldPixelHeight();
-
     // Determine the maximum scroll position.
     const maxCameraX = Math.max(0, worldPixelWidth - visibleWorldWidth);
     const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
-
     // Clamp the camera position to stay within the valid world bounds.
     cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
     cameraY = Math.max(0, Math.min(targetY, maxCameraY));
-
     // --- Center Camera If World is Smaller Than Viewport ---
     // If the world is narrower than the visible area, center the camera horizontally.
     if (worldPixelWidth <= visibleWorldWidth) {
@@ -1151,22 +1136,15 @@ function calculateCameraPosition() {
     if (worldPixelHeight <= visibleWorldHeight) {
          cameraY = (worldPixelHeight - visibleWorldHeight) / 2;
     }
-     // console.log(`Camera Pos: (${cameraX.toFixed(1)}, ${cameraY.toFixed(1)})`); // Too noisy
 }
 
-// --- Initialization Function ---
-// Initializes the game environment, DOM references, event listeners, and core systems.
-// Called once when the DOM is fully loaded.
+// Initializes the game environment, DOM references, event listeners, and core systems. Called once when the DOM is fully loaded.
 function init() {
-    console.log(">>> [main.js] Initializing Game Environment <<<");
-    // Initial state is PRE_GAME (Title Screen)
-    currentGameState = GameState.PRE_GAME;
-
+    currentGameState = GameState.PRE_GAME; // Initial state is PRE_GAME (Title Screen)
     try {
         // --- Get Essential DOM References ---
         appContainer = document.getElementById('app-container');
         gameOverlay = document.getElementById('game-overlay');
-
         // Get Overlay Buttons & Stats Text (Updated)
         titleStartButton = document.getElementById('start-game-button'); // Original button now goes to Main Menu
         mainmenuStartGameButton = document.getElementById('mainmenu-start-game-button'); // New Main Menu Start
@@ -1180,16 +1158,12 @@ function init() {
         victoryStatsTextP = document.getElementById('victory-stats-text');
         // ADDED: Get Cutscene Skip Button Reference
         cutsceneSkipButton = document.getElementById('cutscene-skip-button');
-
-
         // Get Settings Button References (already here)
         btnToggleGrid = document.getElementById('btn-toggle-grid');
         muteMusicButtonEl = document.getElementById('btn-mute-music');
         muteSfxButtonEl = document.getElementById('btn-mute-sfx');
-
         // Find Epoch Overlay Element (already here)
         epochOverlayEl = document.getElementById('epoch-overlay');
-
         // Get Cutscene Image Elements (NEW)
         cutsceneImages = [];
         Config.CUTSCENE_IMAGE_PATHS.forEach((_, index) => {
@@ -1210,10 +1184,7 @@ function init() {
              restartButtonPause,
              gameOverStatsTextP, victoryStatsTextP,
              btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl,
-             epochOverlayEl,
-             // ADDED: Cutscene Skip Button
-             cutsceneSkipButton
-             // Note: Not strictly requiring cutscene images to allow fallback, but good to log if missing
+             epochOverlayEl, cutsceneSkipButton
         ];
 
         // Use `some()` to check if *any* element in the list is missing.
@@ -1227,7 +1198,9 @@ function init() {
                  'gameOverStatsTextP (#gameover-stats-text)', 'victoryStatsTextP (#victory-stats-text)',
                  'btnToggleGrid (#btn-toggle-grid)', 'muteMusicButtonEl (#btn-mute-music)', 'muteSfxButtonEl (#btn-mute-sfx)',
                  'epochOverlayEl (#epoch-overlay)',
-                 'cutsceneSkipButton (#cutscene-skip-button)' // Added skip button name
+                 'cutsceneSkipButton (#cutscene-skip-button)', // Added skip button name
+                 'actionButtons.left (#btn-move-left)', 'actionButtons.right (#btn-move-right)', 'actionButtons.pause (#btn-pause)', 'actionButtons.jump (#btn-jump)', 'actionButtons.attack (#btn-attack)',
+                 'actionButtons.toggleGrid (#btn-toggle-grid)', 'actionButtons.muteMusic (#btn-mute-music)', 'actionButtons.muteSfx (#btn-mute-sfx)'
              ];
              const missing = requiredElements
                  .map((el, i) => el ? null : elementNames[i])
@@ -1236,23 +1209,18 @@ function init() {
              throw new Error(`FATAL INIT ERROR: Essential DOM elements not found: ${missing.join(', ')}! Please check index.html.`);
         }
 
-
         // --- Setup Event Listeners for Overlay Buttons (Updated) ---
         titleStartButton.addEventListener('click', startGame); // Title screen button now goes to Main Menu
         mainmenuStartGameButton.addEventListener('click', startCutscene); // Main Menu button starts cutscene
         mainmenuSettingsButton.addEventListener('click', showSettingsMenu); // Main Menu button goes to Settings
         settingsBackButton.addEventListener('click', showMainMenu); // Settings button goes back to Main Menu
-
         // Existing listeners for game state transitions (now call restartGame which goes to Main Menu)
         resumeButton.addEventListener('click', resumeGame); // Resume still resumes from pause
         restartButtonGameOver.addEventListener('click', restartGame); // Game Over restart goes to Main Menu
         restartButtonVictory.addEventListener('click', restartGame); // Victory restart goes to Main Menu
         restartButtonPause.addEventListener('click', restartGame); // Pause restart goes to Main Menu
-
         // ADDED: Listener for Cutscene Skip Button
         cutsceneSkipButton.addEventListener('click', skipCutscene);
-
-
         // Setup Event Listeners for Settings Buttons (already here)
         btnToggleGrid.addEventListener('click', toggleGridDisplay);
         muteMusicButtonEl.addEventListener('click', toggleMusicMute);
@@ -1304,14 +1272,8 @@ function init() {
         // --- Show Initial Overlay ---
         // Start the game by displaying the title screen overlay.
         showOverlay(GameState.PRE_GAME);
-
-        // Start the game loop immediately. It will run with dt=0 until the state is RUNNING or CUTSCENE.
-         gameLoopId = requestAnimationFrame(gameLoop);
-
-        console.log(">>> [main.js] Game Initialization Complete <<<");
-
+         gameLoopId = requestAnimationFrame(gameLoop); // Start the game loop immediately. It will run with dt=0 until the state is RUNNING or CUTSCENE.
     } catch (error) {
-        // --- Handle Fatal Initialization Errors ---
         console.error("FATAL: Initialization Error:", error);
         if (gameOverlay) {
             // Apply styles directly to make the error message prominent and override any default overlay styles.

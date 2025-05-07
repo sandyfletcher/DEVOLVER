@@ -186,7 +186,6 @@ export function initGameUI() {
         // updateSettingsButtonStates(); // This call is handled by main.js
 
         isUIReady = true; // Mark UI as ready if all steps succeeded
-        console.log("UI: Game UI elements initialized successfully.");
     } else {
         isUIReady = false; // Mark UI as not ready on failure
         console.error("UI: Failed to initialize some critical Game UI elements.");
