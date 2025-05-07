@@ -23,10 +23,14 @@ export function trySpawnEnemy(enemyType) {
     let spawnX = NaN, spawnY = NaN;
     let foundValidSpawnPoint = false;
     const maxSpawnAttempts = 15;
-// get enemy size for validation (default if type unknown)
+    // get enemy size for validation (default if type unknown)
     const stats = Config.ENEMY_STATS[enemyType];
-    const enemyWidth = stats?.width ?? Config.DEFAULT_ENEMY_WIDTH;
-    const enemyHeight = stats?.height ?? Config.DEFAULT_ENEMY_HEIGHT;
+    // Read dimensions in BLOCK units from stats, then scale to pixels.
+    // Use default BLOCK units if stats are missing, then scale.
+    const enemyWidthBlocks = stats?.width_BLOCKS ?? Config.DEFAULT_ENEMY_WIDTH_BLOCKS;
+    const enemyHeightBlocks = stats?.height_BLOCKS ?? Config.DEFAULT_ENEMY_HEIGHT_BLOCKS;
+    const enemyWidth = enemyWidthBlocks * Config.BLOCK_WIDTH;   // Scale to pixels
+    const enemyHeight = enemyHeightBlocks * Config.BLOCK_HEIGHT; // Scale to pixels
     for (let attempt = 0; attempt < maxSpawnAttempts && !foundValidSpawnPoint; attempt++) {
 // --- Simplified Off-Screen Spawning Logic ---
         const spawnSide = Math.random() < 0.5 ? 'left' : 'right';

@@ -67,8 +67,8 @@ export class Enemy {
 
         // --- Assign Core Properties (Scaled) ---
         // Dimensions are defined in blocks in config, scale them here to pixels
-        this.width = this.stats.width * Config.BLOCK_WIDTH;
-        this.height = this.stats.height * Config.BLOCK_HEIGHT;
+        this.width = this.stats.width_BLOCKS * Config.BLOCK_WIDTH; // <<< CORRECTED NAME
+        this.height = this.stats.height_BLOCKS * Config.BLOCK_HEIGHT;
 
         this.x = x; // Initial x position (assumed to be in pixels)
         this.y = y; // Initial y position (assumed to be in pixels)
@@ -78,16 +78,17 @@ export class Enemy {
         this.displayName = this.stats.displayName;
 
         // Scale speed/velocity values by the appropriate block ratio
-        this.maxSpeedX = this.stats.maxSpeedX * blockWidthRatio;
-        this.maxSpeedY = this.stats.maxSpeedY * blockHeightRatio; // Vertical speeds scale with Block Height
-        this.swimSpeed = this.stats.swimSpeed * blockHeightRatio; // Swim speed scales with Block Height
-        this.jumpVelocity = this.stats.jumpVelocity * blockHeightRatio; // Jump velocity scales with Block Height
+        this.maxSpeedX = this.stats.maxSpeedX_BLOCKS_PER_SEC * blockWidthRatio;
+        this.maxSpeedY = this.stats.maxSpeedY_BLOCKS_PER_SEC * blockHeightRatio; // Vertical speeds scale with Block Height
+        this.swimSpeed = this.stats.swimSpeed_BLOCKS_PER_SEC * blockHeightRatio; // Swim speed scales with Block Height
+        this.jumpVelocity = this.stats.jumpVelocity_BLOCKS_PER_SEC * blockHeightRatio; // Jump velocity scales with Block Height
 
         // Scale separation strength by Block Width ratio
-        this.separationStrength = this.stats.separationStrength * blockWidthRatio;
+        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * blockWidthRatio;
 
         // Scale Tetrapod specific velocities/forces if they were added to stats
-        this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity * blockWidthRatio; // Scaled horizontal velocity impulse
+        // Ensure the property name in config matches this! (It does: landHopHorizontalVelocity_BLOCKS_PER_SEC)
+        this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * blockWidthRatio;
 
         // --- Store Movement Capabilities ---
         this.canSwim = this.stats.canSwim ?? false; // Default to false if undefined
