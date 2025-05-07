@@ -2,11 +2,8 @@
 
 import * as Config from './config.js';
 import * as EnemyManager from './enemyManager.js';
-// NEW: Import AudioManager to check mute state for button appearance
 import * as AudioManager from './audioManager.js';
-// Import Input (though not directly used here, it might be needed for context or future features)
-// import * as Input from './input.js';
-
+import * as WorldManager from './worldManager.js';
 
 // --- DOM Element References ---
 
@@ -118,8 +115,19 @@ export function initGameUI() {
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
         // Log specific missing elements for easier debugging
-        requiredElements.forEach(el => {
-            if (!el) console.error(`Missing UI element: ${el?.id || el?.className || 'Unknown (null)'}`);
+        const elementNames = [ // Map indices to names for logging
+            'topSidebarEl', 'playerColumnEl', 'portalColumnEl',
+            'playerHealthBarContainerEl', 'playerHealthBarFillEl',
+            'portalColumnH2El', 'portalHealthBarContainerEl', 'portalHealthBarFillEl',
+            'timerRowEl', 'timerBarContainerEl', 'timerBarFillEl', 'timerTextOverlayEl',
+            'bottomSidebarEl', 'itemSelectionAreaEl', 'inventoryBoxesContainerEl', 'weaponSlotsContainerEl',
+            'actionButtonsAreaEl', 'toggleControlsButtonEl',
+            'actionButtons.left', 'actionButtons.right', 'actionButtons.pause', 'actionButtons.jump', 'actionButtons.attack',
+            'actionButtons.toggleGrid', 'actionButtons.muteMusic', 'actionButtons.muteSfx',
+            'epochOverlayEl'
+        ];
+        requiredElements.forEach((el, index) => {
+            if (!el) console.error(`Missing UI element: ${elementNames[index]}`);
         });
         success = false; // Mark initialization as failed
     }
@@ -514,15 +522,20 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             // Player does NOT have the weapon, but it's craftable.
             // Check if they have *all* required materials needed to CRAFT it.
             let canAfford = true;
-            for (const ingredient of recipe) {
-                const requiredType = ingredient.type;
-                const requiredAmount = ingredient.amount;
-                const possessedAmount = inventory[requiredType] || 0; // Get count from passed inventory
-                 if (possessedAmount < requiredAmount) {
-                     canAfford = false;
-                     break; // Stop checking if one ingredient is missing
-                 }
+            if (playerRef) { // Only check affordability if player exists (inventory access)
+                for (const ingredient of recipe) {
+                    const requiredType = ingredient.type;
+                    const requiredAmount = ingredient.amount;
+                    const possessedAmount = inventory[requiredType] || 0; // Get count from passed inventory
+                     if (possessedAmount < requiredAmount) {
+                         canAfford = false;
+                         break; // Stop checking if one ingredient is missing
+                     }
+                }
+            } else {
+                canAfford = false; // Cannot afford if no player/inventory
             }
+
             if (canAfford) {
                 // Player does NOT have the weapon but CAN craft it. The slot is interactive (click to craft).
                 canInteract = true;
@@ -552,16 +565,6 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         // Update the title attribute for the hover tooltip
         slotDiv.title = titleText;
     }
-
-     // Handle Unarmed slot if it existed visually (example):
-     // const unarmedSlotDiv = itemSlotDivs[Config.WEAPON_TYPE_UNARMED];
-     // if (unarmedSlotDiv) {
-     //    // Unarmed is always interactive (can always switch to it)
-     //    unarmedSlotDiv.classList.remove('disabled');
-     //    // It's active if the selected item is unarmed
-     //    unarmedSlotDiv.classList.toggle('active', playerRef && selectedItem === Config.WEAPON_TYPE_UNARMED);
-     //    unarmedSlotDiv.title = 'UNARMED';
-     // }
 }
 
 
@@ -604,66 +607,92 @@ export function updateWaveTimer(waveInfo) {
     }
 
     // Destructure relevant properties from the waveInfo object
-    const { state, timer: currentTimer, maxTimer, mainWaveNumber } = waveInfo; // Renamed timer to currentTimer for clarity
+    const { state, timer: currentTimer, maxTimer, mainWaveNumber } = waveInfo;
 
     // Clamp currentTimer to be between 0 and maxTimer for robust display
     const clampedTimer = Math.max(0, Math.min(currentTimer, maxTimer));
 
     // Calculate fill percentage for the timer bar (counts down)
-    // Handle maxTimer = 0 case to prevent division by zero and show full bar
-    const timerPercent = (maxTimer > 0) ? (clampedTimer / maxTimer) * 100 : 100; // Show 100% if maxTimer is 0 (e.g. during loading/game over)
+    // Handle maxTimer = 0 or 1 case to prevent division by zero and show full/empty bar correctly
+    const timerPercent = (maxTimer > 1) ? (clampedTimer / maxTimer) * 100 : (clampedTimer > 0 ? 100 : 0);
     timerBarFillEl.style.width = `${timerPercent}%`;
 
     // --- Update Timer Text Overlay based on WaveManager State ---
     let timerText = "";
-    let displayTimer = true; // Flag to control if we append the numerical timer
+    let displayTimerValue = true; // Flag to control if we append the numerical timer
 
     switch(state) {
-        case 'PRE_WAVE': timerText = "FIRST WAVE IN"; break;
-        case 'WAVE_COUNTDOWN': timerText = `WAVE ${mainWaveNumber} ENDS IN`; break; // Show current wave number
-        case 'BUILDPHASE': timerText = "BUILD TIME"; break;
-        case 'WARPPHASE': timerText = "WARPING..."; displayTimer = false; break; // Warp phase is timed, display timer
-        case 'GAME_OVER': timerText = "GAME OVER"; displayTimer = false; break; // Game over/Victory states don't show countdown
-        case 'VICTORY': timerText = "VICTORY!"; displayTimer = false; break;
-        case 'LOADING': timerText = "LOADING..."; displayTimer = false; break; // Initial state placeholder
-        default: timerText = "TIME"; break; // Fallback
+        case 'PRE_WAVE':
+            timerText = "FIRST WAVE IN";
+            break;
+        case 'WAVE_COUNTDOWN':
+            const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get current living enemy count
+            if (livingEnemies > 0) {
+                 timerText = `WAVE ${mainWaveNumber} (${livingEnemies} LEFT)`;
+            } else {
+                 // Check if spawning is complete for the current wave
+                 // This needs WaveManager to expose if all groups/subwaves are done.
+                 // For now, simplify: if no enemies and timer < 5, show "Intermission Soon"
+                 // This check is a bit simplistic as spawning might still be happening.
+                 // A more robust check would be needed from WaveManager itself.
+                 if (clampedTimer <= 5 && livingEnemies === 0) { // A rough check
+                       timerText = "INTERMISSION SOON!";
+                 } else {
+                      timerText = `WAVE ${mainWaveNumber} (CLEARING)`;
+                 }
+            }
+            break;
+        case 'BUILDPHASE':
+            timerText = `BUILD TIME (WAVE ${mainWaveNumber} NEXT)`; // Show which wave is upcoming
+            break;
+        case 'WARPPHASE':
+             let animStatus = "";
+             if (Config.AGING_ANIMATION_ENABLED && WorldManager && !WorldManager.areAgingAnimationsComplete()) { // Check WorldManager exists
+                 animStatus = " (MORPHING...)";
+             }
+             timerText = `WARPING TO WAVE ${mainWaveNumber}${animStatus}`;
+             displayTimerValue = true; // Show timer during warp
+             break;
+        case 'GAME_OVER':
+            timerText = "GAME OVER";
+            displayTimerValue = false;
+            break;
+        case 'VICTORY':
+            timerText = "VICTORY!";
+            displayTimerValue = false;
+            break;
+        case 'LOADING': // Fallthrough for initial load
+        default:
+            timerText = "LOADING...";
+            displayTimerValue = false;
+            break;
     }
 
-     // Append formatted time if displayTimer is true
-    if (displayTimer) {
+     // Append formatted time if displayTimerValue is true
+    if (displayTimerValue) {
          const minutes = Math.floor(clampedTimer / 60);
          const seconds = Math.floor(clampedTimer % 60);
-         // Format seconds with leading zero if less than 10
          const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
-
          timerText = `${timerText}: ${minutes}:${formattedSeconds}`;
-
-        // Optional: Add milliseconds for more frantic timers if needed later
-         // const milliseconds = Math.floor((clampedTimer * 1000) % 1000);
-         // const formattedMilliseconds = milliseconds < 100 ? (milliseconds < 10 ? '00' + milliseconds : '0' + milliseconds) : milliseconds;
-         // timerText = `${timerText}: ${minutes}:${formattedSeconds}.${formattedMilliseconds}`;
     }
 
-    // Update the text content of the overlay element
     timerTextOverlayEl.textContent = timerText;
-
-    // Optional: Change color of timer bar or text based on state or time remaining (e.g., flash red when time is low)
-    // This is handled in style.css for fill color based on ID, but could be dynamic here.
 }
+
 
 // Function to display the epoch text overlay above the game canvas
 // Clears any pending hide timer and sets a new one
-export function showEpochText(epochYear) {
+export function showEpochText(epochMessage) { // Changed parameter name for clarity
     // Ensure the epoch overlay element exists
     if (!epochOverlayEl) {
-        console.warn("UI showEpochText: Element not found.", epochOverlayEl);
+        // console.warn("UI showEpochText: Element not found.", epochOverlayEl); // Less verbose
         return;
     }
-    // Ensure epochYear is a number, default to a placeholder if not
-    const yearToDisplay = typeof epochYear === 'number' && !isNaN(epochYear) ? `${epochYear} Million Years Ago` : 'Wave Starting';
+    // Ensure epochMessage is a string, default to a placeholder if not
+    const textToDisplay = (typeof epochMessage === 'string' && epochMessage.trim() !== "") ? epochMessage : 'Wave Starting';
 
     // Set the text content
-    epochOverlayEl.textContent = yearToDisplay;
+    epochOverlayEl.textContent = textToDisplay;
 
     // Clear any previous hide timer to prevent overlaps if waves transition quickly
     if (epochOverlayEl._hideTimer) {

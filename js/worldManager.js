@@ -38,6 +38,11 @@ export function init(portalRef) {
     }
 
     // Initial rendering and seeding handled by main.js or WaveManager now.
+    // NEW: Reset animation queues on init
+    agingAnimationQueue = [];
+    activeAgingAnimations = [];
+    newAnimationStartTimer = 0;
+
 
     console.log("WorldManager initialized.");
 }
@@ -374,10 +379,10 @@ export function update(dt) {
  */
 export function addProposedAgingChanges(changes) {
     if (!Config.AGING_ANIMATION_ENABLED) {
-        console.log("[WorldManager] Aging animation disabled. Applying changes directly.");
-        changes.forEach(({ c, r }) => {
-            // WorldData is already updated by AgingManager.
-            // Update static canvas visual and trigger water sim check.
+        // console.log("[WorldManager] Aging animation disabled. Applying changes directly."); // Less verbose
+        changes.forEach(({ c, r }) => { // oldBlockType, newBlockType from diff are not needed here for direct application
+            // WorldData is already updated by AgingManager by the time diffGrids runs.
+            // So, we just need to update the static canvas for the final state.
             updateStaticWorldAt(c, r);
             queueWaterCandidatesAroundChange(c, r);
         });
@@ -386,7 +391,7 @@ export function addProposedAgingChanges(changes) {
 
     // Add changes to the queue for animation processing
     changes.forEach(change => agingAnimationQueue.push(change));
-    console.log(`[WorldManager] Added ${changes.length} proposed aging changes to animation queue. Total: ${agingAnimationQueue.length}`);
+    // console.log(`[WorldManager] Added ${changes.length} proposed aging changes to animation queue. Total: ${agingAnimationQueue.length}`); // Less verbose
 }
 
 /**
@@ -394,6 +399,8 @@ export function addProposedAgingChanges(changes) {
  * @param {number} dt Delta time in seconds.
  */
 function updateAgingAnimations(dt) {
+    if (dt <= 0) return; // Don't process if no time has passed
+
     newAnimationStartTimer -= dt;
 
     // Start new animations if conditions are met
@@ -403,7 +410,7 @@ function updateAgingAnimations(dt) {
         // Find if there's already an active animation for this cell (shouldn't happen with queue logic, but safety)
         const existingAnimIndex = activeAgingAnimations.findIndex(anim => anim.c === change.c && anim.r === change.r);
         if (existingAnimIndex !== -1) {
-             console.warn(`[WorldManager] Trying to start new animation for [${change.c},${change.r}] while one is active. Skipping.`);
+             // console.warn(`[WorldManager] Trying to start new animation for [${change.c},${change.r}] while one is active. Skipping.`); // Less verbose
         } else {
             activeAgingAnimations.push({
                 c: change.c,
@@ -417,6 +424,7 @@ function updateAgingAnimations(dt) {
             newAnimationStartTimer = Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
 
             // Temporarily clear the spot on the static grid canvas
+            // This allows the animation to draw into an empty space without the old block being visible underneath.
             const gridCtx = Renderer.getGridContext();
             if (gridCtx) {
                 gridCtx.clearRect(
@@ -436,7 +444,7 @@ function updateAgingAnimations(dt) {
 
         if (anim.phase === 'swell') {
             const timeElapsed = Config.AGING_ANIMATION_SWELL_DURATION - anim.timer;
-            const progress = Math.min(1.0, timeElapsed / Config.AGING_ANIMATION_SWELL_DURATION); // Ensure progress doesn't exceed 1
+            const progress = Math.min(1.0, Math.max(0, timeElapsed / Config.AGING_ANIMATION_SWELL_DURATION)); // Ensure progress is 0-1
             // Use a sine ease-out curve for smoother scaling
             anim.currentScale = 1.0 + (Config.AGING_ANIMATION_SWELL_SCALE - 1.0) * Math.sin(progress * Math.PI / 2);
 
@@ -489,7 +497,7 @@ function drawAgingAnimations(ctx) {
             const newColor = Config.BLOCK_COLORS[anim.newBlockType];
             if (newColor && anim.newBlockType !== Config.BLOCK_AIR) { // Don't draw AIR
                  // Optional: Fade in/out during pop phase based on timer progress
-                 const popProgress = 1.0 - (anim.timer / Config.AGING_ANIMATION_POP_DURATION); // 0 to 1
+                 const popProgress = Math.max(0, 1.0 - (anim.timer / Config.AGING_ANIMATION_POP_DURATION)); // 0 to 1
                  // Example: Flash bright then fade slightly
                  const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI); // Pulses alpha
                  ctx.globalAlpha = alpha;
@@ -518,7 +526,7 @@ export function areAgingAnimationsComplete() {
 export function finalizeAllAgingAnimations() {
     if (!Config.AGING_ANIMATION_ENABLED) return; // Do nothing if disabled
 
-    console.log(`[WorldManager] Finalizing ${agingAnimationQueue.length} queued and ${activeAgingAnimations.length} active aging animations...`);
+    // console.log(`[WorldManager] Finalizing ${agingAnimationQueue.length} queued and ${activeAgingAnimations.length} active aging animations...`); // Less verbose
     // Process remaining queued items
     while(agingAnimationQueue.length > 0) {
         const change = agingAnimationQueue.shift();
@@ -533,5 +541,5 @@ export function finalizeAllAgingAnimations() {
         updateStaticWorldAt(anim.c, anim.r);
         queueWaterCandidatesAroundChange(anim.c, anim.r);
     }
-    console.log("[WorldManager] All aging animations finalized.");
+    // console.log("[WorldManager] All aging animations finalized."); // Less verbose
 }
