@@ -9,7 +9,7 @@ import * as ItemManager from './itemManager.js';
 import { generateInitialWorld } from './utils/worldGenerator.js';
 import * as GridCollision from './utils/gridCollision.js';
 import { createBlock } from './utils/block.js';
-import * as AgingManager from './agingManager.js';
+import * as AgingManager from './agingManager.js'; // Import AgingManager if needed later
 
 // --- Module State ---
 let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
@@ -60,6 +60,22 @@ export function addWaterUpdateCandidate(col, row) { // EXPORTED THIS HELPER
 export function resetWaterPropagationTimer() {
      waterPropagationTimer = 0;
 }
+
+// NEW: Helper to queue cell and its neighbors for water updates if they are candidates
+export function queueWaterCandidatesAroundChange(c, r) {
+     let candidateAdded = false;
+     candidateAdded = addWaterUpdateCandidate(c, r) || candidateAdded; // Add the changed block itself if it's a valid water candidate type
+     candidateAdded = addWaterUpdateCandidate(c, r - 1) || candidateAdded; // Add neighbors
+     candidateAdded = addWaterUpdateCandidate(c, r + 1) || candidateAdded;
+     candidateAdded = addWaterUpdateCandidate(c - 1, r) || candidateAdded;
+     candidateAdded = addWaterUpdateCandidate(c + 1, r) || candidateAdded;
+
+     // If any candidate was added to the queue, reset the timer to force an immediate water update pass
+     if (candidateAdded) {
+         resetWaterPropagationTimer();
+     }
+}
+
 
 // update visual representation of a single block
 export function updateStaticWorldAt(col, row) {
@@ -191,7 +207,14 @@ export function seedWaterUpdateQueue() { // seed queue with initial water blocks
         for (let c = 0; c < Config.GRID_COLS; c++) {
              const blockType = WorldData.getBlockType(c, r); // add to queue WATER blocks, adjacent AIR/WATER at or below waterline threshold, or solid blocks near water
              if (blockType === Config.BLOCK_WATER) {
-                 addWaterUpdateCandidate(c, r);
+                 // Only add the water block itself if it's *above* the water line. Below it, assume it's stable initially.
+                 // The neighbor checks below will handle areas adjacent to existing water.
+                 // if (r < Config.WORLD_WATER_LEVEL_ROW_TARGET) { // This check might be too strict, let's keep it simple.
+                     addWaterUpdateCandidate(c, r); // Add the water block itself regardless of row for robustness
+                 // }
+
+                 // Always add neighbors of water blocks (if they are candidates) regardless of their row vs waterline
+                 // This is important for water receding/flowing into new spaces opened by aging/mining
                  addWaterUpdateCandidate(c, r-1); // even neighbors above water can be candidates if they turn to AIR/WATER later
                  addWaterUpdateCandidate(c, r+1);
                  addWaterUpdateCandidate(c-1, r);
@@ -199,6 +222,7 @@ export function seedWaterUpdateQueue() { // seed queue with initial water blocks
              } else if (blockType === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // add air below waterline + buffer as potential fill candidates
                  addWaterUpdateCandidate(c, r);
              }
+             // Also add neighbors of any solid block below the waterline buffer, as destroying them creates AIR for water to flow into
              if (GridCollision.isSolid(c, r) && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // also add neighbors of solid blocks near the water line, as destroying them can create new AIR space for water
                   addWaterUpdateCandidate(c, r-1);
                   addWaterUpdateCandidate(c, r+1);
@@ -229,15 +253,8 @@ export function placePlayerBlock(col, row, blockType) { // sets player-placed bl
         updateStaticWorldAt(col, row); // update visual cache
         // Note: We add neighbors of the *new* block, and potentially the block itself if it's water
         if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // trigger water sim if block placement is at or near waterline by adding neighbors of *new* block (and potentially block itself if water) to queue
-            let candidateAdded = false;
-            candidateAdded = addWaterUpdateCandidate(col, row) || candidateAdded; // queue changed block itself if it's water
-            candidateAdded = addWaterUpdateCandidate(col, row - 1) || candidateAdded; // queue neighbours
-            candidateAdded = addWaterUpdateCandidate(col, row + 1) || candidateAdded;
-            candidateAdded = addWaterUpdateCandidate(col - 1, row) || candidateAdded;
-            candidateAdded = addWaterUpdateCandidate(col + 1, row) || candidateAdded;
-            if(candidateAdded) {
-                waterPropagationTimer = 0; // reset timer to force immediate water update
-            }
+            // Use the new helper function
+            queueWaterCandidatesAroundChange(col, row);
         }
     } else {
         console.error(`WorldManager placePlayerBlock failed to set block at [${col}, ${row}]`);
@@ -293,15 +310,8 @@ export function damageBlock(col, row, damageAmount) { // applies damage to block
             updateStaticWorldAt(col, row); // update/ clear block area static visual cache
             // Trigger water simulation if the destruction is at or near the waterline
              if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // Check a few rows above
-                 let candidateAdded = false;
-                 candidateAdded = addWaterUpdateCandidate(col, row) || candidateAdded; // queue changed block itself if it's water (unlikely to be water after destruction)
-                 candidateAdded = addWaterUpdateCandidate(col, row - 1) || candidateAdded; // and neighbors
-                 candidateAdded = addWaterUpdateCandidate(col, row + 1) || candidateAdded;
-                 candidateAdded = addWaterUpdateCandidate(col - 1, row) || candidateAdded;
-                 candidateAdded = addWaterUpdateCandidate(col + 1, row) || candidateAdded;
-                 if(candidateAdded) {
-                     waterPropagationTimer = 0; // reset timer
-                 }
+                 // Use the new helper function
+                 queueWaterCandidatesAroundChange(col, row);
              }
         } else {
              console.error(`WorldManager damageBlock failed to set AIR at [${col}, ${r}] after destruction.`); // Fixed row variable
@@ -347,30 +357,21 @@ export function update(dt) { // handles dynamic world state like water flow
             // Process the batch of candidates
             candidatesToProcess.forEach(({c, r}) => {
                 // Recheck bounds, as blocks may've been changed since queueing
-                if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c < Config.GRID_COLS) return; // Fixed c < 0, should be c < Config.GRID_COLS
+                if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) { // Corrected check for c
+                    // console.warn(`Water update candidate [${c},${r}] out of bounds during processing.`); // Too noisy
+                    return; // Skip if out of bounds
+                }
+
 
                 const currentBlockType = WorldData.getBlockType(c, r); // get current block type *again* inside the loop
 
                 // Queue neighbors below waterline to the queue for potential updates
                 // This ensures changes propagate. Queueing neighbors of AIR/WATER blocks.
                 // Or queue neighbors of solid blocks that might cause water to pool.
-                 const neighborsToQueue = [
-                     { dc: 0, dr: 1 }, { dc: 0, dr: -1 },
-                     { dc: 1, dr: 0 }, { dc: -1, dr: 0 }
-                 ]; // Cardinal neighbours
-
-                 // Add neighbors of the *current* block being processed if it's water or near the waterline
-                 // This ensures surrounding cells are re-evaluated based on this cell's state *after* its potential type change (or if it was just processed)
-                 // Check is at/below waterline threshold for optimization
-                 if (r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) {
-                    neighborsToQueue.forEach(neighbor => {
-                         const nc = c + neighbor.dc;
-                         const nr = r + neighbor.dr;
-                         // addWaterUpdateCandidate handles the bounds, type (AIR/WATER), and existence checks
-                         // Use the EXPORTED version here now
-                         addWaterUpdateCandidate(nc, nr);
-                    });
-                 }
+                 // This neighbor queueing is now done by queueWaterCandidatesAroundChange when a block *type* changes (aging, mining, placing)
+                 // We should NOT queue neighbors here *within* the water update loop, as it leads to excessive queue growth.
+                 // If a block *remains* AIR or WATER after processing (i.e., it didn't fill or stay filled), it will be re-added
+                 // to the queue in the logic below IF it's part of an active flow/spread.
 
 
                 // --- Water Flow Logic ---
@@ -395,9 +396,17 @@ export function update(dt) { // handles dynamic world state like water flow
                             const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // water flows; not player-placed
                             if (success) {
                                 updateStaticWorldAt(c, r); // Redraw the block
-                                 // Queue neighbors (already done above, but ensuring they are candidates is key)
-                                 // Forcing timer reset is handled once below after the batch.
+                                // Re-add this cell (now water) and its neighbors to the queue for the NEXT pass
+                                queueWaterCandidatesAroundChange(c, r); // Queue self (as water) and neighbors
+                            } else {
+                                // If setting block failed, maybe log error and ensure the cell isn't stuck in the queue?
+                                // The remove logic at the start of the function handles queue removal for this batch.
+                                console.warn(`Water flow failed to set block to WATER at [${c},${r}]`);
                             }
+                        } else {
+                            // If AIR cell does not become WATER, it means it's surrounded by non-WATER (AIR, SOLID, etc.).
+                            // It should only be re-added to the queue if a neighbor changes to water.
+                            // This is handled by queueWaterCandidatesAroundChange when a neighbor changes.
                         }
                     }
 
@@ -409,24 +418,30 @@ export function update(dt) { // handles dynamic world state like water flow
                         if (blockBelowType === Config.BLOCK_AIR) {
                             // Queue the AIR block below. The next water update cycle will process it and turn it to WATER.
                             addWaterUpdateCandidate(c, r + 1); // This will ensure the cell below is considered for filling
-                        }
+                            // We do NOT queue this cell (c, r) again if it flows down - it remains WATER.
+                        } else {
+                             // Flow Sideways: If block below is solid or water AND side block is AIR
+                             const blockBelow = WorldData.getBlock(c, r + 1); // Get block data for the one below
+                             const blockBelowResolvedType = blockBelow?.type ?? Config.BLOCK_AIR; // Get type, default to AIR if null/undefined
+                             // Is block below something that would act as a "floor" for sideways flow? (Any solid block or another water block)
+                             const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR);
 
-                        // Flow Sideways: If block below is solid or water AND side block is AIR
-                        const blockBelow = WorldData.getBlock(c, r + 1); // Get block data for the one below
-                        const blockBelowResolvedType = blockBelow?.type ?? Config.BLOCK_AIR; // Get type, default to AIR if null/undefined
-                        // Is block below something that would act as a "floor" for sideways flow? (Any solid block or another water block)
-                        const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR);
-
-                        if (isBelowSolidOrWater) {
-                             // Check left
-                            if (WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR) {
-                                addWaterUpdateCandidate(c - 1, r); // Queue air block to left
-                            }
-                             // Check right
-                            if (WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR) {
-                                addWaterUpdateCandidate(c + 1, r); // Queue air block to right
-                            }
-                        }
+                             if (isBelowSolidOrWater) {
+                                  // Check left
+                                 if (WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR) {
+                                     addWaterUpdateCandidate(c - 1, r); // Queue air block to left
+                                     // If water *spreads* sideways, re-add the current water block (c, r) to the queue
+                                     // This ensures it's checked again in the next pass, potentially spreading further.
+                                     addWaterUpdateCandidate(c, r); // Re-queue self
+                                 }
+                                  // Check right
+                                 if (WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR) {
+                                     addWaterUpdateCandidate(c + 1, r); // Queue air block to right
+                                      // If water *spreads* sideways, re-add the current water block (c, r) to the queue
+                                     addWaterUpdateCandidate(c, r); // Re-queue self
+                                 }
+                             }
+                        } // End else (block below is not AIR)
                     } // End if currentBlockType === BLOCK_WATER
 
                 } // End if block is at or below waterline threshold + buffer
@@ -435,10 +450,9 @@ export function update(dt) { // handles dynamic world state like water flow
 
              // Reset the propagation timer *after* processing the batch if *any* candidate was processed.
              // This keeps the simulation running as long as there's potential for flow.
-             if(candidatesToProcess.length > 0) {
-                 // waterPropagationTimer = Config.WATER_PROPAGATION_DELAY; // No, this was already set at the start of the block
-             }
-
+             // NOTE: This reset is now handled by queueWaterCandidatesAroundChange when a block type changes.
+             // We might need a check here to *ensure* the timer is reset if any water flowed, even if no type change occurred.
+             // Let's rely on queueWaterCandidatesAroundChange for now. It's called when AIR becomes WATER, or when water spreads sideways.
 
         } else if (waterPropagationTimer <= 0 && waterUpdateQueue.size === 0) {
            // console.log("[WaterMgr] Water update timer ready, but queue is empty."); // Too noisy

@@ -465,12 +465,16 @@ function initializeAndRunGame() {
     // we can apply the initial aging passes here, passing the portal reference.
     const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1; // Use default if config missing or invalid
     console.log(`[main.js] Applying initial world aging (${initialAgingPasses} passes) after generation...`);
-    let totalChangedCellsInitialAging = 0;
-    const changedCellsInitialAging = new Map(); // Use a Map to collect unique changes
+    // The `changedCellsInitialAging` map is no longer strictly needed here because AgingManager
+    // now updates the static world canvas immediately for each change *within* the aging pass.
+    // However, collecting them might still be useful for debugging or future optimizations.
+    // Let's keep the logic to collect them, but the visual update happens inside AgingManager.
+    const changedCellsInitialAging = new Map();
 
     for (let i = 0; i < initialAgingPasses; i++) {
          // Use the base aging intensity for initial passes
-         // AgingManager.applyAging returns a list of {c,r} changed cells
+         // AgingManager.applyAging returns a list of {c,r} changed cells.
+         // It now also calls updateStaticWorldAt and queues water candidates internally.
          // MODIFIED: Pass null for the portal reference during the initial aging pass
          const changedCellsInPass = AgingManager.applyAging(null, Config.AGING_BASE_INTENSITY);
 
@@ -479,19 +483,18 @@ function initializeAndRunGame() {
              const key = `${c},${r}`;
              if (!changedCellsInitialAging.has(key)) {
                  changedCellsInitialAging.set(key, { c, r });
-                 totalChangedCellsInitialAging++;
+                 // The visual update is already done by AgingManager.updateStaticWorldAt(c, r)
              }
          });
     }
-    console.log(`[main.js] Initial world aging complete. Total unique cells changed: ${totalChangedCellsInitialAging}`);
+    console.log(`[main.js] Initial world aging complete. Total unique blocks changed: ${changedCellsInitialAging.size}`);
 
     // --- Update Visuals and Water Simulation after Initial Aging ---
-    // Update the static world canvas for all cells changed during initial aging
-    changedCellsInitialAging.forEach(({ c, r }) => {
-        WorldManager.updateStaticWorldAt(c, r); // Update the static visual representation
-    });
-
-    // Re-render the entire static world canvas once after all initial aging changes are drawn
+    // The individual visual updates were done *during* the aging passes by AgingManager.
+    // However, calling renderStaticWorldToGridCanvas here ensures the final state of the static canvas
+    // is consistent after ALL initial aging passes are done, especially if updateStaticWorldAt
+    // had any edge cases or if the Map collection wasn't fully reliable. It acts as a final refresh.
+    // Let's keep it for robustness.
     WorldManager.renderStaticWorldToGridCanvas();
 
     // Seed the water simulation queue based on the final world state after initial aging and rendering
@@ -532,7 +535,8 @@ function initializeAndRunGame() {
      }
     // WaveManager Reset (needs the newly created portal reference)
     // This sets the WaveManager's internal state to 'PRE_WAVE' and its timer to Config.WAVE_START_DELAY (5.0)
-    WaveManager.reset(handleWaveStart, portal);
+    // WaveManager's handleWaveStart callback is no longer used for epoch text display.
+    WaveManager.reset(handleWaveStart, portal); // Keeping the callback parameter for potential future use
     console.log("[main.js] WaveManager reset for new game.");
 
 
@@ -556,14 +560,8 @@ function initializeAndRunGame() {
     // Record game start time for potential future stats display
     gameStartTime = performance.now();
     // lastTime is updated unconditionally in gameLoop
-    // Cancel any previous animation frame loop just in case (e.g., from a prior game instance)
-    // === REMOVE THE gameLoopId CANCELLATION HERE ===
-    // if (gameLoopId) {
-    //     cancelAnimationFrame(gameLoopId);
-    //     gameLoopId = null; // Clear the ID reference
-    // }
-    // ===============================================
-    // Start the main game loop using requestAnimationFrame (already called at the top of gameLoop)
+    // Cancel any previous animation frame loop just in case (e.g. from a prior game instance)
+    // The requestAnimationFrame call is now at the top of gameLoop, so it will be called regardless of state.
     // gameLoopId = requestAnimationFrame(gameLoop); // No need to call here, it's self-scheduling
     console.log(">>> [main.js] Game Started <<<");
 } catch (error) { // <--- ADD THIS CATCH BLOCK
@@ -576,7 +574,8 @@ function initializeAndRunGame() {
     currentGameState = GameState.PRE_GAME;
     showOverlay(GameState.PRE_GAME); // Show title screen
 }
-}// Pauses the currently running game. Exposed via window.pauseGameCallback.
+}
+// Pauses the currently running game. Exposed via window.pauseGameCallback.
 
 function pauseGame() {
     // Only pause if currently RUNNING
@@ -817,6 +816,7 @@ function gameLoop(timestamp) {
              // WaveManager now handles triggering the cleanup/aging within its update() when entering WARPPHASE.
              // Main.js no longer needs to explicitly call AgingManager.applyAging or cleanup here.
              // Main.js only needs to update the portal instance's radius state for drawing purposes.
+             // The logic for *calling* AgingManager.applyAging and clearing entities is moved into WaveManager's triggerWarpCleanup.
              if (currentWaveManagerState === 'WARPPHASE' && previousWaveManagerState === 'BUILDPHASE') {
                 // Increase the safety radius based on the config value for wave progression
                 currentPortalSafetyRadius += Config.PORTAL_RADIUS_GROWTH_PER_WAVE;
@@ -901,7 +901,7 @@ function gameLoop(timestamp) {
             // Check for Victory, only if NOT already Game Over
             // Check if WaveManager signals all waves cleared AND there are no *living* enemies remaining.
             // FIX: Changed the second if to else if to prioritize Game Over
-            else if (updatedWaveInfo.allWavesCleared && livingEnemies === 0) {
+            else if (updatedWaveInfo.allWavesCleared && EnemyManager.getLivingEnemyCount() === 0) { // Used EnemyManager.getLivingEnemyCount() here
                  console.log("Main: WaveManager signals all waves cleared and no living enemies remaining. Triggering Victory.");
                  handleVictory(); // Transition to Victory state
             }
@@ -961,7 +961,7 @@ function gameLoop(timestamp) {
                  // Draw ghost block ONLY during active gameplay phases and if material is selected AND player is interactable
                  const waveInfoAtDraw = WaveManager.getWaveInfo(); // Get current wave state info for rendering decisions
                  const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
-                 const isGameplayActiveAtDraw = currentWaveManagerStateAtDraw === 'PRE_WAVE' || currentWaveManagerStateAtDraw === 'WAVE_COUNTDOWN' || currentWaveManagerStateAtDraw === 'BUILDPHASE';
+                 const isGameplayActiveAtDraw = currentWaveManagerStateAtDraw === 'PRE_WAVE' || currentWaveManagerStateAtDraw === 'WAVE_COUNTDOWN' || currentWaveManagerStateAtDraw === 'BUILDPHASE' || currentWaveManagerStateAtDraw === 'WARPPHASE'; // Draw ghost block during all gameplay phases
                  // Check player validity and state again before drawing ghost block
                  // Player must be alive and not dying to place blocks
                  const playerIsInteractableAtDraw = player && player.isActive && !player.isDying;
@@ -982,7 +982,7 @@ function gameLoop(timestamp) {
         if (UI.isInitialized()) {
             // Update player-related UI (health bar, inventory, weapon slots)
             // Pass player info even if player is dying or inactive so UI can show 0 health
-            // UI updates happen *even if the game world isn't visible* (e.g., pause menu shows health)
+            // UI updates happen *even if the game world isn't visible* (e.e., pause menu shows health)
             const playerExists = !!player; // Check if player object exists
             UI.updatePlayerInfo(
                 playerExists ? player.getCurrentHealth() : 0,
@@ -1002,7 +1002,7 @@ function gameLoop(timestamp) {
 
             // Update wave timer and info based on the latest wave state
             // Only update the timer UI if we are in a state where it's relevant (RUNNING, PAUSED, GAME_OVER, VICTORY)
-            // Or maybe just update it always? Let's update it always, the UI can decide whether to display it.
+            // Or maybe just update it always? Let's update it always, the UI can decide how to render state/time.
             // The WaveManager.getWaveInfo() already returns appropriate values for GAME_OVER/VICTORY.
             // It needs to be updated in PAUSED state to reflect timer *before* pause.
             // It should probably not update in MENU/CUTSCENE states.

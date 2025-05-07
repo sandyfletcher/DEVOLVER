@@ -7,7 +7,7 @@ import { PerlinNoise } from './utils/noise.js'; // Import noise utility
 import * as WorldData from './utils/worldData.js'; // Import world data access
 import * as GridCollision from './utils/gridCollision.js'; // Import solid checks, hasSolidNeighbor
 import { createBlock } from './utils/block.js'; // Import createBlock
-// NEW: Import WorldManager for water simulation interaction
+// NEW: Import WorldManager for visual updates and water simulation interaction
 import * as WorldManager from './worldManager.js'; // Import WorldManager
 
 
@@ -17,7 +17,7 @@ let agingNoiseGenerator = null; // dedicated noise instance for aging
 // --- Initialization ---
 export function init() {
     // Initialize the dedicated noise generator for aging
-    agingNoiseGenerator = new PerlinNoise(12345); // Using a fixed seed for consistent aging patterns
+    agingNoiseGenerator = new PerlinNoise(56789); // Using a fixed seed for consistent aging patterns
     console.log("AgingManager initialized.");
 }
 
@@ -43,17 +43,6 @@ function isExposedTo(c, r, exposedType) {
            neighborTypes.left === exposedType ||
            neighborTypes.right === exposedType;
 }
-
-// Helper function to find the first solid block below a given coordinate (still useful for the OLD sedimentation rule)
-// NOTE: This function is not strictly needed for the NEW Rule 1.5 logic as we iterate downwards from the source sand block
-// function findFirstSolidBlockBelow(c, r) {
-//     for (let checkR = r + 1; checkR < Config.GRID_ROWS; checkR++) {
-//         if (GridCollision.isSolid(c, checkR)) {
-//             return checkR;
-//         }
-//     }
-//     return -1;
-// }
 
 // Helper function to calculate the number of contiguous WATER blocks directly above a cell
 function getWaterDepthAbove(c, r) {
@@ -304,6 +293,9 @@ export function applyAging(portalRef, intensityFactor) {
                      }
                     // NEW: Queue this specific change location AND its neighbors for water updates
                     queueWaterCandidatesAroundChange(c, r);
+
+                    // NEW: Immediately update the visual representation of this block on the static canvas
+                    WorldManager.updateStaticWorldAt(c, r);
                 } else {
                      console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
                 }
@@ -351,8 +343,10 @@ export function applyAging(portalRef, intensityFactor) {
                                         changedCells.set(changedKey, { c, r: nr });
                                         // console.log(`[${c},${nr}] converted to SAND by SAND above (Depth: ${potentialDepth}, Water Depth: ${waterDepthAbove}, Prob: ${sedimentationProb.toFixed(5)}).`);
                                     }
-                                    // Queue this specific change location AND its neighbors for water updates
+                                    // NEW: Queue this specific change location AND its neighbors for water updates
                                     queueWaterCandidatesAroundChange(c, nr);
+                                    // NEW: Immediately update the visual representation of the changed block below
+                                    WorldManager.updateStaticWorldAt(c, nr);
                                 } else {
                                     console.error(`Aging failed to set block data at [${c}, ${nr}] to SAND during sedimentation below rule.`);
                                 }
