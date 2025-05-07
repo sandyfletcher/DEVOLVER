@@ -43,7 +43,7 @@ export function init(portalRef) {
 // Helper function to add cell to water update queue
 export function addWaterUpdateCandidate(col, row) { // EXPORTED THIS HELPER
     // Check if within bounds and at or below the water line threshold (or just above for falling water)
-    if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5 && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
+    if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
         const key = `${col},${row}`;
         // Check if the cell is already in the queue to avoid duplicates and is AIR or WATER
         if (!waterUpdateQueue.has(key)) {
@@ -203,7 +203,7 @@ export function renderStaticWorldToGridCanvas() { // draw entire static world to
 export function seedWaterUpdateQueue() { // seed queue with initial water blocks and adjacent air candidates below waterline
     console.log("WorldManager: Seeding water update queue...");
     waterUpdateQueue.clear(); // start fresh
-    for (let r = Config.WORLD_WATER_LEVEL_ROW_TARGET - 5; r < Config.GRID_ROWS; r++) { // start seeding from slightly above waterline target to catch falling water
+    for (let r = Config.WORLD_WATER_LEVEL_ROW_TARGET; r < Config.GRID_ROWS; r++) { // start seeding from slightly above waterline target to catch falling water
         for (let c = 0; c < Config.GRID_COLS; c++) {
              const blockType = WorldData.getBlockType(c, r); // add to queue WATER blocks, adjacent AIR/WATER at or below waterline threshold, or solid blocks near water
              if (blockType === Config.BLOCK_WATER) {
@@ -219,11 +219,11 @@ export function seedWaterUpdateQueue() { // seed queue with initial water blocks
                  addWaterUpdateCandidate(c, r+1);
                  addWaterUpdateCandidate(c-1, r);
                  addWaterUpdateCandidate(c+1, r);
-             } else if (blockType === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // add air below waterline + buffer as potential fill candidates
+             } else if (blockType === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) { // add air below waterline + buffer as potential fill candidates
                  addWaterUpdateCandidate(c, r);
              }
              // Also add neighbors of any solid block below the waterline buffer, as destroying them creates AIR for water to flow into
-             if (GridCollision.isSolid(c, r) && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // also add neighbors of solid blocks near the water line, as destroying them can create new AIR space for water
+             if (GridCollision.isSolid(c, r) && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) { // also add neighbors of solid blocks near the water line, as destroying them can create new AIR space for water
                   addWaterUpdateCandidate(c, r-1);
                   addWaterUpdateCandidate(c, r+1);
                   addWaterUpdateCandidate(c-1, r);
@@ -233,7 +233,7 @@ export function seedWaterUpdateQueue() { // seed queue with initial water blocks
     }
     const grid = WorldData.getGrid(); // ensure any player-placed blocks near water also trigger neighbor checks
     grid.forEach((rowArray, r) => {
-        if (r < Config.WORLD_WATER_LEVEL_ROW_TARGET - 5 || r >= Config.GRID_ROWS) return; // Optimization
+        if (r < Config.WORLD_WATER_LEVEL_ROW_TARGET || r >= Config.GRID_ROWS) return; // Optimization
         rowArray.forEach((block, c) => {
             if (typeof block === 'object' && block.isPlayerPlaced) {
                  addWaterUpdateCandidate(c, r-1);
@@ -252,7 +252,7 @@ export function placePlayerBlock(col, row, blockType) { // sets player-placed bl
     if (success) {
         updateStaticWorldAt(col, row); // update visual cache
         // Note: We add neighbors of the *new* block, and potentially the block itself if it's water
-        if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // trigger water sim if block placement is at or near waterline by adding neighbors of *new* block (and potentially block itself if water) to queue
+        if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET) { // trigger water sim if block placement is at or near waterline by adding neighbors of *new* block (and potentially block itself if water) to queue
             // Use the new helper function
             queueWaterCandidatesAroundChange(col, row);
         }
@@ -309,7 +309,7 @@ export function damageBlock(col, row, damageAmount) { // applies damage to block
         if (success) { // WorldData.setBlock returned true
             updateStaticWorldAt(col, row); // update/ clear block area static visual cache
             // Trigger water simulation if the destruction is at or near the waterline
-             if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 5) { // Check a few rows above
+             if (row >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
                  // Use the new helper function
                  queueWaterCandidatesAroundChange(col, row);
              }

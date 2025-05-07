@@ -17,8 +17,7 @@ let agingNoiseGenerator = null; // dedicated noise instance for aging
 // --- Initialization ---
 export function init() {
     // Initialize the dedicated noise generator for aging
-    agingNoiseGenerator = new PerlinNoise(56789); // Using a fixed seed for consistent aging patterns
-    console.log("AgingManager initialized.");
+    agingNoiseGenerator = new PerlinNoise(Math.random()); // Use a different seed each time
 }
 
 

@@ -14,7 +14,7 @@ function lerp(t, a, b) {
 let generationNoiseGenerator = null;
 
 function generateLandmass() { // generates initial landmass and fills the rest with air by modifying grid directly
-    generationNoiseGenerator = new PerlinNoise(56789); // using consistent fixed seed or can switch for initial terrain noise
+    generationNoiseGenerator = new PerlinNoise(Math.random()); // Use a different seed each time instead of using consistent fixed seed
     const islandWidth = Math.floor(Config.GRID_COLS * Config.WORLD_ISLAND_WIDTH); // 400 * 0.8 = 320
     const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2); // (400 - 320) / 2 = 40
     const islandEndCol = islandStartCol + islandWidth; // 40 + 320 = 360

@@ -56,25 +56,31 @@ export const ISLAND_CENTER_TAPER_WIDTH_COLS = 80; // width of taper from island 
 
 export const AGING_BASE_INTENSITY = 1.0; // default algorithm intensity
 export const AGING_NOISE_SCALE = 0.03; // Scale for aging noise (controls patch size)
-
-// Probabilities (remain between 0 and 1)
-export const AGING_PROB_GRASS_GROWTH = 0.9; // Chance for DIRT -> GRASS if exposed to AIR and NOT WATER
-export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9; // chance for Air/Water below waterline to become SAND
-export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9; // chance for Air/Water below waterline to become SAND
-export const AGING_PROB_WATER_EROSION_DIRT_GRASS = 0.9; // chance for DIRT/GRASS -> SAND if exposed to WATER
-export const AGING_PROB_WATER_EROSION_SAND = 0.00001; // Chance for SAND -> WATER/AIR if exposed to WATER (Sand erodes faster underwater)
-export const AGING_PROB_AIR_EROSION_SAND = 0.0001; // Chance for SAND -> AIR if exposed to AIR (Wind erosion)
-export const AGING_PROB_STONEIFICATION_DEEP = 0.000001; // Decreased from 0.00002
-export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001; // Small chance for exposed STONE -> AIR (very slow weathering)
-
 // Depth threshold for stoneification, defined in pixels based on rows
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 0.45); // Stoneification below ~45% of grid height (row 90 for 200 rows)
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT;
-
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth above to influence probability (in blocks)
 export const AGING_INITIAL_PASSES = 35; // Number of aging passes when the world is first generated
 export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default number of aging passes between waves if not specified per wave
 
+// Probabilities (in order they're processed)
+
+export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Chance for SAND -> WATER/AIR if exposed to WATER (Sand erodes faster underwater)
+export const AGING_PROB_AIR_EROSION_SAND = 0.0001; // Chance for SAND -> AIR if exposed to AIR (Wind erosion)
+
+export const AGING_PROB_WATER_EROSION_DIRT_GRASS = 0.9; // chance for DIRT/GRASS -> SAND if exposed to WATER
+
+export const AGING_PROB_GRASS_GROWTH = 0.9; // Chance for DIRT -> GRASS if exposed to AIR and NOT WATER
+
+export const AGING_PROB_STONEIFICATION_DEEP = 0.000001; // chance for the block to become BLOCK_STONE
+
+export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001; // Small chance for exposed STONE -> AIR (very slow weathering)
+
+export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9; // chance for Air/Water below waterline to become SAND
+
+export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9; // chance for Air/Water below waterline to become SAND
+
+// possibly to be moved
 export const WARPPHASE_DURATION = 5.0; // fixed duration of WARP PHASE in seconds (time-based, no pixel scaling)
 
 // =============================================================================
