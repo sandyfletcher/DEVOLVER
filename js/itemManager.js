@@ -90,6 +90,10 @@ class Item {
             const effectiveGravity = Config.GRAVITY_ACCELERATION * (this.isInWater ? Config.WATER_GRAVITY_FACTOR : 1.0);
             if (!this.isOnGround) { // Only apply gravity if not on ground
                  this.vy += effectiveGravity * dt; // Add gravity acceleration
+            } else {
+                 // If player is on ground but has slight downward velocity (e.g., from previous frame), reset it
+                // Use a small threshold to avoid micro-adjustments
+                if (this.vy > 0.1) this.vy = 0;
             }
             // Apply standard water damping if in water AND not attracted
             if (this.isInWater) {
@@ -195,7 +199,7 @@ export function init() {
     } else {
         console.error("Invalid Shovel spawn coords!");
     }
-    // console.log("ItemManager initialized. Shovel spawned."); 
+    // console.log("ItemManager initialized. Shovel spawned.");
 }
 
 export function spawnItem(x, y, type) {
@@ -275,5 +279,5 @@ export function clearItemsOutsideRadius(centerX, centerY, radius) {
         return distSq <= radiusSq; // Keep the item ONLY if its center is INSIDE or EXACTLY ON the radius boundary
     });
     const removedCount = initialCount - items.length;
-    // console.log(`ItemManager: Cleared ${removedCount} items outside radius ${radius}.`); 
+    // console.log(`ItemManager: Cleared ${removedCount} items outside radius ${radius}.`);
 }

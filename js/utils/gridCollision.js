@@ -118,7 +118,7 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
             const entityBottomY = entity.y + entity.height;
             const obstaclePixelHeight = entityBottomY - blockTopY; // calculate height difference between entity's feet and obstacle's top - height entity would need to step *onto*
             // check if obstacle height is within the limits and not above bottom of entity to allow stepping onto same level
-            const isStepPossibleHeightwise = obstaclePixelHeight > -E_EPSILON && obstaclePixelHeight <= entity.height * Config.ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR;              
+            const isStepPossibleHeightwise = obstaclePixelHeight > -E_EPSILON && obstaclePixelHeight <= entity.height * Config.ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR;
             let isSpaceAboveClear = true; // check if space directly above obstacle is clear for entity's full height
             const entityTopRow = Math.floor(entity.y / Config.BLOCK_HEIGHT);
             for (let r = entityTopRow; r < stepUpCandidateRow; r++) { // check rows from entity's top down to row just above obstacle
@@ -140,7 +140,7 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
                 }
             }
         }
-        if (performStepUp) { 
+        if (performStepUp) {
             entity.x += moveX * earliestToiX; // move horizontally by the TOI amount
             entity.y = (stepUpCandidateRow * Config.BLOCK_HEIGHT) - entity.height; // snap entity's bottom to the top of the obstacle block
             entity.vy = 0; // zero out vertical velocity during step-up
@@ -182,7 +182,7 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
                 if (isSolid(c, r)) {
                     const blockEdgeY = (signY > 0) ? r * Config.BLOCK_HEIGHT : (r + 1) * Config.BLOCK_HEIGHT; // found edge of potential solid block being hit
                     let toiY = 1.0; // correct TOI calculation
-                    if (Math.abs(actualMoveY) > E_EPSILON) { // time of impact = distance to collision plane / velocity towards plane 
+                    if (Math.abs(actualMoveY) > E_EPSILON) { // time of impact = distance to collision plane / velocity towards plane
                          const distance = blockEdgeY - yEdge; // distance = block edge position - entity leading edge position
                          toiY = distance / actualMoveY;
                     } else if (didStepUp) { // if stepped up, collision is immediate if block edge is right direction relative to entity edge - block top below entity bottom or block bottom above entity top
@@ -210,7 +210,7 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
             collidedY = true;
         } else if (!didStepUp) { // no Y collision detected AND didn't step up, move freely vertically
             entity.y += actualMoveY; // move full potential distance // isOnGround remains false if moving downwards freely
-        } else { 
+        } else {
             // stepped up, but didn't immediately hit ground below (e.g. stepped onto edge) - isOnGround remains false until next frame or final check confirms landing
         }
     } else { // no vertical movement predicted AND no step-up, but check if already on ground from last frame - helps maintain isOnGround status even if vy is 0

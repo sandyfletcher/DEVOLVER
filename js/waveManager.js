@@ -284,7 +284,7 @@ export function init(callback = null, portalObject = null) {
     warpPhaseTimer = 0; // Reset new timers
     waveStartCallback = callback; // Store the callback
     portalRef = portalObject; // Store portal reference
-    // console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s. Callback ${callback ? 'provided' : 'not provided'}. Portal ${portalObject ? 'provided' : 'not provided'}.`);
+    console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s.`);
 }
 
 // Resets the wave manager, typically for restarting the game
@@ -292,18 +292,25 @@ export function init(callback = null, portalObject = null) {
 export function reset(callback = null, portalObject = null) {
     // Pass the callback and portal during reset as well
     init(callback, portalObject); // Re-initialize using the init function
-    // console.log("[WaveManager] Reset.");
+    console.log("[WaveManager] Resetting.");
 }
 
 // Updates the wave state machine, handling timers and spawning. Timers only decrement if the game is in the RUNNING state.
 export function update(dt, gameState) {
-    // No longer check state === 'GAME_OVER' or 'VICTORY' here; main.js handles that transition now.
-    // WaveManager update logic *only* runs if gameState is 'RUNNING'.
+    // --- DEBUG LOG: WaveManager Update Start ---
+    // console.log(`[WaveMgr::update] Start. dt: ${dt.toFixed(3)}, gameState: ${gameState}, internalState: ${state}, preWaveTimer: ${preWaveTimer.toFixed(2)}`);
+
     if (gameState === 'RUNNING') { // --- ONLY UPDATE TIMERS IF GAME IS RUNNING ---
         switch (state) {
             case 'PRE_WAVE':
+                // --- DEBUG LOG: Before decrementing preWaveTimer ---
+                // console.log(`[WaveMgr::update] State: PRE_WAVE. Before decrement: ${preWaveTimer.toFixed(2)}`);
                 preWaveTimer -= dt;
+                // --- DEBUG LOG: After decrementing preWaveTimer ---
+                // console.log(`[WaveMgr::update] State: PRE_WAVE. After decrement: ${preWaveTimer.toFixed(2)}`);
+
                 if (preWaveTimer <= 0) {
+                    console.log("[WaveMgr] preWaveTimer <= 0. Starting next wave.");
                     startNextWave(); // This handles transition to WAVE_COUNTDOWN or VICTORY
                 }
                 // maxTimer remains Config.WAVE_START_DELAY
@@ -311,9 +318,15 @@ export function update(dt, gameState) {
 
             case 'WAVE_COUNTDOWN':
                 // Always count down the main wave timer
+                // --- DEBUG LOG: Before decrementing mainWaveTimer ---
+                // console.log(`[WaveMgr::update] State: WAVE_COUNTDOWN. Before decrement: ${mainWaveTimer.toFixed(2)}`);
                 mainWaveTimer -= dt;
+                // --- DEBUG LOG: After decrementing mainWaveTimer ---
+                // console.log(`[WaveMgr::update] State: WAVE_COUNTDOWN. After decrement: ${mainWaveTimer.toFixed(2)}`);
+
                 if (mainWaveTimer <= 0) {
                     mainWaveTimer = 0; // Ensure it doesn't go negative in display
+                    console.log("[WaveMgr] mainWaveTimer <= 0. Ending wave.");
                     endWave(); // This handles transition to BUILDPHASE or VICTORY
                     // Note: endWave changes the state, so the break prevents further execution in this frame for WAVE_COUNTDOWN
                     break;
@@ -351,34 +364,48 @@ export function update(dt, gameState) {
 
             // --- INTERMISSION PHASES ---
             case 'BUILDPHASE':
+                // --- DEBUG LOG: Before decrementing buildPhaseTimer ---
+                // console.log(`[WaveMgr::update] State: BUILDPHASE. Before decrement: ${buildPhaseTimer.toFixed(2)}`);
                 buildPhaseTimer -= dt;
+                // --- DEBUG LOG: After decrementing buildPhaseTimer ---
+                // console.log(`[WaveMgr::update] State: BUILDPHASE. After decrement: ${buildPhaseTimer.toFixed(2)}`);
+
                 if (buildPhaseTimer <= 0) {
                     buildPhaseTimer = 0; // Ensure non-negative
                     state = 'WARPPHASE'; // Transition to Warp Phase
                     warpPhaseTimer = Config.WARPPHASE_DURATION; // Start warp timer (uses global fixed value)
                     currentMaxTimer = Config.WARPPHASE_DURATION; // Set max timer for UI to the warp phase duration
+                    console.log(`[WaveMgr] Transitioned to WARPPHASE (${warpPhaseTimer.toFixed(2)}s).`); // Log before cleanup to separate
                     triggerWarpCleanup(); // === Call cleanup function on transition ===
-                    console.log(`[WaveMgr] Transitioned to WARPPHASE (${warpPhaseTimer.toFixed(2)}s). Cleanup triggered.`);
+                    console.log(`[WaveMgr] Cleanup triggered for WARPPHASE.`);
                 }
                 // maxTimer remains buildPhaseDuration (set in endWave) - it doesn't change during BUILDPHASE
                 break;
             case 'WARPPHASE':
+                 // --- DEBUG LOG: Before decrementing warpPhaseTimer ---
+                // console.log(`[WaveMgr::update] State: WARPPHASE. Before decrement: ${warpPhaseTimer.toFixed(2)}`);
                  warpPhaseTimer -= dt;
+                 // --- DEBUG LOG: After decrementing warpPhaseTimer ---
+                 // console.log(`[WaveMgr::update] State: WARPPHASE. After decrement: ${warpPhaseTimer.toFixed(2)}`);
+
                  if (warpPhaseTimer <= 0) {
                      warpPhaseTimer = 0; // Ensure non-negative
+                     console.log("[WaveMgr] warpPhaseTimer <= 0. Starting next wave or victory.");
                      startNextWave(); // Transition to next WAVE_COUNTDOWN or VICTORY
                      // Note: startNextWave sets its own state and maxTimer, so no need to break
                  }
                  // maxTimer remains Config.WARPPHASE_DURATION (set on entering this state)
                  break;
             default:
-                console.error("Unknown wave state:", state);
-                // In a robust game, you might want a more graceful recovery or a fatal error display
-                // For now, let main.js handle game over if portal/player health drops
+                // States like PRE_GAME, MAIN_MENU, SETTINGS_MENU, PAUSED, GAME_OVER, VICTORY
+                // Timers are not decremented here because the outer if(gameState === 'RUNNING') is false.
+                // This is the intended behavior.
                 break;
         }
+    } else {
+         // --- DEBUG LOG: WaveManager Update - NOT Running ---
+        // console.log(`[WaveMgr::update] NOT in RUNNING state (${gameState}). Timers frozen. Internal state: ${state}, preWaveTimer: ${preWaveTimer.toFixed(2)}`);
     }
-    // If gameState is *not* RUNNING (e.g., PAUSED), none of the timers decrease.
 }
 
 /** Sets the game state to GAME_OVER (triggered by main.js when health is zero). */

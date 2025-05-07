@@ -249,7 +249,7 @@ function createItemSlot(itemType, container, category) {
 function handleItemSlotClick(itemType, category) {
      // Ensure playerRef exists and UI is ready before allowing interaction
      if (!playerRef || !isUIReady) {
-        // console.log("UI Item Click: Interaction ignored (playerRef null or UI not ready)."); 
+        // console.log("UI Item Click: Interaction ignored (playerRef null or UI not ready).");
         // Optional: Add visual feedback (e.g., shake) to the element that was clicked even if action wasn't performed
         const slotDiv = itemSlotDivs[itemType];
         if(slotDiv && typeof slotDiv.animate === 'function') {
@@ -379,7 +379,7 @@ export function illuminateButton(actionName) {
     // Ensure the button exists in the map
     const button = actionButtons[actionName];
     if (!button) {
-        // console.warn(`UI illuminateButton: Button mapping not found for action "${actionName}".`); 
+        // console.warn(`UI illuminateButton: Button mapping not found for action "${actionName}".`);
         return; // Button element not found
     }
 

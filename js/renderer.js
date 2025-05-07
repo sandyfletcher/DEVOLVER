@@ -79,9 +79,3 @@ export function clearRect(x, y, width, height) {
 export function getCanvas() {
     return canvas;
 }
-
-// --- Future Drawing Helpers (Examples - No Change) ---
-/*
-export function drawRect(x, y, width, height, color) { ... }
-export function drawText(text, x, y, color = 'white', font = '16px sans-serif') { ... }
-*/

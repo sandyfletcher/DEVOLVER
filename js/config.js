@@ -49,20 +49,16 @@ export const AGING_STONEIFICATION_DEPTH_THRESHOLD = 900; // pixel depth below wh
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth above to influence probability (user request: 4+)
 export const AGING_INITIAL_PASSES = 35; // Number of aging passes when the world is first generated
 export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default number of aging passes between waves if not specified per wave
-export const WARPPHASE_DURATION = 5.0; //  fixed duration of WARP PHASE in seconds
-
+export const WARPPHASE_DURATION = 5.0; // fixed duration of WARP PHASE in seconds
 // =============================================================================
 // --- Camera / Viewport ---
 // =============================================================================
-
 export const MIN_CAMERA_SCALE = 0.25; // min zoom level (zoom out)
-export const MAX_CAMERA_SCALE = 3.0;  // max zoom level (zoom in)
+export const MAX_CAMERA_SCALE = 3.0; // max zoom level (zoom in)
 export const ZOOM_SPEED_FACTOR = 0.001; // how fast scrolling zooms
-
 // =============================================================================
 // --- Animation Parameters ---
 // =============================================================================
-
 // Enemy Death Animation
 export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // Total time for enemy death (swell + pop)
 export const ENEMY_SWELL_DURATION = 0.3; // Time for the swell part (peak reached at 0.3s)
@@ -71,11 +67,9 @@ export const ENEMY_SWELL_SCALE = 1.5; // Max scale factor during the swell
 export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time for player death (spin + swell + pop)
 export const PLAYER_SPIN_DURATION = 1.0; // Time for the spinning part
 export const PLAYER_SPIN_FRAMES = 6; // Number of visual steps in the spin (e.g., 6 steps for 60-degree increments)
-
 // =============================================================================
 // --- Delta-Time Based Physics ---
 // =============================================================================
-
 export const GRAVITY_ACCELERATION = 700; // pixels per second per second
 export const MAX_FALL_SPEED = 450; // pixels per second - general max fall speed unless overridden
 export const MAX_DELTA_TIME = 0.05; // max time step (seconds) to prevent physics glitches (~1/20th second or 20fps min simulation rate)
@@ -84,58 +78,54 @@ export const ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR = 1/2; // max height for slowed
 export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.7; // horizontal velocity multiplier after completing a tier 2 step, retain 70% of horizontal speed
 export const WATER_GRAVITY_FACTOR = 0.4; // // water physics - reduced gravity
 export const WATER_HORIZONTAL_DAMPING = 0.1; // strong horizontal drag
-export const WATER_VERTICAL_DAMPING = 0.05;  // stronger vertical drag
+export const WATER_VERTICAL_DAMPING = 0.05; // stronger vertical drag
 export const WATER_MAX_SPEED_FACTOR = 0.6; // reduce max horizontal speed
 export const WATER_ACCELERATION_FACTOR = 0.5; // reduce horizontal acceleration
-export const WATER_SWIM_VELOCITY = 120;    // initial upward speed from a swim 'stroke'
-export const WATER_MAX_SWIM_UP_SPEED = 80;  // max speed swimming up
-export const WATER_MAX_SINK_SPEED = 100;  // max speed falling down in water
+export const WATER_SWIM_VELOCITY = 120; // initial upward speed from a swim 'stroke'
+export const WATER_MAX_SWIM_UP_SPEED = 80; // max speed swimming up
+export const WATER_MAX_SINK_SPEED = 100; // max speed falling down in water
 export const ENEMY_WATER_BUOYANCY_ACCEL = 180;
 export const WATER_JUMP_COOLDOWN_DURATION = 0.2;
 export const WATER_PROPAGATION_DELAY = 0.05; // delay between water spreading/falling updates (lower = faster flow)
 export const WATER_UPDATES_PER_FRAME = 500; // max number of water cells to process per frame
-
 // =============================================================================
 // --- Audio Constants ---
 // =============================================================================
-
 export const AUDIO_SFX_POOL_SIZE = 8; // number of simultaneous sound effects allowed
 export const AUDIO_DEFAULT_GAME_VOLUME = 0.4; // default volume for game music (TODO: make adjustable)
-export const AUDIO_DEFAULT_UI_VOLUME = 0.6;   // default volume for UI music
-export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;  // default volume for sound effects
+export const AUDIO_DEFAULT_UI_VOLUME = 0.6; // default volume for UI music
+export const AUDIO_DEFAULT_SFX_VOLUME = 0.8; // default volume for sound effects
 export const AUDIO_TRACKS = {
 // --- Music ---
-    // title: 'assets/audio/title_music.mp3', // TODO: add title music
-    pause: 'assets/audio/music/Pause.mp3',
-    // gameOver: 'assets/audio/gameover_music.mp3', // TODO: add game over music
-    victory: 'assets/audio/music/Victory.mp3',
-    // introMusic: 'assets/audio/music/Intro.mp3', // TODO: Add intro music track
+// title: 'assets/audio/title_music.mp3', // TODO: add title music
+pause: 'assets/audio/music/Pause.mp3',
+// gameOver: 'assets/audio/gameover_music.mp3', // TODO: add game over music
+victory: 'assets/audio/music/Victory.mp3',
+// introMusic: 'assets/audio/music/Intro.mp3', // TODO: Add intro music track
 // ---Sound Effects ---
-    // player_hit: 'assets/audio/sfx/player_hit.wav', // TODO: add sfx
-    // enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
-    // enemy_death: 'assets/audio/sfx/enemy_death.wav',
-    // block_break_dirt: 'assets/audio/sfx/block_break_dirt.wav',
-    // block_break_stone: 'assets/audio/sfx/block_break_stone.wav',
-    // item_pickup: 'assets/audio/sfx/item_pickup.wav',
-    // button_click: 'assets/audio/sfx/button_click.wav',
-    // player_jump: 'assets/audio/sfx/player_jump.wav', // for ground jump
-    // player_water_stroke: 'assets/audio/sfx/player_water_stroke.wav', // for water "jump"
-    // player_attack_swing: 'assets/audio/sfx/attack_swing.wav', // generic attack sound
-    // player_attack_hit: 'assets/audio/sfx/attack_hit.wav', // sound when player attack hits something
-    // portal_hit: 'assets/audio/sfx/portal_hit.wav', // TODO: add sfx
-    // portal_destroyed: 'assets/audio/sfx/portal_destroyed.wav', // TODO: add sfx
+// player_hit: 'assets/audio/sfx/player_hit.wav', // TODO: add sfx
+// enemy_hit: 'assets/audio/sfx/enemy_hit.wav',
+// enemy_death: 'assets/audio/sfx/enemy_death.wav',
+// block_break_dirt: 'assets/audio/sfx/block_break_dirt.wav',
+// block_break_stone: 'assets/audio/sfx/block_break_stone.wav',
+// item_pickup: 'assets/audio/sfx/item_pickup.wav',
+// button_click: 'assets/audio/sfx/button_click.wav',
+// player_jump: 'assets/audio/sfx/player_jump.wav', // for ground jump
+// player_water_stroke: 'assets/audio/sfx/player_water_stroke.wav', // for water "jump"
+// player_attack_swing: 'assets/audio/sfx/attack_swing.wav', // generic attack sound
+// player_attack_hit: 'assets/audio/sfx/attack_hit.wav', // sound when player attack hits something
+// portal_hit: 'assets/audio/sfx/portal_hit.wav', // TODO: add sfx
+// portal_destroyed: 'assets/audio/sfx/portal_destroyed.wav', // TODO: add sfx
 };
-
 // =============================================================================
 // --- Block Parameters ---
 // =============================================================================
-
 export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE; // should be 4, calculation above
 export const BLOCK_HEIGHT = BASE_BLOCK_PIXEL_SIZE;
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.5)'; // semi-transparent black
 export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // thickness of the slash/X
 export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // slash when HP <= 70%
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;     // X when HP <= 30%
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // X when HP <= 30%
 export const GHOST_BLOCK_ALPHA = 0.5; // transparency level of preview block
 export const CAN_PLACE_IN_WATER = false; // TODO: future power enhancement
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)'; // outline colour of player-placed blocks
@@ -151,51 +141,47 @@ export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8; // TODO: glass, specific ores, etc.
 export const BLOCK_HP = { // HP map
-    [BLOCK_WATER]: Infinity,
-    [BLOCK_SAND]: 30,
-    [BLOCK_DIRT]: 50,
-    [BLOCK_GRASS]: 50,
-    [BLOCK_STONE]: 300,
-    [BLOCK_WOOD]: 100,
-    [BLOCK_METAL]: 500,
-    [BLOCK_BONE]: 120, // TODO: add HP for other types later
+[BLOCK_WATER]: Infinity,
+[BLOCK_SAND]: 30,
+[BLOCK_DIRT]: 50,
+[BLOCK_GRASS]: 50,
+[BLOCK_STONE]: 300,
+[BLOCK_WOOD]: 100,
+[BLOCK_METAL]: 500,
+[BLOCK_BONE]: 120, // TODO: add HP for other types later
 };
 export const BLOCK_COLORS = { // BLOCK_AIR is background color
-    [BLOCK_WATER]: 'rgb(50, 100, 200)',
-    [BLOCK_SAND]: 'rgb(210, 180, 140)',
-    [BLOCK_DIRT]: 'rgb(130, 82, 45)',
-    [BLOCK_GRASS]: 'rgb(80, 180, 80)',
-    [BLOCK_STONE]: 'rgb(140, 140, 140)',
-    [BLOCK_WOOD]: 'rgb(160, 110, 70)',
-    [BLOCK_METAL]: 'rgb(190, 190, 200)',
-    [BLOCK_BONE]: 'rgb(200, 190, 170)',
+[BLOCK_WATER]: 'rgb(50, 100, 200)',
+[BLOCK_SAND]: 'rgb(210, 180, 140)',
+[BLOCK_DIRT]: 'rgb(130, 82, 45)',
+[BLOCK_GRASS]: 'rgb(80, 180, 80)',
+[BLOCK_STONE]: 'rgb(140, 140, 140)',
+[BLOCK_WOOD]: 'rgb(160, 110, 70)',
+[BLOCK_METAL]: 'rgb(190, 190, 200)',
+[BLOCK_BONE]: 'rgb(200, 190, 170)',
 };
 export const MATERIAL_TO_BLOCK_TYPE = { // map inventory material strings to block type constants
-    'dirt': BLOCK_DIRT,
-    'stone': BLOCK_STONE,
-    'wood': BLOCK_WOOD,
-    'sand': BLOCK_SAND,
-    'metal': BLOCK_METAL,
-    'bone': BLOCK_BONE, // TODO: add other placeable materials here if needed
+'dirt': BLOCK_DIRT,
+'stone': BLOCK_STONE,
+'wood': BLOCK_WOOD,
+'sand': BLOCK_SAND,
+'metal': BLOCK_METAL,
+'bone': BLOCK_BONE, // TODO: add other placeable materials here if needed
 };
-
 // Sand Sedimentation Below Convertible Materials
 export const AGING_MATERIAL_CONVERSION_FACTORS = { // Materials below sand that can be converted. Factors set to 1.0 for equal chance.
-    [BLOCK_DIRT]: 1.0, // Dirt is convertible
-    [BLOCK_GRASS]: 1.0, // Grass is convertible
-    [BLOCK_STONE]: 1.0, // Stone is convertible (with equal chance now)
-    [BLOCK_BONE]: 1.0, // Bone is convertible
-    [BLOCK_WOOD]: 1.0, // Wood is convertible
-    [BLOCK_METAL]: 1.0, // Metal is convertible? (Decide if metal should be convertible)
-    // Add factors for other materials here if they can be converted by sand.
-    // Materials not listed implicitly have a factor of 0 (cannot be converted by this rule)
+[BLOCK_DIRT]: 1.0, // Dirt is convertible
+[BLOCK_GRASS]: 1.0, // Grass is convertible
+[BLOCK_STONE]: 1.0, // Stone is convertible (with equal chance now)
+[BLOCK_BONE]: 1.0, // Bone is convertible
+[BLOCK_WOOD]: 1.0, // Wood is convertible
+[BLOCK_METAL]: 1.0, // Metal is convertible? (Decide if metal should be convertible)
+// Add factors for other materials here if they can be converted by sand.
+// Materials not listed implicitly have a factor of 0 (cannot be converted by this rule)
 };
-
-
 // =============================================================================
 // --- Portal Parameters ---
 // =============================================================================
-
 export const PORTAL_COLOR = 'rgb(100, 100, 255)'; // blueish
 export const PORTAL_WIDTH = Math.floor(8 * BASE_BLOCK_PIXEL_SIZE); // e.g., 32 pixels (8 blocks)
 export const PORTAL_HEIGHT = Math.floor(10 * BASE_BLOCK_PIXEL_SIZE); // e.g., 40 pixels (10 blocks)
@@ -203,11 +189,9 @@ export const PORTAL_INITIAL_HEALTH = 500;
 export const PORTAL_SAFETY_RADIUS = Math.floor(30 * BASE_BLOCK_PIXEL_SIZE); // e.g., 120 pixels radius (30 blocks)
 export const PORTAL_RADIUS_GROWTH_PER_WAVE = 25; // increase radius by 25 pixels each intermission
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // how many blocks above mean ground level to spawn the top of the portal
-
 // =============================================================================
 // --- Player Parameters ---
 // =============================================================================
-
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 export const PLAYER_WIDTH = 3* BLOCK_WIDTH; // 8 pixels
 export const PLAYER_HEIGHT = 6 * BLOCK_HEIGHT; // 16 pixels
@@ -226,13 +210,11 @@ export const PLAYER_ITEM_ATTRACT_RADIUS = 100; // pixels - how close player need
 export const PLAYER_ITEM_ATTRACT_STRENGTH = 200; // pixels/sec/sec - how strongly items accelerate towards the player
 export const PLAYER_ITEM_ATTRACT_SPEED = 250; // NEW: pixels/sec - direct speed when attracted
 export const PLAYER_PLACEMENT_COOLDOWN = 0.15; // seconds per block placement
-
 // =============================================================================
 // --- Items & Weapons ---
 // =============================================================================
-
 export const ITEM_BOBBLE_AMOUNT = 0.15; // how much items bob (relative to height)
-export const ITEM_BOBBLE_SPEED = 2.0;   // radians per second for bobbing cycle
+export const ITEM_BOBBLE_SPEED = 2.0; // radians per second for bobbing cycle
 export const WEAPON_TYPE_UNARMED = 'unarmed'; // weapons
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
@@ -274,31 +256,29 @@ export const PLAYER_SPEAR_ATTACK_DURATION = 0.3; // moderate duration (thrust li
 export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5; // moderate/slow cooldown (recovery)
 export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)'; // different color?
 export const ITEM_CONFIG = { // centralized item configuration object ---
-    [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
-    [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
-    [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
-    'dirt': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_DIRT] },
-    'sand': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_SAND] },
-    'wood': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_WOOD] },
-    'stone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_STONE] },
-    'metal': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_METAL] },
-    'bone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_BONE] }, // TODO: don't forget to add here if there are other items (material drops)
+[WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
+[WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
+[WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
+'dirt': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_DIRT] },
+'sand': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_SAND] },
+'wood': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_WOOD] },
+'stone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_STONE] },
+'metal': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_METAL] },
+'bone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_BONE] }, // TODO: don't forget to add here if there are other items (material drops)
 };
 export const CRAFTING_RECIPES = { // crafting recipes
-    [WEAPON_TYPE_SWORD]: [
-        { type: 'stone', amount: 5 }
-    ],
-    [WEAPON_TYPE_SPEAR]: [
-        { type: 'wood', amount: 2 },
-        { type: 'stone', amount: 1 }
-    ],
-    // add other craftable items here
+[WEAPON_TYPE_SWORD]: [
+{ type: 'stone', amount: 5 }
+],
+[WEAPON_TYPE_SPEAR]: [
+{ type: 'wood', amount: 2 },
+{ type: 'stone', amount: 1 }
+],
+// add other craftable items here
 };
-
 // =============================================================================
 // --- Enemy Parameters ---
 // =============================================================================
-
 export const MAX_ENEMIES = 100;
 export const ENEMY_SPAWN_EDGE_MARGIN = 80; // pixels away from screen edge to attempt spawning
 export const ENEMY_FLASH_DURATION = 0.15; // seconds enemy flashes when hit
@@ -317,213 +297,207 @@ export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5; // base seconds between land
 export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0; // random variation added to base cooldown
 export const TETRAPOD_LAND_HOP_HORIZONTAL_FORCE = 50; // horizontal velocity applied during a flop hop
 export const ENEMY_STATS = { // detailed stats - enemy and AI constructors read from this config
-    [ENEMY_TYPE_TETRAPOD]: {
-        displayName: "Tetrapod",
-        aiType: 'flopAI',
-        color: 'rgb(100, 120, 80)', // muddy greenish-brown
-        width: DEFAULT_ENEMY_WIDTH, // 2 blocks
-        height: DEFAULT_ENEMY_HEIGHT, // 2 blocks
-        health: 1, // very fragile
-        contactDamage: 0, // base damage is 0 - logic in enemy.js determines actual damage
-        applyGravity: true,
-        gravityFactor: 1.0,
-        maxSpeedX: 15, // reduced land speed (only applies during hop action timer if AI sets vx)
-        maxSpeedY: 50, // esed for vertical movement in air/water by Enemy.js (vertical limit)
-        swimSpeed: 70, // max speed specific to swimming (used by AI for targetVx/Vy)
-        canJump: true, // enable jumping for land hops
-        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.25, // set jump strength for flops
-        canSwim: true, // good in water
-        canFly: false,
-        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2, // slightly more space
-        separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.8, // less pushy
-        dropTable: [
-                { type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 },
-            ],
-    },
-    [ENEMY_TYPE_CENTER_SEEKER]: {
-        displayName: "Seeker", // for potential UI/debugging
-        aiType: 'seekCenter', // key to match an AI Strategy class (to be implemented)
-        color: 'rgb(80, 150, 80)', // visual color
-        width: DEFAULT_ENEMY_WIDTH, // use default Size (2 blocks)
-        height: DEFAULT_ENEMY_HEIGHT, // use default Size (2 blocks)
-        maxSpeedX: 40, // movement speed (pixels/sec)
-        maxSpeedY: 50, // ensure maxSpeedY has a default for swimming/flying checks
-        swimSpeed: 50, // ensure swimSpeed has a default
-        health: 1, // starting health points
-        contactDamage: 10, // damage dealt on player collision (base damage)
-        applyGravity: true, // does gravity affect this enemy?
-        gravityFactor: 1.0, // multiplier for gravity (1.0 = normal)
-        canJump: true, // can this enemy initiate a jump?
-        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.5, // meaningful jump strength relative to player
-        canSwim: false, // default land creature
-        canFly: false,
-        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR, // default separation
-        separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
-        dropTable: [
-            { type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 },
-        ],
-    },
-    [ENEMY_TYPE_PLAYER_CHASER]: {
-        displayName: "Chaser",
-        aiType: 'chasePlayer', // key for AI strategy
-        color: 'rgb(150, 80, 80)',
-        width: DEFAULT_ENEMY_WIDTH,
-        height: DEFAULT_ENEMY_HEIGHT,
-        maxSpeedX: 55, // slightly faster
-        maxSpeedY: 50, // ensure maxSpeedY has a default
-        swimSpeed: 50, // ensure swimSpeed has a default
-        health: 2, // slightly tougher
-        contactDamage: 10, // base damage
-        applyGravity: true,
-        gravityFactor: 1.0,
-        canJump: true, // chasers can jump over small obstacles
-        jumpVelocity: PLAYER_JUMP_VELOCITY * 0.75, // jump strength relative to player
-        canSwim: false, // becomes encumbered in water
-        canFly: false,
-        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
-        separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
-        dropTable: [
-            { type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }, // TODO: change to drop bone after trees are implemented
-        ],
-    },
-        //     [ENEMY_TYPE_FLYER]: {
-        // displayName: "Flyer",
-        // aiType: 'flyPatrol', // A new AI strategy
-        // color: 'lightblue',
-        // width: DEFAULT_ENEMY_WIDTH,
-        // height: DEFAULT_ENEMY_HEIGHT * 0.8, // Shorter?
-        // maxSpeedX: 70,
-        // maxSpeedY: 50, // Flyers need vertical speed control
-        // health: 15,
-        // contactDamage: 5,
-        // applyGravity: false, // IMPORTANT for default state if canFly is true
-        // canJump: false,
-        // canSwim: false,
-        // canFly: true, // The key flag
-        // dropTable: [],
-        // --- possible future properties ---
-        // attackType: 'none', // 'melee', 'ranged', 'aura', 'special'
-        // Could have a bite attack:
-        // attackDamage: 1,
-        // attackRange: 5,
-        // attackCooldown: 1.5,
-        // projectileType: null, // Key for projectile config if attackType is 'ranged'
-        // immunities: [], // e.g., ['fire', 'poison'] - strings matching damage types
-        // resistances: { 'physical': 0.1 }, // e.g., 10% physical resistance (0.0 to 1.0)
-        // vulnerabilities: { 'fire': 1.5 }, // e.g., 50% extra fire damage
-        // specialFlags: [], // e.g., ['explodes_on_death', 'teleports']
-        // attackType: 'melee',
-        //     }
+[ENEMY_TYPE_TETRAPOD]: {
+displayName: "Tetrapod",
+aiType: 'flopAI',
+color: 'rgb(100, 120, 80)', // muddy greenish-brown
+width: DEFAULT_ENEMY_WIDTH, // 2 blocks
+height: DEFAULT_ENEMY_HEIGHT, // 2 blocks
+health: 1, // very fragile
+contactDamage: 0, // base damage is 0 - logic in enemy.js determines actual damage
+applyGravity: true,
+gravityFactor: 1.0,
+maxSpeedX: 15, // reduced land speed (only applies during hop action timer if AI sets vx)
+maxSpeedY: 50, // esed for vertical movement in air/water by Enemy.js (vertical limit)
+swimSpeed: 70, // max speed specific to swimming (used by AI for targetVx/Vy)
+canJump: true, // enable jumping for land hops
+jumpVelocity: PLAYER_JUMP_VELOCITY * 0.25, // set jump strength for flops
+canSwim: true, // good in water
+canFly: false,
+separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2, // slightly more space
+separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.8, // less pushy
+dropTable: [
+{ type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 },
+],
+},
+[ENEMY_TYPE_CENTER_SEEKER]: {
+displayName: "Seeker", // for potential UI/debugging
+aiType: 'seekCenter', // key to match an AI Strategy class (to be implemented)
+color: 'rgb(80, 150, 80)', // visual color
+width: DEFAULT_ENEMY_WIDTH, // use default Size (2 blocks)
+height: DEFAULT_ENEMY_HEIGHT, // use default Size (2 blocks)
+maxSpeedX: 40, // movement speed (pixels/sec)
+maxSpeedY: 50, // ensure maxSpeedY has a default for swimming/flying checks
+swimSpeed: 50, // ensure swimSpeed has a default
+health: 1, // starting health points
+contactDamage: 10, // damage dealt on player collision (base damage)
+applyGravity: true, // does gravity affect this enemy?
+gravityFactor: 1.0, // multiplier for gravity (1.0 = normal)
+canJump: true, // can this enemy initiate a jump?
+jumpVelocity: PLAYER_JUMP_VELOCITY * 0.5, // meaningful jump strength relative to player
+canSwim: false, // default land creature
+canFly: false,
+separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR, // default separation
+separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
+dropTable: [
+{ type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 },
+],
+},
+[ENEMY_TYPE_PLAYER_CHASER]: {
+displayName: "Chaser",
+aiType: 'chasePlayer', // key for AI strategy
+color: 'rgb(150, 80, 80)',
+width: DEFAULT_ENEMY_WIDTH,
+height: DEFAULT_ENEMY_HEIGHT,
+maxSpeedX: 55, // slightly faster
+maxSpeedY: 50, // ensure maxSpeedY has a default
+swimSpeed: 50, // ensure swimSpeed has a default
+health: 2, // slightly tougher
+contactDamage: 10, // base damage
+applyGravity: true,
+gravityFactor: 1.0,
+canJump: true, // chasers can jump over small obstacles
+jumpVelocity: PLAYER_JUMP_VELOCITY * 0.75, // jump strength relative to player
+canSwim: false, // becomes encumbered in water
+canFly: false,
+separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
+separationStrength: DEFAULT_ENEMY_SEPARATION_STRENGTH,
+dropTable: [
+{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }, // TODO: change to drop bone after trees are implemented
+],
+},
+// [ENEMY_TYPE_FLYER]: {
+// displayName: "Flyer",
+// aiType: 'flyPatrol', // A new AI strategy
+// color: 'lightblue',
+// width: DEFAULT_ENEMY_WIDTH,
+// height: DEFAULT_ENEMY_HEIGHT * 0.8, // Shorter?
+// maxSpeedX: 70,
+// maxSpeedY: 50, // Flyers need vertical speed control
+// health: 15,
+// contactDamage: 5,
+// applyGravity: false, // IMPORTANT for default state if canFly is true
+// canJump: false,
+// canSwim: false,
+// canFly: true, // The key flag
+// dropTable: [],
+// --- possible future properties ---
+// attackType: 'none', // 'melee', 'ranged', 'aura', 'special'
+// Could have a bite attack:
+// attackDamage: 1,
+// attackRange: 5,
+// attackCooldown: 1.5,
+// projectileType: null, // Key for projectile config if attackType is 'ranged'
+// immunities: [], // e.g., ['fire', 'poison'] - strings matching damage types
+// resistances: { 'physical': 0.1 }, // e.g., 10% physical resistance (0.0 to 1.0)
+// vulnerabilities: { 'fire': 1.5 }, // e.g., 50% extra fire damage
+// specialFlags: [], // e.g., ['explodes_on_death', 'teleports']
+// attackType: 'melee',
+// }
 };
-
 // =============================================================================
 // --- Wave Scripting ---
 // =============================================================================
-
 export const WAVE_START_DELAY = 5.0; // seconds before the very first wave starts
 export const WAVES = [
-    { // === 1 ===
-        mainWaveNumber: 1, // for UI references
-        duration: 117, // total wave duration in seconds
-        intermissionDuration: 15.0, // total duration of intermission *after* this wave
-        audioTrack: 'assets/audio/music/Wave1-350.mp3',
-        agingIntensity: 1.0, // Can be specified per wave
-        agingPasses: 50, // Number of aging passes for the INTERMISSION *after* this wave
-        subWaves: [
-            { // --- 1.1 ---
-                enemyGroups: [
-                    { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
-                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
-                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
-                ]
-            },
-            { // --- 1.2 ---
-                enemyGroups: [
-                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
-                    { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
-                ]
-            },
-            { // --- 1.3 ---
-                enemyGroups: [
-                    { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
-                ]
-            }
-        ]
-    },
-    { // === 2 ===
-        mainWaveNumber: 2,
-        duration: 137,
-        intermissionDuration: 20.0,
-        audioTrack: 'assets/audio/music/Wave2-300.mp3',
-        agingIntensity: 1.2, // Example: Wave 2 could have slightly more aging
-        agingPasses: 100, // More aging passes
-        subWaves: [
-            { // --- 2.1 ---
-                 enemyGroups: [
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
-                 ]
-            },
-            { // --- 2.2 ---
-                 enemyGroups: [
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
-                 ]
-            },
-            { // --- 2.3 ---
-                 enemyGroups: [
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
-                     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
-                     { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
-                 ]
-            }
-        ]
-    },
-    { // === 3 ===
-        mainWaveNumber: 3,
-        duration: 90,
-        intermissionDuration: 25.0, // shorter intermission
-        audioTrack: 'assets/audio/music/wave3.mp3', // <-- TODO: add music track here
-        agingIntensity: 1.0, // Back to base intensity
-        agingPasses: 150, // Even more aging
-        subWaves: [
-            { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
-            { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
-        ]
-    }
-    // ===  ... 7ish more waves afterwards ===
+{ // === 1 ===
+mainWaveNumber: 1, // for UI references
+duration: 117, // total wave duration in seconds
+intermissionDuration: 15.0, // total duration of intermission after this wave
+audioTrack: 'assets/audio/music/Wave1-350.mp3',
+agingIntensity: 1.0, // Can be specified per wave
+agingPasses: 50, // Number of aging passes for the INTERMISSION after this wave
+subWaves: [
+{ // --- 1.1 ---
+enemyGroups: [
+{ type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
+{ type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
+{ type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
+]
+},
+{ // --- 1.2 ---
+enemyGroups: [
+{ type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
+{ type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
+]
+},
+{ // --- 1.3 ---
+enemyGroups: [
+{ type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
+{ type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
+]
+}
+]
+},
+{ // === 2 ===
+mainWaveNumber: 2,
+duration: 137,
+intermissionDuration: 20.0,
+audioTrack: 'assets/audio/music/Wave2-300.mp3',
+agingIntensity: 1.2, // Example: Wave 2 could have slightly more aging
+agingPasses: 100, // More aging passes
+subWaves: [
+{ // --- 2.1 ---
+enemyGroups: [
+{ type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
+{ type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
+]
+},
+{ // --- 2.2 ---
+enemyGroups: [
+{ type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
+{ type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
+]
+},
+{ // --- 2.3 ---
+enemyGroups: [
+{ type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
+{ type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
+{ type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
+]
+}
+]
+},
+{ // === 3 ===
+mainWaveNumber: 3,
+duration: 90,
+intermissionDuration: 25.0, // shorter intermission
+audioTrack: 'assets/audio/music/wave3.mp3', // <-- TODO: add music track here
+agingIntensity: 1.0, // Back to base intensity
+agingPasses: 150, // Even more aging
+subWaves: [
+{ enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+{ enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+]
+}
+// === ... 7ish more waves afterwards ===
 ];
-
 // =============================================================================
 // --- Projectile Parameters (Future Use) ---
 // =============================================================================
 //
 // export const PROJECTILE_TYPES = {
-//     ENEMY_SPIT: {
-//         speed: 200,
-//         damage: 5,
-//         color: 'green',
-//         width: 5,
-//         height: 5,
-//         lifetime: 3, // seconds
-//         applyGravity: true,
-//     }
+// ENEMY_SPIT: {
+// speed: 200,
+// damage: 5,
+// color: 'green',
+// width: 5,
+// height: 5,
+// lifetime: 3, // seconds
+// applyGravity: true,
+// }
 // };
-
 // =============================================================================
 // --- Cutscene Parameters ---
 // =============================================================================
-
 export const CUTSCENE_IMAGE_PATHS = [
-    'assets/gendimage1.png', // replace
-    'assets/gendimage2.png',
-    'assets/gendimage1.png',
-    'assets/gendimage2.png',
+'assets/gendimage1.png', // replace
+'assets/gendimage2.png',
+'assets/gendimage1.png',
+'assets/gendimage2.png',
 ];
 export const CUTSCENE_IMAGE_DURATION = 5.0; // Seconds each image is displayed
 // =============================================================================
 // --- Debug/Development Flags ---
 // =============================================================================
-
 export const DEBUG_SKIP_CUTSCENE = false; // Set to true to skip the cutscene for faster testing

@@ -189,7 +189,7 @@ export function seedWaterUpdateQueue() { // seed queue with initial water blocks
     waterUpdateQueue.clear(); // start fresh
     for (let r = Config.WORLD_WATER_LEVEL_ROW_TARGET - 5; r < Config.GRID_ROWS; r++) { // start seeding from slightly above waterline target to catch falling water
         for (let c = 0; c < Config.GRID_COLS; c++) {
-             const blockType = WorldData.getBlockType(c, r); // add to queue WATER blocks, adjacent AIR/WATER at or below waterline threshold, or solid blocks near water 
+             const blockType = WorldData.getBlockType(c, r); // add to queue WATER blocks, adjacent AIR/WATER at or below waterline threshold, or solid blocks near water
              if (blockType === Config.BLOCK_WATER) {
                  addWaterUpdateCandidate(c, r);
                  addWaterUpdateCandidate(c, r-1); // even neighbors above water can be candidates if they turn to AIR/WATER later
@@ -261,7 +261,7 @@ export function damageBlock(col, row, damageAmount) { // applies damage to block
     if (block.hp <= 0) { // check for destruction
         wasDestroyed = true;
         block.hp = 0; // ensure health doesn't go below zero in data
-        let dropType = null; 
+        let dropType = null;
         switch (block.type) { // Determine drop type based on the type *before* it was destroyed
             case Config.BLOCK_GRASS: dropType = 'dirt'; break; // Grass drops dirt
             case Config.BLOCK_DIRT:  dropType = 'dirt'; break;
@@ -347,9 +347,9 @@ export function update(dt) { // handles dynamic world state like water flow
             // Process the batch of candidates
             candidatesToProcess.forEach(({c, r}) => {
                 // Recheck bounds, as blocks may've been changed since queueing
-                if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return;
+                if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c < Config.GRID_COLS) return;
 
-                const currentBlockType = WorldData.getBlockType(c, r); // get current block type
+                const currentBlockType = WorldData.getBlockType(c, r); // get current block type *again* inside the loop
 
                 // Queue neighbors below waterline to the queue for potential updates
                 // This ensures changes propagate. Queueing neighbors of AIR/WATER blocks.

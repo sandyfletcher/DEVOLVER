@@ -20,7 +20,7 @@ export function drawStaticGrid(ctx, showGrid) { // draws grid lines onto provide
         ctx.lineTo(x, canvasHeight);
         ctx.stroke();
     }
-    for (let r = 0; r <= Config.GRID_ROWS; r++) { // draw horizontal lines 
+    for (let r = 0; r <= Config.GRID_ROWS; r++) { // draw horizontal lines
         const y = r * Config.BLOCK_HEIGHT; // calculate the Y pixel position for line
         ctx.beginPath();
         ctx.moveTo(0, y);

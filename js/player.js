@@ -451,11 +451,13 @@ export class Player {
         // Zero out velocity component if a collision occurred on that axis, UNLESS stepped up horizontally
         if (collisionResult.collidedX && !collisionResult.didStepUp) {
              this.vx = 0;
+             // entity.x is already snapped by collideAndResolve
         }
         // Only zero vy if a Y collision occurred and velocity was significant, prevents micro-bouncing
         // Use a small threshold (could be E_EPSILON or a slightly larger value like 0.1)
         if (collisionResult.collidedY && Math.abs(this.vy) > 0.1) {
              this.vy = 0;
+             // entity.y is already snapped by collideAndResolve
         }
 
          // If player stepped up, adjust vertical position slightly if they ended up *just* above ground
@@ -467,7 +469,6 @@ export class Player {
             const colCheck = Math.floor((this.x + this.width/2) / Config.BLOCK_WIDTH); // Check center column
             // Check for solid ground right below the stepped-up position
             if (GridCollision.isSolid(colCheck, rowBelow)) {
-                const groundSurfaceY = rowBelow * Config.BLOCK_HEIGHT;
                  // If player bottom is within checkDist of the potential ground surface
                  if ((this.y + this.height) < groundSurfaceY + checkDist) {
                      this.y = groundSurfaceY - this.height; // Snap down
@@ -667,7 +668,7 @@ export class Player {
             // Don't flash while dying. Draw the dying animation regardless of invulnerability state.
             ctx.fillStyle = this.color;
             // Note: fillRect needs the original x, y, width, height. Transformations handle the rest.
-            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+            ctx.fillRect(Math.floor(this.x), Math.floor(this.height), this.width, this.height);
 
 
             ctx.restore(); // Restore context
@@ -846,7 +847,7 @@ export class Player {
         // Prevent death animation from starting multiple times
         // Check isActive here too - if health dropped to 0 while inactive (shouldn't happen), don't start dying state
         if (!this.isActive || this.isDying) {
-             // If health is 0 but not dying/inactive, maybe force dying state?
+             // If health is 0 but not dying/inactive, somehow not dying, maybe force dying state?
              if (this.currentHealth <= 0 && !this.isActive && !this.isDying) {
                   console.warn("Player death requested but already inactive/dying. State:", {isActive: this.isActive, isDying: this.isDying, health: this.currentHealth});
              }
