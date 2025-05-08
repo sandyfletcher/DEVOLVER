@@ -443,7 +443,7 @@ export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMut
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
     // Ensure essential UI elements exist before proceeding
     if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
-         // console.error("UI UpdatePlayerInfo: Missing essential elements."); // Too noisy during loading
+         console.error("UI UpdatePlayerInfo: Missing essential elements.");
          // Still try to update health bar if available
          if(playerHealthBarFillEl){
               const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
@@ -572,7 +572,7 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
 export function updatePortalInfo(currentHealth, maxHealth) {
     // Ensure essential UI elements exist before proceeding
      if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) {
-         // console.error("UI UpdatePortalInfo: Missing essential elements."); // Too noisy during loading
+         console.error("UI UpdatePortalInfo: Missing essential elements.");
          // Still try to update health bar if available
          if(portalHealthBarFillEl){
               const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
@@ -602,7 +602,7 @@ export function updatePortalInfo(currentHealth, maxHealth) {
 export function updateWaveTimer(waveInfo) {
     // Ensure essential UI elements exist
     if (!timerBarFillEl || !timerTextOverlayEl || !timerRowEl) {
-         // console.error("UI UpdateWaveTimer: Missing essential elements."); // Too noisy
+         console.error("UI UpdateWaveTimer: Missing essential elements.");
          return;
     }
 
@@ -685,7 +685,7 @@ export function updateWaveTimer(waveInfo) {
 export function showEpochText(epochMessage) { // Changed parameter name for clarity
     // Ensure the epoch overlay element exists
     if (!epochOverlayEl) {
-        // console.warn("UI showEpochText: Element not found.", epochOverlayEl); // Less verbose
+        console.warn("UI showEpochText: Element not found.", epochOverlayEl);
         return;
     }
     // Ensure epochMessage is a string, default to a placeholder if not

@@ -9,7 +9,7 @@ import * as GridCollision from './utils/gridCollision.js'; // Needed for coordin
 // --- Private Utility Function ---
 function checkRectOverlap(rect1, rect2) {
     if (!rect1 || !rect2) {
-        // console.warn("Collision check skipped: Invalid rect provided.", rect1, rect2); // Too noisy
+        console.warn("Collision check skipped: Invalid rect provided.", rect1, rect2);
         return false;
     }
     // Ensure rect properties are numbers before checking
@@ -17,7 +17,7 @@ function checkRectOverlap(rect1, rect2) {
          typeof rect2.x !== 'number' || typeof rect2.y !== 'number' || typeof rect2.width !== 'number' || typeof rect2.height !== 'number' ||
          isNaN(rect1.x) || isNaN(rect1.y) || isNaN(rect1.width) || isNaN(rect1.height) ||
          isNaN(rect2.x) || isNaN(rect2.y) || isNaN(rect2.width) || isNaN(rect2.height)) {
-         // console.warn("Collision check skipped: Rect properties are not valid numbers.", rect1, rect2); // Too noisy
+         console.warn("Collision check skipped: Rect properties are not valid numbers.", rect1, rect2);
          return false;
      }
     return rect1.x < rect2.x + rect2.width &&

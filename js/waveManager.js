@@ -58,7 +58,7 @@ function advanceSpawnProgression() {
     const subWaveData = getCurrentSubWaveData();
     if (!subWaveData) {
         // This implies we finished the last sub-wave or an error occurred and spawning for this wave cycle is complete.
-        // console.log(`[WaveMgr] Spawning complete for Wave ${currentMainWaveIndex + 1}.`); // Less verbose
+        console.log(`[WaveMgr] Spawning complete for Wave ${currentMainWaveIndex + 1}.`);
         currentGroupIndex = -1; // Use sentinel values to indicate finished spawning
         currentSubWaveIndex = -1;
         // The state remains WAVE_COUNTDOWN until the mainWaveTimer runs out.
@@ -90,7 +90,7 @@ function advanceSpawnProgression() {
         } else {
             // Finished all sub-waves in the current main wave
             // Spawning for this wave cycle is complete.
-            // console.log(`[WaveMgr] All sub-waves processed for Wave ${currentMainWaveIndex + 1}. Spawning complete.`); // Less verbose
+            console.log(`[WaveMgr] All sub-waves processed for Wave ${currentMainWaveIndex + 1}. Spawning complete.`);
             currentGroupIndex = -1; // Sentinel
             currentSubWaveIndex = -1; // Sentinel
             return false; // Indicate no more spawning progression for this wave
@@ -326,7 +326,7 @@ export function update(dt, gameState) {
                 if (gameState === 'RUNNING') { // Only run pre-wave timer if game is actively running
                     preWaveTimer -= dt;
                     if (preWaveTimer <= 0) {
-                        // console.log("[WaveMgr] preWaveTimer <= 0. Starting next wave."); // Less verbose
+                        console.log("[WaveMgr] preWaveTimer <= 0. Starting next wave.");
                         startNextWave(); // This handles transition to WAVE_COUNTDOWN or VICTORY
                     }
                 }
@@ -338,7 +338,7 @@ export function update(dt, gameState) {
                     mainWaveTimer -= dt;
                     if (mainWaveTimer <= 0) {
                         mainWaveTimer = 0; // Ensure it doesn't go negative in display
-                        // console.log("[WaveMgr] mainWaveTimer <= 0. Ending wave."); // Less verbose
+                        console.log("[WaveMgr] mainWaveTimer <= 0. Ending wave.");
                         endWave(); // This handles transition to BUILDPHASE or VICTORY
                         break; // State changed, exit switch for this frame
                     }
@@ -382,7 +382,7 @@ export function update(dt, gameState) {
                     currentMaxTimer = Config.WARPPHASE_DURATION;
                     console.log(`[WaveMgr] Transitioned to WARPPHASE (${warpPhaseTimer.toFixed(2)}s).`);
                     triggerWarpCleanup(); // Call cleanup (which now queues animations)
-                    // console.log(`[WaveMgr] Aging animation queuing triggered for WARPPHASE.`); // Less verbose
+                    console.log(`[WaveMgr] Aging animation queuing triggered for WARPPHASE.`);
                 }
                 break;
             case 'WARPPHASE':

@@ -145,7 +145,7 @@ export class Player {
         // --- Update Targeting ---
         // Ensure target positions are valid objects with numbers
         if (typeof targetWorldPos !== 'object' || targetWorldPos === null || typeof targetWorldPos.x !== 'number' || typeof targetWorldPos.y !== 'number' || isNaN(targetWorldPos.x) || isNaN(targetWorldPos.y)) {
-            // console.warn("Player Update: Invalid targetWorldPos object.", targetWorldPos); // Too noisy
+            console.warn("Player Update: Invalid targetWorldPos object.", targetWorldPos);
             // Fallback: use last known position or position slightly in front of player
             this.targetWorldPos = this._lastValidTargetWorldPos || { x: this.x + this.width / 2 + this.lastDirection * 50, y: this.y + this.height / 2 }; // Use pixel offset here
         } else {

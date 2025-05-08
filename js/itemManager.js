@@ -266,7 +266,7 @@ export function draw(ctx) {
         if(item && item.isActive){ // Draw if active
              item.draw(ctx); // Item's own draw method checks isActive and NaN coords internally
         } else if (item) {
-             // console.log(`ItemManager.draw: Skipping inactive item of type ${item.type}`); // Too noisy
+             console.log(`ItemManager.draw: Skipping inactive item of type ${item.type}`);
         }
     });
 }

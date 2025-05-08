@@ -142,7 +142,7 @@ export function updateStaticWorldAt(col, row) {
                     gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset); // draw to inset bottom-right
                     gridCtx.stroke();
 
-                    if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) { // Draw second line (/) if HP is <= 30% (creating an 'X')
+                    if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) { // draw second line (/) if HP is <= 30% (creating an 'X')
                         gridCtx.beginPath();
                         gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset); // move to inset top-right
                         gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset); // draw to inset bottom-left
@@ -152,7 +152,7 @@ export function updateStaticWorldAt(col, row) {
                 }
             }
         } else {
-             // console.warn(`No color defined for block type ${currentBlockType} at [${col}, ${row}]`); // Too noisy
+             console.warn(`No color defined for block type ${currentBlockType} at [${col}, ${row}]`);
         }
     }
 }
@@ -364,13 +364,13 @@ export function update(dt) {
         });
     }
 
-    // NEW: Update aging animations if enabled
+    // Update aging animations if enabled
     if (Config.AGING_ANIMATION_ENABLED) {
         updateAgingAnimations(dt);
     }
 }
 
-// --- NEW Aging Animation Functions ---
+// --- Aging Animation Functions ---
 
 /**
  * Adds proposed block changes from AgingManager to the aging animation queue.
@@ -379,7 +379,7 @@ export function update(dt) {
  */
 export function addProposedAgingChanges(changes) {
     if (!Config.AGING_ANIMATION_ENABLED) {
-        // console.log("[WorldManager] Aging animation disabled. Applying changes directly."); // Less verbose
+        console.log("[WorldManager] Aging animation disabled. Applying changes directly.");
         changes.forEach(({ c, r }) => { // oldBlockType, newBlockType from diff are not needed here for direct application
             // WorldData is already updated by AgingManager by the time diffGrids runs.
             // So, we just need to update the static canvas for the final state.
@@ -391,7 +391,7 @@ export function addProposedAgingChanges(changes) {
 
     // Add changes to the queue for animation processing
     changes.forEach(change => agingAnimationQueue.push(change));
-    // console.log(`[WorldManager] Added ${changes.length} proposed aging changes to animation queue. Total: ${agingAnimationQueue.length}`); // Less verbose
+    console.log(`[WorldManager] Added ${changes.length} proposed aging changes to animation queue. Total: ${agingAnimationQueue.length}`);
 }
 
 /**
@@ -410,7 +410,7 @@ function updateAgingAnimations(dt) {
         // Find if there's already an active animation for this cell (shouldn't happen with queue logic, but safety)
         const existingAnimIndex = activeAgingAnimations.findIndex(anim => anim.c === change.c && anim.r === change.r);
         if (existingAnimIndex !== -1) {
-             // console.warn(`[WorldManager] Trying to start new animation for [${change.c},${change.r}] while one is active. Skipping.`); // Less verbose
+             console.warn(`[WorldManager] Trying to start new animation for [${change.c},${change.r}] while one is active. Skipping.`);
         } else {
             activeAgingAnimations.push({
                 c: change.c,
@@ -525,8 +525,7 @@ export function areAgingAnimationsComplete() {
  */
 export function finalizeAllAgingAnimations() {
     if (!Config.AGING_ANIMATION_ENABLED) return; // Do nothing if disabled
-
-    // console.log(`[WorldManager] Finalizing ${agingAnimationQueue.length} queued and ${activeAgingAnimations.length} active aging animations...`); // Less verbose
+    console.log(`[WorldManager] Finalizing ${agingAnimationQueue.length} queued and ${activeAgingAnimations.length} active aging animations...`);
     // Process remaining queued items
     while(agingAnimationQueue.length > 0) {
         const change = agingAnimationQueue.shift();
@@ -541,5 +540,5 @@ export function finalizeAllAgingAnimations() {
         updateStaticWorldAt(anim.c, anim.r);
         queueWaterCandidatesAroundChange(anim.c, anim.r);
     }
-    // console.log("[WorldManager] All aging animations finalized."); // Less verbose
+    console.log("[WorldManager] All aging animations finalized.");
 }
