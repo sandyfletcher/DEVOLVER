@@ -1,3 +1,4 @@
+// root/js/main.js
 // -----------------------------------------------------------------------------
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
@@ -56,23 +57,28 @@ let btnToggleGrid = null;
 let muteMusicButtonEl = null;
 let muteSfxButtonEl = null;
 
+// Overlay content divs (for direct manipulation in MAIN_MENU state)
+let overlayMainMenuContentEl = null;
+let overlaySettingsContentEl = null;
+
+
 let gameOverStatsTextP = null;
 let victoryStatsTextP = null;
 let errorOverlayMessageP = null;
 
 const GameState = Object.freeze({ // game state enum
-    PRE_GAME: 'PRE_GAME', // title screen
-    MAIN_MENU: 'MAIN_MENU', // main menu screen
-    SETTINGS_MENU: 'SETTINGS_MENU', // settings menu screen
-    CUTSCENE: 'CUTSCENE', // intro cutscene playing
-    RUNNING: 'RUNNING', // loop active, timers decrement, physics run, state transitions occur
-    PAUSED: 'PAUSED', // loop paused, no updates (except cutscene timer if state was CUTSCENE when paused?) - Let's only pause RUNNING.
-    GAME_OVER: 'GAME_OVER', // gameover screen
-    VICTORY: 'VICTORY', // victory screen
-    ERROR: 'ERROR' // error overlay
+    TITLE: 'TITLE',         // Title screen (was PRE_GAME)
+    MAIN_MENU: 'MAIN_MENU', // Main menu screen (now includes settings as an overlay variation)
+    // SETTINGS_MENU: 'SETTINGS_MENU', // REMOVED - Settings is now part of MAIN_MENU overlay
+    CUTSCENE: 'CUTSCENE',   // Intro cutscene playing
+    RUNNING: 'RUNNING',     // Loop active, timers decrement, physics run, state transitions occur
+    PAUSED: 'PAUSED',       // Loop paused, no updates
+    GAME_OVER: 'GAME_OVER', // Gameover screen
+    VICTORY: 'VICTORY',     // Victory screen
+    ERROR: 'ERROR'          // Error overlay
 });
 
-let currentGameState = GameState.PRE_GAME; // initial state
+let currentGameState = GameState.TITLE; // initial state
 
 // =============================================================================
 // --- Helper Functions ---
@@ -140,75 +146,54 @@ function toggleSfxMute() {
 // --- Overlay Management ---
 // =============================================================================
 
-function showOverlay(stateToShow) { // show specific overlay state and handle adding/removing classes and audio transitions
-    if (!gameOverlay || !appContainer) { // ensure necessary overlay elements exist
-        console.error("ShowOverlay: Core overlay/app container not found!");
-        return; // cannot show overlay
-    }
-    // Remove all previous state-specific classes and the 'active' class from the overlay
-    // Also remove 'overlay-active' from the app container to reset blur/dim
-    gameOverlay.classList.remove(
-        'active', // Crucially remove 'active' to reset transitions
-        'show-title', 'show-mainmenu', 'show-settings', 'show-cutscene',
-        'show-pause', 'show-gameover', 'show-victory', 'show-error' // Added show-error
-    );
-    appContainer.classList.remove('overlay-active');
-    // Stop any UI music that might be playing before starting the new one for the new overlay state
-    AudioManager.stopUIMusic();
-    // Stop game music if applicable (not needed for pause state)
-    if (currentGameState !== GameState.PAUSED) { // The state *before* calling showOverlay
-        AudioManager.stopGameMusic(); // Stop game music if we are NOT coming from PAUSED
+function showOverlay(stateToShow) {
+    if (!gameOverlay || !appContainer || !overlayMainMenuContentEl || !overlaySettingsContentEl) {
+        console.error("ShowOverlay: Core overlay/app container or content elements not found!");
+        return;
     }
 
-    // Reset UI music volume to default whenever showing an overlay state that has UI music
-    // Specific logic for audio based on the new state being shown
+    // KEY CHANGE: Reset inline display styles for main menu and settings content elements.
+    // This ensures that when transitioning between major game states, these elements
+    // revert to their default CSS display behavior (likely 'none' from .overlay-content),
+    // allowing the new state's CSS rules to correctly control visibility.
+    overlayMainMenuContentEl.style.display = '';
+    overlaySettingsContentEl.style.display = '';
+
+    // Remove all previous state-specific classes and the 'active' class from the overlay
+    gameOverlay.classList.remove(
+        'active',
+        'show-title', 'show-mainmenu', 'show-cutscene',
+        'show-pause', 'show-gameover', 'show-victory', 'show-error'
+    );
+    appContainer.classList.remove('overlay-active');
+
+    // Specific logic for audio and content display based on the new state being shown
     switch (stateToShow) {
-        case GameState.PRE_GAME:
-            gameOverlay.classList.add('show-title');
-            // Play title music if defined (or fallback)
-            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            if (Config.AUDIO_TRACKS.title) {
-                // AudioManager.playUIMusic(Config.AUDIO_TRACKS.title); // TODO: Uncomment when title music track is added
-            } else if (Config.AUDIO_TRACKS.pause) {
-                AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause); // Fallback
-            } else {
-                console.warn("Title and Pause music tracks not defined.");
-            }
+        case GameState.TITLE:
+            gameOverlay.classList.add('show-title'); // CSS makes #overlay-title-content visible
+            AudioManager.stopAllMusic(); // Ensure everything is silent for the title screen
             break;
         case GameState.MAIN_MENU:
-            gameOverlay.classList.add('show-mainmenu');
+            gameOverlay.classList.add('show-mainmenu'); // CSS makes #overlay-mainmenu-content visible
+            // When explicitly entering MAIN_MENU state, ensure settings panel is hidden
+            // and main menu panel is shown. This is for the internal view within MAIN_MENU.
+            overlaySettingsContentEl.style.display = 'none';
+            overlayMainMenuContentEl.style.display = 'flex'; // Or 'block' if that's the desired default
+
             AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            // Play Main Menu music (reuse pause music for now)
             if (Config.AUDIO_TRACKS.pause) { // Using pause music as menu music for now
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             } else {
                 console.warn("Pause music track not defined for main menu.");
             }
             break;
-        case GameState.SETTINGS_MENU:
-            gameOverlay.classList.add('show-settings');
-            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            // Play Settings Menu music (reuse pause music for now)
-            if (Config.AUDIO_TRACKS.pause) {
-                AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
-            } else {
-                console.warn("Pause music track not defined for settings menu.");
-            }
-            break;
         case GameState.CUTSCENE:
-            gameOverlay.classList.add('show-cutscene');
-            // Cutscene might have its own audio or be silent
-            // AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME); // Or set specific cutscene volume
-            // if (Config.AUDIO_TRACKS.introMusic) { // Example: Play intro music
-            //      AudioManager.playUIMusic(Config.AUDIO_TRACKS.introMusic);
-            // } else {
-                AudioManager.stopUIMusic(); // Ensure UI music is off if silent cutscene
-                AudioManager.stopGameMusic(); // Ensure game music is off
-            // }
-            // Cutscene images visibility is handled by updateCutscene or startCutscene
+            gameOverlay.classList.add('show-cutscene'); // CSS makes #overlay-cutscene-content visible
+            AudioManager.stopUIMusic(); // Stop UI music (e.g., main menu music)
+            AudioManager.stopGameMusic(); // Ensure game music is off
             break;
         case GameState.PAUSED:
-            gameOverlay.classList.add('show-pause');
+            gameOverlay.classList.add('show-pause'); // CSS makes #overlay-pause-content visible
             AudioManager.pauseGameMusic(); // Pause game music and retain position
             if (Config.AUDIO_TRACKS.pause) {
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause); // Play pause music
@@ -217,470 +202,290 @@ function showOverlay(stateToShow) { // show specific overlay state and handle ad
             }
             break;
         case GameState.GAME_OVER:
-            gameOverlay.classList.add('show-gameover');
-            // Update game over stats text element if it exists
+            gameOverlay.classList.add('show-gameover'); // CSS makes #overlay-gameover-content visible
+            AudioManager.stopGameMusic(); // Stop game music
             if (gameOverStatsTextP) {
-                const finalWave = WaveManager.getCurrentWaveNumber(); // Get wave reached
-                gameOverStatsTextP.textContent = `You reached Wave ${finalWave}!`; // Display wave reached
-            } else {
-                console.warn("ShowOverlay: gameover-stats-text element not found.");
+                const finalWave = WaveManager.getCurrentWaveNumber();
+                gameOverStatsTextP.textContent = `You reached Wave ${finalWave}!`;
             }
-            // Play game over music if defined (or fallback)
             AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.gameOver) {
-                // AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver); // TODO: Uncomment when game over music track is added
+                // AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver);
             } else if (Config.AUDIO_TRACKS.pause) {
-                AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause); // Fallback
-            } else {
-                console.warn("Game Over and Pause music tracks not defined."); 
-            }
-            break;
-        case GameState.VICTORY:
-            gameOverlay.classList.add('show-victory');
-            // Update victory stats text element if it exists
-            if (victoryStatsTextP) {
-                const totalWaves = Config.WAVES.length; // Get total number of waves
-                victoryStatsTextP.textContent = `You cleared all ${totalWaves} waves!`; // Display waves cleared
-            } else {
-                console.warn("ShowOverlay: victory-stats-text element not found.");
-            }
-            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            if (Config.AUDIO_TRACKS.victory) {
-                AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory); // Play victory music
-            } else if (Config.AUDIO_TRACKS.pause) {
-                AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause); // Fallback
-            } else {
-                console.warn("Victory and Pause music tracks not defined."); 
-            }
-            break;
-        case GameState.ERROR: // New case for error state
-            gameOverlay.classList.add('show-error');
-            // Error text content is set in the init() catch block
-            // No specific audio for error state, music should have been stopped
-            break;
-        default:
-            console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}`);
-            // As a fallback, maybe show the title screen?
-            gameOverlay.classList.add('show-title');
-            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            if (Config.AUDIO_TRACKS.pause) { // Fallback to pause music
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             }
             break;
+        case GameState.VICTORY:
+            gameOverlay.classList.add('show-victory'); // CSS makes #overlay-victory-content visible
+            AudioManager.stopGameMusic(); // Stop game music
+            if (victoryStatsTextP) {
+                const totalWaves = Config.WAVES.length;
+                victoryStatsTextP.textContent = `You cleared all ${totalWaves} waves!`;
+            }
+            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
+            if (Config.AUDIO_TRACKS.victory) {
+                AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory);
+            } else if (Config.AUDIO_TRACKS.pause) {
+                AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
+            }
+            break;
+        case GameState.ERROR:
+            gameOverlay.classList.add('show-error'); // CSS makes #overlay-error-content visible
+            AudioManager.stopAllMusic();
+            break;
+        default:
+            console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}`);
+            gameOverlay.classList.add('show-title'); // Fallback to title
+            AudioManager.stopAllMusic();
+            break;
     }
-    // Make the overlay container visible and apply the blur/dim effect to the background container
     gameOverlay.classList.add('active');
     appContainer.classList.add('overlay-active');
 }
-// Hides the game overlay and restores the background container.
-// Stops any active UI music.
+
 function hideOverlay() {
     if (!gameOverlay || !appContainer) {
         console.error("HideOverlay: Core overlay/app container not found!");
-        return; // Cannot hide overlay if elements are missing
+        return;
     }
-    gameOverlay.classList.remove('active'); // remove the 'active' class to trigger fade-out animation
-    appContainer.classList.remove('overlay-active'); // remove the 'overlay-active' class to remove blur/dim
-    AudioManager.stopUIMusic();
-    // Resume game music if the state is RUNNING (handled by AudioManager.unpauseGameMusic within hideOverlay call in resumeGame)
+    gameOverlay.classList.remove('active');
+    appContainer.classList.remove('overlay-active');
 }
 
 // =============================================================================
 // --- Game State Control Functions (Expanded) ---
 // =============================================================================
 
-// Function triggered by the initial Title Screen START button
-function startGame() {
-    showMainMenu(); // Transition to the Main Menu state
-}
-
-// Shows the Main Menu
-function showMainMenu() {
-    // Stop any potentially running game music just in case we navigated back here
-    AudioManager.stopGameMusic();
-    // Clear any entities from a previous game if this is a restart via Main Menu
-    EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
-    ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
-
+function handleTitleStart() {
     currentGameState = GameState.MAIN_MENU;
     showOverlay(GameState.MAIN_MENU);
 }
 
-// Shows the Settings Menu
-function showSettingsMenu() {
-    currentGameState = GameState.SETTINGS_MENU;
-    showOverlay(GameState.SETTINGS_MENU);
+function showMainMenu() {
+    AudioManager.stopGameMusic();
+    EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
+    ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
+    currentGameState = GameState.MAIN_MENU;
+    showOverlay(GameState.MAIN_MENU);
 }
 
-// Starts the Intro Cutscene (triggered by Main Menu START GAME button)
+function showSettingsContent() {
+    if (currentGameState !== GameState.MAIN_MENU || !overlayMainMenuContentEl || !overlaySettingsContentEl) return;
+    overlayMainMenuContentEl.style.display = 'none';
+    overlaySettingsContentEl.style.display = 'flex';
+}
+
+function backToMainMenuFromSettings() {
+    if (currentGameState !== GameState.MAIN_MENU || !overlayMainMenuContentEl || !overlaySettingsContentEl) return;
+    overlaySettingsContentEl.style.display = 'none';
+    overlayMainMenuContentEl.style.display = 'flex';
+}
+
 function startCutscene() {
     currentGameState = GameState.CUTSCENE;
-    showOverlay(GameState.CUTSCENE); // Show cutscene overlay
-    // Initialize cutscene state
+    showOverlay(GameState.CUTSCENE);
     currentCutsceneImageIndex = 0;
-    cutsceneTimer = cutsceneDurationPerImage; // Timer for the first image
-    // Hide all cutscene images initially
-    cutsceneImages.forEach(img => {
-        img.classList.remove('active');
-        // Also reset opacity/z-index if needed, though CSS handles it
-        // img.style.opacity = '0';
-        // img.style.zIndex = '0';
-    });
-
-    // Show the first image immediately
+    cutsceneTimer = cutsceneDurationPerImage;
+    cutsceneImages.forEach(img => img.classList.remove('active'));
     if (cutsceneImages[currentCutsceneImageIndex]) {
         cutsceneImages[currentCutsceneImageIndex].classList.add('active');
-        // console.log(`Showing cutscene image ${currentCutsceneImageIndex + 1}`);
     } else {
         console.error("Cutscene ERROR: First image element not found!");
-        // If images fail, maybe skip cutscene or show error?
-        initializeAndRunGame(); // Fallback to starting game if images aren't found
+        initializeAndRunGame();
         return;
     }
-
-    // Optional: Start cutscene music
-    // if (Config.AUDIO_TRACKS.introMusic) {
-    //      AudioManager.playUIMusic(Config.AUDIO_TRACKS.introMusic);
-    // }
-
 }
 
-// Updates the cutscene timer and switches images
 function updateCutscene(dt) {
-    if (currentGameState !== GameState.CUTSCENE) return; // Only update if in cutscene state
-
-    cutsceneTimer -= dt; // Decrement timer
-
+    if (currentGameState !== GameState.CUTSCENE) return;
+    cutsceneTimer -= dt;
     if (cutsceneTimer <= 0) {
-        // Timer finished for the current image
-        // Hide the current image
         if (cutsceneImages[currentCutsceneImageIndex]) {
             cutsceneImages[currentCutsceneImageIndex].classList.remove('active');
-            // console.log(`Finished cutscene image ${currentCutsceneImageIndex + 1}`);
         }
-
-        currentCutsceneImageIndex++; // Move to the next image
-
+        currentCutsceneImageIndex++;
         if (currentCutsceneImageIndex < cutsceneImages.length) {
-            // There are more images, show the next one
-            cutsceneTimer = cutsceneDurationPerImage; // Reset timer for the next image
+            cutsceneTimer = cutsceneDurationPerImage;
             if (cutsceneImages[currentCutsceneImageIndex]) {
                 cutsceneImages[currentCutsceneImageIndex].classList.add('active');
-                // console.log(`Showing cutscene image ${currentCutsceneImageIndex + 1}`);
             } else {
                 console.error(`Cutscene ERROR: Image element ${currentCutsceneImageIndex + 1} not found!`);
-                // Handle missing image: skip to next or end cutscene
-                updateCutscene(0); // Recursively call with dt=0 to try the next image immediately
-                return; // Exit this update call
+                updateCutscene(0);
+                return;
             }
-        } else { // All images have been shown, end the cutscene and start the game
-            AudioManager.stopUIMusic(); // Stop cutscene/UI music
-            initializeAndRunGame(); // Call the function that actually starts the game
+        } else {
+            initializeAndRunGame();
         }
     }
 }
 
-// Skips the cutscene and immediately starts the game.
 function skipCutscene() {
-    // Only skip if currently in the cutscene state
     if (currentGameState !== GameState.CUTSCENE) {
         console.warn("skipCutscene called but game is not in CUTSCENE state.");
         return;
     }
-    // Stop cutscene audio (handled by initializeAndRunGame/hideOverlay, but safety)
-    AudioManager.stopUIMusic();
-    // Immediately transition to game initialization and RUNNING state
     initializeAndRunGame();
 }
-
-// Expose skipCutscene globally so it can be called directly by the button's click listener
 window.skipCutscene = skipCutscene;
 
-
-// (Renamed from the original startGame) - Initializes all game systems and starts the RUNNING state.
-// Triggered ONLY at the end of the cutscene, or directly if cutscene is skipped.
 function initializeAndRunGame() {
-    if (currentGameState === GameState.RUNNING) { // Prevent accidental multiple calls
+    if (currentGameState === GameState.RUNNING) {
         console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
         return;
     }
-    // Ensure we are transitioning from a menu/cutscene state (optional but good check)
     if (currentGameState !== GameState.MAIN_MENU && currentGameState !== GameState.CUTSCENE && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY && currentGameState !== GameState.PAUSED) {
         console.warn(`[main.js] initializeAndRunGame called from unexpected state: ${currentGameState}. Allowing, but investigate.`);
     }
 
     try {
-    // --- Reset/Initialize Core Systems ---
-    // Reset UI references first, as new player/portal objects will be created.
-    UI.setPlayerReference(null); // Clear old reference, will be set after new player is created
-    UI.setPortalReference(null); // Clear old reference, will be set after new portal is created
+    UI.setPlayerReference(null);
+    UI.setPortalReference(null);
 
-    // Create Portal instance AFTER world, as position depends on world generation results
     const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2;
-    // Position portal centered horizontally, slightly above mean ground level
     const portalSpawnY = (Config.WORLD_GROUND_LEVEL_MEAN_ROW * Config.BLOCK_HEIGHT) - Config.PORTAL_HEIGHT - (Config.PORTAL_SPAWN_Y_OFFSET_BLOCKS * Config.BLOCK_HEIGHT);
-    // Defensive check for calculated spawn Y
     if (isNaN(portalSpawnY) || portalSpawnY < 0) {
         console.error("[main.js] FATAL: Invalid Portal Spawn Y calculation! Defaulting position.");
-        portal = new Portal(Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2, 50); // Fallback to safe, high position
+        portal = new Portal(Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2, 50);
     } else {
-        portal = new Portal(portalSpawnX, portalSpawnY); // Create portal
+        portal = new Portal(portalSpawnX, portalSpawnY);
     }
 
-    // World Init (includes generating terrain and initial flood fill, but NOT initial aging)
-    WorldManager.init(portal); // Pass portalRef for potential use within WorldManager init (e.g. initial aging if it were there)
-
-    // --- Apply Initial World Aging Passes AFTER generation and flood fill ---
-    // Now that WorldManager and AgingManager are initialized, and the world is generated/flooded,
-    // we can apply the initial aging passes here, passing the portal reference.
-    const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1; // Use default if config missing or invalid
+    WorldManager.init(portal);
+    const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
     console.log(`[main.js] Applying initial world aging (${initialAgingPasses} passes) after generation...`);
-    // The `changedCellsInitialAging` map is no longer strictly needed here because AgingManager
-    // now updates the static world canvas immediately for each change *within* the aging pass.
-    // However, collecting them might still be useful for debugging or future optimizations.
-    // Let's keep the logic to collect them, but the visual update happens inside AgingManager.
     const changedCellsInitialAging = new Map();
-
     for (let i = 0; i < initialAgingPasses; i++) {
-        // Use the base aging intensity for initial passes
-        // AgingManager.applyAging returns a list of {c,r} changed cells.
-        // It now also calls updateStaticWorldAt and queues water candidates internally.
-        // MODIFIED: Pass null for the portal reference during the initial aging pass
         const changedCellsInPass = AgingManager.applyAging(null, Config.AGING_BASE_INTENSITY);
-
-        // Add the changed cells from this pass to the overall list for initial aging
         changedCellsInPass.forEach(({ c, r }) => {
             const key = `${c},${r}`;
             if (!changedCellsInitialAging.has(key)) {
                 changedCellsInitialAging.set(key, { c, r });
-                // The visual update is already done by AgingManager.updateStaticWorldAt(c, r)
-                // No, AgingManager does NOT call WorldManager.updateStaticWorldAt.
-                // WorldManager.updateStaticWorldAt should be called here if animations are OFF,
-                // or after animations if ON.
-                // FOR INITIAL AGING: Let's apply directly since animations are for WARPPHASE.
                 WorldManager.updateStaticWorldAt(c, r);
             }
         });
     }
     console.log(`[main.js] Initial world aging complete. Total unique blocks changed: ${changedCellsInitialAging.size}`);
-
-    WorldManager.renderStaticWorldToGridCanvas(); // Update final state of the static canvas for Visuals and Water Simulation after Initial Aging
-    WorldManager.seedWaterUpdateQueue(); // Seed the water simulation queue based on the final world state after initial aging and rendering
-    ItemManager.init(); // ItemManager Init (handles initial shovel spawn now)
+    WorldManager.renderStaticWorldToGridCanvas();
+    WorldManager.seedWaterUpdateQueue();
+    ItemManager.init();
     EnemyManager.init();
 
-    // Create Player instance
     try {
-        // Player constructor now initializes with the shovel and unarmed state
         const playerSpawnX = Config.PLAYER_START_X;
         const playerSpawnY = Config.PLAYER_START_Y;
-        // Defensive check for calculated spawn Y
         if (isNaN(playerSpawnY) || playerSpawnY < 0) {
             console.error("[main.js] FATAL: Invalid Player Spawn Y calculation! Defaulting position.");
-            player = new Player(Config.CANVAS_WIDTH / 2 - Config.PLAYER_WIDTH / 2, 100, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR); // Fallback
+            player = new Player(Config.CANVAS_WIDTH / 2 - Config.PLAYER_WIDTH / 2, 100, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
         } else {
             player = new Player(playerSpawnX, playerSpawnY, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
         }
-        UI.setPlayerReference(player); // Set reference in UI manager
-        UI.setPortalReference(portal); // Set portal reference in UI manager
+        UI.setPlayerReference(player);
+        UI.setPortalReference(portal);
     } catch (error) {
-        // Handle fatal errors during player/portal setup
         player = null;
         portal = null;
-        // currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Removed global
         console.error("[main.js] FATAL: Game Object Creation/Init Error Message:", error.message);
         console.error("[main.js] Error Stack:", error.stack);
-        // Transition back to title screen on fatal game start error
-        currentGameState = GameState.PRE_GAME;
-        showOverlay(GameState.PRE_GAME); // Show title screen on fatal error
-        alert("Error creating game objects. Please check console and refresh."); // User-facing alert
-        return; // Abandon start sequence
+        currentGameState = GameState.TITLE;
+        showOverlay(GameState.TITLE);
+        alert("Error creating game objects. Please check console and refresh.");
+        return;
     }
-    // WaveManager Reset (needs the newly created portal reference)
-    // This sets the WaveManager's internal state to 'PRE_WAVE' and its timer to Config.WAVE_START_DELAY (5.0)
-    // WaveManager's handleWaveStart callback is no longer used for epoch text display.
-    WaveManager.reset(handleWaveStart, portal); // Keeping the callback parameter for potential future use
+    WaveManager.reset(handleWaveStart, portal);
     console.log("[main.js] WaveManager reset for new game.");
-
-
-    // Calculate initial camera position centered on the player
     calculateInitialCamera();
-    // Reset other game state variables managed by main.js
-    // currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Removed - portal instance handles its own
-    isAutoPaused = false; // Reset auto-pause flag
-    isGridVisible = false; // Ensure grid starts hidden on new game
-    // Ensure AudioManager volumes are at default/reset on game start for game/sfx music
-    // UI music volume is handled by showOverlay/hideOverlay calls.
+    isAutoPaused = false;
+    isGridVisible = false;
     AudioManager.setVolume('game', Config.AUDIO_DEFAULT_GAME_VOLUME);
     AudioManager.setVolume('sfx', Config.AUDIO_DEFAULT_SFX_VOLUME);
-    // Update settings buttons UI based on initial states (grid hidden, music/sfx as per AudioManager default/saved)
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 
-    // --- Transition to RUNNING state ---
     console.log(`[main.js] Transitioning to GameState.RUNNING from ${currentGameState}`);
     currentGameState = GameState.RUNNING;
-    hideOverlay(); // Hide any active overlay (title, menu, cutscene etc.)
-    // Record game start time for potential future stats display
+    hideOverlay();
     gameStartTime = performance.now();
-    // lastTime is updated unconditionally in gameLoop
-    // Cancel any previous animation frame loop just in case (e.g. from a prior game instance)
-    // The requestAnimationFrame call is now at the top of gameLoop, so it will be called regardless of state.
-    // gameLoopId = requestAnimationFrame(gameLoop); // No need to call here, it's self-scheduling
     console.log(">>> [main.js] Game Started <<<");
-} catch (error) { // <--- ADD THIS CATCH BLOCK
+} catch (error) {
     console.error("[main.js] FATAL Error during initializeAndRunGame:", error);
-    // Handle fatal errors during game startup - go back to title or show error screen
-    // Use the existing error display logic from the init() function if needed
-    // For debugging, logging and maybe an alert is enough.
     alert("FATAL Error starting game. Check console for details.");
-    // Attempt to reset state to prevent loop from getting stuck
-    currentGameState = GameState.PRE_GAME;
-    showOverlay(GameState.PRE_GAME); // Show title screen
+    currentGameState = GameState.TITLE;
+    showOverlay(GameState.TITLE);
 }
 }
-// Pauses the currently running game. Exposed via window.pauseGameCallback.
 
 function pauseGame() {
-    // Only pause if currently RUNNING
     if (currentGameState !== GameState.RUNNING) {
         console.warn("pauseGame called but game is not RUNNING.");
         return;
     }
     console.log(">>> [main.js] Pausing Game <<<");
-    currentGameState = GameState.PAUSED; // Change main game state
-    showOverlay(GameState.PAUSED); // Show pause overlay and handle audio
-    // Stop the game loop by cancelling the animation frame request
-    // No longer cancel the animation frame request, the loop just passes dt=0 when not RUNNING or CUTSCENE
-    // if (gameLoopId) {
-    //     cancelAnimationFrame(gameLoopId);
-    //     gameLoopId = null; // Clear the ID reference
-    // }
+    currentGameState = GameState.PAUSED;
+    showOverlay(GameState.PAUSED);
 }
-// Resumes the game from the paused state. Called when the user clicks "Resume" on the pause overlay.
 function resumeGame() {
-    // Only resume if the game is currently PAUSED
     if (currentGameState !== GameState.PAUSED) {
         console.warn("resumeGame called but game is not PAUSED.");
         return;
     }
     console.log(">>> [main.js] Resuming Game <<<");
-
-    // Reset the auto-pause flag if it was set (user manually resumed)
     isAutoPaused = false;
-
-    // Transition back to RUNNING state
     console.log(`[main.js] Transitioning to GameState.RUNNING from ${currentGameState}`);
-    currentGameState = GameState.RUNNING; // Transition back to RUNNING state
-
-    // Hide the overlay and handle audio transition (stops UI music, unpauses game music)
+    currentGameState = GameState.RUNNING;
     hideOverlay();
-    AudioManager.unpauseGameMusic(); // Explicitly unpause after overlay is hidden
+    AudioManager.unpauseGameMusic();
 }
 
-// Handles the transition to the game over state. Triggered by gameLoop when player/portal health <= 0 or player death anim finishes.
 function handleGameOver() {
-    // Prevent multiple calls if already in the GAME_OVER state
     if (currentGameState === GameState.GAME_OVER) return;
     console.log(">>> [main.js] Handling Game Over <<<");
-    currentGameState = GameState.GAME_OVER; // Change main game state
-    // Notify WaveManager of game over state (primarily for timer text display)
+    currentGameState = GameState.GAME_OVER;
     WaveManager.setGameOver();
-    // Clear all enemies and items from the game world immediately
-    // Use Infinity radius to clear all items and enemies regardless of their state or location.
     EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
     ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
-    showOverlay(GameState.GAME_OVER); // Show the game over overlay and handle audio transitions
-    isAutoPaused = false; // Reset auto-pause flag on game over
-}
-
-// Handles the transition to the victory state. Triggered by gameLoop when WaveManager signals all waves cleared and enemies are gone.
-function handleVictory() {
-    // Prevent multiple calls if already in the VICTORY state
-    if (currentGameState === GameState.VICTORY) return;
-
-    console.log(">>> [main.js] Handling Victory! <<<");
-    currentGameState = GameState.VICTORY; // Change main game state
-
-    // Notify WaveManager of victory state (primarily for timer text display)
-    WaveManager.setVictory();
-
-    // Clear all enemies and items
-    EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
-    ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
-
-    // Show the victory overlay and handle audio transitions
-    showOverlay(GameState.VICTORY);
-
-    // Stop the game loop (optional, see game over)
-    // if (gameLoopId) {
-    //     cancelAnimationFrame(gameLoopId);
-    //     gameLoopId = null;
-    // }
-
-    // Reset auto-pause flag
+    showOverlay(GameState.GAME_OVER);
     isAutoPaused = false;
-
-    // Reset lastTime for potential restart (not needed with new dt logic)
-    // lastTime = 0;
 }
 
+function handleVictory() {
+    if (currentGameState === GameState.VICTORY) return;
+    console.log(">>> [main.js] Handling Victory! <<<");
+    currentGameState = GameState.VICTORY;
+    WaveManager.setVictory();
+    EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
+    ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
+    showOverlay(GameState.VICTORY);
+    isAutoPaused = false;
+}
 
-// Restarts the game. Only allowed from GAME_OVER, VICTORY, PAUSED, or SETTINGS/MAIN_MENU states.
-// This now takes the user back to the main menu.
 function restartGame() {
-    // Check if the current state is one from which restarting is permissible
     if (currentGameState !== GameState.GAME_OVER &&
         currentGameState !== GameState.VICTORY &&
         currentGameState !== GameState.PAUSED &&
-        currentGameState !== GameState.SETTINGS_MENU && // Allow restarting from settings
-        currentGameState !== GameState.MAIN_MENU) // Allow restarting from main menu (shouldn't happen via button click, but state might be there)
+        currentGameState !== GameState.MAIN_MENU)
     {
         console.warn(`[main.js] restartGame called but game not in a restartable state (${currentGameState}).`);
         return;
     }
     console.log(">>> [main.js] Restarting Game (Returning to Main Menu) <<<");
-
-    // Clear any existing game objects and state that shouldn't persist
-    // The game will be fully re-initialized when initializeAndRunGame is called from the cutscene later.
-    player = null; // Clear player reference
-    portal = null; // Clear portal reference
-    UI.setPlayerReference(null); // Notify UI
-    UI.setPortalReference(null); // Notify UI
-    EnemyManager.clearAllEnemies(); // Clear any lingering enemies
-    ItemManager.clearAllItems(); // Clear any lingering items
-    // Do NOT reset WaveManager here. reset() is called within initializeAndRunGame
-    // WaveManager.reset(); // Reset wave manager state
-
-    // Stop any music that might be playing (game or UI)
+    player = null;
+    portal = null;
+    UI.setPlayerReference(null);
+    UI.setPortalReference(null);
+    EnemyManager.clearAllEnemies();
+    ItemManager.clearAllItems();
     AudioManager.stopAllMusic();
-
-    // Stop the game loop if it happens to be in RUNNING state (which it shouldn't be if called from a menu/pause/end screen, but safety)
-    // The loop isn't cancelled anymore, it just runs with dt=0 in non-active states.
-
-    // Reset camera and other global state variables
     cameraX = 0;
     cameraY = 0;
     cameraScale = 1.0;
-    // currentPortalSafetyRadius = Config.PORTAL_SAFETY_RADIUS; // Removed global
     isAutoPaused = false;
-    isGridVisible = false; // Reset grid visibility
-
-    // Update settings buttons UI based on reset states
+    isGridVisible = false;
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
-
-
-    // Reset cutscene variables just in case
     currentCutsceneImageIndex = 0;
     cutsceneTimer = 0;
     cutsceneImages.forEach(img => img.classList.remove('active'));
-
-
-    // Transition to the Main Menu
     showMainMenu();
 }
 
-
-// --- Main game loop function, called by requestAnimationFrame ---
 function gameLoop(timestamp) {
     gameLoopId = requestAnimationFrame(gameLoop);
     try {
@@ -689,26 +494,17 @@ function gameLoop(timestamp) {
         rawDt = Math.min(rawDt, Config.MAX_DELTA_TIME);
         let dt = 0;
 
-        // MODIFIED: Pass dt if RUNNING, CUTSCENE, or in WARPPHASE
         if (currentGameState === GameState.RUNNING ||
             currentGameState === GameState.CUTSCENE ||
-            (WaveManager.getWaveInfo().state === 'WARPPHASE' && currentGameState !== GameState.PAUSED) // Ensure game isn't paused during warp for dt
+            (WaveManager.getWaveInfo().state === 'WARPPHASE' && currentGameState !== GameState.PAUSED)
         ) {
             dt = rawDt;
         }
 
-
         if (currentGameState === GameState.RUNNING) {
-            // --- All your core game update logic is here ---
-            // This block will now execute when the state is RUNNING
-            // and will use the non-zero dt calculated above.
+            WaveManager.update(dt, currentGameState);
+            const updatedWaveInfo = WaveManager.getWaveInfo();
 
-            WaveManager.update(dt, currentGameState); // Pass real dt and current state
-            const updatedWaveInfo = WaveManager.getWaveInfo(); // Get updated info after WaveManager.update()
-            // const currentWaveManagerState = updatedWaveInfo.state; // No longer needed here
-
-
-            // --- Update Entities ---
             if (player) {
                 const inputState = Input.getState();
                 const internalMousePos = Input.getMousePosition();
@@ -716,18 +512,12 @@ function gameLoop(timestamp) {
                 const targetGridCell = getMouseGridCoords(internalMousePos);
                 player.update(dt, inputState, targetWorldPos, targetGridCell);
             }
-
             calculateCameraPosition();
-
             const playerPosForEnemies = (player && player.isActive && !player.isDying) ? player.getPosition() : null;
             EnemyManager.update(dt, playerPosForEnemies);
-
             const playerRefForItems = (player && player.isActive && !player.isDying) ? player : null;
             ItemManager.update(dt, playerRefForItems);
 
-            // WorldManager.update for water is now called below, based on dt > 0
-
-            // --- Collision Detection (Only happens if RUNNING) ---
             if (player) {
                 CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
                 CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
@@ -738,7 +528,6 @@ function gameLoop(timestamp) {
                 CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
             }
 
-            // --- Check for Game Over/Victory Conditions (After all updates and collisions) ---
             if ((player && !player.isActive) || (portal && !portal.isAlive())) {
                 console.log("Main: Player inactive or Portal destroyed. Triggering Game Over.");
                 handleGameOver();
@@ -752,19 +541,15 @@ function gameLoop(timestamp) {
             updateCutscene(dt);
         }
 
-        // ALWAYS call WorldManager.update if dt > 0, as it handles aging animations during WARPPHASE
-        // The WaveManager.update call above will have set its internal state correctly.
         if (dt > 0) {
-            WorldManager.update(dt); // This will process water and aging animations
+            WorldManager.update(dt);
         }
 
-        // --- Rendering ---
         Renderer.clear();
         const mainCtx = Renderer.getContext();
-        // Show world if RUNNING, PAUSED, or if WaveManager is in WARPPHASE (even if main game is PAUSED during warp)
-        const isGameWorldVisible = currentGameState === GameState.RUNNING || 
-                                currentGameState === GameState.PAUSED || 
-                                currentGameState === GameState.GAME_OVER || 
+        const isGameWorldVisible = currentGameState === GameState.RUNNING ||
+                                currentGameState === GameState.PAUSED ||
+                                currentGameState === GameState.GAME_OVER ||
                                 currentGameState === GameState.VICTORY ||
                                 (WaveManager.getWaveInfo().state === 'WARPPHASE');
         if (isGameWorldVisible) {
@@ -780,11 +565,10 @@ function gameLoop(timestamp) {
                 player.draw(mainCtx);
                 const waveInfoAtDraw = WaveManager.getWaveInfo();
                 const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
-                // Allow ghost block during WARPPHASE or BUILDPHASE
-                const isGameplayActiveAtDraw = currentWaveManagerStateAtDraw === 'PRE_WAVE' || 
-                                                currentWaveManagerStateAtDraw === 'WAVE_COUNTDOWN' || 
-                                                currentWaveManagerStateAtDraw === 'BUILDPHASE' || 
-                                                currentWaveManagerStateAtDraw === 'WARPPHASE'; // Added WARPPHASE TODO: check this logic it may need to change
+                const isGameplayActiveAtDraw = currentWaveManagerStateAtDraw === 'PRE_WAVE' ||
+                                                currentWaveManagerStateAtDraw === 'WAVE_COUNTDOWN' ||
+                                                currentWaveManagerStateAtDraw === 'BUILDPHASE' ||
+                                                currentWaveManagerStateAtDraw === 'WARPPHASE';
                 const playerIsInteractableAtDraw = player && player.isActive && !player.isDying;
                 if (playerIsInteractableAtDraw && isGameplayActiveAtDraw && player.isMaterialSelected()) {
                     player.drawGhostBlock(mainCtx);
@@ -793,7 +577,7 @@ function gameLoop(timestamp) {
             mainCtx.restore();
         }
 
-        if (UI.isInitialized()) { // UI Updates
+        if (UI.isInitialized()) {
             const playerExists = !!player;
             UI.updatePlayerInfo(
                 playerExists ? player.getCurrentHealth() : 0,
@@ -819,41 +603,31 @@ function gameLoop(timestamp) {
     }
 }
 
-// Calculates and sets the initial camera position, centering it on the player.
-// Called ONCE at the start of a new game (by initializeAndRunGame).
 function calculateInitialCamera() {
-    if (player && player.isActive) { // Only calculate if player object exists AND is active
-        const viewWidth = Config.CANVAS_WIDTH; // Internal rendering width (matches canvas.width)
-        const viewHeight = Config.CANVAS_HEIGHT; // Internal rendering height (matches canvas.height)
-        cameraScale = 1.0; // Reset zoom to default on game start
-        const visibleWorldWidth = viewWidth / cameraScale; // Calculate the visible area of the world at the current scale.
+    if (player && player.isActive) {
+        const viewWidth = Config.CANVAS_WIDTH;
+        const viewHeight = Config.CANVAS_HEIGHT;
+        cameraScale = 1.0;
+        const visibleWorldWidth = viewWidth / cameraScale;
         const visibleWorldHeight = viewHeight / cameraScale;
-        const playerCenterX = player.x + player.width / 2; // Calculate the target camera position to center the view on the player's center.
+        const playerCenterX = player.x + player.width / 2;
         const playerCenterY = player.y + player.height / 2;
         let targetX = playerCenterX - (visibleWorldWidth / 2);
         let targetY = playerCenterY - (visibleWorldHeight / 2);
-        // --- Clamp Camera Position to World Boundaries ---
-        // Calculate the actual size of the world in pixels (grid dimensions * block height).
         const worldPixelWidth = getWorldPixelWidth();
         const worldPixelHeight = getWorldPixelHeight();
-        // Determine the maximum scroll position for X and Y, ensuring the camera doesn't show outside the world on the right/bottom.
-        // Use Math.max(0, ...) in case the world is smaller than the viewport (prevents negative max scroll).
         const maxCameraX = Math.max(0, worldPixelWidth - visibleWorldWidth);
         const maxCameraY = Math.max(0, worldPixelHeight - visibleWorldHeight);
-        // Clamp the target camera position to stay within the valid world bounds.
-        cameraX = Math.max(0, Math.min(targetX, maxCameraX)); // Clamp targetX
-        cameraY = Math.max(0, Math.min(targetY, maxCameraY)); // Clamp targetY
-        // --- Center Camera If World is Smaller Than Viewport ---
-        // If the world is narrower than the visible area, center the camera horizontally.
+        cameraX = Math.max(0, Math.min(targetX, maxCameraX));
+        cameraY = Math.max(0, Math.min(targetY, maxCameraY));
         if (worldPixelWidth <= visibleWorldWidth) {
             cameraX = (worldPixelWidth - visibleWorldWidth) / 2;
         }
-        // If the world is shorter than the visible area at the current scale, center the camera vertically.
         if (worldPixelHeight <= visibleWorldHeight) {
             cameraY = (worldPixelHeight - visibleWorldHeight) / 2;
         }
     }
-    else { // If no player exists or is not active (e.g., on initial load or after game over), set default camera state (top-left corner, scale 1).
+    else {
         cameraX = 0;
         cameraY = 0;
         cameraScale = 1.0;
@@ -861,8 +635,6 @@ function calculateInitialCamera() {
     }
 }
 
-// Updates the camera position during gameplay, following the player and clamping to bounds.
-// Called every frame DURING THE RUNNING STATE, AFTER entity updates.
 function calculateCameraPosition() {
     if (!player || !player.isActive || currentGameState !== GameState.RUNNING) {
         return;
@@ -891,9 +663,9 @@ function calculateCameraPosition() {
     }
 }
 
-function init() { // Initializes the game environment, DOM references, event listeners, and core systems. Called once when the DOM is fully loaded.
-    currentGameState = GameState.PRE_GAME; // Initial state is PRE_GAME (Title Screen)
-    try { // Get Essential DOM References
+function init() {
+    currentGameState = GameState.TITLE;
+    try {
         appContainer = document.getElementById('app-container');
         gameOverlay = document.getElementById('game-overlay');
         titleStartButton = document.getElementById('start-game-button');
@@ -906,12 +678,15 @@ function init() { // Initializes the game environment, DOM references, event lis
         restartButtonPause = document.getElementById('restart-button-overlay-pause');
         gameOverStatsTextP = document.getElementById('gameover-stats-text');
         victoryStatsTextP = document.getElementById('victory-stats-text');
-        errorOverlayMessageP = document.getElementById('error-message-text'); // Get ref for error message P tag
+        errorOverlayMessageP = document.getElementById('error-message-text');
         cutsceneSkipButton = document.getElementById('cutscene-skip-button');
         btnToggleGrid = document.getElementById('btn-toggle-grid');
         muteMusicButtonEl = document.getElementById('btn-mute-music');
         muteSfxButtonEl = document.getElementById('btn-mute-sfx');
         epochOverlayEl = document.getElementById('epoch-overlay');
+        overlayMainMenuContentEl = document.getElementById('overlay-mainmenu-content');
+        overlaySettingsContentEl = document.getElementById('overlay-settings-content');
+
         cutsceneImages = [];
         Config.CUTSCENE_IMAGE_PATHS.forEach((_, index) => {
             const img = document.getElementById(`cutscene-image-${index + 1}`);
@@ -921,24 +696,24 @@ function init() { // Initializes the game environment, DOM references, event lis
             console.warn(`UI Warning: Found ${cutsceneImages.length} cutscene image elements, expected ${Config.CUTSCENE_IMAGE_PATHS.length}. Check IDs in index.html.`);
         }
 
-        const requiredElements = [ // --- Verification - Check if all required DOM elements were found ---
+        const requiredElements = [
             appContainer, gameOverlay, titleStartButton, mainmenuStartGameButton, mainmenuSettingsButton, settingsBackButton,
             resumeButton, restartButtonGameOver, restartButtonVictory, restartButtonPause, gameOverStatsTextP, victoryStatsTextP,
-            errorOverlayMessageP, // Added error message P to check
-            btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl, epochOverlayEl, cutsceneSkipButton
+            errorOverlayMessageP, btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl, epochOverlayEl, cutsceneSkipButton,
+            overlayMainMenuContentEl, overlaySettingsContentEl
         ];
         if (requiredElements.some(el => !el)) {
-            const elementNames = [ // Map indices to names for logging
+            const elementNames = [
                 'appContainer (#app-container)', 'gameOverlay (#game-overlay)',
                 'titleStartButton (#start-game-button)', 'mainmenuStartGameButton (#mainmenu-start-game-button)', 'mainmenuSettingsButton (#mainmenu-settings-button)', 'settingsBackButton (#settings-back-button)',
                 'resumeButton (#resume-button)',
                 'restartButtonGameOver (#restart-button-overlay)', 'restartButtonVictory (#restart-button-overlay-victory)',
                 'restartButtonPause (#restart-button-overlay-pause)',
                 'gameOverStatsTextP (#gameover-stats-text)', 'victoryStatsTextP (#victory-stats-text)',
-                'errorOverlayMessageP (#error-message-text)', // Added name for logging
+                'errorOverlayMessageP (#error-message-text)',
                 'btnToggleGrid (#btn-toggle-grid)', 'muteMusicButtonEl (#btn-mute-music)', 'muteSfxButtonEl (#btn-mute-sfx)',
-                'epochOverlayEl (#epoch-overlay)',
-                'cutsceneSkipButton (#cutscene-skip-button)',
+                'epochOverlayEl (#epoch-overlay)', 'cutsceneSkipButton (#cutscene-skip-button)',
+                'overlayMainMenuContentEl (#overlay-mainmenu-content)', 'overlaySettingsContentEl (#overlay-settings-content)'
             ];
             const missing = requiredElements
                 .map((el, i) => el ? null : elementNames[i])
@@ -946,11 +721,10 @@ function init() { // Initializes the game environment, DOM references, event lis
             throw new Error(`FATAL INIT ERROR: Essential DOM elements not found: ${missing.join(', ')}! Please check index.html.`);
         }
 
-        // --- Setup Event Listeners for Overlay Buttons (Updated) ---
-        titleStartButton.addEventListener('click', startGame);
+        titleStartButton.addEventListener('click', handleTitleStart);
         mainmenuStartGameButton.addEventListener('click', startCutscene);
-        mainmenuSettingsButton.addEventListener('click', showSettingsMenu);
-        settingsBackButton.addEventListener('click', showMainMenu);
+        mainmenuSettingsButton.addEventListener('click', showSettingsContent);
+        settingsBackButton.addEventListener('click', backToMainMenuFromSettings);
         resumeButton.addEventListener('click', resumeGame);
         restartButtonGameOver.addEventListener('click', restartGame);
         restartButtonVictory.addEventListener('click', restartGame);
@@ -960,7 +734,6 @@ function init() { // Initializes the game environment, DOM references, event lis
         muteMusicButtonEl.addEventListener('click', toggleMusicMute);
         muteSfxButtonEl.addEventListener('click', toggleSfxMute);
 
-        // --- Initialize Core Systems that DON'T Depend on Game Objects (Player, Portal) ---
         const canvas = document.getElementById('game-canvas');
         if (!canvas) {
             throw new Error("FATAL INIT ERROR: Canvas element 'game-canvas' not found!");
@@ -973,7 +746,6 @@ function init() { // Initializes the game environment, DOM references, event lis
             throw new Error("FATAL INIT ERROR: UI initialization failed. Check console for missing sidebar elements or item slot issues.");
         }
         Input.init();
-        // --- Initialize Module-Level State Variables ---
         lastTime = 0;
         isAutoPaused = false;
         isGridVisible = false;
@@ -981,29 +753,24 @@ function init() { // Initializes the game environment, DOM references, event lis
         cutsceneTimer = 0;
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        showOverlay(GameState.PRE_GAME);
+        showOverlay(GameState.TITLE);
         gameLoopId = requestAnimationFrame(gameLoop);
     } catch (error) {
         console.error("FATAL: Initialization Error:", error);
-        // If gameOverlay and errorOverlayMessageP exist, use the new overlay system
         if (gameOverlay && errorOverlayMessageP) {
-            errorOverlayMessageP.textContent = `Error: ${error.message}`; // Set the dynamic error message
-            currentGameState = GameState.ERROR; // Set state before showing overlay
-            showOverlay(GameState.ERROR); // Show the styled error overlay
-            // appContainer.classList.add('overlay-active'); // showOverlay handles this now
-            AudioManager.stopAllMusic();
+            errorOverlayMessageP.textContent = `Error: ${error.message}`;
+            currentGameState = GameState.ERROR;
+            showOverlay(GameState.ERROR);
         } else {
-            // Fallback to alert if the new overlay system isn't available (e.g., error happened before DOM refs were obtained)
             alert(`FATAL Initialization Error:\n${error.message}\nCheck console for details.`);
         }
     }
 }
-function handleVisibilityChange() { // Auto-Pause When Hidden
+function handleVisibilityChange() {
     if (document.hidden && currentGameState === GameState.RUNNING) {
         console.log("[main.js] Document hidden, auto-pausing game.");
         isAutoPaused = true;
         pauseGame();
     }
 }
-// --- Listener to Run init Once DOM Loaded ---
 window.addEventListener('DOMContentLoaded', init);
