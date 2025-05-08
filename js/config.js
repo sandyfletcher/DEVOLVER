@@ -1,20 +1,22 @@
+// -----------------------------------------------------------------------------
 // root/js/config.js - Centralized Game Configuration
+// -----------------------------------------------------------------------------
 
 // =============================================================================
-// --- Block Parameters - fundamental building unit
+// --- Block Parameters ---
 // =============================================================================
 
 export const BASE_BLOCK_PIXEL_SIZE = 16; // size in pixels of one side of square block
 export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE;
 export const BLOCK_HEIGHT = BASE_BLOCK_PIXEL_SIZE;
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
-export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // Fixed pixel thickness for visual consistency
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // Show slash when HP <= 70% of max
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;     // Show X when HP <= 30% of max
-export const GHOST_BLOCK_ALPHA = 0.5;            // Transparency for placement preview
+export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70% of max
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;     // show X when HP <= 30% of max
+export const GHOST_BLOCK_ALPHA = 0.5;            // transparency for placement preview
 export const CAN_PLACE_IN_WATER = false;
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
-export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // Fixed pixel thickness
+export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // fixed pixel thickness
 
 // =============================================================================
 // --- World Parameters ---
@@ -65,23 +67,21 @@ export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_T
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
 export const AGING_INITIAL_PASSES = 35; // Number of aging passes on initial world generation.
 export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default aging passes between waves.
-
 // Probabilities (chance per eligible block per pass)
 export const AGING_PROB_WATER_EROSION_SAND = 0.0001;
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
 export const AGING_PROB_WATER_EROSION_DIRT_GRASS = 0.9;
 export const AGING_PROB_GRASS_GROWTH = 0.9;
 export const AGING_PROB_STONEIFICATION_DEEP = 0.000001;
-export const AGING_PROB_HORIZONTAL_SAND_SPREAD = 0.85; // New: Chance for dirt/grass/stone next to "wet" sand to become sand
+export const AGING_PROB_HORIZONTAL_SAND_SPREAD = 0.85; // Chance for dirt/grass/stone next to "wet" sand to become sand
 export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001;
 export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
 
 // =============================================================================
-// --- Aging Animation Parameters --- (NEW)
+// --- Aging Animation Parameters ---
 // =============================================================================
 
-export const AGING_ANIMATION_ENABLED = true; // Master switch for the visual aging
 export const AGING_ANIMATION_BLOCKS_AT_ONCE = 5; // Max number of blocks animating simultaneously
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
 export const AGING_ANIMATION_SWELL_DURATION = 0.25; // Duration (seconds) of the "swell" part
@@ -89,8 +89,6 @@ export const AGING_ANIMATION_POP_DURATION = 0.1;  // Duration (seconds) of the "
 export const AGING_ANIMATION_SWELL_SCALE = 1.8;   // Max scale factor during swell (e.g., 1.5x size)
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
 export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (briefly)
-
-
 export const WARPPHASE_DURATION = 5.0; // Fixed duration of WARP PHASE in seconds (time-based).
 
 // =============================================================================
@@ -177,8 +175,7 @@ export const AUDIO_TRACKS = {
 // --- Material Parameters ---
 // =============================================================================
 
-export const INVENTORY_MATERIALS = ['wood', 'stone', 'metal', 'dirt', 'sand', 'bone'];
-
+export const INVENTORY_MATERIALS = [ 'dirt', 'sand', 'stone', 'wood', 'bone', 'metal'];
 // Block Type IDs (numeric constants)
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
@@ -189,13 +186,12 @@ export const BLOCK_STONE = 5;
 export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
-
-// Block HP (unitless, not scaled by block size)
+// Block HP
 export const BLOCK_HP = {
     [BLOCK_WATER]: Infinity, [BLOCK_SAND]: 30, [BLOCK_DIRT]: 50, [BLOCK_GRASS]: 50,
     [BLOCK_STONE]: 300, [BLOCK_WOOD]: 100, [BLOCK_METAL]: 500, [BLOCK_BONE]: 120,
 };
-// Block Colors (fixed color strings)
+// Block Colors
 export const BLOCK_COLORS = {
     [BLOCK_WATER]: 'rgb(50, 100, 200)', [BLOCK_SAND]: 'rgb(210, 180, 140)', [BLOCK_DIRT]: 'rgb(130, 82, 45)',
     [BLOCK_GRASS]: 'rgb(80, 180, 80)', [BLOCK_STONE]: 'rgb(140, 140, 140)', [BLOCK_WOOD]: 'rgb(160, 110, 70)',
@@ -215,17 +211,18 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
 // =============================================================================
 // --- Portal Parameters ---
 // =============================================================================
+
 export const PORTAL_COLOR = 'rgb(100, 100, 255)';
-export const PORTAL_WIDTH_BLOCKS = 8;  // Portal width in block units.
-export const PORTAL_HEIGHT_BLOCKS = 10; // Portal height in block units.
+export const PORTAL_WIDTH_BLOCKS = 6;  // Portal width in block units.
+export const PORTAL_HEIGHT_BLOCKS = 8; // Portal height in block units.
 export const PORTAL_WIDTH = PORTAL_WIDTH_BLOCKS * BLOCK_WIDTH;   // Pixel width.
 export const PORTAL_HEIGHT = PORTAL_HEIGHT_BLOCKS * BLOCK_HEIGHT; // Pixel height.
-export const PORTAL_INITIAL_HEALTH = 500; // Unitless.
+export const PORTAL_INITIAL_HEALTH = 500;
 
 export const PORTAL_SAFETY_RADIUS_BLOCKS = 30; // Radius in block units.
 export const PORTAL_SAFETY_RADIUS = PORTAL_SAFETY_RADIUS_BLOCKS * BASE_BLOCK_PIXEL_SIZE; // Pixel radius.
 
-export const PORTAL_RADIUS_GROWTH_PER_WAVE_BLOCKS = 6; // Radius growth in block units per intermission.
+export const PORTAL_RADIUS_GROWTH_PER_WAVE_BLOCKS = 5; // Radius growth in block units per intermission.
 export const PORTAL_RADIUS_GROWTH_PER_WAVE = PORTAL_RADIUS_GROWTH_PER_WAVE_BLOCKS * BASE_BLOCK_PIXEL_SIZE; // Pixel growth.
 
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above mean ground for portal top.
@@ -233,14 +230,14 @@ export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above me
 // =============================================================================
 // --- Player Parameters ---
 // =============================================================================
+
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 export const PLAYER_WIDTH_BLOCKS = 3;  // Player width in block units.
 export const PLAYER_HEIGHT_BLOCKS = 6; // Player height in block units.
 export const PLAYER_WIDTH = PLAYER_WIDTH_BLOCKS * BLOCK_WIDTH;   // Pixel width.
 export const PLAYER_HEIGHT = PLAYER_HEIGHT_BLOCKS * BLOCK_HEIGHT; // Pixel height.
 
-// Player start position (pixels, derived from block-based world constants).
-export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2;
+export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2; // Player start position (pixels, derived from block-based world constants).
 export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN_ROW * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT);
 
 export const PLAYER_INITIAL_HEALTH = 100;       // Unitless.
@@ -364,9 +361,9 @@ export const CRAFTING_RECIPES = {
 // =============================================================================
 // --- Enemy Parameters ---
 // =============================================================================
-export const MAX_ENEMIES = 100;
+export const MAX_ENEMIES = 150;
 
-export const ENEMY_SPAWN_EDGE_MARGIN_BLOCKS = 20; // Distance from screen edge in block units.
+export const ENEMY_SPAWN_EDGE_MARGIN_BLOCKS = 10; // Distance from screen edge in block units.
 export const ENEMY_SPAWN_EDGE_MARGIN = ENEMY_SPAWN_EDGE_MARGIN_BLOCKS * BLOCK_WIDTH; // Pixel margin.
 
 export const ENEMY_FLASH_DURATION = 0.15; // Seconds (time-based).
@@ -450,16 +447,19 @@ export const ENEMY_STATS = {
 // =============================================================================
 // --- Wave Scripting --- (Time-based, no pixel scaling needed for durations/counts)
 // =============================================================================
-export const WAVE_START_DELAY = 5.0; // Seconds before the very first wave.
-export const EPOCH_MAP = { // Map wave numbers to epoch display names.
-    0: "Origin", 1: "The Emergence", 2: "The Shifting Tides", 3: "The Great Sinking",
-};
-export const EPOCH_DISPLAY_DURATION = 3.0; // Seconds epoch text is displayed.
+
+export const WAVE_START_DELAY = 5.0; // seconds before first wave
+export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 
 export const WAVES = [
     {
-        mainWaveNumber: 1, duration: 117, intermissionDuration: 15.0, audioTrack: AUDIO_TRACKS.wave1,
-        agingIntensity: 1.0, agingPasses: 50,
+        mainWaveNumber: 1,
+        epochName: "Origin",
+        duration: 117,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave1,
+        agingIntensity: 1.0,
+        agingPasses: 10,
         subWaves: [
             { enemyGroups: [
                 { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
@@ -477,8 +477,13 @@ export const WAVES = [
         ]
     },
     {
-        mainWaveNumber: 2, duration: 137, intermissionDuration: 20.0, audioTrack: AUDIO_TRACKS.wave2,
-        agingIntensity: 1.2, agingPasses: 100,
+        mainWaveNumber: 2,
+        epochName: "The Emergence",
+        duration: 137,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave2,
+        agingIntensity: 1.0,
+        agingPasses: 10,
         subWaves: [
             { enemyGroups: [
                 { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
@@ -496,8 +501,13 @@ export const WAVES = [
         ]
     },
     {
-        mainWaveNumber: 3, duration: 90, intermissionDuration: 25.0, audioTrack: AUDIO_TRACKS.wave3,
-        agingIntensity: 1.0, agingPasses: 150,
+        mainWaveNumber: 3,
+        epochName: "The Shifting Tides",
+        duration: 90,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave3,
+        agingIntensity: 1.0,
+        agingPasses: 10,
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
@@ -506,16 +516,20 @@ export const WAVES = [
 ];
 
 // =============================================================================
-// --- Cutscene Parameters --- (Time/Image based, no pixel scaling needed)
+// --- Cutscene Parameters ---
 // =============================================================================
+
 export const CUTSCENE_IMAGE_PATHS = [
-    'assets/gendimage1.png', 'assets/gendimage2.png',
-    'assets/gendimage1.png', 'assets/gendimage2.png',
+    'assets/gendimage1.png',
+    'assets/gendimage2.png',
+    'assets/gendimage3.png',
+    'assets/gendimage1.png',
 ];
 export const CUTSCENE_IMAGE_DURATION = 5.0; // Seconds each image is displayed.
 
 // =============================================================================
 // --- Debug/Development Flags ---
 // =============================================================================
+
 export const DEBUG_SKIP_CUTSCENE = false; // Set to true to skip the cutscene.
-export const DEBUG = true; // Global debug flag for verbose console logging.
+export const DEBUG = true; // Global debug flag for verbose console logging

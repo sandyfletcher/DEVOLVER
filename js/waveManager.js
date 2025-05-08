@@ -111,6 +111,15 @@ function startNextWave() {
         return false; // Indicates no wave was started
     }
 
+    // --- Show epoch text for the first wave if it's just starting ---
+    if (currentMainWaveIndex === 0) { // This is the first wave (index 0)
+        if (waveData.epochName) {
+            UI.showEpochText(waveData.epochName);
+        } else {
+            UI.showEpochText(`Starting Wave ${waveData.mainWaveNumber}`); // Fallback
+        }
+    }
+
     // Found a valid next wave, start the countdown
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration; // Set timer to the wave's total duration
@@ -235,45 +244,44 @@ function triggerWarpCleanup() {
     const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
     const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
 
-    if (nextWaveData) {
+    // --- Debug Logging ---
+    if (Config.DEBUG) {
+        console.log(`[WaveMgr Debug] In triggerWarpCleanup:`);
+        console.log(`  currentMainWaveIndex: ${currentMainWaveIndex}`);
+        console.log(`  nextWaveIndexToPrepareFor: ${nextWaveIndexToPrepareFor}`);
+        console.log(`  Config.WAVES.length: ${Config.WAVES.length}`);
+        console.log(`  nextWaveData:`, nextWaveData);
+    }
+    // --- End Debug Logging ---
+
+    if (nextWaveData && typeof nextWaveData === 'object') { // Ensure nextWaveData is a valid object
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
         const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
 
-        console.log(`[WaveMgr] Preparing aging for upcoming Wave ${nextWaveData.mainWaveNumber} (${passes} passes, intensity ${intensity.toFixed(2)})...`);
+        console.log(`[WaveMgr] Preparing aging for upcoming Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'} (${passes} passes, intensity ${intensity.toFixed(2)})...`);
 
-        // 3. Capture grid state BEFORE aging
         const gridStateBeforeAging = captureCurrentGridState();
-
-        // 4. Perform Multiple Aging Passes (AgingManager modifies WorldData directly)
         for (let i = 0; i < passes; i++) {
             AgingManager.applyAging(portalRef, intensity);
         }
-        console.log(`[WaveMgr] Aging passes complete for Wave ${nextWaveData.mainWaveNumber}. WorldData updated.`);
+        console.log(`[WaveMgr] Aging passes complete for Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'}. WorldData updated.`);
 
-        // 5. Diff grids to find net changes for animation
-        const finalGridState = WorldData.getGrid(); // Get the current state of the world grid
+        const finalGridState = WorldData.getGrid();
         const proposedVisualChanges = diffGrids(gridStateBeforeAging, finalGridState);
-        
         console.log(`[WaveMgr] Found ${proposedVisualChanges.length} net visual changes for animation.`);
-
-        // 6. Add proposed changes to WorldManager's animation queue
         if (proposedVisualChanges.length > 0) {
             WorldManager.addProposedAgingChanges(proposedVisualChanges);
         }
-        // If animations are disabled in config, addProposedAgingChanges handles direct static updates.
+
+        // Show Epoch Text for the upcoming wave
+        const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
+        if (Config.DEBUG) console.log(`[WaveMgr Debug] Showing epoch text: "${epochName}"`);
+        UI.showEpochText(epochName);
 
     } else {
-         console.log("[WaveMgr] No next wave defined, skipping aging process.");
-    }
-
-
-    // 7. Show Epoch Text
-    // currentMainWaveIndex is for the wave that just *finished*.
-    // nextWaveData is for currentMainWaveIndex + 1.
-    // The epoch map uses 0-based indexing for waves (0 for first wave, 1 for second, etc.)
-    // So the key for EPOCH_MAP should be `nextWaveIndexToPrepareFor`.
-    if (nextWaveData) {
-         UI.showEpochText(Config.EPOCH_MAP[nextWaveIndexToPrepareFor] ?? `Preparing Wave ${nextWaveData.mainWaveNumber}`);
+        console.warn(`[WaveMgr] triggerWarpCleanup: No valid nextWaveData found. Index: ${nextWaveIndexToPrepareFor}. Skipping aging and epoch text for next wave.`);
+        // Fallback epoch text if no next wave (should ideally not happen if victory state is handled correctly)
+        UI.showEpochText("Final Preparations...");
     }
 
     // The renderStaticWorldToGridCanvas() and seedWaterUpdateQueue() calls will now happen
@@ -390,12 +398,7 @@ export function update(dt, gameState) {
                  if (warpPhaseTimer <= 0) {
                      warpPhaseTimer = 0;
                      console.log("[WaveMgr] WARPPHASE timer ended.");
-
-                     // Finalize any ongoing aging animations immediately
-                     if (Config.AGING_ANIMATION_ENABLED) { // Only if animations were on
-                         WorldManager.finalizeAllAgingAnimations();
-                     }
-                     
+                    WorldManager.finalizeAllAgingAnimations(); // Finalize any ongoing aging animations immediately
                      // Now that all WorldData changes are visually committed (or forced),
                      // re-render the entire static canvas and seed water.
                      console.log("[WaveMgr] Rendering final static world and seeding water queue after WARPPHASE.");

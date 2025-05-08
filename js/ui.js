@@ -146,7 +146,7 @@ export function initGameUI() {
         delete itemSlotDivs[key]; // Remove reference from the map
     }
     for (const key in buttonIlluminationTimers) {
-         clearTimeout(buttonIlluminationTimers[key]);
+        clearTimeout(buttonIlluminationTimers[key]);
     }
     buttonIlluminationTimers = {}; // Reset timers map
 
@@ -186,8 +186,8 @@ export function initGameUI() {
         // but setting defaults prevents empty/stale UI on first load.
         updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // Set initial empty state
         updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH); // Set initial portal health
-         // Set initial timer state - Use a placeholder waveInfo object
-         updateWaveTimer({ state: 'LOADING', timer: 0, maxTimer: 1, progressText: "Loading...", mainWaveNumber: 0 });
+        // Set initial timer state - Use a placeholder waveInfo object
+        updateWaveTimer({ state: 'LOADING', timer: 0, maxTimer: 1, progressText: "Loading...", mainWaveNumber: 0 });
 
 
         // Initial settings button states are set by main.js after AudioManager.init
@@ -235,7 +235,7 @@ function createItemSlot(itemType, container, category) {
         else slotDiv.textContent = '?'; // Fallback icon
 
         // Initial title for weapons will show 'Not Found' or crafting recipe, updated later
-         titleText += ' (Not Found)'; // Placeholder, will be updated by updatePlayerInfo
+        titleText += ' (Not Found)'; // Placeholder, will be updated by updatePlayerInfo
     }
 
     slotDiv.title = titleText; // Set initial title attribute
@@ -254,49 +254,49 @@ function createItemSlot(itemType, container, category) {
 // Helper function to handle clicks on item/weapon slots
 // This function is called by the click event listener attached to the item slot divs.
 function handleItemSlotClick(itemType, category) {
-     // Ensure playerRef exists and UI is ready before allowing interaction
-     if (!playerRef || !isUIReady) {
+    // Ensure playerRef exists and UI is ready before allowing interaction
+    if (!playerRef || !isUIReady) {
         // console.log("UI Item Click: Interaction ignored (playerRef null or UI not ready).");
         // Optional: Add visual feedback (e.g., shake) to the element that was clicked even if action wasn't performed
         const slotDiv = itemSlotDivs[itemType];
         if(slotDiv && typeof slotDiv.animate === 'function') {
-             slotDiv.animate([
-                 { transform: 'scale(1)' }, { transform: 'scale(1.1)' }, { transform: 'scale(1)' }
-             ], { duration: 100, easing: 'ease-in-out' });
-         }
+            slotDiv.animate([
+                { transform: 'scale(1)' }, { transform: 'scale(1.1)' }, { transform: 'scale(1)' }
+            ], { duration: 100, easing: 'ease-in-out' });
+        }
         return; // Do nothing if player is not available or UI not ready
     }
 
-     let success = false; // Flag to indicate if the player action (select/craft) was successful
+    let success = false; // Flag to indicate if the player action (select/craft) was successful
 
-     // Delegate the action logic to the Player instance methods
-     if (category === 'material') {
-         // Attempt to set the active inventory material
-         success = playerRef.setActiveInventoryMaterial(itemType);
-     } else if (category === 'weapon') {
-         // Attempt to set the active weapon (this method now handles equip/craft/unequip)
-         success = playerRef.setActiveWeapon(itemType);
-     }
+    // Delegate the action logic to the Player instance methods
+    if (category === 'material') {
+        // Attempt to set the active inventory material
+        success = playerRef.setActiveInventoryMaterial(itemType);
+    } else if (category === 'weapon') {
+        // Attempt to set the active weapon (this method now handles equip/craft/unequip)
+        success = playerRef.setActiveWeapon(itemType);
+    }
 
-     // Optional: Add visual feedback for success/failure based on the player action result
-     const slotDiv = itemSlotDivs[itemType];
-     if(slotDiv && typeof slotDiv.animate === 'function') {
-         if (!success) {
-             // Visual shake for failed interaction (e.g., cannot craft, cannot select empty material)
-             // This provides feedback even if the slot was visually enabled (e.g. 'Click to Craft' but then materials were used just before click)
-             slotDiv.animate([
-                 { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' },
-                 { transform: 'translateX(-3px)' }, { transform: 'translateX(0px)' }
-             ], { duration: 200, easing: 'ease-in-out' });
-         } else {
-              // Visual feedback for successful interaction (e.g., pulse)
-              slotDiv.animate([
-                  { transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }
-              ], { duration: 150, easing: 'ease-out' });
-         }
-     }
-     // Note: The 'active' class on the slot is handled by updatePlayerInfo running in the main loop.
-     // The 'disabled' class is also handled by updatePlayerInfo.
+    // Optional: Add visual feedback for success/failure based on the player action result
+    const slotDiv = itemSlotDivs[itemType];
+    if(slotDiv && typeof slotDiv.animate === 'function') {
+        if (!success) {
+            // Visual shake for failed interaction (e.g., cannot craft, cannot select empty material)
+            // This provides feedback even if the slot was visually enabled (e.g. 'Click to Craft' but then materials were used just before click)
+            slotDiv.animate([
+                { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' },
+                { transform: 'translateX(-3px)' }, { transform: 'translateX(0px)' }
+            ], { duration: 200, easing: 'ease-in-out' });
+        } else {
+            // Visual feedback for successful interaction (e.g., pulse)
+            slotDiv.animate([
+                { transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }
+            ], { duration: 150, easing: 'ease-out' });
+        }
+    }
+    // Note: The 'active' class on the slot is handled by updatePlayerInfo running in the main loop.
+    // The 'disabled' class is also handled by updatePlayerInfo.
 }
 
 
@@ -321,14 +321,14 @@ export function setPlayerReference(playerObject) {
     playerRef = playerObject;
     // When player reference is set (on game start) or cleared (on game end), update UI
     if (playerRef) {
-         // Request an initial update for player UI elements using current player data
-         requestAnimationFrame(() => {
-             updatePlayerInfo(
-                 playerRef.getCurrentHealth(), playerRef.getMaxHealth(),
-                 playerRef.getInventory(), playerRef.hasWeapon(Config.WEAPON_TYPE_SWORD),
-                 playerRef.hasWeapon(Config.WEAPON_TYPE_SPEAR), playerRef.hasWeapon(Config.WEAPON_TYPE_SHOVEL)
-             );
-         });
+        // Request an initial update for player UI elements using current player data
+        requestAnimationFrame(() => {
+            updatePlayerInfo(
+                playerRef.getCurrentHealth(), playerRef.getMaxHealth(),
+                playerRef.getInventory(), playerRef.hasWeapon(Config.WEAPON_TYPE_SWORD),
+                playerRef.hasWeapon(Config.WEAPON_TYPE_SPEAR), playerRef.hasWeapon(Config.WEAPON_TYPE_SHOVEL)
+            );
+        });
     } else {
         // Clear UI if player is removed (restart or game over)
         if (playerHealthBarFillEl) playerHealthBarFillEl.style.width = '0%';
@@ -336,28 +336,28 @@ export function setPlayerReference(playerObject) {
         // Loop through all known item slots and reset their state
         for(const key in itemSlotDivs){
             const slotDiv = itemSlotDivs[key];
-             if(!slotDiv) continue; // Skip if element not found
-             slotDiv.classList.remove('active'); // Remove active state
-             slotDiv.classList.add('disabled'); // Re-disable all slots
+            if(!slotDiv) continue; // Skip if element not found
+            slotDiv.classList.remove('active'); // Remove active state
+            slotDiv.classList.add('disabled'); // Re-disable all slots
 
-             // Reset material counts
+            // Reset material counts
             if (slotDiv.dataset.category === 'material') {
                 const countSpan = slotDiv.querySelector('.item-count');
                 if (countSpan) countSpan.textContent = ''; // Clear counts
-                 slotDiv.title = `${key.toUpperCase()} (0)`; // Reset material title
-             } else if (slotDiv.dataset.category === 'weapon') {
-                 // Reset weapon titles to 'Not Found' or initial crafting requirement
-                 // Need to determine the correct initial title based on craftability
-                 const isCraftable = Config.CRAFTING_RECIPES[key] !== undefined;
-                 if(isCraftable) {
-                      const recipe = Config.CRAFTING_RECIPES[key];
-                      let titleText = `${key.toUpperCase()} (Need: `;
-                      titleText += recipe.map(ing => `${ing.amount} ${ing.type}`).join(', ');
-                      titleText += ')';
-                      slotDiv.title = titleText;
-                 } else {
-                      slotDiv.title = `${key.toUpperCase()} (Not Found)`;
-                 }
+                slotDiv.title = `${key.toUpperCase()} (0)`; // Reset material title
+            } else if (slotDiv.dataset.category === 'weapon') {
+                // Reset weapon titles to 'Not Found' or initial crafting requirement
+                // Need to determine the correct initial title based on craftability
+                const isCraftable = Config.CRAFTING_RECIPES[key] !== undefined;
+                if(isCraftable) {
+                    const recipe = Config.CRAFTING_RECIPES[key];
+                    let titleText = `${key.toUpperCase()} (Need: `;
+                    titleText += recipe.map(ing => `${ing.amount} ${ing.type}`).join(', ');
+                    titleText += ')';
+                    slotDiv.title = titleText;
+                } else {
+                    slotDiv.title = `${key.toUpperCase()} (Not Found)`;
+                }
             }
         }
     }
@@ -392,12 +392,12 @@ export function illuminateButton(actionName) {
 
     // Prevent illumination if the controls area is hidden (except for pause)
     // Check if the button's parent area (actionButtonsAreaEl) is hidden by the 'controls-hidden' class.
-     // Ensure actionButtonsAreaEl exists before checking classList.
+    // Ensure actionButtonsAreaEl exists before checking classList.
     if (actionButtonsAreaEl && bottomSidebarEl && bottomSidebarEl.classList.contains('controls-hidden') && actionName !== 'pause') {
-         // Also ensure the button itself is within the hidden area (most are, but safeguard)
-         if(actionButtonsAreaEl.contains(button)) {
-              return;
-         }
+        // Also ensure the button itself is within the hidden area (most are, but safeguard)
+        if(actionButtonsAreaEl.contains(button)) {
+            return;
+        }
     }
 
     // Clear any existing timer for this button to reset the flash
@@ -420,19 +420,19 @@ export function illuminateButton(actionName) {
 export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMuted) {
     // Ensure elements exist before modifying their classes/titles
     if (toggleGridButtonEl) {
-         // Use 'active' class for grid button when grid is visible
-         toggleGridButtonEl.classList.toggle('active', isGridVisible);
-         toggleGridButtonEl.title = isGridVisible ? 'Hide Grid' : 'Show Grid';
+        // Use 'active' class for grid button when grid is visible
+        toggleGridButtonEl.classList.toggle('active', isGridVisible);
+        toggleGridButtonEl.title = isGridVisible ? 'Hide Grid' : 'Show Grid';
     }
     if (muteMusicButtonEl) {
-         // Use 'muted' class for music button when music is muted
-         muteMusicButtonEl.classList.toggle('muted', isMusicMuted);
-         muteMusicButtonEl.title = isMusicMuted ? 'Unmute Music' : 'Toggle Music';
+        // Use 'muted' class for music button when music is muted
+        muteMusicButtonEl.classList.toggle('muted', isMusicMuted);
+        muteMusicButtonEl.title = isMusicMuted ? 'Unmute Music' : 'Toggle Music';
     }
     if (muteSfxButtonEl) {
-         // Use 'muted' class for sfx button when sfx is muted
-         muteSfxButtonEl.classList.toggle('muted', isSfxMuted);
-         muteSfxButtonEl.title = isSfxMuted ? 'Unmute SFX' : 'Toggle SFX';
+        // Use 'muted' class for sfx button when sfx is muted
+        muteSfxButtonEl.classList.toggle('muted', isSfxMuted);
+        muteSfxButtonEl.title = isSfxMuted ? 'Unmute SFX' : 'Toggle SFX';
     }
 }
 
@@ -443,14 +443,14 @@ export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMut
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
     // Ensure essential UI elements exist before proceeding
     if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
-         console.error("UI UpdatePlayerInfo: Missing essential elements.");
-         // Still try to update health bar if available
-         if(playerHealthBarFillEl){
-              const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
-              const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
-              playerHealthBarFillEl.style.width = `${healthPercent}%`;
-         }
-         return; // Cannot proceed with slot updates if containers are missing
+        console.error("UI UpdatePlayerInfo: Missing essential elements.");
+        // Still try to update health bar if available
+        if(playerHealthBarFillEl){
+            const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
+            const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
+            playerHealthBarFillEl.style.width = `${healthPercent}%`;
+        }
+        return; // Cannot proceed with slot updates if containers are missing
     }
 
     // Update Health Bar (Top Sidebar)
@@ -470,8 +470,8 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         const slotDiv = itemSlotDivs[materialType];
         // Ensure the corresponding slot div exists
         if (!slotDiv) {
-             // console.warn(`UI updatePlayerInfo: Material slot div not found for type "${materialType}".`);
-             continue; // Skip if the element wasn't created
+            // console.warn(`UI updatePlayerInfo: Material slot div not found for type "${materialType}".`);
+            continue; // Skip if the element wasn't created
         }
 
         const count = inventory[materialType] || 0; // Get count from the passed inventory object
@@ -501,11 +501,11 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
 
     for (const weaponType of WEAPON_SLOTS_ORDER) {
         const slotDiv = itemSlotDivs[weaponType];
-         // Ensure the corresponding slot div exists
-         if (!slotDiv) {
-              // console.warn(`UI updatePlayerInfo: Weapon slot div not found for type "${weaponType}".`);
-              continue; // Skip if the element wasn't created
-         }
+        // Ensure the corresponding slot div exists
+        if (!slotDiv) {
+            // console.warn(`UI updatePlayerInfo: Weapon slot div not found for type "${weaponType}".`);
+            continue; // Skip if the element wasn't created
+        }
 
         const possessed = playerPossession[weaponType]; // Check if player possesses this weapon
         const recipe = Config.CRAFTING_RECIPES[weaponType]; // Get the crafting recipe (might be undefined)
@@ -527,10 +527,10 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
                     const requiredType = ingredient.type;
                     const requiredAmount = ingredient.amount;
                     const possessedAmount = inventory[requiredType] || 0; // Get count from passed inventory
-                     if (possessedAmount < requiredAmount) {
-                         canAfford = false;
-                         break; // Stop checking if one ingredient is missing
-                     }
+                    if (possessedAmount < requiredAmount) {
+                        canAfford = false;
+                        break; // Stop checking if one ingredient is missing
+                    }
                 }
             } else {
                 canAfford = false; // Cannot afford if no player/inventory
@@ -544,9 +544,9 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
                 // Player does NOT have the weapon and CANNOT craft it yet. The slot is NOT interactive.
                 canInteract = false;
                 titleText += ' (Need: '; // Show recipe needed
-                 // Build recipe string: e.g., "Need: 5 Stone, 2 Wood"
-                 titleText += recipe.map(ing => `${ing.amount} ${ing.type.charAt(0).toUpperCase() + ing.type.slice(1)}`).join(', '); // Capitalize material names
-                 titleText += ')';
+                // Build recipe string: e.g., "Need: 5 Stone, 2 Wood"
+                titleText += recipe.map(ing => `${ing.amount} ${ing.type.charAt(0).toUpperCase() + ing.type.slice(1)}`).join(', '); // Capitalize material names
+                titleText += ')';
             }
         } else {
             // Weapon is neither possessed nor craftable (e.g., Shovel if lost). The slot is NOT interactive.
@@ -571,15 +571,15 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
 // Updates the portal health bar and its title color
 export function updatePortalInfo(currentHealth, maxHealth) {
     // Ensure essential UI elements exist before proceeding
-     if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) {
-         console.error("UI UpdatePortalInfo: Missing essential elements.");
-         // Still try to update health bar if available
-         if(portalHealthBarFillEl){
-              const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
-              const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
-              portalHealthBarFillEl.style.width = `${healthPercent}%`;
-         }
-         return; // Cannot update title if elements are missing
+    if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) {
+        console.error("UI UpdatePortalInfo: Missing essential elements.");
+        // Still try to update health bar if available
+        if(portalHealthBarFillEl){
+            const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
+            const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
+            portalHealthBarFillEl.style.width = `${healthPercent}%`;
+        }
+        return; // Cannot update title if elements are missing
     }
 
     // Update Health Bar
@@ -602,8 +602,8 @@ export function updatePortalInfo(currentHealth, maxHealth) {
 export function updateWaveTimer(waveInfo) {
     // Ensure essential UI elements exist
     if (!timerBarFillEl || !timerTextOverlayEl || !timerRowEl) {
-         console.error("UI UpdateWaveTimer: Missing essential elements.");
-         return;
+        console.error("UI UpdateWaveTimer: Missing essential elements.");
+        return;
     }
 
     // Destructure relevant properties from the waveInfo object
@@ -628,31 +628,31 @@ export function updateWaveTimer(waveInfo) {
         case 'WAVE_COUNTDOWN':
             const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get current living enemy count
             if (livingEnemies > 0) {
-                 timerText = `WAVE ${mainWaveNumber} (${livingEnemies} LEFT)`;
+                timerText = `WAVE ${mainWaveNumber} (${livingEnemies} LEFT)`;
             } else {
-                 // Check if spawning is complete for the current wave
-                 // This needs WaveManager to expose if all groups/subwaves are done.
-                 // For now, simplify: if no enemies and timer < 5, show "Intermission Soon"
-                 // This check is a bit simplistic as spawning might still be happening.
-                 // A more robust check would be needed from WaveManager itself.
-                 if (clampedTimer <= 5 && livingEnemies === 0) { // A rough check
-                       timerText = "INTERMISSION SOON!";
-                 } else {
-                      timerText = `WAVE ${mainWaveNumber} (CLEARING)`;
-                 }
+                // Check if spawning is complete for the current wave
+                // This needs WaveManager to expose if all groups/subwaves are done.
+                // For now, simplify: if no enemies and timer < 5, show "Intermission Soon"
+                // This check is a bit simplistic as spawning might still be happening.
+                // A more robust check would be needed from WaveManager itself.
+                if (clampedTimer <= 5 && livingEnemies === 0) { // A rough check
+                    timerText = "INTERMISSION SOON!";
+                } else {
+                    timerText = `WAVE ${mainWaveNumber} (CLEARING)`;
+                }
             }
             break;
         case 'BUILDPHASE':
             timerText = `BUILD TIME (WAVE ${mainWaveNumber} NEXT)`; // Show which wave is upcoming
             break;
         case 'WARPPHASE':
-             let animStatus = "";
-             if (Config.AGING_ANIMATION_ENABLED && WorldManager && !WorldManager.areAgingAnimationsComplete()) { // Check WorldManager exists
-                 animStatus = " (MORPHING...)";
-             }
-             timerText = `WARPING TO WAVE ${mainWaveNumber}${animStatus}`;
-             displayTimerValue = true; // Show timer during warp
-             break;
+            let animStatus = "";
+            if (WorldManager && !WorldManager.areAgingAnimationsComplete()) { // Check WorldManager exists
+                animStatus = " (MORPHING...)";
+            }
+            timerText = `WARPING TO WAVE ${mainWaveNumber}${animStatus}`;
+            displayTimerValue = true; // Show timer during warp
+            break;
         case 'GAME_OVER':
             timerText = "GAME OVER";
             displayTimerValue = false;
@@ -668,12 +668,12 @@ export function updateWaveTimer(waveInfo) {
             break;
     }
 
-     // Append formatted time if displayTimerValue is true
+    // Append formatted time if displayTimerValue is true
     if (displayTimerValue) {
-         const minutes = Math.floor(clampedTimer / 60);
-         const seconds = Math.floor(clampedTimer % 60);
-         const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
-         timerText = `${timerText}: ${minutes}:${formattedSeconds}`;
+        const minutes = Math.floor(clampedTimer / 60);
+        const seconds = Math.floor(clampedTimer % 60);
+        const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
+        timerText = `${timerText}: ${minutes}:${formattedSeconds}`;
     }
 
     timerTextOverlayEl.textContent = timerText;
@@ -713,8 +713,8 @@ export function showEpochText(epochMessage) { // Changed parameter name for clar
         // The transition duration is 0.5s in the CSS for opacity
         const transitionDurationMs = 500; // Match the CSS transition duration
         epochOverlayEl._hideTimer = setTimeout(() => {
-             epochOverlayEl.style.visibility = 'hidden';
-             epochOverlayEl._hideTimer = null; // Clear the reference after hiding
+            epochOverlayEl.style.visibility = 'hidden';
+            epochOverlayEl._hideTimer = null; // Clear the reference after hiding
         }, transitionDurationMs);
 
     }, displayDurationMs); // Delay before starting fade-out
