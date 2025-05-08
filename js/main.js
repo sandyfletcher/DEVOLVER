@@ -43,6 +43,7 @@ let restartButtonVictory = null;
 let restartButtonPause = null; // pause restart button
 let gameOverStatsTextP = null;
 let victoryStatsTextP = null;
+let errorOverlayMessageP = null; // For the dynamic error message
 let btnToggleGrid = null;
 let muteMusicButtonEl = null;
 let muteSfxButtonEl = null;
@@ -56,6 +57,7 @@ const GameState = Object.freeze({ // Game State Enum
     MAIN_MENU: 'MAIN_MENU',                 // main menu screen
     SETTINGS_MENU: 'SETTINGS_MENU',         // settings menu screen
     CUTSCENE: 'CUTSCENE',                   // intro cutscene playing
+    ERROR: 'ERROR',                         // NEW: error overlay
     RUNNING: 'RUNNING',                     // loop active, timers decrement, physics run, state transitions occur
     PAUSED: 'PAUSED',                       // loop paused, no updates (except cutscene timer if state was CUTSCENE when paused?) - Let's only pause RUNNING.
     GAME_OVER: 'GAME_OVER',                 // gameover screen
@@ -154,7 +156,7 @@ function showOverlay(stateToShow) {
     gameOverlay.classList.remove(
         'active', // Crucially remove 'active' to reset transitions
         'show-title', 'show-mainmenu', 'show-settings', 'show-cutscene',
-        'show-pause', 'show-gameover', 'show-victory'
+        'show-pause', 'show-gameover', 'show-victory', 'show-error' // Added show-error
     );
     appContainer.classList.remove('overlay-active');
     // Stop any UI music that might be playing before starting the new one for the new overlay state
@@ -256,6 +258,11 @@ function showOverlay(stateToShow) {
             } else {
                 console.warn("Victory and Pause music tracks not defined."); 
             }
+            break;
+        case GameState.ERROR: // New case for error state
+            gameOverlay.classList.add('show-error');
+            // Error text content is set in the init() catch block
+            // No specific audio for error state, music should have been stopped
             break;
         default:
             console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}`);
@@ -905,6 +912,7 @@ function init() { // Initializes the game environment, DOM references, event lis
         restartButtonPause = document.getElementById('restart-button-overlay-pause');
         gameOverStatsTextP = document.getElementById('gameover-stats-text');
         victoryStatsTextP = document.getElementById('victory-stats-text');
+        errorOverlayMessageP = document.getElementById('error-message-text'); // Get ref for error message P tag
         cutsceneSkipButton = document.getElementById('cutscene-skip-button');
         btnToggleGrid = document.getElementById('btn-toggle-grid');
         muteMusicButtonEl = document.getElementById('btn-mute-music');
@@ -922,16 +930,18 @@ function init() { // Initializes the game environment, DOM references, event lis
         const requiredElements = [ // --- Verification - Check if all required DOM elements were found ---
             appContainer, gameOverlay, titleStartButton, mainmenuStartGameButton, mainmenuSettingsButton, settingsBackButton,
             resumeButton, restartButtonGameOver, restartButtonVictory, restartButtonPause, gameOverStatsTextP, victoryStatsTextP,
+            errorOverlayMessageP, // Added error message P to check
             btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl, epochOverlayEl, cutsceneSkipButton
         ];
         if (requiredElements.some(el => !el)) {
-            const elementNames = [
+            const elementNames = [ // Map indices to names for logging
                 'appContainer (#app-container)', 'gameOverlay (#game-overlay)',
                 'titleStartButton (#start-game-button)', 'mainmenuStartGameButton (#mainmenu-start-game-button)', 'mainmenuSettingsButton (#mainmenu-settings-button)', 'settingsBackButton (#settings-back-button)',
                 'resumeButton (#resume-button)',
                 'restartButtonGameOver (#restart-button-overlay)', 'restartButtonVictory (#restart-button-overlay-victory)',
                 'restartButtonPause (#restart-button-overlay-pause)',
                 'gameOverStatsTextP (#gameover-stats-text)', 'victoryStatsTextP (#victory-stats-text)',
+                'errorOverlayMessageP (#error-message-text)', // Added name for logging
                 'btnToggleGrid (#btn-toggle-grid)', 'muteMusicButtonEl (#btn-mute-music)', 'muteSfxButtonEl (#btn-mute-sfx)',
                 'epochOverlayEl (#epoch-overlay)',
                 'cutsceneSkipButton (#cutscene-skip-button)',
@@ -981,34 +991,16 @@ function init() { // Initializes the game environment, DOM references, event lis
         gameLoopId = requestAnimationFrame(gameLoop);
     } catch (error) {
         console.error("FATAL: Initialization Error:", error);
-        if (gameOverlay) {
-            gameOverlay.style.width = '100%';
-            gameOverlay.style.height = '100%';
-            gameOverlay.style.position = 'fixed';
-            gameOverlay.style.top = '0';
-            gameOverlay.style.left = '0';
-            gameOverlay.style.display = 'flex';
-            gameOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.95)';
-            gameOverlay.style.color = 'red';
-            gameOverlay.style.zIndex = '1000';
-            gameOverlay.style.justifyContent = 'center';
-            gameOverlay.style.alignItems = 'center';
-            gameOverlay.style.flexDirection = 'column';
-            gameOverlay.style.textAlign = 'center';
-            gameOverlay.style.padding = '20px';
-            gameOverlay.style.boxSizing = 'border-box';
-            gameOverlay.innerHTML = `
-                <div id="overlay-error-content" style="display: flex; flex-direction: column; align-items: center; max-width: 600px;">
-                    <h1 style="font-size: 2.5em; margin-bottom: 1rem; font-family: 'RubikIso', sans-serif;">Game Error</h1>
-                    <p style="font-size: 1.3em; margin-bottom: 1.5rem;">An unrecoverable error occurred during initialization.</p>
-                    <p style="font-size: 1.1em; margin-bottom: 2rem; word-break: break-word;">Error: ${error.message}</p>
-                    <p style="font-size: 1em;">Please check the browser's developer console (usually by pressing F12) for more technical details and try refreshing the page.</p>
-                </div>`;
-            gameOverlay.classList.add('active');
-            if(appContainer) appContainer.classList.add('overlay-active');
-                AudioManager.stopAllMusic();
+        // If gameOverlay and errorOverlayMessageP exist, use the new overlay system
+        if (gameOverlay && errorOverlayMessageP) {
+            errorOverlayMessageP.textContent = `Error: ${error.message}`; // Set the dynamic error message
+            currentGameState = GameState.ERROR; // Set state before showing overlay
+            showOverlay(GameState.ERROR); // Show the styled error overlay
+            // appContainer.classList.add('overlay-active'); // showOverlay handles this now
+            AudioManager.stopAllMusic();
         } else {
-            alert(`FATAL Initialization Error:\n${error.message}\n`);
+            // Fallback to alert if the new overlay system isn't available (e.g., error happened before DOM refs were obtained)
+            alert(`FATAL Initialization Error:\n${error.message}\nCheck console for details.`);
         }
     }
 }

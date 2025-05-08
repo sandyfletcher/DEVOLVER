@@ -80,6 +80,7 @@ body {
 #game-overlay.show-cutscene #overlay-cutscene-content,
 #game-overlay.show-pause #overlay-pause-content,
 #game-overlay.show-gameover #overlay-gameover-content,
+#game-overlay.show-error #overlay-error-content, /* Added for error overlay */
 #game-overlay.show-victory #overlay-victory-content {
     display: flex; /* Show only the matched content div */
     /* IMPORTANT: Do NOT put general flex/sizing rules here that should apply to all content types */
@@ -98,6 +99,47 @@ body {
     position: relative; /* Critical for positioning .cutscene-image children */
     /* The display: flex; is handled by the rule above */
 }
+
+/* NEW: Styles for the Error Overlay state */
+#game-overlay.show-error {
+    background-color: rgba(0, 0, 0, 0.95); /* Darker background for error */
+    color: red;                            /* Red text color for error */
+    z-index: 1000;                         /* Ensure it's on top */
+    padding: 20px;                         /* Padding for the overall error overlay */
+}
+
+/* Styles for the content within the Error Overlay */
+#overlay-error-content {
+    /* Inherits display: flex, flex-direction: column, align-items: center from .overlay-content */
+    max-width: 600px; /* Specific max-width for error content */
+}
+#overlay-error-content h1 {
+    font-family: 'RubikIso', sans-serif; /* Specific font for error title */
+    font-size: 2.5em;                    /* Specific font size */
+    margin-bottom: 1rem;
+    color: red; /* Ensure h1 is also red */
+    text-shadow: 1px 1px 3px rgba(255, 100, 100, 0.5); /* Optional shadow */
+}
+#overlay-error-content p {
+    font-size: 1.2em; /* Default for first p, similar to other overlays */
+    margin-bottom: 1.5rem;
+    color: #ffdddd; /* Lighter red/pink for paragraphs for readability */
+}
+#overlay-error-content p#error-message-text { /* For the dynamic error message */
+    font-size: 1.1em;
+    margin-bottom: 2rem;
+    word-break: break-word; /* Ensure long error messages wrap */
+    color: white; /* White for better contrast for the actual message */
+    background-color: rgba(50,0,0,0.5);
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid red;
+}
+#overlay-error-content p:last-child { /* For the "Please check console" message */
+    font-size: 1em;
+    color: #ffdddd;
+}
+
 
 #game-overlay h1 {
     font-family: 'RubikIso', sans-serif;

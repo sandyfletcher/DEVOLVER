@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><!-- Prevent zoom? -->
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta name="description" content="DEVOLVER - A 2D wave survival game built with HTML Canvas and JavaScript.">
         <title>DEVOLVER</title>
         <link rel="stylesheet" href="style.css">
@@ -98,7 +98,6 @@
                      <button id="cutscene-skip-button">SKIP</button>
                  </div>
 
-
                 <!-- Pause Content (Existing) -->
                  <div id="overlay-pause-content" class="overlay-content">
                      <h2>PAUSED</h2>
@@ -116,6 +115,13 @@
                     <h2>VICTORY!</h2>
                     <p id="victory-stats-text">You cleared all waves!</p>
                     <button id="restart-button-overlay-victory">PLAY AGAIN?</button>
+                </div>
+                <!-- New: Error Overlay Content -->
+                <div id="overlay-error-content" class="overlay-content">
+                    <h1>Game Error</h1>
+                    <p>An unrecoverable error occurred during initialization.</p>
+                    <p id="error-message-text">Error: [Dynamic error message here]</p>
+                    <p>Please check the browser's developer console (usually by pressing F12) for more technical details and try refreshing the page.</p>
                 </div>
             </div>
         </div>
