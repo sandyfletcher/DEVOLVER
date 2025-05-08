@@ -1,6 +1,6 @@
-// =============================================================================
+// -----------------------------------------------------------------------------
 // root/js/main.js - Game Entry Point and Main Loop
-// =============================================================================
+// -----------------------------------------------------------------------------
 
 import * as UI from './ui.js';
 import * as Input from './input.js';
@@ -19,20 +19,30 @@ import { Player } from './player.js';
 import { Portal } from './portal.js';
 
 // =============================================================================
-// --- Global Game Variables ---
+// --- Global Variables ---
 // =============================================================================
 
-let player = null;
-let gameStartTime = 0; // track when the current game started for playtime/stats
-let portal = null;
-let gameLoopId = null; // requestAnimationFrame ID for pausing
+let gameStartTime = 0; // track when current game started for playtime stat
 let lastTime = 0; // time since last frame
+let gameLoopId = null; // requestAnimationFrame ID for pausing
+let isAutoPaused = false; // flag if paused due to tab visibility
+let isGridVisible = false;
+
+let player = null;
+let portal = null;
 let cameraX = 0;
 let cameraY = 0;
 let cameraScale = 1.0; // 1 = normal zoom
+
 let appContainer = null;
 let gameOverlay = null;
 let epochOverlayEl = null;
+
+let cutsceneImages = []; // array of HTMLImageElements
+let currentCutsceneImageIndex = 0;
+let cutsceneTimer = 0;
+let cutsceneDurationPerImage = Config.CUTSCENE_IMAGE_DURATION;
+
 let titleStartButton = null;
 let mainmenuStartGameButton = null;
 let mainmenuSettingsButton = null;
@@ -40,43 +50,40 @@ let settingsBackButton = null;
 let resumeButton = null;
 let restartButtonGameOver = null;
 let restartButtonVictory = null;
-let restartButtonPause = null; // pause restart button
-let gameOverStatsTextP = null;
-let victoryStatsTextP = null;
-let errorOverlayMessageP = null; // For the dynamic error message
+let restartButtonPause = null;
+let cutsceneSkipButton = null;
 let btnToggleGrid = null;
 let muteMusicButtonEl = null;
 let muteSfxButtonEl = null;
-let cutsceneImages = []; // array of HTMLImageElements
-let currentCutsceneImageIndex = 0;
-let cutsceneTimer = 0;
-let cutsceneDurationPerImage = Config.CUTSCENE_IMAGE_DURATION;
-let cutsceneSkipButton = null;
-const GameState = Object.freeze({ // Game State Enum
-    PRE_GAME: 'PRE_GAME',                   // title screen
-    MAIN_MENU: 'MAIN_MENU',                 // main menu screen
-    SETTINGS_MENU: 'SETTINGS_MENU',         // settings menu screen
-    CUTSCENE: 'CUTSCENE',                   // intro cutscene playing
-    ERROR: 'ERROR',                         // NEW: error overlay
-    RUNNING: 'RUNNING',                     // loop active, timers decrement, physics run, state transitions occur
-    PAUSED: 'PAUSED',                       // loop paused, no updates (except cutscene timer if state was CUTSCENE when paused?) - Let's only pause RUNNING.
-    GAME_OVER: 'GAME_OVER',                 // gameover screen
-    VICTORY: 'VICTORY'                      // victory screen
+
+let gameOverStatsTextP = null;
+let victoryStatsTextP = null;
+let errorOverlayMessageP = null;
+
+const GameState = Object.freeze({ // game state enum
+    PRE_GAME: 'PRE_GAME', // title screen
+    MAIN_MENU: 'MAIN_MENU', // main menu screen
+    SETTINGS_MENU: 'SETTINGS_MENU', // settings menu screen
+    CUTSCENE: 'CUTSCENE', // intro cutscene playing
+    RUNNING: 'RUNNING', // loop active, timers decrement, physics run, state transitions occur
+    PAUSED: 'PAUSED', // loop paused, no updates (except cutscene timer if state was CUTSCENE when paused?) - Let's only pause RUNNING.
+    GAME_OVER: 'GAME_OVER', // gameover screen
+    VICTORY: 'VICTORY', // victory screen
+    ERROR: 'ERROR' // error overlay
 });
-let currentGameState = GameState.PRE_GAME;  // initial state
-let isAutoPaused = false;                   // boolean if paused due to losing tab visibility
-let isGridVisible = false;
+
+let currentGameState = GameState.PRE_GAME; // initial state
 
 // =============================================================================
 // --- Helper Functions ---
 // =============================================================================
 
-function getWorldPixelWidth() { return Config.CANVAS_WIDTH; } // Returns the world width in pixels (matches internal canvas width)
-function getWorldPixelHeight() { return Config.GRID_ROWS * Config.BLOCK_HEIGHT; } // Returns the world height in pixels (grid rows * block height)
-window.pauseGameCallback = pauseGame; // Expose pauseGame globally for the UI pause button.
-window.updateCameraScale = function(deltaScale) { // Expose updateCameraScale globally for the Input module (mouse wheel).
-    if (currentGameState !== GameState.RUNNING && currentGameState !== GameState.PAUSED) { // Ensure camera can only be updated if game is running or paused (not during overlays or menu states)
-    return; // Ignore zoom input outside active game states
+function getWorldPixelWidth() { return Config.CANVAS_WIDTH; }
+function getWorldPixelHeight() { return Config.GRID_ROWS * Config.BLOCK_HEIGHT; }
+window.pauseGameCallback = pauseGame; // expose pauseGame globally for UI pause button
+window.updateCameraScale = function(deltaScale) { // expose updateCameraScale globally for input (mouse wheel)
+    if (currentGameState !== GameState.RUNNING && currentGameState !== GameState.PAUSED) {
+        return; // camera can only zoom if game is running/paused, not in overlay/menu
     }
     const oldScale = cameraScale;
     let newScale = cameraScale + deltaScale;
@@ -84,72 +91,59 @@ window.updateCameraScale = function(deltaScale) { // Expose updateCameraScale gl
     const internalCanvasHeight = Config.CANVAS_HEIGHT;
     const worldPixelWidth = getWorldPixelWidth(); // world dimensions
     const worldPixelHeight = getWorldPixelHeight();
-    // Calculate minimum scale required to make world fill viewport (no black bars if world is large enough)
-    // Avoid division by zero if world dimensions are somehow 0
-    const scaleToFitWidth = (worldPixelWidth > 0) ? internalCanvasWidth / worldPixelWidth : 1;
+    const scaleToFitWidth = (worldPixelWidth > 0) ? internalCanvasWidth / worldPixelWidth : 1; // calculate minimum scale to fill viewport - avoid division by 0
     const scaleToFitHeight = (worldPixelHeight > 0) ? internalCanvasHeight / worldPixelHeight : 1;
     const minScaleRequired = Math.max(scaleToFitWidth, scaleToFitHeight);
-    const effectiveMinScale = Math.max(Config.MIN_CAMERA_SCALE, minScaleRequired); // effective minimum scale is LARGER of configured minimum and required scale to fill view
+    const effectiveMinScale = Math.max(Config.MIN_CAMERA_SCALE, minScaleRequired); // effective minimum scale is the LARGER of configured minimum and required scale to fill view
     newScale = Math.max(effectiveMinScale, Math.min(newScale, Config.MAX_CAMERA_SCALE)); // clamp new scale between effective minimum and configured maximum
     cameraScale = newScale; // apply final clamped scale - camera position re-clamped in game loop
 }
-function getMouseWorldCoords(inputMousePos) { // Convert canvas pixel coordinates to world coordinates
+function getMouseWorldCoords(inputMousePos) { // convert canvas coordinates to world coordinates
     if (!inputMousePos || typeof inputMousePos.x !== 'number' || typeof inputMousePos.y !== 'number' || isNaN(inputMousePos.x) || isNaN(inputMousePos.y)) {
         console.warn("getMouseWorldCoords: Invalid input mouse position.", inputMousePos);
-        return { // return center of the viewport in world coordinates as a fallback
+        return { // return center of viewport in world coordinates as fallback
             x: cameraX + (Config.CANVAS_WIDTH / 2) / cameraScale,
             y: cameraY + (Config.CANVAS_HEIGHT / 2) / cameraScale
         };
     }
-    // calculate coordinates based on camera position and scale
-    const worldX = cameraX + (inputMousePos.x / cameraScale);
+    const worldX = cameraX + (inputMousePos.x / cameraScale); // calculate coordinates based on camera position and scale
     const worldY = cameraY + (inputMousePos.y / cameraScale);
     return { x: worldX, y: worldY };
 }
-// --- Convert canvas pixel coordinates directly to grid coordinates ---
-function getMouseGridCoords(inputMousePos) {
+function getMouseGridCoords(inputMousePos) { // convert canvas coordinates to grid coordinates
     const { x: worldX, y: worldY } = getMouseWorldCoords(inputMousePos);
-    // use utility function to convert world pixels to grid indices
-    return GridCollision.worldToGridCoords(worldX, worldY);
+    return GridCollision.worldToGridCoords(worldX, worldY); // world pixels to grid indices
 }
-function handleWaveStart(waveNumber) { // Callback function to handle the start of a new wave - Used to display the epoch text overlay.
+function handleWaveStart(waveNumber) { // callback function to handle start of new wave
     console.log(`Triggered by WaveManager - Starting Wave ${waveNumber}`);
 }
-// --- Toggle grid visibility ---
-// Exposed globally for UI/Input buttons
-window.toggleGridDisplay = toggleGridDisplay;
+window.toggleGridDisplay = toggleGridDisplay; // exposed toggle globally for UI button
 function toggleGridDisplay() {
     isGridVisible = !isGridVisible;
     console.log(`Main: Grid display is now ${isGridVisible ? 'ON' : 'OFF'}.`);
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState()); // update UI button appearance immediately
-    // Note: Drawing the grid is handled in the gameLoop based on the `isGridVisible` flag.
 }
-
-window.toggleMusicMute = toggleMusicMute; // Toggle music mute - Exposed globally for UI/Input buttons
-
+window.toggleMusicMute = toggleMusicMute; // exposed globally for button
 function toggleMusicMute() {
-    const newState = AudioManager.toggleMusicMute(); // Toggle mute state in AudioManager
+    const newState = AudioManager.toggleMusicMute(); // mute in AudioManager
     console.log(`Main: Music is now ${newState ? 'muted' : 'unmuted'}.`);
-    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState); // Update UI button appearance immediately
+    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState); // update button appearance
 }
-// --- Toggle SFX mute ---
-// Exposed globally for UI/Input buttons
 window.toggleSfxMute = toggleSfxMute;
 function toggleSfxMute() {
-    const newState = AudioManager.toggleSfxMute(); // Toggle mute state in AudioManager
+    const newState = AudioManager.toggleSfxMute();
     console.log(`Main: SFX is now ${AudioManager.getSfxMutedState() ? 'muted' : 'unmuted'}.`);
-    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState); // Update UI button appearance immediately
+    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
 }
+
 // =============================================================================
 // --- Overlay Management ---
 // =============================================================================
-// Shows a specific game overlay state (title, pause, game over, victory, menus, cutscene)
-// Handles adding/removing classes and audio transitions.
-function showOverlay(stateToShow) {
-    // Ensure necessary overlay elements and the app container exist
-    if (!gameOverlay || !appContainer) {
+
+function showOverlay(stateToShow) { // show specific overlay state and handle adding/removing classes and audio transitions
+    if (!gameOverlay || !appContainer) { // ensure necessary overlay elements exist
         console.error("ShowOverlay: Core overlay/app container not found!");
-        return; // Cannot show overlay if critical elements are missing
+        return; // cannot show overlay
     }
     // Remove all previous state-specific classes and the 'active' class from the overlay
     // Also remove 'overlay-active' from the app container to reset blur/dim
