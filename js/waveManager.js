@@ -19,7 +19,6 @@ let currentGroupIndex = 0;     // Index within the current sub-wave's enemyGroup
 let enemiesSpawnedThisGroup = 0; // Count for the current group being spawned
 let groupSpawnTimer = 0;       // Timer for delay *between* enemies in the current group
 let groupStartDelayTimer = 0;  // Timer for the delay *before* the current group starts (relative to sub-wave start)
-// MODIFIED: Added BUILDPHASE and WARPPHASE to states
 let state = 'PRE_WAVE'; // States: PRE_WAVE, WAVE_COUNTDOWN, BUILDPHASE, WARPPHASE, VICTORY, GAME_OVER
 let preWaveTimer = Config.WAVE_START_DELAY; // Timer before the very first wave
 let mainWaveTimer = 0; // Timer for the total duration of the current main wave

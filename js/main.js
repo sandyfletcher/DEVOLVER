@@ -646,7 +646,7 @@ function restartGame() {
         currentGameState !== GameState.SETTINGS_MENU && // Allow restarting from settings
         currentGameState !== GameState.MAIN_MENU) // Allow restarting from main menu (shouldn't happen via button click, but state might be there)
     {
-        // console.warn(`[main.js] restartGame called but game not in a restartable state (${currentGameState}).`); // Less verbose
+        console.warn(`[main.js] restartGame called but game not in a restartable state (${currentGameState}).`);
         return;
     }
     console.log(">>> [main.js] Restarting Game (Returning to Main Menu) <<<");
@@ -751,11 +751,11 @@ function gameLoop(timestamp) {
 
             // --- Check for Game Over/Victory Conditions (After all updates and collisions) ---
             if ((player && !player.isActive) || (portal && !portal.isAlive())) {
-                // console.log("Main: Player inactive or Portal destroyed. Triggering Game Over."); // Less verbose
+                console.log("Main: Player inactive or Portal destroyed. Triggering Game Over.");
                 handleGameOver();
             }
             else if (updatedWaveInfo.allWavesCleared && EnemyManager.getLivingEnemyCount() === 0) {
-                 // console.log("Main: WaveManager signals all waves cleared and no living enemies remaining. Triggering Victory."); // Less verbose
+                 console.log("Main: WaveManager signals all waves cleared and no living enemies remaining. Triggering Victory.");
                  handleVictory();
             }
 
@@ -955,7 +955,7 @@ function init() {
             if (img) cutsceneImages.push(img);
         });
         if (cutsceneImages.length !== Config.CUTSCENE_IMAGE_PATHS.length) {
-            // console.warn(`UI Warning: Found ${cutsceneImages.length} cutscene image elements, expected ${Config.CUTSCENE_IMAGE_PATHS.length}. Check IDs in index.html.`); // Less verbose
+            console.warn(`UI Warning: Found ${cutsceneImages.length} cutscene image elements, expected ${Config.CUTSCENE_IMAGE_PATHS.length}. Check IDs in index.html.`);
         }
 
         // --- Verification - Check if all required DOM elements were found ---
@@ -1066,7 +1066,7 @@ function init() {
 // --- Auto-Pause When Hidden ---
 function handleVisibilityChange() {
     if (document.hidden && currentGameState === GameState.RUNNING) {
-        // console.log("[main.js] Document hidden, auto-pausing game."); // Less verbose
+        console.log("[main.js] Document hidden, auto-pausing game.");
         isAutoPaused = true;
         pauseGame();
     }

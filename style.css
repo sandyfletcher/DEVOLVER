@@ -1,6 +1,7 @@
 @font-face { font-family: 'Fredericka'; src: url('assets/fonts/Fredericka.ttf') format('truetype'); font-display: block}
 @font-face { font-family: 'Nosifer'; src: url('assets/fonts/Nosifer.ttf') format('truetype'); font-display: block}
 @font-face { font-family: 'RubikIso'; src: url('assets/fonts/RubikIso.ttf') format('truetype'); font-display: block}
+
 html, body {
     margin: 0;
     padding: 0;
@@ -49,14 +50,13 @@ body {
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
 }
 .overlay-content {
-    display: none; /* Hide all content divs by default */
-    flex-direction: column; /* Keep these default flex settings */
+    display: none;
+    flex-direction: column;
     align-items: center;
     width: 80%;
     max-width: 500px;
-    /* Include other default styles for .overlay-content like padding, margins, etc. */
-    /* e.g., padding: 20px; */
-    /* box-sizing: border-box; */
+    padding: 20px;
+    box-sizing: border-box;
 }
 
 /* Game overlay active state (makes the overlay container visible/blurred background) */
@@ -71,8 +71,6 @@ body {
     /* justify-content: center; */
     /* align-items: center; */
 }
-
-
 /* Show *only* the specific content div based on the game state class on #game-overlay */
 /* These rules override the default display: none for the matched element */
 /* This is the block that ensures only ONE content div is visible at a time */
@@ -100,9 +98,6 @@ body {
     position: relative; /* Critical for positioning .cutscene-image children */
     /* The display: flex; is handled by the rule above */
 }
-
-/* The duplicate/redundant rule block for cutscene layout has been removed */
-
 
 #game-overlay h1 {
     font-family: 'RubikIso', sans-serif;
@@ -468,7 +463,6 @@ noscript p {
     -ms-overflow-style: none; scrollbar-width: none;
 }
 
-/* Styles for the Cutscene Content */
 #overlay-cutscene-content {
     position: relative; /* Needed for absolute positioning of images */
     overflow: hidden; /* Hide parts of images that exceed bounds */

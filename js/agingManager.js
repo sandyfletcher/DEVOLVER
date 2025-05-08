@@ -64,24 +64,19 @@ function getWaterDepthAbove(c, r) {
 export function applyAging(portalRef, intensityFactor) {
     if (!agingNoiseGenerator) {
          console.error("Aging noise generator not initialized!");
-         return []; // MODIFICATION: Return empty array
+         return [];
     }
-
     const grid = WorldData.getGrid();
     if (!grid || grid.length === 0 || grid[0].length === 0) {
         console.error("World grid is not available or empty for aging.");
-        return []; // MODIFICATION: Return empty array
+        return [];
     }
-
     const clampedIntensity = Math.max(0.0, intensityFactor);
     if (clampedIntensity <= 0) {
-        return []; // MODIFICATION: Return empty array
+        return [];
     }
-
-    let changedCellsThisPass = []; // NEW: Initialize array to store changes
-
-    // Iterate through ALL cells
-    for (let r = 0; r < Config.GRID_ROWS; r++) {
+    let changedCellsThisPass = []; // initialize array to store changes
+    for (let r = 0; r < Config.GRID_ROWS; r++) { // iterate through ALL cells
         for (let c = 0; c < Config.GRID_COLS; c++) {
             if (portalRef) {
                  const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
@@ -194,7 +189,7 @@ export function applyAging(portalRef, intensityFactor) {
                 if (!success) {
                      console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
                 } else {
-                    changedCellsThisPass.push({ c, r }); // MODIFICATION: Add to changed cells
+                    changedCellsThisPass.push({ c, r }); // add to changed cells
                 }
             }
 
@@ -218,7 +213,7 @@ export function applyAging(portalRef, intensityFactor) {
                                     if (success) {
                                         // Check if this cell was already added in this pass to avoid duplicates if main.js doesn't dedupe
                                         // For simplicity, let's assume main.js handles deduping or this specific call site doesn't mind.
-                                        changedCellsThisPass.push({ c, r: nr }); // MODIFICATION: Add this changed cell
+                                        changedCellsThisPass.push({ c, r: nr }); // add this changed cell
                                     } else {
                                         console.error(`Aging failed to set block data at [${c}, ${nr}] to SAND during sedimentation below rule.`);
                                     }
@@ -232,6 +227,6 @@ export function applyAging(portalRef, intensityFactor) {
             }
         }
     }
-    // console.log(`Aging pass complete (intensity: ${clampedIntensity.toFixed(2)}). WorldData modified.`);
-    return changedCellsThisPass; // MODIFICATION: Return the array of changes
+    console.log(`Aging pass complete (intensity: ${clampedIntensity.toFixed(2)}). WorldData modified.`);
+    return changedCellsThisPass; // return the array of changes
 }

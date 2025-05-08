@@ -379,8 +379,8 @@ export const DEFAULT_ENEMY_HEIGHT = DEFAULT_ENEMY_HEIGHT_BLOCKS * BLOCK_HEIGHT; 
 
 // Default enemy separation (factor is unitless, strength is block units -> pixels).
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // Factor of enemy's own width.
-export const DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC = 15; // Base push strength in block widths/sec. (Adjusted from 60 as it seemed high for a base).
-export const DEFAULT_ENEMY_SEPARATION_STRENGTH = DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixel strength/sec (for reference).
+export const DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC = 15; // Base push strength in block widths/sec
+export const DEFAULT_ENEMY_SEPARATION_STRENGTH = DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixel strength/sec (for reference)
 
 // Enemy types (string constants)
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
