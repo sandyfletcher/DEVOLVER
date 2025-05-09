@@ -81,7 +81,7 @@ export function setVolume(type, volume) {
             break;
         case 'sfx':
             sfxVolume = clampedVolume;
-            // lastSfxVolume = sfxVolume; // Removed last volume
+            // lastSfxVolume = clampedVolume; // Removed last volume
             if (!isSfxMuted) { // Only apply if not muted
                 sfxAudioPool.forEach(sfx => sfx.volume = sfxVolume);
             }

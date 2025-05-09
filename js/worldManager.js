@@ -4,7 +4,7 @@
 
 import * as Config from './config.js';
 import * as Renderer from './renderer.js';
-import * as WorldData from './utils/worldData.js';
+import * as World from './utils/world.js';
 import * as ItemManager from './itemManager.js';
 import { generateInitialWorld } from './utils/worldGenerator.js';
 import * as GridCollision from './utils/gridCollision.js';
@@ -25,7 +25,7 @@ let newAnimationStartTimer = 0; // Timer to delay starting new animations from t
 
 export function init(portalRef) {
     console.log("Initializing WorldManager...");
-    WorldData.initializeGrid(); // Ensure grid is initialized first
+    World.initializeGrid(); // Ensure grid is initialized first
     generateInitialWorld(); // world generator now handles landmass + flood fill
 
     const gridCanvas = Renderer.getGridCanvas();
@@ -56,7 +56,7 @@ export function addWaterUpdateCandidate(col, row) {
         const key = `${col},${row}`;
         // Check if the cell is already in the queue to avoid duplicates
         if (!waterUpdateQueue.has(key)) {
-            const blockType = WorldData.getBlockType(col, row);
+            const blockType = World.getBlockType(col, row);
             // Only add AIR blocks if AT/BELOW waterline, or any WATER block.
             if (blockType !== null &&
                 (blockType === Config.BLOCK_WATER ||
@@ -93,7 +93,7 @@ export function seedWaterUpdateQueue() {
     waterUpdateQueue.clear();
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
-            const blockType = WorldData.getBlockType(c, r);
+            const blockType = World.getBlockType(c, r);
             if (blockType === Config.BLOCK_WATER || blockType === Config.BLOCK_AIR) {
                 addWaterUpdateCandidate(c, r);
             }
@@ -111,7 +111,7 @@ export function seedWaterUpdateQueue() {
 // -----------------------------------------------------------------------------
 
 export function placePlayerBlock(col, row, blockType) {
-    const success = WorldData.setBlock(col, row, blockType, true);
+    const success = World.setBlock(col, row, blockType, true);
     if (success) {
         updateStaticWorldAt(col, row);
         queueWaterCandidatesAroundChange(col, row);
@@ -123,7 +123,7 @@ export function placePlayerBlock(col, row, blockType) {
 
 export function damageBlock(col, row, damageAmount) {
     if (damageAmount <= 0) return false;
-    const block = WorldData.getBlock(col, row);
+    const block = World.getBlock(col, row);
     if (!block || typeof block !== 'object' || block.type === Config.BLOCK_AIR || block.type === Config.BLOCK_WATER || !block.hasOwnProperty('hp') || block.maxHp <= 0 || block.hp <= 0 || block.hp === Infinity) {
         return false;
     }
@@ -165,7 +165,7 @@ export function damageBlock(col, row, damageAmount) {
             }
         }
 
-        const success = WorldData.setBlock(col, row, Config.BLOCK_AIR, false);
+        const success = World.setBlock(col, row, Config.BLOCK_AIR, false);
         if (success) {
             updateStaticWorldAt(col, row);
             queueWaterCandidatesAroundChange(col, row);
@@ -293,7 +293,7 @@ export function updateStaticWorldAt(col, row) {
         console.error(`WorldManager: Cannot update static world at [${col}, ${row}] - grid context missing!`);
         return;
     }
-    const block = WorldData.getBlock(col, row);
+    const block = World.getBlock(col, row);
     const blockX = col * Config.BLOCK_WIDTH;
     const blockY = row * Config.BLOCK_HEIGHT;
     const blockW = Math.ceil(Config.BLOCK_WIDTH);
@@ -358,7 +358,7 @@ export function renderStaticWorldToGridCanvas() {
         return;
     }
     gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
-    const worldGrid = WorldData.getGrid();
+    const worldGrid = World.getGrid();
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             updateStaticWorldAt(c, r);
@@ -396,7 +396,7 @@ export function update(dt) {
         });
         candidatesToProcess.forEach(({c, r}) => {
             if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return;
-            const currentBlockType = WorldData.getBlockType(c, r);
+            const currentBlockType = World.getBlockType(c, r);
             if (currentBlockType === Config.BLOCK_AIR) {
                 if (r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
                     let adjacentToWater = false;
@@ -404,13 +404,13 @@ export function update(dt) {
                     for (const neighbor of immediateNeighbors) {
                         const nc = c + neighbor.dc;
                         const nr = r + neighbor.dr;
-                        if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS && WorldData.getBlockType(nc, nr) === Config.BLOCK_WATER) {
+                        if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS && World.getBlockType(nc, nr) === Config.BLOCK_WATER) {
                             adjacentToWater = true;
                             break;
                         }
                     }
                     if (adjacentToWater) {
-                        const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false);
+                        const success = World.setBlock(c, r, Config.BLOCK_WATER, false);
                         if (success) {
                             updateStaticWorldAt(c, r);
                             queueWaterCandidatesAroundChange(c, r);
@@ -420,21 +420,21 @@ export function update(dt) {
                     }
                 }
             } else if (currentBlockType === Config.BLOCK_WATER) {
-                const blockBelowType = WorldData.getBlockType(c, r + 1);
+                const blockBelowType = World.getBlockType(c, r + 1);
                 if (blockBelowType === Config.BLOCK_AIR) {
                     addWaterUpdateCandidate(c, r + 1);
                 } else {
-                    const blockBelow = WorldData.getBlock(c, r + 1);
+                    const blockBelow = World.getBlock(c, r + 1);
                     const blockBelowResolvedType = blockBelow?.type ?? Config.BLOCK_AIR;
                     const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR);
 
                     if (isBelowSolidOrWater) {
                         let spreadOccurred = false;
-                        if (WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
+                        if (World.getBlockType(c - 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
                             addWaterUpdateCandidate(c - 1, r);
                             spreadOccurred = true;
                         }
-                        if (WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
+                        if (World.getBlockType(c + 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
                             addWaterUpdateCandidate(c + 1, r);
                             spreadOccurred = true;
                         }

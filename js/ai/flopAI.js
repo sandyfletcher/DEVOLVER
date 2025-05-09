@@ -1,199 +1,141 @@
-// root/js/ai/flopAI.js
-
+// -----------------------------------------------------------------------------
+// root/js/ai/flopAI.js - AI Strategy for Tetrapod-like flopping behavior
+// -----------------------------------------------------------------------------
+import * as GridCollision from '../utils/gridCollision.js';
+import * as World from '../utils/world.js';
 import * as Config from '../config.js';
-import * as WorldData from '../utils/worldData.js'; // Need WorldData for finding the beach Y
-
 export class FlopAI {
-    constructor(enemy) {
-        this.enemy = enemy;
-        // --- Land Flopping State ---
-        this.landJumpCooldown = 0;
-        this.landActionTimer = 0; // How long horizontal movement persists after a hop
-        this.landTargetVx = 0;
-        this.setRandomLandCooldown(); // Set initial cooldown
+constructor(enemy) {
+this.enemy = enemy;
+this.landHopCooldown = 0; // Timer for when the next land hop can occur
+this.flopAttackTimer = 0; // Timer for the duration of a flop attack hitbox/state
+this.state = 'idle'; // Possible states: 'idle', 'flopping_on_land', 'swimming'
+this.targetDirectionX = (Math.random() < 0.5) ? -1 : 1; // Initial random direction
+}
+decideMovement(playerPosition, allEnemies, dt) {
+    let targetVx = 0;
+    let jump = false;
+    let targetVy = this.enemy.vy; // Default to current vertical velocity
 
-        // NEW: State for managing the flop attack window
-        this.flopAttackTimer = 0; // Timer for the brief attack window during a flop
-        // This AI controls its own timer, using the duration from Config
-        this.flopAttackDuration = Config.TETRAPOD_FLOP_ATTACK_DURATION;
+    // Update timers
+    this.landHopCooldown = Math.max(0, this.landHopCooldown - dt);
+    this.flopAttackTimer = Math.max(0, this.flopAttackTimer - dt);
 
-
-        // --- Water Swimming State ---
-        this.swimTargetChangeCooldown = 0; // Timer to change swim target
-        this.swimTargetVx = 0;
-        this.swimTargetVy = 0;
-        this.setRandomSwimTarget(); // Set initial swim target
-
-
-        // Target Y for swimming towards the beach/waterline
-        this.waterlineTargetY = Config.WORLD_WATER_LEVEL_ROW_TARGET * Config.BLOCK_HEIGHT;
-        // Target X for swimming towards the map center (nearest island)
-        this.centerXTarget = Config.CANVAS_WIDTH / 2; // Or could be calculated based on nearest island edge
-    }
-
-    // Sets a random cooldown before the next land hop
-    setRandomLandCooldown() {
-        this.landJumpCooldown = Config.TETRAPOD_LAND_HOP_COOLDOWN_BASE + Math.random() * Config.TETRAPOD_LAND_HOP_COOLDOWN_VARIATION;
-        // console.log(`[Tetrapod AI] Set new land hop cooldown: ${this.landJumpCooldown.toFixed(2)}s`);
-    }
-
-    // Sets a random swim target, potentially biasing towards the "beach" center
-    setRandomSwimTarget() {
-         this.swimTargetChangeCooldown = 1.5 + Math.random() * 1.0; // Change target every 1.5-2.5s (can tune)
-
-         const enemyCenterX = this.enemy.x + this.enemy.width / 2;
-         const enemyCenterY = this.enemy.y + this.enemy.height / 2;
-
-         // Target X: Aim towards the map center's X coordinate
-         const targetX = this.centerXTarget;
-
-         // Target Y: Aim towards the waterline Y coordinate
-         // Maybe slightly below the waterline so they don't just float at the surface?
-         const targetY = this.waterlineTargetY + this.enemy.height * 0.2;
-
-
-         const dx = targetX - enemyCenterX;
-         const dy = targetY - enemyCenterY;
-
-         const dist = Math.sqrt(dx*dx + dy*dy);
-
-         // If far from target, set velocity towards it, using swim speed from config
-         const swimSpeed = this.enemy.swimSpeed ?? Config.ENEMY_STATS[Config.ENEMY_TYPE_TETRAPOD].swimSpeed; // Use swimSpeed stat
-         const swimSpeedY = this.enemy.maxSpeedY; // Use maxSpeedY for vertical swim limit (or use swimSpeed)
-
-         if (dist > 10) { // Small threshold before stopping random movement
-             const normX = dx / dist;
-             const normY = dy / dist;
-             this.swimTargetVx = normX * swimSpeed;
-             this.swimTargetVy = normY * swimSpeedY; // Use maxSpeedY for vertical
-         } else {
-             // Near target, add some random wandering within the water
-             this.swimTargetVx = (Math.random() - 0.5) * (swimSpeed * 0.4);
-             this.swimTargetVy = (Math.random() - 0.5) * (swimSpeedY * 0.4);
-         }
-         // console.log(`[Tetrapod AI] Set new swim target. Vx: ${this.swimTargetVx.toFixed(2)}, Vy: ${this.swimTargetVy.toFixed(2)}`);
-    }
-
-
-    decideMovement(playerPosition, allEnemies, dt) {
-        let targetVx = 0;
-        let targetVy = 0;
-        let jump = false; // Used for land hops
-
-        // Update flop attack timer BEFORE deciding movement
+    // Determine current state based on environment
+    if (this.enemy.isInWater) {
+        this.state = 'swimming';
+        this.enemy.isFlopAttacking = false; // Cannot flop attack while swimming
+        this.flopAttackTimer = 0;
+    } else if (this.enemy.isOnGround) {
         if (this.flopAttackTimer > 0) {
-            this.flopAttackTimer -= dt;
-        }
-        // If the attack timer runs out, turn off the attack flag controlled by AI
-        // This flag is used by Enemy.js::getCurrentContactDamage()
-        if (this.flopAttackTimer <= 0 && this.enemy.isFlopAttacking) {
-             this.enemy.isFlopAttacking = false;
-            // console.log("[Tetrapod AI] Flop attack window ended.");
-        }
-
-
-        // --- Behavior based on Environment ---
-        if (this.enemy.isInWater && this.enemy.canSwim) {
-            // --- SWIMMING LOGIC ---
-            this.swimTargetChangeCooldown -= dt;
-            if (this.swimTargetChangeCooldown <= 0) {
-                this.setRandomSwimTarget(playerPosition); // Pass player for future AI refinement
-            }
-            targetVx = this.swimTargetVx;
-            targetVy = this.swimTargetVy; // AI provides vertical target for swimmers
-            jump = false; // Don't use jump flag for swimming vertical movement
-
-            // Reset land timers if we are swimming
-            this.landJumpCooldown = 0.1; // Small cooldown prevents immediate hop on exiting water quickly
-            this.landActionTimer = 0;
-            this.enemy.isFlopAttacking = false; // Ensure land-specific attack flag is off in water
-
-
-        } else if (!this.enemy.isInWater && this.enemy.isOnGround && this.enemy.canJump) {
-            // --- LAND FLOPPING LOGIC ---
-            // This state is reached when the enemy is on a solid block AND not in water.
-            this.landJumpCooldown -= dt;
-            this.landActionTimer -= dt; // Timer for how long horizontal movement persists after a hop
-
-            // Trigger a new hop if cooldown is ready and horizontal action is complete
-            if (this.landJumpCooldown <= 0 && this.landActionTimer <= 0) {
-                jump = true; // Signal hop jump (processed by Enemy.js)
-
-                const enemyCenterX = this.enemy.x + this.enemy.width / 2;
-                const screenCenterX = this.centerXTarget; // Aim towards the map center's X for land bias
-
-                // Decide horizontal direction: biased towards center X, with some randomness
-                const towardsCenterDir = Math.sign(screenCenterX - enemyCenterX);
-                // Randomly choose direction: 80% chance towards center, 20% away
-                const biasedDir = (Math.random() < 0.8) ? towardsCenterDir : -towardsCenterDir;
-
-                const flopForce = Config.TETRAPOD_LAND_HOP_HORIZONTAL_FORCE * (0.7 + Math.random() * 0.6); // Horizontal force variation
-
-                this.landTargetVx = biasedDir * flopForce; // Set horizontal velocity for the hop
-                targetVx = this.landTargetVx; // Apply immediately this frame
-
-
-                // NEW: Activate flop attack state and timer
-                this.enemy.isFlopAttacking = true; // Set the flag on the enemy instance
-                this.flopAttackTimer = this.flopAttackDuration; // Start the timer here in the AI
-                // console.log(`[Tetrapod AI] Triggered land hop. Dir: ${biasedDir}, Vx: ${targetVx.toFixed(2)}, Attack active for ${this.flopAttackTimer.toFixed(2)}s.`);
-
-                this.setRandomLandCooldown(); // Set cooldown for next hop
-                this.landActionTimer = this.flopAttackDuration * 1.5; // Keep horizontal velocity active slightly longer than attack
-
-            } else if (this.landActionTimer > 0) {
-                // Continue horizontal movement during the hop action window
-                targetVx = this.landTargetVx;
-            } else {
-                // Between hops, stay still horizontally
-                targetVx = 0;
-            }
-
-            targetVy = 0; // Let gravity/physics handle vertical movement on land
-            // Reset swim timers if on land
-            this.swimTargetChangeCooldown = 0.1;
-
-
+            this.state = 'flopping_on_land'; // Continue current flop
+        } else if (this.landHopCooldown <= 0) {
+            this.state = 'flopping_on_land'; // Initiate new flop
         } else {
-             // --- AIRBORNE / TRANSITION LOGIC (e.g., falling after a hop, or non-swimmer in water) ---
-             // If falling after a land hop, continue with the land target velocity briefly
-             if (this.landActionTimer > 0) {
-                  this.landActionTimer -= dt;
-                  targetVx = this.landTargetVx; // Apply the stored horizontal velocity
-             } else {
-                 targetVx = 0;
-             }
-             // Let gravity handle vertical movement (Enemy.update) - no vertical target from AI
-             targetVy = 0;
-             jump = false; // Not actively jumping/stroking here
-
-             // Ensure attack flag is off if timer expired while airborne
-             if (this.enemy.isFlopAttacking && this.flopAttackTimer <= 0) {
-                 this.enemy.isFlopAttacking = false;
-             }
-             // If the enemy transitions from water to air (e.g., jumps out), landActionTimer and landTargetVx will be 0,
-             // and isInWater will be false, isOnGround will be false. This state correctly results in targetVx=0,
-             // letting gravity take over until it hits ground or water again.
+            this.state = 'idle'; // Waiting for land hop cooldown
+            this.enemy.isFlopAttacking = false;
         }
-        // Return the calculated movement intent
-        return { targetVx, targetVy, jump }; // jump flag is only for land hops
+    } else { // Airborne over land
+        if (this.flopAttackTimer > 0) {
+            this.state = 'flopping_on_land'; // Still considered part of the flop attack if airborne during it
+        } else {
+            this.state = 'idle'; // Airborne but not actively flopping
+            this.enemy.isFlopAttacking = false;
+        }
     }
 
-    reactToCollision(collisionResult) {
-        // Reset land flop horizontal movement if hitting wall on land *during* the hop action timer
-        if (collisionResult.collidedX && !this.enemy.isInWater && this.landActionTimer > 0) {
-            this.landActionTimer = 0; // Stop horizontal movement immediately on wall hit
-            this.landTargetVx = 0;
-            // console.log("[Tetrapod AI] Collided horizontally on land, stopped action timer.");
-        }
-        // Swimming collision? Maybe change direction?
-        if ((collisionResult.collidedX || collisionResult.collidedY) && this.enemy.isInWater) {
-             // Hit something while swimming, pick new target sooner
-             this.swimTargetChangeCooldown = 0;
-             // console.log("[Tetrapod AI] Collided while swimming, resetting swim target cooldown.");
-        }
 
-        // Note: The Enemy.js collideAndResolve method handles stopping velocity upon collision.
-        // We only need AI reaction if it should *change its intent* based on the collision.
+    // --- Behavior based on state ---
+    switch (this.state) {
+        case 'swimming':
+            // Swim towards player if present, otherwise pick a direction and swim
+            if (playerPosition) {
+                const dx = playerPosition.x - (this.enemy.x + this.enemy.width / 2);
+                const dy = playerPosition.y - (this.enemy.y + this.enemy.height / 2);
+
+                if (Math.abs(dx) > this.enemy.width * 0.2) { // Minimal horizontal deadzone
+                    targetVx = Math.sign(dx) * this.enemy.maxSpeedX * 0.8; // Slightly slower in water horizontally
+                }
+                // Vertical swimming towards player
+                if (Math.abs(dy) > this.enemy.height * 0.5) {
+                    targetVy = Math.sign(dy) * this.enemy.swimSpeed; // Use scaled swimSpeed
+                } else {
+                    targetVy = this.enemy.vy * 0.9; // Dampen vertical if close enough
+                }
+            } else {
+                // Wander horizontally, try to stay near surface
+                targetVx = this.targetDirectionX * this.enemy.maxSpeedX * 0.5;
+                // Simple buoyancy/surface seeking: if too deep, swim up slowly
+                if (this.enemy.y > Config.WORLD_WATER_LEVEL_ROW_TARGET * Config.BLOCK_HEIGHT + this.enemy.height) {
+                    targetVy = -this.enemy.swimSpeed * 0.3;
+                } else {
+                    targetVy = this.enemy.swimSpeed * 0.1; // Gentle upward bob
+                }
+            }
+            break;
+
+        case 'flopping_on_land':
+            if (this.enemy.isOnGround && this.landHopCooldown <= 0) {
+                // Initiate a new hop
+                jump = true; // Physics will use enemy.jumpVelocity
+                targetVx = this.targetDirectionX * this.enemy.landHopHorizontalVelocity; // Use scaled landHopVelocity
+
+                // Start flop attack state and timer
+                this.enemy.isFlopAttacking = true;
+                this.flopAttackTimer = Config.TETRAPOD_FLOP_ATTACK_DURATION;
+
+                // Set cooldown for the next hop (time-based)
+                this.landHopCooldown = Config.TETRAPOD_LAND_HOP_COOLDOWN_BASE + (Math.random() * Config.TETRAPOD_LAND_HOP_COOLDOWN_VARIATION);
+
+                // Randomly change direction after a hop sometimes
+                if (Math.random() < 0.3) {
+                    this.targetDirectionX *= -1;
+                }
+            } else if (this.flopAttackTimer <= 0) {
+                // Flop attack duration ended
+                this.enemy.isFlopAttacking = false;
+            }
+            // If airborne during a flop, horizontal velocity is maintained by physics from the jump impulse.
+            // If on ground and flopAttackTimer is still active, but landHopCooldown is not ready, do nothing (wait for jump)
+            break;
+
+        case 'idle': // Idle on land or airborne after a hop but flop attack ended
+            targetVx = 0; // No active horizontal movement from AI
+            if (this.enemy.isOnGround) {
+                // If on ground and idle, ensure flop attack is off
+                this.enemy.isFlopAttacking = false;
+            }
+            // Gravity will take over if airborne
+            break;
     }
+
+    return { targetVx, jump, targetVy };
+}
+
+reactToCollision(collisionResult) {
+    if (this.state === 'swimming') {
+        if (collisionResult.collidedX && Math.abs(this.enemy.vx) > GridCollision.E_EPSILON) {
+            this.targetDirectionX *= -1; // Reverse horizontal direction if hit a wall while swimming
+        }
+    } else if (this.state === 'flopping_on_land' || (this.state === 'idle' && !this.enemy.isOnGround)) {
+        // If flopping/airborne on land and hit a wall
+        if (collisionResult.collidedX && Math.abs(this.enemy.vx) > GridCollision.E_EPSILON) {
+            // Potentially reverse direction for next hop attempt, or if it's a hard wall hit
+            // For simplicity, let's always reverse target direction on X collision while flopping/airborne from flop
+             this.targetDirectionX *= -1;
+
+            // If it was a significant horizontal collision while airborne from a flop,
+            // it might be good to cancel the ongoing flopAttack if it's still active.
+            // However, the current logic has flopAttackTimer running independently.
+            // Consider if a hard wall impact should interrupt the "damaging" part of the flop.
+            // For now, let it continue.
+        }
+    }
+    // If landed on ground after a hop (collidedY and was moving down)
+    if (collisionResult.collidedY && this.enemy.vy >= 0 && !this.enemy.isOnGround && this.state !== 'swimming') {
+        // This means it just landed. The state will transition to 'idle' or 'flopping_on_land'
+        // in the next call to decideMovement based on cooldowns.
+        // If the flopAttackTimer was active, it continues until it runs out.
+    }
+}
 }

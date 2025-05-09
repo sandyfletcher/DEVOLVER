@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// root/js/utils/worldData.js - Manages core world grid data structure
+// root/js/utils/world.js - Manages core world grid data structure
 // -----------------------------------------------------------------------------
 
 import * as Config from '../config.js';

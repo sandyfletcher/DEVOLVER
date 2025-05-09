@@ -26,7 +26,7 @@ let muteMusicButtonEl = null;
 let muteSfxButtonEl = null;
 
 // Overlay
-let gameOverlay = null; // Kept for overlay init check
+let bootOverlayEl = null; // Changed from gameOverlay to bootOverlayEl
 let epochOverlayEl = null; // Kept for epoch text
 
 
@@ -45,9 +45,9 @@ let isUIReady = false;
 
 // Initializes only the core overlay element reference (called early by main.js)
 export function initOverlay() {
-    gameOverlay = document.getElementById('game-overlay');
-    if (!gameOverlay) {
-        console.error("UI InitOverlay: Could not find core overlay elements!");
+    bootOverlayEl = document.getElementById('boot-overlay'); // Changed from gameOverlay to bootOverlayEl
+    if (!bootOverlayEl) {
+        console.error("UI InitOverlay: Could not find core boot overlay element!");
         return false;
     }
     return true;

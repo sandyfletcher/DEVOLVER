@@ -69,8 +69,8 @@ export class Item {
                 if (this.vy > 0.1) this.vy = 0; // if player is on ground but has slight downward velocity, reset it
             }
             if (this.isInWater) { // apply standard water damping if in water AND not attracted
-                const horizontalDampingFactor = Math.pow(Config.WATER_HORIZONTAL_Damping, dt);
-                const verticalDampingFactor = Math.pow(Config.WATER_VERTICAL_Damping, dt);
+                const horizontalDampingFactor = Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
+                const verticalDampingFactor = Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
                 this.vx *= horizontalDampingFactor;
                 this.vy *= verticalDampingFactor;
             }

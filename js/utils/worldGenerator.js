@@ -5,7 +5,7 @@
 import * as Config from '../config.js';
 import { PerlinNoise } from './noise.js';
 import { createBlock } from './block.js';
-import * as WorldData from '../utils/worldData.js'; // Corrected import path
+import * as World from './world.js'; // Corrected import path
 
 function lerp(t, a, b) {
     return a + t * (b - a);
@@ -185,7 +185,7 @@ function generateLandmass() { // generates initial landmass and fills the rest w
             if (!levels) {
                 console.warn(`Missing level data for column ${c}`);
                 // Default to AIR for columns with no level data
-                WorldData.setBlockData(c, r, createBlock(Config.BLOCK_AIR, false));
+                World.setBlockData(c, r, createBlock(Config.BLOCK_AIR, false));
                 continue;
             }
             const finalSurfaceRow = levels.surface;
@@ -205,7 +205,7 @@ function generateLandmass() { // generates initial landmass and fills the rest w
             // If r < finalSurfaceRow, it remains AIR (above the initial terrain)
 
             // Set the block data using the direct method for initial generation
-            WorldData.setBlockData(c, r, createBlock(blockTypeToPlace, false)); // Ensure createBlock is used to get proper object/constant
+            World.setBlockData(c, r, createBlock(blockTypeToPlace, false)); // Ensure createBlock is used to get proper object/constant
         }
     }
 }
@@ -220,7 +220,7 @@ function applyFloodFill(targetWaterRow) { // flood fill function (uses grid coor
     for (let r = targetWaterRow; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             // Check only AIR blocks that haven't been visited/queued yet and are below or at the water line target
-            if (r >= targetWaterRow && WorldData.getBlockType(c, r) === Config.BLOCK_AIR) {
+            if (r >= targetWaterRow && World.getBlockType(c, r) === Config.BLOCK_AIR) {
                 const key = `${c},${r}`;
                 if (visited.has(key)) continue;
 
@@ -236,7 +236,7 @@ function applyFloodFill(targetWaterRow) { // flood fill function (uses grid coor
                     // Check if the neighbor is within the overall grid bounds
                     if (nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
                         // If the neighbor block type is NOT AIR (i.e., it's solid or existing water from gen/prev fills)
-                        if (WorldData.getBlockType(nc, nr) !== Config.BLOCK_AIR) {
+                        if (World.getBlockType(nc, nr) !== Config.BLOCK_AIR) {
                             isSeedPoint = true;
                             break; // Found a non-air neighbor, no need to check others
                         }
@@ -266,14 +266,14 @@ function applyFloodFill(targetWaterRow) { // flood fill function (uses grid coor
         }
 
         const { c, r } = queue.shift();
-        const currentBlockType = WorldData.getBlockType(c,r); // get current block type *again* inside the loop
+        const currentBlockType = World.getBlockType(c,r); // get current block type *again* inside the loop
 
         // Ensure we are within bounds AND still AIR, and at/below the target water row
         if (r < targetWaterRow || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS || currentBlockType !== Config.BLOCK_AIR) {
             continue; // Skip if out of bounds, above water line, or already filled
         }
 
-       const success = WorldData.setBlock(c, r, Config.BLOCK_WATER, false); // fill with water (not player-placed)
+       const success = World.setBlock(c, r, Config.BLOCK_WATER, false); // fill with water (not player-placed)
 
        if (success) {
             processed++;
@@ -286,7 +286,7 @@ function applyFloodFill(targetWaterRow) { // flood fill function (uses grid coor
                  // Ensure neighbor is within grid bounds AND at/below target water level
                  if (nr >= targetWaterRow && nr >= 0 && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS) {
                     const nKey = `${nc},${nr}`;
-                    if (WorldData.getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) { // check if neighbor is AIR and not visited yet
+                    if (World.getBlockType(nc, nr) === Config.BLOCK_AIR && !visited.has(nKey)) { // check if neighbor is AIR and not visited yet
                         visited.add(nKey);
                         queue.push({ c: nc, r: nr });
                     }
@@ -299,7 +299,7 @@ function applyFloodFill(targetWaterRow) { // flood fill function (uses grid coor
 
 export function generateInitialWorld() { // run world generation process
     console.time("Initial World generated in");
-    WorldData.initializeGrid(); // initialize grid with clean slate of only AIR before generating landmass
+    World.initializeGrid(); // initialize grid with clean slate of only AIR before generating landmass
     generateLandmass();
     applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
     console.timeEnd("Initial World generated in");

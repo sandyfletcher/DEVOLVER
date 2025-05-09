@@ -5,7 +5,7 @@
 import * as Config from './config.js';
 import * as GridCollision from './utils/gridCollision.js';
 import * as WorldManager from './worldManager.js';
-import * as WorldData from './utils/worldData.js';
+import * as World from './utils/world.js';
 import * as AudioManager from './audioManager.js';
 
 export class Player {
@@ -303,8 +303,8 @@ export class Player {
                 }
                 const targetCol = targetCellForPlacement.col;
                 const targetRow = targetCellForPlacement.row;
-                // WorldData.getBlockType handles bounds and returns null if out of bounds
-                const targetBlockType = WorldData.getBlockType(targetCol, targetRow);
+                // World.getBlockType handles bounds and returns null if out of bounds
+                const targetBlockType = World.getBlockType(targetCol, targetRow);
                 // Cannot place out of bounds (targetBlockType will be null)
                 if (targetBlockType === null) {
                     // console.log("Placement failed: Target out of bounds.");
@@ -490,7 +490,7 @@ export class Player {
         // _isTargetWithinRange uses scaled Config.PLAYER_INTERACTION_RANGE_SQ
         if (!targetWorldPosForCheck || !this._isTargetWithinRange(targetWorldPosForCheck)) return null; // Must be in range
         // Get the block type at the target cell, handling out of bounds
-        const targetBlockType = WorldData.getBlockType(col, row);
+        const targetBlockType = World.getBlockType(col, row);
         // Cannot place out of bounds (targetBlockType will be null)
         if (targetBlockType === null) return null;
         // Can place in Air, or in Water if config allows

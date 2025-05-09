@@ -5,7 +5,7 @@
 import * as UI from './ui.js';
 import * as Config from './config.js';
 import * as ItemManager from './itemManager.js';
-import * as WorldData from './utils/worldData.js';
+import * as World from './utils/world.js';
 import * as EnemyManager from './enemyManager.js';
 import * as AudioManager from './audioManager.js';
 import * as WorldManager from './worldManager.js';
@@ -179,7 +179,7 @@ function endWave() {
 }
 // Helper to capture the current state of the grid (types only)
 function captureCurrentGridState() {
-    const grid = WorldData.getGrid();
+    const grid = World.getGrid();
     return grid.map(row => row.map(block => (typeof block === 'object' ? block.type : block)));
 }
 // Helper to diff two grid states
@@ -224,9 +224,9 @@ function triggerWarpCleanup() {
         for (let i = 0; i < passes; i++) {
             AgingManager.applyAging(portalRef, intensity);
         }
-        console.log(`[WaveMgr] Aging passes complete for Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'}. WorldData updated.`);
+        console.log(`[WaveMgr] Aging passes complete for Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'}. World updated.`);
 
-        const finalGridState = WorldData.getGrid();
+        const finalGridState = World.getGrid();
         const proposedVisualChanges = diffGrids(gridStateBeforeAging, finalGridState);
         console.log(`[WaveMgr] Found ${proposedVisualChanges.length} net visual changes for animation.`);
         if (proposedVisualChanges.length > 0) {
@@ -351,7 +351,7 @@ export function update(dt, gameState) {
                     warpPhaseTimer = 0;
                     console.log("[WaveMgr] WARPPHASE timer ended.");
                     WorldManager.finalizeAllAgingAnimations(); // Finalize any ongoing aging animations immediately
-                    // Now that all WorldData changes are visually committed (or forced),
+                    // Now that all World changes are visually committed (or forced),
                     // re-render the entire static canvas and seed water.
                     console.log("[WaveMgr] Rendering final static world and seeding water queue after WARPPHASE.");
                     WorldManager.renderStaticWorldToGridCanvas();

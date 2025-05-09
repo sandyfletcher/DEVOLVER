@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from '../config.js';
-import * as WorldData from './worldData.js';
+import * as World from './world.js';
 
 export const E_EPSILON = 1e-4; // tiny offset to prevent floating point errors / sticking (pixels)
 
@@ -19,7 +19,7 @@ export function isEntityInWater(entity) { // checks if entity is significantly s
     const checkY = entity.y + entity.height * submersionCheckFraction; // we check a point X% of the way down from the top. // Check 50% down (pixel Y)
     const checkX = entity.x + entity.width * 0.5; // horizontal center for X coordinate check (pixel X)
     const { col, row } = worldToGridCoords(checkX, checkY); // convert world coordinates (pixels) to grid coordinates (handles bounds)
-    const blockType = WorldData.getBlockType(col, row); // check the block type at the calculated grid cell
+    const blockType = World.getBlockType(col, row); // check the block type at the calculated grid cell
     return blockType === Config.BLOCK_WATER; // return true if the block at the check point is water (and not out of bounds)
 }
 
@@ -27,7 +27,7 @@ export function isSolid(col, row) { // checks if block at given grid coordinates
     if (row < 0 || row >= Config.GRID_ROWS || col < 0 || col >= Config.GRID_COLS) { // check if row/col is outside valid grid range defined in Config
         return false; // treat out of bounds as not solid
     }
-    const block = WorldData.getBlock(col, row);
+    const block = World.getBlock(col, row);
     if (block === null || block === Config.BLOCK_AIR) { // check if block data is null or air
         return false;
     }
@@ -116,17 +116,17 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
                     const blockEdgeX = (signX > 0) ? c * Config.BLOCK_WIDTH : (c + 1) * Config.BLOCK_WIDTH; // Pixel X of block edge (using scaled BLOCK_WIDTH)
                     const distance = blockEdgeX - xEdge; // Distance in pixels
                     let toiX = 1.0;
-                     if (Math.abs(moveX) > E_EPSILON) { // Avoid division by zero if moveX is tiny
-                          toiX = distance / moveX; // Time of impact (0 to 1)
-                     } else {
-                          // If moveX is tiny but there's a collision, it's an immediate collision (toi=0)
-                          // This case should theoretically be caught by the initial if(Math.abs(moveX) > E_EPSILON) but as a safeguard:
-                           if ((signX > 0 && blockEdgeX >= xEdge - E_EPSILON) || (signX < 0 && blockEdgeX <= xEdge + E_EPSILON)) {
-                               toiX = 0;
-                           } else {
+                    if (Math.abs(moveX) > E_EPSILON) { // Avoid division by zero if moveX is tiny
+                        toiX = distance / moveX; // Time of impact (0 to 1)
+                    } else {
+                        // If moveX is tiny but there's a collision, it's an immediate collision (toi=0)
+                        // This case should theoretically be caught by the initial if(Math.abs(moveX) > E_EPSILON) but as a safeguard:
+                        if ((signX > 0 && blockEdgeX >= xEdge - E_EPSILON) || (signX < 0 && blockEdgeX <= xEdge + E_EPSILON)) {
+                            toiX = 0;
+                        } else {
                                 continue; // Block is behind entity, not a collision
-                           }
-                     }
+                        }
+                    }
 
                     if (toiX >= -E_EPSILON && toiX < earliestToiX) {
                         earliestToiX = toiX;
@@ -183,7 +183,7 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
             didStepUp = true; // mark that a step up occurred
 
             if (stepTier === 2) { // apply horizontal velocity modification based on tier (factor is fixed)
-                 entity.vx *= Config.ENTITY_STEP_TIER2_HORIZONTAL_FRICTION;
+                entity.vx *= Config.ENTITY_STEP_TIER2_HORIZONTAL_FRICTION;
             }
             // do NOT set collidedX = true here, horizontal movement might continue next frame
 
@@ -225,10 +225,10 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
         // Find the earliest Y collision across the entity's horizontal span
         const step = (signY > 0) ? 1 : -1;
         for (let c = minCol; c <= maxCol; c++) {
-             const checkStart = actualCheckStart;
-             const checkEnd = actualCheckEnd;
+            const checkStart = actualCheckStart;
+            const checkEnd = actualCheckEnd;
 
-             for (let r = checkStart; (signY > 0 ? r <= checkEnd : r >= checkEnd); r += step) {
+            for (let r = checkStart; (signY > 0 ? r <= checkEnd : r >= checkEnd); r += step) {
                 if (r < 0 || r >= Config.GRID_ROWS) continue; // ensure cell is within bounds
                 if (isSolid(c, r)) { // isSolid uses grid coordinates
                     const blockEdgeY = (signY > 0) ? r * Config.BLOCK_HEIGHT : (r + 1) * Config.BLOCK_HEIGHT; // pixel Y of block edge (using scaled BLOCK_HEIGHT)
@@ -236,31 +236,31 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
                     let toiY = 1.0; // Time of Impact (0 to 1)
 
                     if (Math.abs(actualMoveY) > E_EPSILON) { // If there was vertical movement
-                         const distance = blockEdgeY - yEdge; // Distance in pixels
-                         toiY = distance / actualMoveY;
+                        const distance = blockEdgeY - yEdge; // Distance in pixels
+                        toiY = distance / actualMoveY;
                     } else if (didStepUp) { // If didn't have vertical movement but *did* step up (check for landing)
-                         // If stepped up with moveY=0, collision is immediate (toi=0) if block edge is in the right direction relative to entity edge
-                         if ((signY > 0 && blockEdgeY >= yEdge - E_EPSILON) || (signY < 0 && blockEdgeY <= yEdge + E_EPSILON)) {
-                             toiY = 0; // immediate collision
-                         } else {
-                             continue; // collision is not in the direction of the check after step-up
-                         }
+                        // If stepped up with moveY=0, collision is immediate (toi=0) if block edge is in the right direction relative to entity edge
+                        if ((signY > 0 && blockEdgeY >= yEdge - E_EPSILON) || (signY < 0 && blockEdgeY <= yEdge + E_EPSILON)) {
+                            toiY = 0; // immediate collision
+                        } else {
+                            continue; // collision is not in the direction of the check after step-up
+                        }
                     } else {
                         // If no vertical movement and didn't step up, but found a solid block...
                         // This case implies a horizontal collision with a corner or ledge alignment causing the check to find a Y-collision
                         // If the block edge is exactly aligned with entity edge, toiY is 0
-                         if (Math.abs(blockEdgeY - yEdge) < E_EPSILON) {
-                             toiY = 0;
-                         } else {
-                             // Block is not aligned and entity isn't moving vertically, so no Y collision this frame
-                             continue;
-                         }
+                        if (Math.abs(blockEdgeY - yEdge) < E_EPSILON) {
+                            toiY = 0;
+                        } else {
+                            // Block is not aligned and entity isn't moving vertically, so no Y collision this frame
+                            continue;
+                        }
                     }
 
 
                     if (toiY >= -E_EPSILON && toiY < earliestToiY) { // check if valid collision (toi is between -E_EPSILON and 1.0) and it's the earliest so far
-                         earliestToiY = toiY;
-                         collisionSurfaceY = blockEdgeY; // pixel Y of collision surface
+                        earliestToiY = toiY;
+                        collisionSurfaceY = blockEdgeY; // pixel Y of collision surface
                     }
                     // If toiY is very close to 0 or negative due to floating point, might still be a valid collision if entity is embedded
                     // A more robust system would handle embedded collisions, but for now, check if TOI is small.
@@ -312,22 +312,22 @@ export function collideAndResolve(entity, potentialMoveX, potentialMoveY) { // m
 
                     // Check if the bottom of the entity is within the check distance of the ground surface
                     if (Math.abs((entity.y + entity.height) - groundSurfaceY) < checkDist + E_EPSILON) {
-                         stillOnGround = true;
-                         // If entity is embedded into the ground, snap it up
-                         if ((entity.y + entity.height) > groundSurfaceY + E_EPSILON) {
-                              entity.y = groundSurfaceY - entity.height;
-                              entity.vy = 0; // Stop vertical velocity ifdetected ground and snapping occurred here
-                              collidedY = true; // considered a Y collision if snapped
-                          }
-                          break; // found ground below, no need to check other points
-                      }
-                  }
-              }
-             // Set the final isOnGround state based on the re-verification loop
-             isOnGround = stillOnGround;
-         }
-     }
- 
- 
-     return { collidedX, collidedY, isOnGround, didStepUp }; // return results
- }
+                        stillOnGround = true;
+                        // If entity is embedded into the ground, snap it up
+                        if ((entity.y + entity.height) > groundSurfaceY + E_EPSILON) {
+                            entity.y = groundSurfaceY - entity.height;
+                            entity.vy = 0; // Stop vertical velocity ifdetected ground and snapping occurred here
+                            collidedY = true; // considered a Y collision if snapped
+                        }
+                        break; // found ground below, no need to check other points
+                    }
+                }
+            }
+            // Set the final isOnGround state based on the re-verification loop
+            isOnGround = stillOnGround;
+        }
+    }
+
+
+    return { collidedX, collidedY, isOnGround, didStepUp }; // return results
+}

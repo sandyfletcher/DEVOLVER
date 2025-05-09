@@ -4,7 +4,7 @@
 
 import * as Config from './config.js';
 import { PerlinNoise } from './utils/noise.js'; // Import noise utility
-import * as WorldData from './utils/worldData.js'; // Import world data access
+import * as World from './utils/world.js'; // Import world data access
 import * as GridCollision from './utils/gridCollision.js'; // Import solid checks, hasSolidNeighbor
 import { createBlock } from './utils/block.js'; // Import createBlock
 
@@ -18,10 +18,10 @@ export function init() { // initialize the dedicated noise generator for aging
 function getNeighborTypes(c, r) {
      const neighborTypes = {};
      // Cardinal directions
-     neighborTypes.above = WorldData.getBlockType(c, r - 1);
-     neighborTypes.below = WorldData.getBlockType(c, r + 1);
-     neighborTypes.left = WorldData.getBlockType(c - 1, r);
-     neighborTypes.right = WorldData.getBlockType(c + 1, r);
+     neighborTypes.above = World.getBlockType(c, r - 1);
+     neighborTypes.below = World.getBlockType(c, r + 1);
+     neighborTypes.left = World.getBlockType(c - 1, r);
+     neighborTypes.right = World.getBlockType(c + 1, r);
      return neighborTypes;
 }
 
@@ -39,7 +39,7 @@ function getWaterDepthAbove(c, r) {
     let depth = 0;
     // Start checking from the row directly *above* the current cell (r - 1)
     for (let checkR = r - 1; checkR >= 0; checkR--) {
-        const blockType = WorldData.getBlockType(c, checkR); // Handles out of bounds above
+        const blockType = World.getBlockType(c, checkR); // Handles out of bounds above
         if (blockType === Config.BLOCK_WATER) {
             depth++; // Count this water block
         } else {
@@ -66,7 +66,7 @@ export function applyAging(portalRef, intensityFactor) {
          console.error("Aging noise generator not initialized!");
          return [];
     }
-    const grid = WorldData.getGrid();
+    const grid = World.getGrid();
     if (!grid || grid.length === 0 || grid[0].length === 0) {
         console.error("World grid is not available or empty for aging.");
         return [];
@@ -96,7 +96,7 @@ export function applyAging(portalRef, intensityFactor) {
                  }
             }
 
-            const block = WorldData.getBlock(c, r);
+            const block = World.getBlock(c, r);
             if (block === null) continue;
 
             const originalType = (typeof block === 'object' && block !== null) ? block.type : block; // Ensure block is not null before accessing type
@@ -183,9 +183,9 @@ export function applyAging(portalRef, intensityFactor) {
                  }
              }
 
-            // --- Apply Change to WorldData ---
+            // --- Apply Change to World ---
             if (newType !== originalType) {
-                const success = WorldData.setBlock(c, r, newType, false);
+                const success = World.setBlock(c, r, newType, false);
                 if (!success) {
                      console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
                 } else {
@@ -201,7 +201,7 @@ export function applyAging(portalRef, intensityFactor) {
                     for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelowInBlocks; potentialDepth++) {
                         const nr = r + potentialDepth;
                         if (nr >= Config.GRID_ROWS) break;
-                        const targetBlockTypeBeforeChange = WorldData.getBlockType(c, nr); // Get type *before* this rule might change it
+                        const targetBlockTypeBeforeChange = World.getBlockType(c, nr); // Get type *before* this rule might change it
                         const isConvertibleMaterial = Config.AGING_MATERIAL_CONVERSION_FACTORS[targetBlockTypeBeforeChange] !== undefined;
 
                         if (isConvertibleMaterial) {
@@ -209,7 +209,7 @@ export function applyAging(portalRef, intensityFactor) {
                             if (Math.random() < sedimentationProb) {
                                 // Only record change if the type is actually different
                                 if (targetBlockTypeBeforeChange !== Config.BLOCK_SAND) {
-                                    const success = WorldData.setBlock(c, nr, Config.BLOCK_SAND, false);
+                                    const success = World.setBlock(c, nr, Config.BLOCK_SAND, false);
                                     if (success) {
                                         // Check if this cell was already added in this pass to avoid duplicates if main.js doesn't dedupe
                                         // For simplicity, let's assume main.js handles deduping or this specific call site doesn't mind.
@@ -227,6 +227,6 @@ export function applyAging(portalRef, intensityFactor) {
             }
         }
     }
-    console.log(`Aging pass complete (intensity: ${clampedIntensity.toFixed(2)}). WorldData modified.`);
+    console.log(`Aging pass complete (intensity: ${clampedIntensity.toFixed(2)}). World modified.`);
     return changedCellsThisPass; // return the array of changes
 }
