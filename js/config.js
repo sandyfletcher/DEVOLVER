@@ -2,25 +2,23 @@
 // root/js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
-// =============================================================================
 // --- Block Parameters ---
-// =============================================================================
 
 export const BASE_BLOCK_PIXEL_SIZE = 16; // size in pixels of one side of square block
 export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE;
 export const BLOCK_HEIGHT = BASE_BLOCK_PIXEL_SIZE;
+
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
 export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70% of max
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;     // show X when HP <= 30% of max
-export const GHOST_BLOCK_ALPHA = 0.5;            // transparency for placement preview
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70%
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // show X when HP <= 30%
+
+export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
 export const CAN_PLACE_IN_WATER = false;
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
-export const PLAYER_BLOCK_OUTLINE_THICKNESS = 1; // fixed pixel thickness
+export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
 
-// =============================================================================
 // --- World Parameters ---
-// =============================================================================
 
 export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
 export const GRID_COLS = 400; // # of columns in world grid
@@ -28,9 +26,7 @@ export const GRID_ROWS = 200; // # of rows
 export const CANVAS_WIDTH = GRID_COLS * BLOCK_WIDTH; // internal canvas dimensions in pixels
 export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
 
-// =============================================================================
 // --- Landmass Generation ---
-// =============================================================================
 
 export const WORLD_ISLAND_WIDTH = 0.8; // width of main island as percentage of GRID_COLS
 export const WORLD_WATER_LEVEL_FRACTION = 0.15; // water covers bottom X% of GRID_ROWS
@@ -67,8 +63,7 @@ export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_T
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
 export const AGING_INITIAL_PASSES = 35; // Number of aging passes on initial world generation.
 export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default aging passes between waves.
-// Probabilities (chance per eligible block per pass)
-export const AGING_PROB_WATER_EROSION_SAND = 0.0001;
+export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Probabilities (chance per eligible block per pass)
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
 export const AGING_PROB_WATER_EROSION_DIRT_GRASS = 0.9;
 export const AGING_PROB_GRASS_GROWTH = 0.9;
