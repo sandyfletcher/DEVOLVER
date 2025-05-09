@@ -142,7 +142,7 @@ export function damageBlock(col, row, damageAmount) {
         block.hp = 0;
         let dropType = null;
         switch (block.type) {
-            case Config.BLOCK_GRASS: dropType = 'dirt'; break;
+            case Config.BLOCK_VEGETATION: dropType = 'vegetation'; break;
             case Config.BLOCK_DIRT:  dropType = 'dirt'; break;
             case Config.BLOCK_STONE: dropType = 'stone'; break;
             case Config.BLOCK_SAND:  dropType = 'sand'; break;

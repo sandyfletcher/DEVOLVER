@@ -113,6 +113,8 @@ export class Enemy {
         // --- Animation State ---
         this.isDying = false; // New flag: Is the death animation playing?
         this.deathAnimationTimer = 0; // Timer for the death animation duration
+        this.isBeingAbsorbed = false;
+        this.absorptionProgress = 0; // For the portal to potentially control animation details if needed directly on enemy
 
         // --- Instantiate AI Strategy ---
         const AIStrategyClass = aiStrategyMap[this.stats.aiType];
@@ -140,7 +142,10 @@ export class Enemy {
     update(dt, playerPosition, allEnemies) {
         // Check if the enemy is truly inactive or is currently dying
         if (!this.isActive && !this.isDying) return;
-
+        if (this.isBeingAbsorbed) {
+            // Position and scale will be directly manipulated by the Portal's absorption animation logic
+            return;
+        }
         // Ensure dt is valid
         if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
             console.warn(`Enemy(${this.displayName}) Update: Invalid delta time.`, dt);
@@ -361,9 +366,8 @@ export class Enemy {
     }
 
     takeDamage(amount) {
-        // Do not take damage if already inactive OR currently in the dying animation state
-        if (!this.isActive || this.isDying || this.isFlashing) return;
-
+        // Do not take damage if already inactive, getting absorbed OR currently in the dying animation state
+        if (this.isBeingAbsorbed || !this.isActive || this.isDying || this.isFlashing) return;
         const healthBefore = this.health;
         this.health -= amount;
         this.isFlashing = true;
@@ -394,7 +398,7 @@ export class Enemy {
         // It will be set to false in update() when the timer expires.
 
         // Handle item drops immediately when the enemy *starts* dying
-        if (killedByPlayer && this.stats.dropTable && this.stats.dropTable.length > 0) {
+        if (killedByPlayer && !this.isBeingAbsorbed && this.stats.dropTable && this.stats.dropTable.length > 0) {
             if (typeof this.x !== 'number' || typeof this.y !== 'number' || isNaN(this.x) || isNaN(this.y)) {
                 console.error(`>>> ${this.displayName} died with invalid coordinates [${this.x}, ${this.y}], skipping drop spawn.`);
             } else {
@@ -439,7 +443,7 @@ export class Enemy {
     draw(ctx) {
         // Only draw if the enemy is active OR currently dying
         if (!this.isActive && !this.isDying || !ctx) return;
-
+        if (this.isBeingAbsorbed) { return; }
         // Ensure coordinates are valid before drawing
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Enemy DRAW ERROR (${this.displayName}): Preventing draw due to NaN coordinates!`);

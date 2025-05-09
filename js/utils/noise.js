@@ -32,17 +32,72 @@ export class PerlinNoise { // classic Perlin noise generator implementation
     lerp(t, a, b) { // linear interpolation between two values
         return a + t * (b - a);
     }
-    grad(hash, x) { // calculate gradient function for 1D noise - select pseudo-random gradient direction based on the hash value and computes dot product
+
+    // --- 1D Noise ---
+    grad1D(hash, x) { // calculate gradient function for 1D noise - select pseudo-random gradient direction based on the hash value and computes dot product
         const h = hash & 15; // use lower 4 bits of hash to select one of 16 gradients
         const grad = 1 + (h & 7); // generate gradient value
         return ((h & 8) !== 0 ? -grad : grad) * x; // apply sign based on 8th bit (h & 8) - if non-zero, make it negative
     }
-    noise(x) { // computes 1D Perlin noise value for given coordinate x
+
+    noise1D(x) { // computes 1D Perlin noise value for given coordinate x
         const X = Math.floor(x) & 255; // integer part of x, masked to wrap around 0-255
         const xf = x - Math.floor(x); // fractional part of x [0, 1)
         const u = this.fade(xf); // compute the fade curve value for the fractional part
-        const n0 = this.grad(this.p[X], xf); // get hash values for two integer grid points surrounding x using the permutation table
-        const n1 = this.grad(this.p[X + 1], xf - 1); // gradient contribution from point X+1
-        return this.lerp(u, n0, n1) * 2.2; // interpolate two gradient contributions using faded fractional part
+        const n0 = this.grad1D(this.p[X], xf); // get hash values for two integer grid points surrounding x using the permutation table
+        const n1 = this.grad1D(this.p[X + 1], xf - 1); // gradient contribution from point X+1
+        // Original scale was 2.2. Output is roughly in [-1, 1] before this.
+        // Let's keep it consistent for now, or aim for a strict [-1, 1] by adjusting multiplier.
+        // A standard Perlin 1D output range is often [-sqrt(1)/2, sqrt(1)/2] = [-0.5, 0.5].
+        // To make it closer to [-1, 1], we multiply by 2.
+        // The 2.2 was arbitrary, let's make it 2.0 for 1D to be more standard.
+        return this.lerp(u, n0, n1) * 2.0;
+    }
+
+    // --- 2D Noise ---
+    // Gradients for 2D noise (normalized vectors for the 8 directions)
+    // (1,1), (-1,1), (1,-1), (-1,-1), (1,0), (-1,0), (0,1), (0,-1)
+    // Simplified to 4 diagonal gradients for classic Perlin noise:
+    // (1,1), (-1,1), (1,-1), (-1,-1)
+    // For Ken Perlin's improved noise, specific gradient sets are used.
+    // Here we'll use 8 common gradients for better quality than just 4.
+    grad2D(hash, x, y) {
+        const h = hash & 7; // Use lower 3 bits for 8 directions
+        const u = h < 4 ? x : y;
+        const v = h < 4 ? y : x;
+        return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v);
+    }
+
+    noise2D(x, y) {
+        const X = Math.floor(x) & 255; // Integer part of x, wrapped
+        const Y = Math.floor(y) & 255; // Integer part of y, wrapped
+
+        const xf = x - Math.floor(x); // Fractional part of x
+        const yf = y - Math.floor(y); // Fractional part of y
+
+        const u = this.fade(xf); // Fade curve for x
+        const v = this.fade(yf); // Fade curve for y
+
+        // Hash coordinates of the 4 square corners
+        const aa = this.p[this.p[X] + Y];
+        const ab = this.p[this.p[X] + Y + 1];
+        const ba = this.p[this.p[X + 1] + Y];
+        const bb = this.p[this.p[X + 1] + Y + 1];
+
+        // Add contributions from each corner
+        const n00 = this.grad2D(aa, xf, yf);
+        const n01 = this.grad2D(ab, xf, yf - 1);
+        const n10 = this.grad2D(ba, xf - 1, yf);
+        const n11 = this.grad2D(bb, xf - 1, yf - 1);
+
+        // Interpolate
+        const nx0 = this.lerp(u, n00, n10);
+        const nx1 = this.lerp(u, n01, n11);
+        const nxy = this.lerp(v, nx0, nx1);
+
+        // The theoretical output range of 2D Perlin noise is [-sqrt(2)/2, sqrt(2)/2] approx [-0.707, 0.707].
+        // To map it to roughly [-1, 1], we can multiply by sqrt(2) or a bit more.
+        // Let's use 1.414 (sqrt(2)) for a standard [-1, 1] mapping.
+        return nxy * 1.414;
     }
 }

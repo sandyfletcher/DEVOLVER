@@ -22,24 +22,45 @@ export const WATER_LEVEL_FRACTION = 0.25; // % of bottom GRID_ROWS water covers
 export const WATER_LEVEL = Math.floor(GRID_ROWS * (1.0 - WATER_LEVEL_FRACTION)); // calculate target row for water surface
 
 export const MEAN_GROUND_LEVEL = WATER_LEVEL - Math.floor(GRID_ROWS * 0.20); // mean row for ground surface
-export const STONE_DEPTH_BELOW_GROUND = 20; // # of rows deep stone starts below average ground level
+
+export const AVERAGE_SUBSURFACE_LANDMASS_THICKNESS = (GRID_ROWS - 1) - MEAN_GROUND_LEVEL;
+export const DIRT_LAYER_THICKNESS_FACTOR = 0.7;
+export const STONE_DEPTH_BELOW_GROUND = Math.max(3, Math.round(DIRT_LAYER_THICKNESS_FACTOR * AVERAGE_SUBSURFACE_LANDMASS_THICKNESS)); // # of rows deep stone starts below average ground level
 export const MEAN_STONE_LEVEL = MEAN_GROUND_LEVEL + STONE_DEPTH_BELOW_GROUND; // mean row for top of stone layer
 
-export const WORLD_GROUND_VARIATION = 4; // Variation in rows for ground level noise.
-export const WORLD_STONE_VARIATION = 2;  // Variation in rows for stone level noise.
-export const WORLD_NOISE_SCALE = 0.03;   // Scale factor for Perlin noise used in terrain generation.
+export const WORLD_GROUND_VARIATION = 4; // Variation in rows for ground level noise
+export const WORLD_STONE_VARIATION = 2; // Variation in rows for stone level noise
+export const WORLD_NOISE_SCALE = 0.03; // Scale factor for Perlin noise used in terrain generation
 
-export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WATER_LEVEL + 5; // Target row for ocean floor near the island.
-export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // Target row for ocean stone near the island.
-export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1); // Offset in rows for deep ocean from water level.
-export const DEEP_OCEAN_MAX_ROW = GRID_ROWS - 3; // Maximum row depth for the deep ocean floor.
-export const DEEP_OCEAN_FLOOR_START_ROW = Math.min(DEEP_OCEAN_MAX_ROW, WATER_LEVEL + DEEP_OCEAN_BASE_ROW_OFFSET); // Starting row for deep ocean floor.
-export const DEEP_OCEAN_STONE_START_ROW = DEEP_OCEAN_FLOOR_START_ROW + 8; // Starting row for deep ocean stone.
+// --- Terrain Octave Parameters ---
+export const GROUND_NOISE_OCTAVES = 4;        // Number of octaves for ground surface noise
+export const GROUND_NOISE_PERSISTENCE = 0.5;  // Amplitude multiplier for each subsequent octave
+export const GROUND_NOISE_LACUNARITY = 2.0;   // Frequency multiplier for each subsequent octave
 
-export const EDGE_TAPER_WIDTH_FACTOR = 0.15; // Percentage of GRID_COLS for edge tapering.
-export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 15; // Target stone level offset (in rows) at the absolute world edge.
-export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 20; // Target floor level offset (in rows) at the absolute world edge.
-export const ISLAND_CENTER_TAPER_WIDTH_COLS = 80; // Width in columns for tapering from island edge inward.
+export const STONE_NOISE_OCTAVES = 3;         // Number of octaves for stone layer noise
+export const STONE_NOISE_PERSISTENCE = 0.45;
+export const STONE_NOISE_LACUNARITY = 2.2;
+
+// --- Cave Generation Parameters ---
+export const ENABLE_CAVES = true;
+export const CAVE_NOISE_SCALE_X = 0.01; // Scale for 2D Perlin noise for caves (adjust for smaller/larger caves)
+export const CAVE_NOISE_SCALE_Y = 0.015; // Can be different for X and Y to stretch caves
+export const CAVE_THRESHOLD = -0.2;      // Noise values above this threshold become air (range typically [-1,1] or [0,1] - adjust based on noise2D output)
+                                        // If noise2D outputs roughly [-1,1], a threshold of 0.6 means ~20% of area could be caves.
+export const CAVE_MIN_ROWS_BELOW_SURFACE = 1; // Caves start at least this many rows below the generated surface
+export const CAVE_MIN_ROWS_ABOVE_BOTTOM = 10; // Caves stop at least this many rows above the grid bottom
+
+export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WATER_LEVEL + 5; // Target row for ocean floor near the island
+export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // Target row for ocean stone near the island
+export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1); // Offset in rows for deep ocean from water level
+export const DEEP_OCEAN_MAX_ROW = GRID_ROWS - 3; // Maximum row depth for the deep ocean floor
+export const DEEP_OCEAN_FLOOR_START_ROW = Math.min(DEEP_OCEAN_MAX_ROW, WATER_LEVEL + DEEP_OCEAN_BASE_ROW_OFFSET); // Starting row for deep ocean floor
+export const DEEP_OCEAN_STONE_START_ROW = DEEP_OCEAN_FLOOR_START_ROW + 8; // Starting row for deep ocean stone
+
+export const EDGE_TAPER_WIDTH_FACTOR = 0.15; // Percentage of GRID_COLS for edge tapering
+export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 15; // Target stone level offset (in rows) at the absolute world edge
+export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 20; // Target floor level offset (in rows) at the absolute world edge
+export const ISLAND_CENTER_TAPER_WIDTH_COLS = 80; // Width in columns for tapering from island edge inward
 
 // --- Aging Parameters ---
 
@@ -48,17 +69,20 @@ export const AGING_NOISE_SCALE = 0.03;   // Scale for Perlin noise used in aging
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 0.45); // Threshold in rows for stoneification.
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT; // Threshold in pixels.
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
-export const AGING_INITIAL_PASSES = 35; // Number of aging passes on initial world generation.
+export const AGING_INITIAL_PASSES = 10; // Number of aging passes on initial world generation.
 export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default aging passes between waves.
 export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Probabilities (chance per eligible block per pass)
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
-export const AGING_PROB_WATER_EROSION_DIRT_GRASS = 0.9;
-export const AGING_PROB_GRASS_GROWTH = 0.9;
+export const AGING_PROB_WATER_EROSION_DIRT_VEGETATION = 0.9;
 export const AGING_PROB_STONEIFICATION_DEEP = 0.000001;
-export const AGING_PROB_HORIZONTAL_SAND_SPREAD = 0.85; // Chance for dirt/grass/stone next to "wet" sand to become sand
+export const AGING_PROB_HORIZONTAL_SAND_SPREAD = 0.85; // Chance for dirt/VEGETATION/stone next to "wet" sand to become sand
 export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001;
 export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
+
+export const AGING_PROB_VEGETATION_GROWTH_BASE = 0.1;         // Base probability if ANY side is exposed to air
+export const AGING_PROB_VEGETATION_GROWTH_PER_AIR_SIDE = 0.2; // Additional probability per air-exposed side
+export const AGING_MAX_AIR_SIDES_FOR_VEGETATION_BONUS = 3;    // Max number of air sides that contribute to bonus probability (e.g., 1-3 sides 
 
 // --- Aging Animation Parameters ---
 
@@ -158,36 +182,37 @@ export const AUDIO_TRACKS = {
 
 // --- Material Parameters ---
 
-export const INVENTORY_MATERIALS = [ 'dirt', 'sand', 'stone', 'wood', 'bone', 'metal'];
+export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal'];
 // Block Type IDs (numeric constants)
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
 export const BLOCK_SAND = 2;
 export const BLOCK_DIRT = 3;
-export const BLOCK_GRASS = 4;
+export const BLOCK_VEGETATION = 4;
 export const BLOCK_STONE = 5;
 export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 // Block HP
 export const BLOCK_HP = {
-    [BLOCK_WATER]: Infinity, [BLOCK_SAND]: 30, [BLOCK_DIRT]: 50, [BLOCK_GRASS]: 50,
+    [BLOCK_WATER]: Infinity, [BLOCK_SAND]: 30, [BLOCK_DIRT]: 50, [BLOCK_VEGETATION]: 25,
     [BLOCK_STONE]: 300, [BLOCK_WOOD]: 100, [BLOCK_METAL]: 500, [BLOCK_BONE]: 120,
 };
 // Block Colors
 export const BLOCK_COLORS = {
     [BLOCK_WATER]: 'rgb(50, 100, 200)', [BLOCK_SAND]: 'rgb(210, 180, 140)', [BLOCK_DIRT]: 'rgb(130, 82, 45)',
-    [BLOCK_GRASS]: 'rgb(80, 180, 80)', [BLOCK_STONE]: 'rgb(140, 140, 140)', [BLOCK_WOOD]: 'rgb(160, 110, 70)',
+    [BLOCK_VEGETATION]: 'rgb(80, 180, 80)', [BLOCK_STONE]: 'rgb(140, 140, 140)', [BLOCK_WOOD]: 'rgb(160, 110, 70)',
     [BLOCK_METAL]: 'rgb(190, 190, 200)', [BLOCK_BONE]: 'rgb(200, 190, 170)',
 };
 // Material to Block Type mapping (fixed)
 export const MATERIAL_TO_BLOCK_TYPE = {
     'dirt': BLOCK_DIRT, 'stone': BLOCK_STONE, 'wood': BLOCK_WOOD,
     'sand': BLOCK_SAND, 'metal': BLOCK_METAL, 'bone': BLOCK_BONE,
+    'vegetation': BLOCK_VEGETATION,
 };
 // Sand Sedimentation: Factors for materials convertible by sand.
 export const AGING_MATERIAL_CONVERSION_FACTORS = {
-    [BLOCK_DIRT]: 1.0, [BLOCK_GRASS]: 1.0, [BLOCK_STONE]: 1.0,
+    [BLOCK_DIRT]: 1.0, [BLOCK_VEGETATION]: 1.0, [BLOCK_STONE]: 1.0,
     [BLOCK_BONE]: 1.0, [BLOCK_WOOD]: 1.0, [BLOCK_METAL]: 1.0,
 };
 
@@ -195,10 +220,16 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
 
 export const PORTAL_COLOR = 'rgb(100, 100, 255)';
 export const PORTAL_WIDTH_BLOCKS = 6;  // Portal width in block units.
-export const PORTAL_HEIGHT_BLOCKS = 8; // Portal height in block units.
+export const PORTAL_HEIGHT_BLOCKS = 8; // Portal height in block units
+
+export const PORTAL_BORDER_COLOR = 'silver';
+export const PORTAL_BORDER_WIDTH = 10; // Pixel width of the border
+
 export const PORTAL_WIDTH = PORTAL_WIDTH_BLOCKS * BLOCK_WIDTH;   // Pixel width.
 export const PORTAL_HEIGHT = PORTAL_HEIGHT_BLOCKS * BLOCK_HEIGHT; // Pixel height.
 export const PORTAL_INITIAL_HEALTH = 500;
+
+export const PORTAL_ABSORB_ANIMATION_DURATION = 0.75; // seconds
 
 export const PORTAL_SAFETY_RADIUS_BLOCKS = 30; // Radius in block units.
 export const PORTAL_SAFETY_RADIUS = PORTAL_SAFETY_RADIUS_BLOCKS * BASE_BLOCK_PIXEL_SIZE; // Pixel radius.
@@ -322,6 +353,7 @@ export const ITEM_CONFIG = {
     [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
     [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
     'dirt': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_DIRT] },
+    'vegetation': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_VEGETATION] },
     'sand': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_SAND] },
     'wood': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_WOOD] },
     'stone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_STONE] },

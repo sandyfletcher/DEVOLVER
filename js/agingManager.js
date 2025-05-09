@@ -26,8 +26,8 @@ function getNeighborTypes(c, r) {
 }
 
 // Helper function to check exposure to a specific type (AIR or WATER)
-function isExposedTo(c, r, exposedType) {
-    const neighborTypes = getNeighborTypes(c, r);
+// Optimization: Pass neighborTypes to avoid redundant calls to World.getBlockType
+function isExposedTo(neighborTypes, exposedType) {
     return neighborTypes.above === exposedType ||
            neighborTypes.below === exposedType ||
            neighborTypes.left === exposedType ||
@@ -102,9 +102,9 @@ export function applyAging(portalRef, intensityFactor) {
             const originalType = (typeof block === 'object' && block !== null) ? block.type : block; // Ensure block is not null before accessing type
             let newType = originalType;
 
-            const neighborTypes = getNeighborTypes(c, r);
-            const isExposedToAir = isExposedTo(c, r, Config.BLOCK_AIR);
-            const isExposedToWater = isExposedTo(c, r, Config.BLOCK_WATER);
+            const neighborTypes = getNeighborTypes(c, r); // Get neighbors once
+            const isExposedToAir = isExposedTo(neighborTypes, Config.BLOCK_AIR); // Use cached neighbors
+            const isExposedToWater = isExposedTo(neighborTypes, Config.BLOCK_WATER); // Use cached neighbors
             const waterDepthAbove = getWaterDepthAbove(c, r);
 
             // Rule 1: SAND Erosion (Highest Priority)
@@ -122,29 +122,44 @@ export function applyAging(portalRef, intensityFactor) {
                  }
             }
 
-            // Rule 2: DIRT/GRASS Water Erosion -> SAND
-            if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_GRASS)) {
+            // Rule 2: DIRT/VEGETATION Water Erosion -> SAND
+            if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION)) {
                  if (waterDepthAbove > 0) {
-                      const erosionProb = Config.AGING_PROB_WATER_EROSION_DIRT_GRASS * clampedIntensity;
+                      const erosionProb = Config.AGING_PROB_WATER_EROSION_DIRT_VEGETATION * clampedIntensity;
                       if (Math.random() < erosionProb) {
                            newType = Config.BLOCK_SAND;
                       }
                  }
             }
 
-            // Rule 3: DIRT Grass Growth -> GRASS
+            // Rule 3: DIRT VEGETATION Growth -> VEGETATION
              if (newType === originalType && originalType === Config.BLOCK_DIRT) {
                  const isBelowSolidAndWithinBounds = GridCollision.isSolid(c, r + 1);
+                 // Check if exposed to air, NOT exposed to water, and has solid ground below
                  if (isExposedToAir && !isExposedToWater && isBelowSolidAndWithinBounds) {
-                      const growthProb = Config.AGING_PROB_GRASS_GROWTH * clampedIntensity;
+                      // --- CORRECTED PROBABILITY CALCULATION ---
+                      let airSidesCount = 0;
+                      if (neighborTypes.above === Config.BLOCK_AIR) airSidesCount++;
+                      // neighborTypes.below cannot be air due to isBelowSolidAndWithinBounds
+                      if (neighborTypes.left === Config.BLOCK_AIR) airSidesCount++;
+                      if (neighborTypes.right === Config.BLOCK_AIR) airSidesCount++;
+
+                      // Calculate growth probability based on config values
+                      let growthProb = Config.AGING_PROB_VEGETATION_GROWTH_BASE; // Base probability
+                      // Add bonus for the number of actual air-exposed sides (above, left, right)
+                      growthProb += Math.min(airSidesCount, Config.AGING_MAX_AIR_SIDES_FOR_VEGETATION_BONUS) * Config.AGING_PROB_VEGETATION_GROWTH_PER_AIR_SIDE;
+                      
+                      growthProb *= clampedIntensity; // Apply overall intensity factor
+                      // --- END CORRECTED PROBABILITY ---
+
                       if (Math.random() < growthProb) {
-                           newType = Config.BLOCK_GRASS;
+                           newType = Config.BLOCK_VEGETATION;
                       }
                  }
              }
 
             // Rule 4: Deep Stoneification
-            if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_GRASS || originalType === Config.BLOCK_SAND)) {
+            if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION || originalType === Config.BLOCK_SAND)) {
                 const depthInPixels = r * Config.BLOCK_HEIGHT;
                 if (depthInPixels > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) {
                     const stoneProb = Config.AGING_PROB_STONEIFICATION_DEEP * clampedIntensity;
@@ -227,6 +242,6 @@ export function applyAging(portalRef, intensityFactor) {
             }
         }
     }
-    console.log(`Aging pass complete (intensity: ${clampedIntensity.toFixed(2)}). World modified.`);
+    // console.log(`Aging pass complete (intensity: ${clampedIntensity.toFixed(2)}). World modified.`); // Keep console cleaner
     return changedCellsThisPass; // return the array of changes
 }

@@ -165,40 +165,32 @@ export function checkPlayerEnemyCollisions(player, enemies) {
         }
     }
 }
-
-/**
- * Checks for collisions between active enemies and the portal.
- * If a collision occurs, damages the portal using the enemy's contact damage.
- * @param {Array<Enemy>} enemies - An array of active enemy objects.
- * @param {Portal} portal - The portal object.
- */
 export function checkEnemyPortalCollisions(enemies, portal) {
-    // Check if portal is valid and alive before checking collisions
     if (!portal || !portal.isAlive() || !enemies) {
         return;
     }
-
     const portalRect = portal.getRect();
 
     for (const enemy of enemies) {
-        // Check if enemy is valid, active, and NOT dying
-        if (!enemy || !enemy.isActive || enemy.isDying) continue;
+        // Check if enemy is valid, active, NOT dying, AND NOT ALREADY BEING ABSORBED
+        if (!enemy || !enemy.isActive || enemy.isDying || enemy.isBeingAbsorbed) {
+            continue;
+        }
 
-        // Perform collision check
         if (checkRectOverlap(enemy.getRect(), portalRect)) {
-            // Collision detected!
-            // Damage the portal using the enemy's *base* contact damage stat, NOT the player-specific one
-            // We assume enemies deal their base contact damage to the portal regardless of state.
-            // Add a fallback (e.g., 1 damage) in case stats or contactDamage is missing.
             const damageAmount = enemy.stats?.contactDamage ?? 1;
 
-            // Only damage if the enemy actually deals base contact damage
             if (damageAmount > 0) {
-                portal.takeDamage(damageAmount); // Portal's takeDamage handles health reduction and death transition
-                // Optional: Add a cooldown or flag to enemy to prevent spamming damage every frame
-                // For now, simple continuous contact damage is applied.
-                // console.log(`CollisionManager: Enemy (${enemy.displayName}) collided with Portal. Applying ${damageAmount} damage.`);
+                portal.takeDamage(damageAmount); // Portal takes damage ONCE
             }
+
+            // Start absorption process regardless of whether it dealt damage (e.g. 0 contact damage enemies)
+            // as long as it's a living, active enemy making contact.
+            portal.startAbsorbing(enemy); // Portal initiates absorption
+
+            // Since startAbsorbing sets enemy.isBeingAbsorbed = true, this enemy
+            // will be skipped in subsequent checks within the same frame if multiple enemies hit,
+            // and in subsequent frames until it's fully absorbed and made inactive.
         }
     }
 }
