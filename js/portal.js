@@ -97,18 +97,6 @@ export class Portal {
                 this.height - Config.PORTAL_BORDER_WIDTH
             );
         }
-        // simple HP bar above the portal
-        const hpBarWidth = this.width;
-        const hpBarHeight = 5;
-        const hpBarYOffset = -10; // Pixels above the portal
-        const currentHpWidth = (this.currentHealth / this.maxHealth) * hpBarWidth;
-        ctx.fillStyle = 'gray'; // Background
-        ctx.fillRect(this.x, this.y + hpBarYOffset, hpBarWidth, hpBarHeight);
-        ctx.fillStyle = 'red'; // Health fill
-        ctx.fillRect(this.x, this.y + hpBarYOffset, currentHpWidth, hpBarHeight);
-        ctx.strokeStyle = 'black'; // Border
-        ctx.lineWidth = 1;
-        ctx.strokeRect(this.x, this.y + hpBarYOffset, hpBarWidth, hpBarHeight);
         // Draw absorbing enemies
         if (this.absorbingEnemies.length > 0) {
             const portalCenterX = this.x + this.width / 2;

@@ -559,6 +559,9 @@ function gameLoop(timestamp) {
             EnemyManager.update(dt, playerPosForEnemies);
             const playerRefForItems = (player && player.isActive && !player.isDying) ? player : null;
             ItemManager.update(dt, playerRefForItems);
+            if (portal && portal.isAlive()) { // or portal.isActive if that's preferred for update logic?
+                portal.update(dt);
+            }
             if (player) {
                 CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
                 CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());

@@ -146,8 +146,9 @@ export function checkPlayerEnemyCollisions(player, enemies) {
     const playerRect = player.getRect();
     for (const enemy of enemies) {
         // Enemy must be active and NOT dying to deal damage
-        if (!enemy || !enemy.isActive || enemy.isDying) continue;
-
+        if (!enemy || !enemy.isActive || enemy.isDying || enemy.isBeingAbsorbed) {
+            continue;
+        }
         if (checkRectOverlap(playerRect, enemy.getRect())) {
             // Collision detected!
             // Get the current contact damage by calling the enemy's method

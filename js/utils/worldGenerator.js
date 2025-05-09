@@ -29,8 +29,6 @@ function getOctaveNoise1D(x, octaves, persistence, lacunarity, baseScale, noiseG
 
 function generateLandmass() {
     terrainNoiseGenerator = new PerlinNoise(Math.random());
-
-    // --- EXISTING generateLandmass code from previous step ---
     const islandWidthFactor = Math.random() * (Config.ISLAND_WIDTH_MAX - Config.ISLAND_WIDTH_MIN) + Config.ISLAND_WIDTH_MIN;
     const islandWidth = Math.floor(Config.GRID_COLS * islandWidthFactor);
     const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2);
@@ -191,23 +189,23 @@ function generateCavesConnected(worldLevels) {
     }
 
     console.log("[CaveGen] Starting connected cave generation...");
-    caveNoiseGenerator = new PerlinNoise(Math.random() + 0.5);
+    caveNoiseGenerator = new PerlinNoise(Math.random() + 0.5); // Seed with a slight offset if desired
 
     const queue = [];
-    const visitedCandidates = new Set();
+    const visitedCandidates = new Set(); // Tracks {c,r} strings that have been added to the queue
 
     console.log("[CaveGen] Seeding cave generation queue...");
     let initialAirBlocksChecked = 0;
     let potentialSolidNeighborsFound = 0;
     let candidatesAddedToQueue = 0;
 
-    for (let r_air = 0; r_air < Config.GRID_ROWS; r_air++) { // Renamed r to r_air for clarity
-        for (let c_air = 0; c_air < Config.GRID_COLS; c_air++) { // Renamed c to c_air
+    for (let r_air = 0; r_air < Config.GRID_ROWS; r_air++) {
+        for (let c_air = 0; c_air < Config.GRID_COLS; c_air++) {
             if (World.getBlockType(c_air, r_air) === Config.BLOCK_AIR) {
                 initialAirBlocksChecked++;
                 const neighbors = [
-                    { dc: 0, dr: -1, dir: "UP" }, { dc: 0, dr: 1, dir: "DOWN" },
-                    { dc: -1, dr: 0, dir: "LEFT" }, { dc: 1, dr: 0, dir: "RIGHT" }
+                    { dc: 0, dr: -1 }, { dc: 0, dr: 1 },
+                    { dc: -1, dr: 0 }, { dc: 1, dr: 0 }
                 ];
                 for (const offset of neighbors) {
                     const nc = c_air + offset.dc;
@@ -222,17 +220,13 @@ function generateCavesConnected(worldLevels) {
                         if (neighborBlockType === Config.BLOCK_DIRT || neighborBlockType === Config.BLOCK_STONE) {
                             potentialSolidNeighborsFound++;
                             const surfaceRowForColumn = worldLevels[nc]?.surface ?? Config.MEAN_GROUND_LEVEL;
-                            const meetsMinDepth = nr > surfaceRowForColumn + Config.CAVE_MIN_ROWS_BELOW_SURFACE;
-                            const meetsMaxDepth = nr < Config.GRID_ROWS - Config.CAVE_MIN_ROWS_ABOVE_BOTTOM;
-
-                            if (meetsMinDepth && meetsMaxDepth) {
+                            // Use >= for the depth check with CAVE_MIN_ROWS_BELOW_SURFACE
+                            if (nr >= surfaceRowForColumn + Config.CAVE_MIN_ROWS_BELOW_SURFACE &&
+                                nr < Config.GRID_ROWS - Config.CAVE_MIN_ROWS_ABOVE_BOTTOM) {
                                 queue.push({ c: nc, r: nr });
                                 visitedCandidates.add(candidateKey);
                                 candidatesAddedToQueue++;
-                                // console.log(`[CaveGen DEBUG] Queued candidate at [${nc},${nr}] from air [${c_air},${r_air}]. Surface: ${surfaceRowForColumn}, MinDepth: ${meetsMinDepth}, MaxDepth: ${meetsMaxDepth}`);
-                            }/* else {
-                                console.log(`[CaveGen DEBUG] Solid neighbor [${nc},${nr}] from air [${c_air},${r_air}] SKIPPED depth. Surface: ${surfaceRowForColumn}. Row: ${nr}. MinDepthOK: ${meetsMinDepth} (needs > ${surfaceRowForColumn + Config.CAVE_MIN_ROWS_BELOW_SURFACE}), MaxDepthOK: ${meetsMaxDepth} (needs < ${Config.GRID_ROWS - Config.CAVE_MIN_ROWS_ABOVE_BOTTOM})`);
-                            }*/
+                            }
                         }
                     }
                 }
@@ -247,11 +241,12 @@ function generateCavesConnected(worldLevels) {
         console.warn(`[CaveGen] Check CAVE_MIN_ROWS_BELOW_SURFACE (${Config.CAVE_MIN_ROWS_BELOW_SURFACE}) and CAVE_MIN_ROWS_ABOVE_BOTTOM (${Config.CAVE_MIN_ROWS_ABOVE_BOTTOM})`);
     }
 
+    let initialCandidatesCountForLog = candidatesAddedToQueue; // Store for final log
 
-    let cavesCarved = 0;
-    // ... rest of the function ...
+    let cavesCarvedNoiseConditionMet = 0; // Counts how many times noise > threshold
+    let actualBlockChanges = 0;      // Counts actual solid blocks changed to air
+
     while (queue.length > 0) {
-        // ...
         const current = queue.shift();
         const { c, r } = current;
 
@@ -260,40 +255,81 @@ function generateCavesConnected(worldLevels) {
             c * Config.CAVE_NOISE_SCALE_X,
             r * Config.CAVE_NOISE_SCALE_Y
         );
-        // console.log(`[CaveGen DEBUG] Processing [${c},${r}], Noise: ${noiseValue.toFixed(3)}, Threshold: ${Config.CAVE_THRESHOLD}`); // LOG NOISE VALUE
 
         if (noiseValue > Config.CAVE_THRESHOLD) {
-            World.setBlockData(c, r, createBlock(Config.BLOCK_AIR, false));
-            cavesCarved++;
-            // console.log(`[CaveGen DEBUG] Carved cave at [${c},${r}]`); // LOG CARVING
+            cavesCarvedNoiseConditionMet++; // Increment when noise condition is met
 
-            const neighbors = [ /* ... */ ]; // as before
-            // ... (neighbor queuing logic as before, ensure it also checks depth constraints for newly added candidates)
-             for (const offset of neighbors) {
-                const nc = c + offset.dc;
-                const nr = r + offset.dr;
-                const neighborKey = `${nc},${nr}`;
+            const blockTypeBefore = World.getBlockType(c, r);
 
-                if (nr >= 0 && nr < Config.GRID_ROWS &&
-                    nc >= 0 && nc < Config.GRID_COLS &&
-                    !visitedCandidates.has(neighborKey)) {
+            if (blockTypeBefore === Config.BLOCK_DIRT || blockTypeBefore === Config.BLOCK_STONE) {
+                // This is a solid block that can be carved
+                const success = World.setBlockData(c, r, createBlock(Config.BLOCK_AIR, false));
+                if (success) {
+                    actualBlockChanges++; // Increment only if setBlockData was successful for a solid block
+                    // console.log(`[CaveGen ACTION] Carved solid block at [${c},${r}] (was ${blockTypeBefore}) to AIR. Noise: ${noiseValue.toFixed(3)}`);
 
-                    const neighborBlockType = World.getBlockType(nc, nr);
-                    if (neighborBlockType === Config.BLOCK_DIRT || neighborBlockType === Config.BLOCK_STONE) {
-                        const surfaceRowForColumn = worldLevels[nc]?.surface ?? Config.MEAN_GROUND_LEVEL;
-                         // CRITICAL: Re-check depth constraints for neighbors of newly carved blocks
-                        if (nr > surfaceRowForColumn + Config.CAVE_MIN_ROWS_BELOW_SURFACE &&
-                            nr < Config.GRID_ROWS - Config.CAVE_MIN_ROWS_ABOVE_BOTTOM) {
-                            queue.push({ c: nc, r: nr });
-                            visitedCandidates.add(neighborKey);
-                            // console.log(`[CaveGen DEBUG] (From Carved) Queued candidate at [${nc},${nr}]`);
+                    // Add solid neighbors of the newly carved air block to the queue
+                    const neighbors = [
+                        { dc: 0, dr: -1 }, { dc: 0, dr: 1 },
+                        { dc: -1, dr: 0 }, { dc: 1, dr: 0 }
+                    ];
+                    for (const offset of neighbors) {
+                        const nc = c + offset.dc;
+                        const nr = r + offset.dr;
+                        const neighborKey = `${nc},${nr}`;
+
+                        if (nr >= 0 && nr < Config.GRID_ROWS &&
+                            nc >= 0 && nc < Config.GRID_COLS &&
+                            !visitedCandidates.has(neighborKey)) {
+
+                            const neighborBlockType = World.getBlockType(nc, nr);
+                            if (neighborBlockType === Config.BLOCK_DIRT || neighborBlockType === Config.BLOCK_STONE) {
+                                const surfaceRowForColumn = worldLevels[nc]?.surface ?? Config.MEAN_GROUND_LEVEL;
+                                if (nr >= surfaceRowForColumn + Config.CAVE_MIN_ROWS_BELOW_SURFACE &&
+                                    nr < Config.GRID_ROWS - Config.CAVE_MIN_ROWS_ABOVE_BOTTOM) {
+                                    queue.push({ c: nc, r: nr });
+                                    visitedCandidates.add(neighborKey);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    console.warn(`[CaveGen WARN] setBlockData FAILED at [${c},${r}] even though noise condition met. Block before: ${blockTypeBefore}`);
+                }
+            } else if (blockTypeBefore === Config.BLOCK_AIR || blockTypeBefore === Config.BLOCK_WATER) {
+                // This block met the noise criteria but was already AIR or WATER.
+                // It wasn't "carved" in the sense of changing a solid, but it can still propagate cave generation to its solid neighbors.
+                // console.log(`[CaveGen INFO] Noise condition met at [${c},${r}] but block was already ${blockTypeBefore === Config.BLOCK_AIR ? 'AIR' : 'WATER'}. Propagating.`);
+
+                const neighbors = [
+                    { dc: 0, dr: -1 }, { dc: 0, dr: 1 },
+                    { dc: -1, dr: 0 }, { dc: 1, dr: 0 }
+                ];
+                for (const offset of neighbors) {
+                    const nc = c + offset.dc;
+                    const nr = r + offset.dr;
+                    const neighborKey = `${nc},${nr}`;
+
+                    if (nr >= 0 && nr < Config.GRID_ROWS &&
+                        nc >= 0 && nc < Config.GRID_COLS &&
+                        !visitedCandidates.has(neighborKey)) {
+
+                        const neighborBlockType = World.getBlockType(nc, nr);
+                        if (neighborBlockType === Config.BLOCK_DIRT || neighborBlockType === Config.BLOCK_STONE) {
+                            const surfaceRowForColumn = worldLevels[nc]?.surface ?? Config.MEAN_GROUND_LEVEL;
+                            if (nr >= surfaceRowForColumn + Config.CAVE_MIN_ROWS_BELOW_SURFACE &&
+                                nr < Config.GRID_ROWS - Config.CAVE_MIN_ROWS_ABOVE_BOTTOM) {
+                                queue.push({ c: nc, r: nr });
+                                visitedCandidates.add(neighborKey);
+                            }
                         }
                     }
                 }
             }
+            // No else needed for other block types; if it's not DIRT/STONE/AIR/WATER, it's unusual and we wouldn't carve it.
         }
     }
-    console.log(`[CaveGen] Connected cave generation complete. Carved ${cavesCarved} blocks.`);
+    console.log(`[CaveGen] Connected cave generation complete. Initial Candidates: ${initialCandidatesCountForLog}. Noise Condition Met Count: ${cavesCarvedNoiseConditionMet}. Actual Solid Blocks Changed to Air: ${actualBlockChanges}.`);
 }
 
 function applyFloodFill(targetWaterRow) {
@@ -366,15 +402,13 @@ function applyFloodFill(targetWaterRow) {
 export function generateInitialWorld() {
     console.time("Initial World generated in");
     World.initializeGrid();
-    const generatedWorldLevels = generateLandmass(); // Ensure this is being returned
-    // Add a log to check:
+    const generatedWorldLevels = generateLandmass(); // ensure this is being returned
     if (generatedWorldLevels && generatedWorldLevels.length > 0) {
         console.log(`[WorldGenerator] generateLandmass returned ${generatedWorldLevels.length} column levels.`);
     } else {
         console.error("[WorldGenerator] ERROR: generateLandmass did NOT return valid worldLevels!");
-        // If worldLevels is bad, cave generation will likely fail.
     }
-    generateCavesConnected(generatedWorldLevels); // Ensure it's passed here
+    generateCavesConnected(generatedWorldLevels);
     applyFloodFill(Config.WATER_LEVEL);
     console.timeEnd("Initial World generated in");
 }
