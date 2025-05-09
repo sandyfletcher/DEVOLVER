@@ -166,7 +166,7 @@ export function applyAging(portalRef, intensityFactor) {
              }
 
             // Rule 6: Underwater AIR/WATER Sedimentation -> SAND
-            if (newType === originalType && originalType === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
+            if (newType === originalType && originalType === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
                  let firstSolidRowBelow = -1;
                  for (let checkR = r + 1; checkR < Config.GRID_ROWS; checkR++) {
                      if (GridCollision.isSolid(c, checkR)) {

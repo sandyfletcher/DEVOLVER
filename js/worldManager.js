@@ -60,7 +60,7 @@ export function addWaterUpdateCandidate(col, row) {
             // Only add AIR blocks if AT/BELOW waterline, or any WATER block.
             if (blockType !== null &&
                 (blockType === Config.BLOCK_WATER ||
-                (blockType === Config.BLOCK_AIR && row >= Config.WORLD_WATER_LEVEL_ROW_TARGET))) {
+                (blockType === Config.BLOCK_AIR && row >= Config.WATER_LEVEL))) {
                 waterUpdateQueue.set(key, {c: col, r: row});
                 return true; // Indicates a candidate was added
             }
@@ -97,7 +97,7 @@ export function seedWaterUpdateQueue() {
             if (blockType === Config.BLOCK_WATER || blockType === Config.BLOCK_AIR) {
                 addWaterUpdateCandidate(c, r);
             }
-            if (blockType === Config.BLOCK_WATER || (GridCollision.isSolid(c, r) && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 2)) {
+            if (blockType === Config.BLOCK_WATER || (GridCollision.isSolid(c, r) && r >= Config.WATER_LEVEL - 2)) {
                 queueWaterCandidatesAroundChange(c, r);
             }
         }
@@ -398,7 +398,7 @@ export function update(dt) {
             if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return;
             const currentBlockType = World.getBlockType(c, r);
             if (currentBlockType === Config.BLOCK_AIR) {
-                if (r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
+                if (r >= Config.WATER_LEVEL) {
                     let adjacentToWater = false;
                     const immediateNeighbors = [{dc: 0, dr: 1}, {dc: 0, dr: -1}, {dc: 1, dr: 0}, {dc: -1, dr: 0}];
                     for (const neighbor of immediateNeighbors) {
@@ -430,11 +430,11 @@ export function update(dt) {
 
                     if (isBelowSolidOrWater) {
                         let spreadOccurred = false;
-                        if (World.getBlockType(c - 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
+                        if (World.getBlockType(c - 1, r) === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
                             addWaterUpdateCandidate(c - 1, r);
                             spreadOccurred = true;
                         }
-                        if (World.getBlockType(c + 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
+                        if (World.getBlockType(c + 1, r) === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
                             addWaterUpdateCandidate(c + 1, r);
                             spreadOccurred = true;
                         }

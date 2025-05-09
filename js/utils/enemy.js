@@ -78,17 +78,15 @@ export class Enemy {
         this.displayName = this.stats.displayName;
 
         // Scale speed/velocity values by the appropriate block ratio
-        this.maxSpeedX = this.stats.maxSpeedX_BLOCKS_PER_SEC * blockWidthRatio;
-        this.maxSpeedY = this.stats.maxSpeedY_BLOCKS_PER_SEC * blockHeightRatio; // Vertical speeds scale with Block Height
-        this.swimSpeed = this.stats.swimSpeed_BLOCKS_PER_SEC * blockHeightRatio; // Swim speed scales with Block Height
-        this.jumpVelocity = this.stats.jumpVelocity_BLOCKS_PER_SEC * blockHeightRatio; // Jump velocity scales with Block Height
+        this.maxSpeedX = this.stats.maxSpeedX_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
+        this.maxSpeedY = this.stats.maxSpeedY_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
+        this.swimSpeed = this.stats.swimSpeed_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
+        this.jumpVelocity = this.stats.jumpVelocity_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
 
         // Scale separation strength by Block Width ratio
-        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * blockWidthRatio;
-
+        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
         // Scale Tetrapod specific velocities/forces if they were added to stats
-        // Ensure the property name in config matches this! (It does: landHopHorizontalVelocity_BLOCKS_PER_SEC)
-        this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * blockWidthRatio;
+        this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
 
         // --- Store Movement Capabilities ---
         this.canSwim = this.stats.canSwim ?? false; // Default to false if undefined

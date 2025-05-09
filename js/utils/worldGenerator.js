@@ -17,13 +17,13 @@ function generateLandmass() { // generates initial landmass and fills the rest w
     generationNoiseGenerator = new PerlinNoise(Math.random()); // Use a different seed each time instead of using consistent fixed seed
 
     // Randomize island width factor
-    const islandWidthFactor = Math.random() * (Config.WORLD_ISLAND_WIDTH_MAX - Config.WORLD_ISLAND_WIDTH_MIN) + Config.WORLD_ISLAND_WIDTH_MIN;
+    const islandWidthFactor = Math.random() * (Config.ISLAND_WIDTH_MAX - Config.ISLAND_WIDTH_MIN) + Config.ISLAND_WIDTH_MIN;
     const islandWidth = Math.floor(Config.GRID_COLS * islandWidthFactor);
     const islandStartCol = Math.floor((Config.GRID_COLS - islandWidth) / 2);
     const islandEndCol = islandStartCol + islandWidth;
 
     // Ocean tapering and deep ocean levels defined in rows (relative to grid height, no scaling needed here)
-    const OCEAN_FLOOR_ROW_NEAR_ISLAND = Config.WORLD_WATER_LEVEL_ROW_TARGET + 5;
+    const OCEAN_FLOOR_ROW_NEAR_ISLAND = Config.WATER_LEVEL + 5;
     const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8;
     const deepOceanFloorStartRow = Config.DEEP_OCEAN_FLOOR_START_ROW; // Use constants directly
     const deepOceanStoneStartRow = Config.DEEP_OCEAN_STONE_START_ROW; // Use constants directly
@@ -42,11 +42,11 @@ function generateLandmass() { // generates initial landmass and fills the rest w
         // Base island levels determined by noise and row-based config constants
         const noiseVal = generationNoiseGenerator.noise(c * Config.WORLD_NOISE_SCALE);
         const heightVariation = Math.round(noiseVal * Config.WORLD_GROUND_VARIATION); // Variation in rows
-        let baseSurfaceRow = Config.WORLD_GROUND_LEVEL_MEAN_ROW + heightVariation; // Use new row constant
+        let baseSurfaceRow = Config.MEAN_GROUND_LEVEL + heightVariation; // Use new row constant
 
         const stoneNoiseVal = generationNoiseGenerator.noise(c * Config.WORLD_NOISE_SCALE * 0.5 + 100);
         const stoneVariation = Math.round(stoneNoiseVal * Config.WORLD_STONE_VARIATION); // Variation in rows
-        let baseStoneRow = Config.WORLD_STONE_LEVEL_MEAN_ROW + stoneVariation;
+        let baseStoneRow = Config.MEAN_STONE_LEVEL + stoneVariation;
 
         baseStoneRow = Math.max(baseSurfaceRow + 3, baseStoneRow); // clamp base stone relative to base surface (in rows)
 
@@ -304,6 +304,6 @@ export function generateInitialWorld() { // run world generation process
     console.time("Initial World generated in");
     World.initializeGrid(); // initialize grid with clean slate of only AIR before generating landmass
     generateLandmass();
-    applyFloodFill(Config.WORLD_WATER_LEVEL_ROW_TARGET);
+    applyFloodFill(Config.WATER_LEVEL);
     console.timeEnd("Initial World generated in");
 }

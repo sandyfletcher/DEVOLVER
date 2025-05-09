@@ -70,14 +70,18 @@ body {
 #menu-overlay {
     background-color: rgba(0, 0, 0, 0.75); /* Semi-transparent */
     z-index: 100;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0s;
+}
+/* New class to be added by JS for opaque states */
+#menu-overlay.force-opaque {
+    background-color: black; /* Fully opaque */
 }
 #menu-overlay.active { /* This class makes the menu overlay visible */
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s; /* Faster visibility for fade-in */
+    transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
 }
-
 
 /* --- Overlay Content Styling --- */
 .overlay-content {

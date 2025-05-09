@@ -66,7 +66,7 @@ decideMovement(playerPosition, allEnemies, dt) {
                 // Wander horizontally, try to stay near surface
                 targetVx = this.targetDirectionX * this.enemy.maxSpeedX * 0.5;
                 // Simple buoyancy/surface seeking: if too deep, swim up slowly
-                if (this.enemy.y > Config.WORLD_WATER_LEVEL_ROW_TARGET * Config.BLOCK_HEIGHT + this.enemy.height) {
+                if (this.enemy.y > Config.WATER_LEVEL * Config.BLOCK_HEIGHT + this.enemy.height) {
                     targetVy = -this.enemy.swimSpeed * 0.3;
                 } else {
                     targetVy = this.enemy.swimSpeed * 0.1; // Gentle upward bob

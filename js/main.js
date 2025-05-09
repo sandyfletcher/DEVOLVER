@@ -150,14 +150,24 @@ function showOverlay(stateToShow) {
         console.error("ShowOverlay: Core overlay/app container elements not found!");
         return;
     }
-    // 1. Always hide both overlays initially to reset state, then show the correct one.
-    // This also removes any 'show-*' classes from them.
-    bootOverlayEl.className = ''; // Clear all classes from boot-overlay
-    menuOverlayEl.className = ''; // Clear all classes from menu-overlay
-    appContainer.classList.remove('overlay-active'); // Remove blur by default
-    if (overlayMainMenuContentEl) overlayMainMenuContentEl.style.display = '';
-    if (overlaySettingsContentEl) overlaySettingsContentEl.style.display = '';
-    // 2. Reset cutscene elements if the new state is NOT CUTSCENE.
+
+    // 1. Hide both overlays by clearing their classes.
+    // This ensures a clean slate and removes any specific 'show-*' content classes.
+    bootOverlayEl.className = '';
+    menuOverlayEl.className = ''; // This also removes 'force-opaque' if it was there
+
+    // 2. Remove blur effect by default. It will be added back if needed.
+    appContainer.classList.remove('overlay-active');
+
+    // 3. Hide specific content divs within #menu-overlay that might have been shown directly
+    //    (e.g., settings from main menu vs. settings from pause).
+    //    The specific `show-*` class added later will make the correct one visible.
+    //    This is a safeguard if direct `style.display` was used previously.
+    if (overlayMainMenuContentEl) overlayMainMenuContentEl.style.display = ''; // Resets to CSS default (none)
+    if (overlaySettingsContentEl) overlaySettingsContentEl.style.display = ''; // Resets to CSS default (none)
+    // Other content divs within menu-overlay will also be hidden by default by CSS.
+
+    // 4. Reset cutscene elements if the new state is NOT CUTSCENE.
     if (stateToShow !== GameState.CUTSCENE) {
         if (cutsceneImages && cutsceneImages.length > 0) {
             cutsceneImages.forEach(img => {
@@ -168,89 +178,104 @@ function showOverlay(stateToShow) {
             cutsceneTextContentEl.textContent = '';
         }
     }
-    // 3. Apply new state and audio logic.
+
+    // 5. Apply new state logic.
     switch (stateToShow) {
         case GameState.TITLE:
             bootOverlayEl.classList.add('show-title'); // Makes #boot-overlay visible and #overlay-title-content display:flex
             AudioManager.stopAllMusic();
             // No blur for title screen
             break;
+
         case GameState.MAIN_MENU:
-            menuOverlayEl.classList.add('active'); // Makes #menu-overlay visible (semi-transparent bg)
-            menuOverlayEl.classList.add('show-mainmenu'); // Makes #overlay-mainmenu-content display:flex
-            appContainer.classList.add('overlay-active'); // Add blur
-            // Ensure only main menu content is visible if settings was previously shown
-            if (overlayMainMenuContentEl) overlayMainMenuContentEl.style.display = 'flex';
-            if (overlaySettingsContentEl) overlaySettingsContentEl.style.display = 'none';
+            menuOverlayEl.classList.add('active');          // Makes #menu-overlay visible
+            menuOverlayEl.classList.add('show-mainmenu');   // Makes #overlay-mainmenu-content display:flex
+            menuOverlayEl.classList.add('force-opaque');    // Makes #menu-overlay background fully opaque
+            appContainer.classList.add('overlay-active');   // Add blur to game container
+            AudioManager.stopGameMusic(); // Ensure game music is stopped
             AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            if (Config.AUDIO_TRACKS.pause) {
+            if (Config.AUDIO_TRACKS.pause) { // Using pause music for main menu as placeholder
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             } else {
-                console.warn("Pause music track not defined for main menu.");
+                console.warn("UI Music track not defined for main menu (using pause track).");
             }
             break;
+
         case GameState.CUTSCENE:
             menuOverlayEl.classList.add('active');
-            menuOverlayEl.classList.add('show-cutscene');
-            appContainer.classList.add('overlay-active'); // Add blur
-            AudioManager.stopUIMusic();
-            AudioManager.stopGameMusic();
-            if(cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
+            menuOverlayEl.classList.add('show-cutscene');   // No 'force-opaque'
+            appContainer.classList.add('overlay-active');
+            AudioManager.stopUIMusic(); // Stop any menu music
+            AudioManager.stopGameMusic(); // Stop any game music
+            // Cutscene specific audio might be handled by startCutscene/updateCutscene
+            if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = ''; // Ensure text is clear initially
             break;
+
         case GameState.PAUSED:
             menuOverlayEl.classList.add('active');
-            menuOverlayEl.classList.add('show-pause');
-            appContainer.classList.add('overlay-active'); // Add blur
-            AudioManager.pauseGameMusic();
+            menuOverlayEl.classList.add('show-pause');      // No 'force-opaque'
+            appContainer.classList.add('overlay-active');
+            AudioManager.pauseGameMusic(); // Pause game music
+            AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.pause) {
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             } else {
                 console.warn("Pause music track not defined.");
             }
             break;
+
         case GameState.GAME_OVER:
             menuOverlayEl.classList.add('active');
-            menuOverlayEl.classList.add('show-gameover');
-            appContainer.classList.add('overlay-active'); // Add blur
-            AudioManager.stopGameMusic();
-            if (gameOverStatsTextP) {
-                const finalWave = WaveManager.getCurrentWaveNumber();
+            menuOverlayEl.classList.add('show-gameover');   // No 'force-opaque'
+            appContainer.classList.add('overlay-active');
+            AudioManager.stopGameMusic(); // Stop game music
+            if (gameOverStatsTextP && WaveManager) { // Check WaveManager exists
+                const finalWave = WaveManager.getCurrentWaveNumber(); // WaveManager handles its state for this
                 gameOverStatsTextP.textContent = `You reached Wave ${finalWave}!`;
             }
             AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            if (Config.AUDIO_TRACKS.pause) { // Fallback to pause music
+            // Fallback to pause music if specific game over music isn't defined
+            if (Config.AUDIO_TRACKS.gameOver) { // Assuming you might add this
+                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver);
+            } else if (Config.AUDIO_TRACKS.pause) {
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             }
             break;
+
         case GameState.VICTORY:
             menuOverlayEl.classList.add('active');
-            menuOverlayEl.classList.add('show-victory');
-            appContainer.classList.add('overlay-active'); // Add blur
-            AudioManager.stopGameMusic();
-            if (victoryStatsTextP) {
+            menuOverlayEl.classList.add('show-victory');    // No 'force-opaque'
+            appContainer.classList.add('overlay-active');
+            AudioManager.stopGameMusic(); // Stop game music
+            if (victoryStatsTextP && Config.WAVES) { // Check Config.WAVES exists
                 const totalWaves = Config.WAVES.length;
                 victoryStatsTextP.textContent = `You cleared all ${totalWaves} waves!`;
             }
             AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.victory) {
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory);
-            } else if (Config.AUDIO_TRACKS.pause) {
+            } else if (Config.AUDIO_TRACKS.pause) { // Fallback
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             }
             break;
+
         case GameState.ERROR:
             bootOverlayEl.classList.add('show-error'); // Makes #boot-overlay visible (opaque error styling)
             AudioManager.stopAllMusic();
             // No blur for error screen (it's opaque anyway)
+            // The error message itself would be set by the code that triggers the ERROR state
             break;
+
         default:
-            console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}`);
-            bootOverlayEl.classList.add('show-title'); // Fallback to title screen
+            console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}. Defaulting to TITLE.`);
+            bootOverlayEl.classList.add('show-title');
             AudioManager.stopAllMusic();
             break;
     }
 }
 
+// You would also have a hideOverlay function if needed, though showOverlay often implicitly hides
+// by resetting classes. If you need an explicit hide for going from an overlay to RUNNING state:
 function hideOverlay() {
     if (!bootOverlayEl || !menuOverlayEl || !appContainer) {
         console.error("HideOverlay: Core overlay/app container elements not found!");
@@ -258,7 +283,7 @@ function hideOverlay() {
     }
     // Hide both overlays by removing their activating classes
     bootOverlayEl.className = ''; // Removes 'show-title', 'show-error'
-    menuOverlayEl.className = ''; // Removes 'active' and any 'show-*' content class
+    menuOverlayEl.className = ''; // Removes 'active', 'show-*', and 'force-opaque'
     appContainer.classList.remove('overlay-active'); // Remove blur from background
 }
 
@@ -369,7 +394,7 @@ function initializeAndRunGame() {
         UI.setPlayerReference(null);
         UI.setPortalReference(null);
         const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2;
-        const portalSpawnY = (Config.WORLD_GROUND_LEVEL_MEAN_ROW * Config.BLOCK_HEIGHT) - Config.PORTAL_HEIGHT - (Config.PORTAL_SPAWN_Y_OFFSET_BLOCKS * Config.BLOCK_HEIGHT);
+        const portalSpawnY = (Config.MEAN_GROUND_LEVEL * Config.BLOCK_HEIGHT) - Config.PORTAL_HEIGHT - (Config.PORTAL_SPAWN_Y_OFFSET_BLOCKS * Config.BLOCK_HEIGHT);
         if (isNaN(portalSpawnY) || portalSpawnY < 0) {
             console.error("[main.js] FATAL: Invalid Portal Spawn Y calculation! Defaulting position.");
             portal = new Portal(Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2, 50);

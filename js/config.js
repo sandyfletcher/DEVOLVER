@@ -2,9 +2,9 @@
 // root/js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
-// --- World Parameters ---
+// --- Game Grid Parameters ---
 
-export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
+export const BACKGROUND_COLOR = 'rgb(135, 206, 235)'; // TODO: develop background images with moving parts
 export const BASE_BLOCK_PIXEL_SIZE = 16; // size in pixels of one side of square block
 export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE;
 export const BLOCK_HEIGHT = BASE_BLOCK_PIXEL_SIZE;
@@ -13,49 +13,35 @@ export const GRID_ROWS = 200; // # of rows
 export const CANVAS_WIDTH = GRID_COLS * BLOCK_WIDTH; // internal canvas dimensions in pixels
 export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
 
-// --- Block Parameters ---
-
-export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
-export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70%
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // show X when HP <= 30%
-
-export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
-export const CAN_PLACE_IN_WATER = false;
-export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
-export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
-
 // --- Landmass Generation ---
 
-export const WORLD_ISLAND_WIDTH_MIN = 0.75; // Minimum width of main island as percentage of GRID_COLS
-export const WORLD_ISLAND_WIDTH_MAX = 0.85; // Maximum width of main island as percentage of GRID_COLS
+export const ISLAND_WIDTH_MIN = 0.75; // minimum width of island
+export const ISLAND_WIDTH_MAX = 0.85; // as percentage of GRID_COLS
 
-export const WORLD_WATER_LEVEL_FRACTION = 0.15; // water covers bottom X% of GRID_ROWS
-export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL_FRACTION)); // calculate target row for the water surface
+export const WATER_LEVEL_FRACTION = 0.25; // % of bottom GRID_ROWS water covers
+export const WATER_LEVEL = Math.floor(GRID_ROWS * (1.0 - WATER_LEVEL_FRACTION)); // calculate target row for water surface
 
-export const WORLD_GROUND_LEVEL_MEAN_ROW = WORLD_WATER_LEVEL_ROW_TARGET - Math.floor(GRID_ROWS * 0.10); // Mean row for the ground surface.
-export const WORLD_STONE_DEPTH_BELOW_GROUND_ROWS = 15; // How many rows deep stone starts below the average ground level.
-export const WORLD_STONE_LEVEL_MEAN_ROW = WORLD_GROUND_LEVEL_MEAN_ROW + WORLD_STONE_DEPTH_BELOW_GROUND_ROWS; // Mean row for the top of the stone layer.
+export const MEAN_GROUND_LEVEL = WATER_LEVEL - Math.floor(GRID_ROWS * 0.20); // mean row for ground surface
+export const STONE_DEPTH_BELOW_GROUND = 20; // # of rows deep stone starts below average ground level
+export const MEAN_STONE_LEVEL = MEAN_GROUND_LEVEL + STONE_DEPTH_BELOW_GROUND; // mean row for top of stone layer
 
-export const WORLD_GROUND_VARIATION = 3; // Variation in rows for ground level noise.
-export const WORLD_STONE_VARIATION = 3;  // Variation in rows for stone level noise.
-export const WORLD_NOISE_SCALE = 0.05;   // Scale factor for Perlin noise used in terrain generation.
+export const WORLD_GROUND_VARIATION = 4; // Variation in rows for ground level noise.
+export const WORLD_STONE_VARIATION = 2;  // Variation in rows for stone level noise.
+export const WORLD_NOISE_SCALE = 0.03;   // Scale factor for Perlin noise used in terrain generation.
 
-export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WORLD_WATER_LEVEL_ROW_TARGET + 5; // Target row for ocean floor near the island.
+export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WATER_LEVEL + 5; // Target row for ocean floor near the island.
 export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // Target row for ocean stone near the island.
 export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1); // Offset in rows for deep ocean from water level.
 export const DEEP_OCEAN_MAX_ROW = GRID_ROWS - 3; // Maximum row depth for the deep ocean floor.
-export const DEEP_OCEAN_FLOOR_START_ROW = Math.min(DEEP_OCEAN_MAX_ROW, WORLD_WATER_LEVEL_ROW_TARGET + DEEP_OCEAN_BASE_ROW_OFFSET); // Starting row for deep ocean floor.
+export const DEEP_OCEAN_FLOOR_START_ROW = Math.min(DEEP_OCEAN_MAX_ROW, WATER_LEVEL + DEEP_OCEAN_BASE_ROW_OFFSET); // Starting row for deep ocean floor.
 export const DEEP_OCEAN_STONE_START_ROW = DEEP_OCEAN_FLOOR_START_ROW + 8; // Starting row for deep ocean stone.
 
 export const EDGE_TAPER_WIDTH_FACTOR = 0.15; // Percentage of GRID_COLS for edge tapering.
-export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 5; // Target stone level offset (in rows) at the absolute world edge.
-export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 10; // Target floor level offset (in rows) at the absolute world edge.
+export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 15; // Target stone level offset (in rows) at the absolute world edge.
+export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 20; // Target floor level offset (in rows) at the absolute world edge.
 export const ISLAND_CENTER_TAPER_WIDTH_COLS = 80; // Width in columns for tapering from island edge inward.
 
-// =============================================================================
 // --- Aging Parameters ---
-// =============================================================================
 
 export const AGING_BASE_INTENSITY = 1.0; // Default intensity factor for aging algorithms.
 export const AGING_NOISE_SCALE = 0.03;   // Scale for Perlin noise used in aging.
@@ -74,9 +60,7 @@ export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001;
 export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
 
-// =============================================================================
 // --- Aging Animation Parameters ---
-// =============================================================================
 
 export const AGING_ANIMATION_BLOCKS_AT_ONCE = 5; // Max number of blocks animating simultaneously
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
@@ -84,20 +68,11 @@ export const AGING_ANIMATION_SWELL_DURATION = 0.25; // Duration (seconds) of the
 export const AGING_ANIMATION_POP_DURATION = 0.1;  // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
 export const AGING_ANIMATION_SWELL_SCALE = 1.8;   // Max scale factor during swell (e.g., 1.5x size)
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
-export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (briefly)
-export const WARPPHASE_DURATION = 5.0; // Fixed duration of WARP PHASE in seconds (time-based).
+export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (bddriefly)
+export const WARPPHASE_DURATION = 8.0; // Fixed duration of WARP PHASE in seconds (time-based).
 
-// =============================================================================
-// --- Camera / Viewport ---
-// =============================================================================
-
-export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (e.g., 0.25 means zoomed out to 1/4 size).
-export const MAX_CAMERA_SCALE = 3.0;  // Max zoom level (e.g., 3.0 means zoomed in 3x).
-export const ZOOM_SPEED_FACTOR = 0.001; // Sensitivity of mouse wheel zoom.
-
-// =============================================================================
 // --- Time-based Animation Parameters ---
-// =============================================================================
+
 export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // Total time in seconds for enemy death animation.
 export const ENEMY_SWELL_DURATION = 0.3;        // Time in seconds for the swell part of enemy death.
 export const ENEMY_SWELL_SCALE = 1.5;           // Max scale factor during enemy swell (e.g., 1.5x size).
@@ -105,9 +80,25 @@ export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time in seconds for
 export const PLAYER_SPIN_DURATION = 1.0;        // Time in seconds for the spin part of player death.
 export const PLAYER_SPIN_FRAMES = 6;            // Number of visual steps in the player spin animation.
 
-// =============================================================================
+// --- Camera / Viewport ---
+
+export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (e.g., 0.25 means zoomed out to 1/4 size).
+export const MAX_CAMERA_SCALE = 3.0;  // Max zoom level (e.g., 3.0 means zoomed in 3x).
+export const ZOOM_SPEED_FACTOR = 0.001; // Sensitivity of mouse wheel zoom.
+
+// --- Block Parameters ---
+
+export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
+export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70%
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // show X when HP <= 30%
+
+export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
+export const CAN_PLACE_IN_WATER = false;
+export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
+export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
+
 // --- Delta-Time Based Physics - defined in "block units per second" and then converted to pixels/sec ---
-// =============================================================================
 
 export const GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ = 100; // Base acceleration in block heights per second squared.
 export const GRAVITY_ACCELERATION = GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_HEIGHT; // Pixels per second squared.
@@ -146,9 +137,7 @@ export const WATER_JUMP_COOLDOWN_DURATION = 0.2; // Time in seconds.
 export const WATER_PROPAGATION_DELAY = 0.05;    // Time in seconds between water simulation ticks.
 export const WATER_UPDATES_PER_FRAME = 500;   // Max number of water cells to process per simulation tick.
 
-// =============================================================================
 // --- Audio Constants --- (Time/Volume based, no pixel scaling needed)
-// =============================================================================
 
 export const AUDIO_SFX_POOL_SIZE = 8;
 export const AUDIO_DEFAULT_GAME_VOLUME = 0.4;
@@ -167,9 +156,7 @@ export const AUDIO_TRACKS = {
     // player_hit: 'assets/audio/sfx/player_hit.wav',
 };
 
-// =============================================================================
 // --- Material Parameters ---
-// =============================================================================
 
 export const INVENTORY_MATERIALS = [ 'dirt', 'sand', 'stone', 'wood', 'bone', 'metal'];
 // Block Type IDs (numeric constants)
@@ -204,9 +191,7 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_BONE]: 1.0, [BLOCK_WOOD]: 1.0, [BLOCK_METAL]: 1.0,
 };
 
-// =============================================================================
 // --- Portal Parameters ---
-// =============================================================================
 
 export const PORTAL_COLOR = 'rgb(100, 100, 255)';
 export const PORTAL_WIDTH_BLOCKS = 6;  // Portal width in block units.
@@ -223,9 +208,7 @@ export const PORTAL_RADIUS_GROWTH_PER_WAVE = PORTAL_RADIUS_GROWTH_PER_WAVE_BLOCK
 
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above mean ground for portal top.
 
-// =============================================================================
 // --- Player Parameters ---
-// =============================================================================
 
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 export const PLAYER_WIDTH_BLOCKS = 3;  // Player width in block units.
@@ -234,13 +217,12 @@ export const PLAYER_WIDTH = PLAYER_WIDTH_BLOCKS * BLOCK_WIDTH;   // Pixel width.
 export const PLAYER_HEIGHT = PLAYER_HEIGHT_BLOCKS * BLOCK_HEIGHT; // Pixel height.
 
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2; // Player start position (pixels, derived from block-based world constants).
-export const PLAYER_START_Y = (WORLD_GROUND_LEVEL_MEAN_ROW * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT);
+export const PLAYER_START_Y = (MEAN_GROUND_LEVEL * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT);
 
 export const PLAYER_INITIAL_HEALTH = 100;       // Unitless.
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;   // Unitless, for UI.
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // Seconds.
 
-// Player movement (base values in block units, then scaled to pixels).
 export const PLAYER_MOVE_ACCELERATION_BLOCKS_PER_SEC_SQ = 200; // Base acceleration in block widths/sec^2.
 export const PLAYER_MOVE_ACCELERATION = PLAYER_MOVE_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_WIDTH; // Pixels/sec^2.
 
@@ -265,9 +247,8 @@ export const PLAYER_ITEM_ATTRACT_SPEED = PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SE
 
 export const PLAYER_PLACEMENT_COOLDOWN = 0.01; // seconds between block placement
 
-// =============================================================================
 // --- Items & Weapons ---
-// =============================================================================
+
 export const ITEM_BOBBLE_AMOUNT = 0.15; // Factor relative to item height.
 export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle (time-based).
 
@@ -354,23 +335,20 @@ export const CRAFTING_RECIPES = {
     [WEAPON_TYPE_SPEAR]: [{ type: 'wood', amount: 2 }, { type: 'stone', amount: 1 }],
 };
 
-// =============================================================================
 // --- Enemy Parameters ---
-// =============================================================================
-export const MAX_ENEMIES = 150;
+
+export const MAX_ENEMIES = 150; // TODO: determine if necessary or if being restrictive for future spawning logic
 
 export const ENEMY_SPAWN_EDGE_MARGIN_BLOCKS = 10; // Distance from screen edge in block units.
 export const ENEMY_SPAWN_EDGE_MARGIN = ENEMY_SPAWN_EDGE_MARGIN_BLOCKS * BLOCK_WIDTH; // Pixel margin.
 
 export const ENEMY_FLASH_DURATION = 0.15; // Seconds (time-based).
 
-// Default enemy dimensions in block units (scaled to pixels in Enemy.js).
 export const DEFAULT_ENEMY_WIDTH_BLOCKS = 2;
 export const DEFAULT_ENEMY_HEIGHT_BLOCKS = 2;
 export const DEFAULT_ENEMY_WIDTH = DEFAULT_ENEMY_WIDTH_BLOCKS * BLOCK_WIDTH;   // Pixel width (for reference, Enemy.js calculates its own).
 export const DEFAULT_ENEMY_HEIGHT = DEFAULT_ENEMY_HEIGHT_BLOCKS * BLOCK_HEIGHT; // Pixel height.
 
-// Default enemy separation (factor is unitless, strength is block units -> pixels).
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // Factor of enemy's own width.
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC = 15; // Base push strength in block widths/sec
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixel strength/sec (for reference)
