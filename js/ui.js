@@ -114,7 +114,6 @@ export function initGameUI() {
     // Use Array.prototype.some() for a concise check.
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
-        // Log specific missing elements for easier debugging
         const elementNames = [ // Map indices to names for logging
             'topSidebarEl', 'playerColumnEl', 'portalColumnEl',
             'playerHealthBarContainerEl', 'playerHealthBarFillEl',

@@ -2,11 +2,18 @@
 // root/js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
-// --- Block Parameters ---
+// --- World Parameters ---
 
+export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
 export const BASE_BLOCK_PIXEL_SIZE = 16; // size in pixels of one side of square block
 export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE;
 export const BLOCK_HEIGHT = BASE_BLOCK_PIXEL_SIZE;
+export const GRID_COLS = 400; // # of columns in world grid
+export const GRID_ROWS = 200; // # of rows
+export const CANVAS_WIDTH = GRID_COLS * BLOCK_WIDTH; // internal canvas dimensions in pixels
+export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
+
+// --- Block Parameters ---
 
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
 export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
@@ -17,14 +24,6 @@ export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
 export const CAN_PLACE_IN_WATER = false;
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
-
-// --- World Parameters ---
-
-export const BACKGROUND_COLOR = 'rgb(135, 206, 235)';
-export const GRID_COLS = 400; // # of columns in world grid
-export const GRID_ROWS = 200; // # of rows
-export const CANVAS_WIDTH = GRID_COLS * BLOCK_WIDTH; // internal canvas dimensions in pixels
-export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
 
 // --- Landmass Generation ---
 
@@ -449,7 +448,7 @@ export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const WAVES = [
     {
         mainWaveNumber: 1,
-        epochName: "Origin",
+        epochName: "350 Million Years Ago",
         duration: 117,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave1,
@@ -473,7 +472,7 @@ export const WAVES = [
     },
     {
         mainWaveNumber: 2,
-        epochName: "The Emergence",
+        epochName: "300 Million Years Ago",
         duration: 137,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave2,
@@ -497,7 +496,7 @@ export const WAVES = [
     },
     {
         mainWaveNumber: 3,
-        epochName: "The Shifting Tides",
+        epochName: "250 Million Years Ago",
         duration: 90,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave3,
@@ -514,17 +513,16 @@ export const WAVES = [
 // --- Cutscene Parameters ---
 // =============================================================================
 
+export const CUTSCENE_IMAGE_DURATION = 2.0; // Seconds each image is displayed.
 export const CUTSCENE_IMAGE_PATHS = [
     'assets/gendimage1.png',
     'assets/gendimage2.png',
     'assets/gendimage3.png',
-    'assets/gendimage1.png',
+    'assets/gendimage4.png',
 ];
-export const CUTSCENE_IMAGE_DURATION = 5.0; // Seconds each image is displayed.
-
-// =============================================================================
-// --- Debug/Development Flags ---
-// =============================================================================
-
-export const DEBUG_SKIP_CUTSCENE = false; // Set to true to skip the cutscene.
-export const DEBUG = true; // Global debug flag for verbose console logging
+export const CUTSCENE_TEXTS = [
+    "In the near future, dolphins master nuclear fusion and seize control of the planet...",
+    "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time.",
+    "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position.",
+    "Only one thing has followed you back in time - a simple shovel. Will that be enough?"
+];

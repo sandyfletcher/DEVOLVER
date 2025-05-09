@@ -1,4 +1,3 @@
-// root/js/main.js
 // -----------------------------------------------------------------------------
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
@@ -43,6 +42,7 @@ let cutsceneImages = []; // array of HTMLImageElements
 let currentCutsceneImageIndex = 0;
 let cutsceneTimer = 0;
 let cutsceneDurationPerImage = Config.CUTSCENE_IMAGE_DURATION;
+let cutsceneTextContentEl = null; // For the <p> tag to display cutscene text
 
 let titleStartButton = null;
 let mainmenuStartGameButton = null;
@@ -152,58 +152,70 @@ function showOverlay(stateToShow) {
         return;
     }
 
-    // KEY CHANGE: Reset inline display styles for main menu and settings content elements.
-    // This ensures that when transitioning between major game states, these elements
-    // revert to their default CSS display behavior (likely 'none' from .overlay-content),
-    // allowing the new state's CSS rules to correctly control visibility.
     overlayMainMenuContentEl.style.display = '';
     overlaySettingsContentEl.style.display = '';
 
-    // Remove all previous state-specific classes and the 'active' class from the overlay
+    // 1. Remove all previous state-specific classes from #game-overlay.
+    //    This makes all .overlay-content children revert to display:none (their default).
     gameOverlay.classList.remove(
-        'active',
-        'show-title', 'show-mainmenu', 'show-cutscene',
+        'show-title', 'show-mainmenu', /*'show-settings', REMOVED */ 'show-cutscene',
         'show-pause', 'show-gameover', 'show-victory', 'show-error'
     );
-    appContainer.classList.remove('overlay-active');
+    // Note: 'active' class on gameOverlay and 'overlay-active' on appContainer
+    // will be re-applied after setting the specific 'show-*' class.
 
-    // Specific logic for audio and content display based on the new state being shown
+    // 2. If the new state is NOT CUTSCENE, explicitly reset cutscene elements.
+    //    This ensures that even if a transition was ongoing or cleanup was missed,
+    //    cutscene images are hidden when other overlays are shown.
+    if (stateToShow !== GameState.CUTSCENE) {
+        if (cutsceneImages && cutsceneImages.length > 0) {
+            cutsceneImages.forEach(img => {
+                if (img) { // Ensure img element exists in the array
+                    img.classList.remove('active'); // Removes opacity:1, starts transition to opacity:0
+                }
+            });
+        }
+        if (cutsceneTextContentEl) {
+            cutsceneTextContentEl.textContent = ''; // Clear cutscene text
+        }
+    }
+
+    // 3. Apply the new state-specific class and audio logic.
+    //    Then, make the main overlay active.
     switch (stateToShow) {
         case GameState.TITLE:
-            gameOverlay.classList.add('show-title'); // CSS makes #overlay-title-content visible
-            AudioManager.stopAllMusic(); // Ensure everything is silent for the title screen
+            gameOverlay.classList.add('show-title');
+            AudioManager.stopAllMusic();
             break;
         case GameState.MAIN_MENU:
-            gameOverlay.classList.add('show-mainmenu'); // CSS makes #overlay-mainmenu-content visible
-            // When explicitly entering MAIN_MENU state, ensure settings panel is hidden
-            // and main menu panel is shown. This is for the internal view within MAIN_MENU.
+            gameOverlay.classList.add('show-mainmenu');
             overlaySettingsContentEl.style.display = 'none';
-            overlayMainMenuContentEl.style.display = 'flex'; // Or 'block' if that's the desired default
-
+            overlayMainMenuContentEl.style.display = 'flex';
             AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            if (Config.AUDIO_TRACKS.pause) { // Using pause music as menu music for now
+            if (Config.AUDIO_TRACKS.pause) {
                 AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             } else {
                 console.warn("Pause music track not defined for main menu.");
             }
             break;
         case GameState.CUTSCENE:
-            gameOverlay.classList.add('show-cutscene'); // CSS makes #overlay-cutscene-content visible
-            AudioManager.stopUIMusic(); // Stop UI music (e.g., main menu music)
-            AudioManager.stopGameMusic(); // Ensure game music is off
+            gameOverlay.classList.add('show-cutscene');
+            AudioManager.stopUIMusic();
+            AudioManager.stopGameMusic();
+            if(cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
             break;
         case GameState.PAUSED:
-            gameOverlay.classList.add('show-pause'); // CSS makes #overlay-pause-content visible
-            AudioManager.pauseGameMusic(); // Pause game music and retain position
+            gameOverlay.classList.add('show-pause');
+            AudioManager.pauseGameMusic();
             if (Config.AUDIO_TRACKS.pause) {
-                AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause); // Play pause music
+                AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             } else {
                 console.warn("Pause music track not defined.");
             }
             break;
         case GameState.GAME_OVER:
-            gameOverlay.classList.add('show-gameover'); // CSS makes #overlay-gameover-content visible
-            AudioManager.stopGameMusic(); // Stop game music
+            gameOverlay.classList.add('show-gameover');
+            AudioManager.stopGameMusic();
             if (gameOverStatsTextP) {
                 const finalWave = WaveManager.getCurrentWaveNumber();
                 gameOverStatsTextP.textContent = `You reached Wave ${finalWave}!`;
@@ -216,8 +228,8 @@ function showOverlay(stateToShow) {
             }
             break;
         case GameState.VICTORY:
-            gameOverlay.classList.add('show-victory'); // CSS makes #overlay-victory-content visible
-            AudioManager.stopGameMusic(); // Stop game music
+            gameOverlay.classList.add('show-victory');
+            AudioManager.stopGameMusic();
             if (victoryStatsTextP) {
                 const totalWaves = Config.WAVES.length;
                 victoryStatsTextP.textContent = `You cleared all ${totalWaves} waves!`;
@@ -230,7 +242,7 @@ function showOverlay(stateToShow) {
             }
             break;
         case GameState.ERROR:
-            gameOverlay.classList.add('show-error'); // CSS makes #overlay-error-content visible
+            gameOverlay.classList.add('show-error');
             AudioManager.stopAllMusic();
             break;
         default:
@@ -239,6 +251,10 @@ function showOverlay(stateToShow) {
             AudioManager.stopAllMusic();
             break;
     }
+
+    // 4. Activate the overlay and blur the background.
+    //    It's important that 'active' is added *after* the correct 'show-*' class is set
+    //    and after any explicit cleanup (like for cutscene images).
     gameOverlay.classList.add('active');
     appContainer.classList.add('overlay-active');
 }
@@ -281,9 +297,27 @@ function backToMainMenuFromSettings() {
     overlayMainMenuContentEl.style.display = 'flex';
 }
 
+function updateCutsceneText() {
+    if (!cutsceneTextContentEl || currentGameState !== GameState.CUTSCENE) {
+        if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = ''; // Clear if not in cutscene
+        return;
+    }
+
+    // Ensure Config.CUTSCENE_TEXTS is defined and has entries
+    const textsArray = Config.CUTSCENE_TEXTS || [];
+    const text = textsArray[currentCutsceneImageIndex];
+
+    if (text) {
+        cutsceneTextContentEl.textContent = text;
+    } else {
+        cutsceneTextContentEl.textContent = ''; // No text for this image or array is empty
+    }
+}
+
+
 function startCutscene() {
     currentGameState = GameState.CUTSCENE;
-    showOverlay(GameState.CUTSCENE);
+    showOverlay(GameState.CUTSCENE); // This will clear existing text
     currentCutsceneImageIndex = 0;
     cutsceneTimer = cutsceneDurationPerImage;
     cutsceneImages.forEach(img => img.classList.remove('active'));
@@ -294,6 +328,7 @@ function startCutscene() {
         initializeAndRunGame();
         return;
     }
+    updateCutsceneText(); // Update text for the first image
 }
 
 function updateCutscene(dt) {
@@ -310,11 +345,17 @@ function updateCutscene(dt) {
                 cutsceneImages[currentCutsceneImageIndex].classList.add('active');
             } else {
                 console.error(`Cutscene ERROR: Image element ${currentCutsceneImageIndex + 1} not found!`);
-                updateCutscene(0);
+                // Attempt to recover or skip
+                // For simplicity, let's assume it might just end the cutscene if an image is missing mid-way
+                // or try to advance again. If this happens, it's an asset/HTML setup issue.
+                // To be safe, just advance past this missing image:
+                updateCutscene(0); // Try to advance again immediately
                 return;
             }
+            updateCutsceneText(); // Update text for the new image
         } else {
-            initializeAndRunGame();
+            initializeAndRunGame(); // Cutscene ends
+            if(cutsceneTextContentEl) cutsceneTextContentEl.textContent = ''; // Clear text when cutscene ends
         }
     }
 }
@@ -325,6 +366,7 @@ function skipCutscene() {
         return;
     }
     initializeAndRunGame();
+    if(cutsceneTextContentEl) cutsceneTextContentEl.textContent = ''; // Clear text when skipping
 }
 window.skipCutscene = skipCutscene;
 
@@ -483,6 +525,7 @@ function restartGame() {
     currentCutsceneImageIndex = 0;
     cutsceneTimer = 0;
     cutsceneImages.forEach(img => img.classList.remove('active'));
+    if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = ''; // Clear cutscene text on restart
     showMainMenu();
 }
 
@@ -680,6 +723,7 @@ function init() {
         victoryStatsTextP = document.getElementById('victory-stats-text');
         errorOverlayMessageP = document.getElementById('error-message-text');
         cutsceneSkipButton = document.getElementById('cutscene-skip-button');
+        cutsceneTextContentEl = document.getElementById('cutscene-text-content'); // Get reference
         btnToggleGrid = document.getElementById('btn-toggle-grid');
         muteMusicButtonEl = document.getElementById('btn-mute-music');
         muteSfxButtonEl = document.getElementById('btn-mute-sfx');
@@ -700,6 +744,7 @@ function init() {
             appContainer, gameOverlay, titleStartButton, mainmenuStartGameButton, mainmenuSettingsButton, settingsBackButton,
             resumeButton, restartButtonGameOver, restartButtonVictory, restartButtonPause, gameOverStatsTextP, victoryStatsTextP,
             errorOverlayMessageP, btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl, epochOverlayEl, cutsceneSkipButton,
+            cutsceneTextContentEl, // Add to check
             overlayMainMenuContentEl, overlaySettingsContentEl
         ];
         if (requiredElements.some(el => !el)) {
@@ -713,6 +758,7 @@ function init() {
                 'errorOverlayMessageP (#error-message-text)',
                 'btnToggleGrid (#btn-toggle-grid)', 'muteMusicButtonEl (#btn-mute-music)', 'muteSfxButtonEl (#btn-mute-sfx)',
                 'epochOverlayEl (#epoch-overlay)', 'cutsceneSkipButton (#cutscene-skip-button)',
+                'cutsceneTextContentEl (#cutscene-text-content)', // Add to name list
                 'overlayMainMenuContentEl (#overlay-mainmenu-content)', 'overlaySettingsContentEl (#overlay-settings-content)'
             ];
             const missing = requiredElements

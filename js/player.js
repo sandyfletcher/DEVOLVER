@@ -327,18 +327,12 @@ export class Player {
                                     // Placement successful, reset cooldown (time-based)
                                     this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
                                     // console.log(`Placed ${materialType} at [${targetCol}, ${targetRow}]`);
-                                } // else: Placement failed at the WorldManager level (e.g., already solid - unlikely after checks)
+                                }
                             } else {
                                 console.warn(`Placement failed: Material type "${materialType}" has no block type mapping.`);
                             }
-                        } else {
-                            console.log("Placement failed: No adjacent support.");
                         }
-                    } else {
-                        console.log("Placement failed: Overlaps player.");
-                    }
-                } else {
-                    console.log(`Placement failed: Target cell [${targetCol}, ${targetRow}] is not air or placeable water.`);
+                    } 
                 }
             } // else: Not enough material handled by UI visibility/disabled state.
             // If checks fail, the cooldown is NOT reset, allowing the player to continue holding
@@ -348,13 +342,9 @@ export class Player {
     }
     /** Applies gravity, damping, and resolves collisions with the grid. */
     _applyPhysics(dt) {
-        // GRAVITY_ACCELERATION and WATER_GRAVITY_FACTOR are scaled/defined in config
         const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
         // Damping factors approach 0 as dt increases, causing velocity reduction. Factor of 1 means no damping.
-        // WATER_VERTICAL_DAMPING is a factor
         const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
-        // --- Apply Gravity ---
-        // Apply gravity if the player is not considered on the ground
         if (!this.isOnGround) { // Only apply gravity if not on ground from previous step
             this.vy += currentGravity * dt; // Add gravity acceleration
         } else {

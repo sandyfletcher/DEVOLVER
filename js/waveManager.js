@@ -2,17 +2,15 @@
 // root/js/waveManager.js - Manages waves of enemies and timing (TIME-BASED)
 // -----------------------------------------------------------------------------
 
+import * as UI from './ui.js';
 import * as Config from './config.js';
+import * as ItemManager from './itemManager.js';
+import * as WorldData from './utils/worldData.js';
 import * as EnemyManager from './enemyManager.js';
 import * as AudioManager from './audioManager.js';
-import * as ItemManager from './itemManager.js';
 import * as WorldManager from './worldManager.js';
-import * as UI from './ui.js';
 import * as AgingManager from './agingManager.js';
-import * as WorldData from './utils/worldData.js' // Added for captureCurrentGridState
 
-
-// --- Module State ---
 let currentMainWaveIndex = -1; // Index in Config.WAVES array (-1 means not started)
 let currentSubWaveIndex = 0;   // Index within the current main wave's subWaves array
 let currentGroupIndex = 0;     // Index within the current sub-wave's enemyGroups array
@@ -35,7 +33,6 @@ function getCurrentWaveData() {
     }
     return Config.WAVES[currentMainWaveIndex];
 }
-
 function getCurrentSubWaveData() {
     const waveData = getCurrentWaveData();
     if (!waveData || currentSubWaveIndex < 0 || currentSubWaveIndex >= waveData.subWaves.length) {
@@ -43,7 +40,6 @@ function getCurrentSubWaveData() {
     }
     return waveData.subWaves[currentSubWaveIndex];
 }
-
 function getCurrentGroupData() {
     const subWaveData = getCurrentSubWaveData();
     if (!subWaveData || currentGroupIndex < 0 || currentGroupIndex >= subWaveData.enemyGroups.length) {
@@ -51,12 +47,9 @@ function getCurrentGroupData() {
     }
     return subWaveData.enemyGroups[currentGroupIndex];
 }
-
-// --- Advances the internal spawning progression state (moves to next group or sub-wave) ---
-function advanceSpawnProgression() {
+function advanceSpawnProgression() { // Advances the internal spawning progression state (moves to next group or sub-wave)
     const subWaveData = getCurrentSubWaveData();
-    if (!subWaveData) {
-        // This implies we finished the last sub-wave or an error occurred and spawning for this wave cycle is complete.
+    if (!subWaveData) { // This implies we finished the last sub-wave or an error occurred and spawning for this wave cycle is complete.
         console.log(`[WaveMgr] Spawning complete for Wave ${currentMainWaveIndex + 1}.`);
         currentGroupIndex = -1; // Use sentinel values to indicate finished spawning
         currentSubWaveIndex = -1;
@@ -64,8 +57,7 @@ function advanceSpawnProgression() {
         return false;
     }
     currentGroupIndex++; // Move to the next group index
-    if (currentGroupIndex < subWaveData.enemyGroups.length) {
-        // Successfully moved to the next group in the current sub-wave
+    if (currentGroupIndex < subWaveData.enemyGroups.length) { // Successfully moved to the next group in the current sub-wave
         const groupData = getCurrentGroupData();
         enemiesSpawnedThisGroup = 0;
         groupSpawnTimer = 0; // Ready to spawn first enemy (after start delay)
@@ -100,17 +92,14 @@ function advanceSpawnProgression() {
 function startNextWave() {
     currentMainWaveIndex++; // Increment index to point to the *next* wave to start
     const waveData = getCurrentWaveData(); // Get data for the *new* current index
-
     if (!waveData) {
         // No more waves found, transition to victory state
         console.log("[WaveMgr] All defined waves completed!");
         state = 'VICTORY';
         currentMaxTimer = 0; // No timer in victory state
-        // Note: Enemy clearing and music stopping are handled by main.js now when it detects victory
         console.log("[WaveMgr] Transitioned to VICTORY state.");
         return false; // Indicates no wave was started
     }
-
     // --- Show epoch text for the first wave if it's just starting ---
     if (currentMainWaveIndex === 0) { // This is the first wave (index 0)
         if (waveData.epochName) {
@@ -119,21 +108,17 @@ function startNextWave() {
             UI.showEpochText(`Starting Wave ${waveData.mainWaveNumber}`); // Fallback
         }
     }
-
     // Found a valid next wave, start the countdown
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration; // Set timer to the wave's total duration
     currentMaxTimer = waveData.duration; // Set max timer for UI
     console.log(`[WaveMgr] Starting Main Wave ${waveData.mainWaveNumber}. Duration: ${mainWaveTimer}s`);
-
     // Call the callback to notify the main loop (e.g., to show epoch text)
-    // This callback is now typically used for the *start* of the wave countdown, not the WARP phase.
-    // Epoch text is now shown by triggerWarpCleanup when entering the phase *before* this one.
     if (typeof waveStartCallback === 'function') {
-        // console.log(`[WaveMgr] Calling waveStartCallback for wave ${waveData.mainWaveNumber}.`);
+        console.log(`[WaveMgr] Calling waveStartCallback for wave ${waveData.mainWaveNumber}.`);
         waveStartCallback(waveData.mainWaveNumber); // Pass the 1-based wave number
     } else {
-         // console.warn("[WaveMgr] No waveStartCallback function registered.");
+        console.warn("[WaveMgr] No waveStartCallback function registered.");
     }
     // --- Trigger game music playback for the new wave ---
     if (waveData.audioTrack) {
@@ -147,13 +132,13 @@ function startNextWave() {
     enemiesSpawnedThisGroup = 0;
     groupSpawnTimer = 0; // Ready to spawn first enemy in group
     const firstGroup = getCurrentGroupData();
-     if (firstGroup) {
+    if (firstGroup) {
         groupStartDelayTimer = firstGroup.startDelay ?? 0; // Set start delay for the very first group
         // console.log(`[WaveMgr] Setup Group ${currentGroupIndex + 1} (Type: ${firstGroup.type}, Count: ${firstGroup.count}) in Sub-Wave ${currentMainWaveIndex+1}.${currentSubWaveIndex+1}. Start Delay: ${groupStartDelayTimer}s`);
-     } else {
-         console.warn(`[WaveMgr] Wave ${waveData.mainWaveNumber} has no enemy groups defined.`);
-         groupStartDelayTimer = waveData.duration + 1; // Effectively prevent spawning if no groups
-     }
+    } else {
+        console.warn(`[WaveMgr] Wave ${waveData.mainWaveNumber} has no enemy groups defined.`);
+        groupStartDelayTimer = waveData.duration + 1; // Effectively prevent spawning if no groups
+    }
     return true; // Indicates a wave was started
 }
 
@@ -165,10 +150,9 @@ function endWave() {
         // Fallback to game over?
         state = 'GAME_OVER'; // Safety state
         currentMaxTimer = 0; // No timer in game over state
-         // Note: Enemy clearing and music stopping are handled by main.js now when it detects game over
+        // Note: Enemy clearing and music stopping are handled by main.js now when it detects game over
         return;
     }
-
     // Check if there's a *next* wave available AFTER the one that just finished
     if (currentMainWaveIndex + 1 < Config.WAVES.length) {
         // There is a next wave, transition to BUILDPHASE
@@ -178,18 +162,14 @@ function endWave() {
         // Calculate build phase duration: Total Intermission - Fixed Warp Phase
         buildPhaseTimer = Math.max(0, waveIntermissionDuration - Config.WARPPHASE_DURATION);
         warpPhaseTimer = 0; // Ensure warp timer is zeroed initially
-
         currentMaxTimer = buildPhaseTimer; // Set max timer for UI to the build phase duration
         AudioManager.stopGameMusic(); // <-- Stop wave music for intermission
         console.log(`[WaveMgr] Transitioned to BUILDPHASE (${buildPhaseTimer.toFixed(2)}s). Next wave (${currentMainWaveIndex + 2}) starts after total ${waveIntermissionDuration.toFixed(2)}s.`);
-    } else {
-        // No more waves, transition to victory
+    } else { // No more waves, transition to victory
         state = 'VICTORY';
         currentMaxTimer = 0; // No timer in victory state
-        // Note: Enemy clearing and music stopping are handled by main.js now when it detects victory
         console.log("[WaveMgr] All waves completed! Transitioned to VICTORY state.");
     }
-
     // Reset spawning progression pointers after ending a wave (applies to the *next* wave)
     currentSubWaveIndex = 0;
     currentGroupIndex = 0;
@@ -197,14 +177,12 @@ function endWave() {
     groupSpawnTimer = 0;
     groupStartDelayTimer = 0; // Will be set up properly when startNextWave is called later
 }
-
-// NEW: Helper to capture the current state of the grid (types only)
+// Helper to capture the current state of the grid (types only)
 function captureCurrentGridState() {
     const grid = WorldData.getGrid();
     return grid.map(row => row.map(block => (typeof block === 'object' ? block.type : block)));
 }
-
-// NEW: Helper to diff two grid states
+// Helper to diff two grid states
 function diffGrids(gridStateBefore, gridStateAfterSnapshot) {
     const changes = [];
     for (let r = 0; r < Config.GRID_ROWS; r++) {
@@ -212,7 +190,6 @@ function diffGrids(gridStateBefore, gridStateAfterSnapshot) {
             const typeBefore = gridStateBefore[r]?.[c]; // Use optional chaining
             const blockAfter = gridStateAfterSnapshot[r]?.[c]; // Get the block object/value
             const typeAfter = (typeof blockAfter === 'object' && blockAfter !== null) ? blockAfter.type : blockAfter;
-
             if (typeBefore !== undefined && typeAfter !== undefined && typeBefore !== typeAfter) {
                 changes.push({ c, r, oldBlockType: typeBefore, newBlockType: typeAfter });
             }
@@ -221,7 +198,6 @@ function diffGrids(gridStateBefore, gridStateAfterSnapshot) {
     return changes;
 }
 
-
 /** Function to trigger aging, animation queuing, and entity cleanup */
 function triggerWarpCleanup() {
     console.log("[WaveMgr] Triggering Warp Cleanup...");
@@ -229,37 +205,21 @@ function triggerWarpCleanup() {
         console.error("[WaveMgr] Warp Cleanup failed: Portal reference is null.");
         return;
     }
-
-    // 1. Update portal safety radius (main.js used to do this)
+    // 1. Update portal safety radius
     portalRef.setSafetyRadius(portalRef.safetyRadius + Config.PORTAL_RADIUS_GROWTH_PER_WAVE);
     console.log(`[WaveMgr] Portal Safety Radius Increased to ${portalRef.safetyRadius.toFixed(1)}.`);
-
     // 2. Clear Enemies and Items Outside the Portal's Safety Radius
     const portalCenter = portalRef.getPosition();
     const safeRadius = portalRef.safetyRadius;
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     console.log(`[WaveMgr] Cleared entities/items outside portal radius ${safeRadius.toFixed(1)}.`);
-
     const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
     const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
-
-    // --- Debug Logging ---
-    if (Config.DEBUG) {
-        console.log(`[WaveMgr Debug] In triggerWarpCleanup:`);
-        console.log(`  currentMainWaveIndex: ${currentMainWaveIndex}`);
-        console.log(`  nextWaveIndexToPrepareFor: ${nextWaveIndexToPrepareFor}`);
-        console.log(`  Config.WAVES.length: ${Config.WAVES.length}`);
-        console.log(`  nextWaveData:`, nextWaveData);
-    }
-    // --- End Debug Logging ---
-
     if (nextWaveData && typeof nextWaveData === 'object') { // Ensure nextWaveData is a valid object
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
         const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
-
         console.log(`[WaveMgr] Preparing aging for upcoming Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'} (${passes} passes, intensity ${intensity.toFixed(2)})...`);
-
         const gridStateBeforeAging = captureCurrentGridState();
         for (let i = 0; i < passes; i++) {
             AgingManager.applyAging(portalRef, intensity);
@@ -272,24 +232,18 @@ function triggerWarpCleanup() {
         if (proposedVisualChanges.length > 0) {
             WorldManager.addProposedAgingChanges(proposedVisualChanges);
         }
-
         // Show Epoch Text for the upcoming wave
         const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
-        if (Config.DEBUG) console.log(`[WaveMgr Debug] Showing epoch text: "${epochName}"`);
         UI.showEpochText(epochName);
-
     } else {
         console.warn(`[WaveMgr] triggerWarpCleanup: No valid nextWaveData found. Index: ${nextWaveIndexToPrepareFor}. Skipping aging and epoch text for next wave.`);
         // Fallback epoch text if no next wave (should ideally not happen if victory state is handled correctly)
         UI.showEpochText("Final Preparations...");
     }
-
     // The renderStaticWorldToGridCanvas() and seedWaterUpdateQueue() calls will now happen
     // at the END of the WARPPHASE timer in the main update loop of WaveManager.
 }
-
 // --- Exported Functions ---
-
 // --- Initializes the wave manager to its default state, accepts an optional callback and portal reference ---
 export function init(callback = null, portalObject = null) {
     currentMainWaveIndex = -1; // Start before the first wave
@@ -319,8 +273,6 @@ export function reset(callback = null, portalObject = null) {
 
 // Updates the wave state machine, handling timers and spawning. Timers only decrement if the game is in the RUNNING state.
 export function update(dt, gameState) {
-    // --- DEBUG LOG: WaveManager Update Start ---
-    // console.log(`[WaveMgr::update] Start. dt: ${dt.toFixed(3)}, gameState: ${gameState}, internalState: ${state}, preWaveTimer: ${preWaveTimer.toFixed(2)}`);
 
     // MODIFIED: Timers for BUILDPHASE and WARPPHASE should run even if gameState is PAUSED,
     // but other game logic (like spawning) should only happen if gameState is RUNNING.
@@ -341,7 +293,7 @@ export function update(dt, gameState) {
                 break;
 
             case 'WAVE_COUNTDOWN':
-                 if (gameState === 'RUNNING') { // Only run main wave timer and spawning if game is actively running
+                if (gameState === 'RUNNING') { // Only run main wave timer and spawning if game is actively running
                     mainWaveTimer -= dt;
                     if (mainWaveTimer <= 0) {
                         mainWaveTimer = 0; // Ensure it doesn't go negative in display
@@ -364,10 +316,10 @@ export function update(dt, gameState) {
                                         enemiesSpawnedThisGroup++;
                                         // Ensure delayBetween is positive, else use a small default to avoid tight loop
                                         groupSpawnTimer = groupData.delayBetween > 0 ? groupData.delayBetween : 0.1;
-                                         // If spawning instantly (delay=0), reset timer immediately for next potential spawn
-                                         if (groupData.delayBetween <= 0 && enemiesSpawnedThisGroup < groupData.count) {
-                                              groupSpawnTimer = 0; // Allow next spawn attempt in the same frame if delay is 0
-                                         }
+                                        // If spawning instantly (delay=0), reset timer immediately for next potential spawn
+                                        if (groupData.delayBetween <= 0 && enemiesSpawnedThisGroup < groupData.count) {
+                                            groupSpawnTimer = 0; // Allow next spawn attempt in the same frame if delay is 0
+                                        }
                                     } else {
                                         groupSpawnTimer = 0.2; // Short delay if spawn failed (e.g., max enemies)
                                     }
@@ -393,26 +345,26 @@ export function update(dt, gameState) {
                 }
                 break;
             case 'WARPPHASE':
-                 // Warp phase timer always runs if dt > 0
-                 warpPhaseTimer -= dt;
-                 if (warpPhaseTimer <= 0) {
-                     warpPhaseTimer = 0;
-                     console.log("[WaveMgr] WARPPHASE timer ended.");
+                // Warp phase timer always runs if dt > 0
+                warpPhaseTimer -= dt;
+                if (warpPhaseTimer <= 0) {
+                    warpPhaseTimer = 0;
+                    console.log("[WaveMgr] WARPPHASE timer ended.");
                     WorldManager.finalizeAllAgingAnimations(); // Finalize any ongoing aging animations immediately
-                     // Now that all WorldData changes are visually committed (or forced),
-                     // re-render the entire static canvas and seed water.
-                     console.log("[WaveMgr] Rendering final static world and seeding water queue after WARPPHASE.");
-                     WorldManager.renderStaticWorldToGridCanvas();
-                     WorldManager.seedWaterUpdateQueue();
-                     
-                     startNextWave(); // Transition to next WAVE_COUNTDOWN or VICTORY
-                 }
-                 break;
+                    // Now that all WorldData changes are visually committed (or forced),
+                    // re-render the entire static canvas and seed water.
+                    console.log("[WaveMgr] Rendering final static world and seeding water queue after WARPPHASE.");
+                    WorldManager.renderStaticWorldToGridCanvas();
+                    WorldManager.seedWaterUpdateQueue();
+                
+                    startNextWave(); // Transition to next WAVE_COUNTDOWN or VICTORY
+                }
+                break;
             // VICTORY and GAME_OVER states do not have active timers to decrement.
             case 'VICTORY':
             case 'GAME_OVER':
-                 // No timer updates needed for these states.
-                 break;
+                // No timer updates needed for these states.
+                break;
             default:
                 break;
         }
@@ -432,8 +384,6 @@ export function setGameOver() {
         groupSpawnTimer = 0;
         groupStartDelayTimer = 0;
         currentMaxTimer = 0; // No timer in game over state
-        // Note: Enemy clearing is handled by main.js now on game over
-        // DO NOT call AudioManager.stopAllMusic() or modify WorldManager/ItemManager state here.
     }
 }
 
@@ -442,7 +392,7 @@ export function setVictory() {
     if (state !== 'VICTORY') {
         console.log("[WaveManager] Setting state to VICTORY.");
         state = 'VICTORY';
-         // Clear internal timers
+        // Clear internal timers
         preWaveTimer = 0;
         mainWaveTimer = 0;
         buildPhaseTimer = 0; // Clear new timers
@@ -450,9 +400,6 @@ export function setVictory() {
         groupSpawnTimer = 0;
         groupStartDelayTimer = 0;
         currentMaxTimer = 0; // No timer in victory state
-        // Note: Enemy/Item clearing and music stopping are handled by main.js now on victory/game over.
-        // We don't need to call WorldManager.renderStaticWorldToGridCanvas() or WorldManager.seedWaterUpdateQueue() here,
-        // as the game is ending, not preparing for the next wave.
     }
 }
 
@@ -467,13 +414,13 @@ export function getCurrentWaveNumber() {
     // Return 0 if waves haven't started, otherwise the 1-based index
     // currentMainWaveIndex is -1 before wave 1, 0 during wave 1 and its intermission, 1 during wave 2 etc.
     // In GAME_OVER or VICTORY, return the wave number reached *before* ending.
-     if (state === 'GAME_OVER' || state === 'VICTORY') {
+    if (state === 'GAME_OVER' || state === 'VICTORY') {
         // If the game ended during PRE_WAVE, the "reached wave" is 0.
         // Otherwise, it's the currentMainWaveIndex + 1 (the wave that was active or just completed).
         // A slightly more complex logic might be needed if game over can happen exactly at the transition,
         // but this is usually sufficient for display.
         return Math.max(0, currentMainWaveIndex + 1);
-     }
+    }
     // If in WARPPHASE or BUILDPHASE, currentMainWaveIndex is the wave that *just finished*.
     // We want to display the NEXT wave number in the UI during intermission countdown.
     // Fix: If in intermission, currentMainWaveIndex is the index of the wave that *just finished*.
@@ -483,7 +430,7 @@ export function getCurrentWaveNumber() {
     if (state === 'BUILDPHASE' || state === 'WARPPHASE') {
         // currentMainWaveIndex is the index of the wave that *just completed* (e.g., 0 after wave 1 finishes).
         // The next wave number is index + 2 (e.g., 0 + 2 = 2 for wave 2).
-         return currentMainWaveIndex + 2; // Show the *next* wave number
+        return currentMainWaveIndex + 2; // Show the *next* wave number
     }
 
     // If in PRE_WAVE, the currentMainWaveIndex is -1. We want to show "Wave 1" upcoming.
@@ -498,7 +445,6 @@ export function getWaveInfo() {
     // let progressText = ""; 
     let currentWaveNumber = getCurrentWaveNumber(); // getCurrentWaveNumber already handles state logic
     let maxTimer = currentMaxTimer; // Use the module-level max timer
-
     switch (state) {
         case 'PRE_WAVE':
             timer = preWaveTimer;
@@ -513,9 +459,9 @@ export function getWaveInfo() {
             // maxTimer is already set by endWave to buildPhaseTimer initial value
             break;
         case 'WARPPHASE':
-             timer = warpPhaseTimer;
-             // maxTimer is already set when transitioning to WARPPHASE
-             break;
+            timer = warpPhaseTimer;
+            // maxTimer is already set when transitioning to WARPPHASE
+            break;
         case 'GAME_OVER':
             timer = 0; maxTimer = 1; // Ensure maxTimer is not 0 for UI
             break;
@@ -523,16 +469,14 @@ export function getWaveInfo() {
             timer = 0; maxTimer = 1; // Ensure maxTimer is not 0 for UI
             break;
         default:
-             timer = 0; maxTimer = 1; // Default for unknown states
-             break;
+            timer = 0; maxTimer = 1; // Default for unknown states
+            break;
     }
-
     return {
         state: state, // e.g., "PRE_WAVE", "WAVE_COUNTDOWN", "BUILDPHASE", "WARPPHASE", "VICTORY"
         mainWaveNumber: currentWaveNumber, // The 1-based number of the current or upcoming wave
         timer: timer, // Current value of the relevant timer for this state
         maxTimer: maxTimer, // The maximum value for the current timer (for UI progress bar)
-        // progressText: progressText, // REMOVED - UI will generate this
         isGameOver: state === 'GAME_OVER', // Flag for game over state
         allWavesCleared: state === 'VICTORY' // Flag for victory state
     };
