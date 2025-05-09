@@ -27,7 +27,9 @@ export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
 
 // --- Landmass Generation ---
 
-export const WORLD_ISLAND_WIDTH = 0.8; // width of main island as percentage of GRID_COLS
+export const WORLD_ISLAND_WIDTH_MIN = 0.75; // Minimum width of main island as percentage of GRID_COLS
+export const WORLD_ISLAND_WIDTH_MAX = 0.85; // Maximum width of main island as percentage of GRID_COLS
+
 export const WORLD_WATER_LEVEL_FRACTION = 0.15; // water covers bottom X% of GRID_ROWS
 export const WORLD_WATER_LEVEL_ROW_TARGET = Math.floor(GRID_ROWS * (1.0 - WORLD_WATER_LEVEL_FRACTION)); // calculate target row for the water surface
 
