@@ -62,14 +62,25 @@
                     </div>
                 </div>
             </aside>
-            <div id="game-overlay">
+
+            <!-- Boot Overlay: For Title Screen and Error Messages (Opaque) -->
+            <div id="boot-overlay" class="show-title">
                 <!-- Title Screen -->
                 <div id="overlay-title-content" class="overlay-content">
                     <h1>DEVOLVER</h1>
-                    <!-- This button will now go to the main menu -->
                     <button id="start-game-button">START</button>
                 </div>
+                <!-- Error Overlay -->
+                <div id="overlay-error-content" class="overlay-content">
+                    <h1>Game Error</h1>
+                    <p>An unrecoverable error occurred during initialization.</p>
+                    <p id="error-message-text">Error: [Dynamic error message here]</p>
+                    <p>Please check the browser's developer console (usually by pressing F12) for more technical details and try refreshing the page.</p>
+                </div>
+            </div>
 
+            <!-- Menu Overlay: For Main Menu, Settings, Cutscene, Pause, Game Over, Victory (Semi-Transparent) -->
+            <div id="menu-overlay">
                 <!-- Main Menu -->
                 <div id="overlay-mainmenu-content" class="overlay-content">
                     <h2>MAIN MENU</h2>
@@ -88,19 +99,13 @@
 
                  <!-- Intro Cutscene Content -->
                  <div id="overlay-cutscene-content" class="overlay-content">
-                     <!-- Image elements for the slideshow -->
-                     <!-- CSS will control which is visible and how they transition -->
-                     <!-- Using 100% width/height for fill, object-fit: contain or cover in CSS -->
                      <img id="cutscene-image-1" class="cutscene-image" src="assets/gendimage1.png" alt="Cutscene Image 1">
                      <img id="cutscene-image-2" class="cutscene-image" src="assets/gendimage2.png" alt="Cutscene Image 2">
                      <img id="cutscene-image-3" class="cutscene-image" src="assets/gendimage1.png" alt="Cutscene Image 3">
                      <img id="cutscene-image-4" class="cutscene-image" src="assets/gendimage2.png" alt="Cutscene Image 4">
-
-                     <!-- New Text Box Area -->
                      <div id="cutscene-text-box">
                          <p id="cutscene-text-content"></p>
                      </div>
-
                      <button id="cutscene-skip-button">SKIP</button>
                  </div>
 
@@ -121,13 +126,6 @@
                     <h2>VICTORY!</h2>
                     <p id="victory-stats-text">You cleared all waves!</p>
                     <button id="restart-button-overlay-victory">PLAY AGAIN?</button>
-                </div>
-                <!-- Error Overlay -->
-                <div id="overlay-error-content" class="overlay-content">
-                    <h1>Game Error</h1>
-                    <p>An unrecoverable error occurred during initialization.</p>
-                    <p id="error-message-text">Error: [Dynamic error message here]</p>
-                    <p>Please check the browser's developer console (usually by pressing F12) for more technical details and try refreshing the page.</p>
                 </div>
             </div>
         </div>

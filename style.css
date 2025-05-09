@@ -1,3 +1,5 @@
+/* style.css */
+
 @font-face { font-family: 'Fredericka'; src: url('assets/fonts/Fredericka.ttf') format('truetype'); font-display: block}
 @font-face { font-family: 'Nosifer'; src: url('assets/fonts/Nosifer.ttf') format('truetype'); font-display: block}
 @font-face { font-family: 'RubikIso'; src: url('assets/fonts/RubikIso.ttf') format('truetype'); font-display: block}
@@ -30,25 +32,56 @@ body {
     transition: filter 0.3s ease;
     overflow: hidden;
 }
-#game-overlay {
+
+/* --- Default Overlay Styling --- */
+#boot-overlay,
+#menu-overlay {
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.75);
-    color: white;
-    z-index: 100;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
     text-align: center;
+    color: white;
+
+    /* Hidden by default */
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s; /* Default for fade-out */
 }
+
+/* --- Boot Overlay (Opaque for Title/Error) --- */
+#boot-overlay {
+    background-color: black; /* Fully opaque */
+    z-index: 200; /* Higher z-index */
+}
+#boot-overlay.show-title,
+#boot-overlay.show-error {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, visibility 0s linear 0s; /* Faster visibility for fade-in */
+}
+
+/* --- Menu Overlay (Semi-transparent for Menus, Pause, etc.) --- */
+#menu-overlay {
+    background-color: rgba(0, 0, 0, 0.75); /* Semi-transparent */
+    z-index: 100;
+}
+#menu-overlay.active { /* This class makes the menu overlay visible */
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, visibility 0s linear 0s; /* Faster visibility for fade-in */
+}
+
+
+/* --- Overlay Content Styling --- */
 .overlay-content {
     display: none; /* All overlay content divs are hidden by default */
     flex-direction: column;
@@ -59,47 +92,39 @@ body {
     box-sizing: border-box;
 }
 
-/* Game overlay active state (makes the overlay container visible/blurred background) */
-#game-overlay.active {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s;
+/* Show specific content for Boot Overlay */
+#boot-overlay.show-title #overlay-title-content,
+#boot-overlay.show-error #overlay-error-content {
+    display: flex;
 }
 
-/* Show *only* the specific content div based on the game state class on #game-overlay */
-/* These rules override the default display: none for the matched element */
-#game-overlay.show-title #overlay-title-content,
-#game-overlay.show-mainmenu #overlay-mainmenu-content, /* This now correctly shows main menu by default */
-/* #game-overlay.show-settings #overlay-settings-content, /* REMOVED - Settings content visibility is now handled by JS */
-#game-overlay.show-cutscene #overlay-cutscene-content,
-#game-overlay.show-pause #overlay-pause-content,
-#game-overlay.show-gameover #overlay-gameover-content,
-#game-overlay.show-error #overlay-error-content,
-#game-overlay.show-victory #overlay-victory-content {
-    display: flex; /* Show only the matched content div */
+/* Show specific content for Menu Overlay (when #menu-overlay.active is also present) */
+#menu-overlay.active.show-mainmenu #overlay-mainmenu-content,
+#menu-overlay.active.show-settings #overlay-settings-content, /* For direct settings view if needed */
+#menu-overlay.active.show-cutscene #overlay-cutscene-content,
+#menu-overlay.active.show-pause #overlay-pause-content,
+#menu-overlay.active.show-gameover #overlay-gameover-content,
+#menu-overlay.active.show-victory #overlay-victory-content {
+    display: flex;
 }
+
 
 /* Specific styles for the cutscene container when active */
-#game-overlay.show-cutscene #overlay-cutscene-content {
+#menu-overlay.active.show-cutscene #overlay-cutscene-content {
     width: 100%;
     height: 100%;
     max-width: none;
-    /* justify-content and align-items removed to allow children to position themselves absolutely freely */
     position: relative; /* Important for absolute positioning of children */
-    display: flex; /* This makes #overlay-cutscene-content visible */
 }
 
-/* Styles for the Error Overlay state */
-#game-overlay.show-error {
-    background-color: rgba(0, 0, 0, 0.95);
+/* Styles for the Error Overlay (within #boot-overlay) */
+#boot-overlay.show-error {
+    background-color: rgba(0, 0, 0, 0.95); /* Override for more opaque error bg */
     color: red;
-    z-index: 1000;
-    padding: 20px;
+    padding: 20px; /* Padding on the overlay itself */
 }
 
-/* Styles for the content within the Error Overlay */
-#overlay-error-content {
+#overlay-error-content { /* Content within error overlay */
     max-width: 600px;
 }
 #overlay-error-content h1 {
@@ -130,27 +155,48 @@ body {
 }
 
 
-#game-overlay h1 {
+/* General Overlay Text & Button Styling */
+#boot-overlay h1, #menu-overlay h1 { /* Target H1 in both */
     font-family: 'RubikIso', sans-serif;
     font-size: 3.5em;
     margin-bottom: 1.5rem;
     text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
 }
-#game-overlay h2 {
+#boot-overlay h2, #menu-overlay h2 {
     font-size: 2.5em; margin-bottom: 1.5rem;
 }
-#game-overlay p {
+#boot-overlay p, #menu-overlay p {
     font-size: 1.2em; margin-bottom: 1.5rem;
 }
-#game-overlay button {
-    padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background-color: #eee; color: #333; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s ease;
+#boot-overlay button, #menu-overlay button {
+    padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background-color: #eee; color: #333; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
 }
-#game-overlay button:hover {
+#boot-overlay button:hover, #menu-overlay button:hover {
     background-color: #fff;
 }
-#game-overlay button:active {
+#boot-overlay button:active, #menu-overlay button:active {
     transform: scale(0.97);
 }
+
+/* Title Screen Button Styles (within #boot-overlay) */
+#overlay-title-content #start-game-button {
+    background-color: black;
+    color: white;
+    border: 2px solid white;
+}
+#overlay-title-content #start-game-button:hover {
+    background-color: #1a1a1a;
+    border-color: #f0f0f0;
+    color: #f0f0f0;
+}
+#overlay-title-content #start-game-button:active {
+    background-color: #0d0d0d;
+    border-color: #e0e0e0;
+    transform: scale(0.97);
+}
+
+
+/* Restart Button Styles (within #menu-overlay) */
 #restart-button-overlay,
 #restart-button-overlay-pause {
     background-color: darkred; color: white; border-color: #ffaaaa;
@@ -165,6 +211,11 @@ body {
 #restart-button-overlay-victory:hover {
     background-color: green;
 }
+
+/*
+  Blur effect on app-container's children is applied when #app-container has .overlay-active.
+  This class is added by JS when #menu-overlay is shown.
+*/
 #app-container.overlay-active > #top-sidebar,
 #app-container.overlay-active > #game-wrapper,
 #app-container.overlay-active > #bottom-sidebar {
@@ -175,10 +226,12 @@ body {
 #app-container > #top-sidebar,
 #app-container > #game-wrapper,
 #app-container > #bottom-sidebar {
-    filter: none;
+    filter: none; /* Default: no blur */
     pointer-events: auto;
     transition: filter 0.3s ease;
 }
+
+/* ... rest of your CSS ... */
 #top-sidebar, #bottom-sidebar {
     flex-shrink: 0;
     width: 100%;
@@ -494,10 +547,10 @@ noscript p {
     -ms-overflow-style: none; scrollbar-width: none;
 }
 
-#overlay-cutscene-content {
+/* Cutscene Specific Styles (within #menu-overlay) */
+#overlay-cutscene-content { /* Already targeted by general rules, this is for specificity if needed */
     position: relative;
     overflow: hidden;
-     /* Ensure flex properties for positioning children if needed */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -510,7 +563,7 @@ noscript p {
     left: 0;
     width: 100%;
     height: 100%;
-    object-fit: contain; /* Changed to contain to ensure full image is visible */
+    object-fit: contain;
     opacity: 0;
     transition: opacity 1s ease-in-out;
     z-index: 1; /* Images are behind text box and skip button */
@@ -518,18 +571,15 @@ noscript p {
 
 .cutscene-image.active {
     opacity: 1;
-    /* z-index remains 1 */
 }
 
-/* Hide text box and skip button by default */
 #cutscene-text-box,
-#overlay-cutscene-content #cutscene-skip-button {
+#overlay-cutscene-content #cutscene-skip-button { /* Default hide */
     display: none;
 }
 
-/* Show text box and skip button only when the cutscene overlay is active */
-#game-overlay.show-cutscene #cutscene-text-box {
-    display: flex; /* Or 'block' if flex properties are not needed for its internal layout */
+#menu-overlay.active.show-cutscene #cutscene-text-box {
+    display: flex;
     position: absolute;
     bottom: 5%;
     left: 50%;
@@ -550,8 +600,8 @@ noscript p {
     justify-content: flex-start;
 }
 
-#game-overlay.show-cutscene #overlay-cutscene-content #cutscene-skip-button {
-    display: block; /* Or 'inline-block' etc. */
+#menu-overlay.active.show-cutscene #overlay-cutscene-content #cutscene-skip-button {
+    display: block;
     position: absolute;
     bottom: 1rem;
     right: 1rem;
@@ -569,7 +619,7 @@ noscript p {
     line-height: 1.6;
     text-align: left;
     width: 100%;
-    max-height: 100px;
+    max-height: 100px; /* Ensure text doesn't overflow the box too much */
     overflow-y: auto;
 }
 
