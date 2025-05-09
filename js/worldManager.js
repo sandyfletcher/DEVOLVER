@@ -60,9 +60,9 @@ export function addWaterUpdateCandidate(col, row) {
             // Only add AIR blocks if AT/BELOW waterline, or any WATER block.
             if (blockType !== null &&
                 (blockType === Config.BLOCK_WATER ||
-                 (blockType === Config.BLOCK_AIR && row >= Config.WORLD_WATER_LEVEL_ROW_TARGET))) {
-                 waterUpdateQueue.set(key, {c: col, r: row});
-                 return true; // Indicates a candidate was added
+                (blockType === Config.BLOCK_AIR && row >= Config.WORLD_WATER_LEVEL_ROW_TARGET))) {
+                waterUpdateQueue.set(key, {c: col, r: row});
+                return true; // Indicates a candidate was added
             }
         }
     }
@@ -70,22 +70,22 @@ export function addWaterUpdateCandidate(col, row) {
 }
 
 export function resetWaterPropagationTimer() {
-     waterPropagationTimer = 0;
+    waterPropagationTimer = 0;
 }
 
 // NEW: Helper to queue cell and its neighbors for water updates if they are candidates
 // This is called AFTER a block change is finalized (mining, placement, aging animation end)
 export function queueWaterCandidatesAroundChange(c, r) {
-     let candidateAdded = false;
-     candidateAdded = addWaterUpdateCandidate(c, r) || candidateAdded;
-     candidateAdded = addWaterUpdateCandidate(c, r - 1) || candidateAdded;
-     candidateAdded = addWaterUpdateCandidate(c, r + 1) || candidateAdded;
-     candidateAdded = addWaterUpdateCandidate(c - 1, r) || candidateAdded;
-     candidateAdded = addWaterUpdateCandidate(c + 1, r) || candidateAdded;
+    let candidateAdded = false;
+    candidateAdded = addWaterUpdateCandidate(c, r) || candidateAdded;
+    candidateAdded = addWaterUpdateCandidate(c, r - 1) || candidateAdded;
+    candidateAdded = addWaterUpdateCandidate(c, r + 1) || candidateAdded;
+    candidateAdded = addWaterUpdateCandidate(c - 1, r) || candidateAdded;
+    candidateAdded = addWaterUpdateCandidate(c + 1, r) || candidateAdded;
 
-     if (candidateAdded) {
-         resetWaterPropagationTimer();
-     }
+    if (candidateAdded) {
+        resetWaterPropagationTimer();
+    }
 }
 
 export function seedWaterUpdateQueue() {
@@ -93,13 +93,13 @@ export function seedWaterUpdateQueue() {
     waterUpdateQueue.clear();
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
-             const blockType = WorldData.getBlockType(c, r);
-             if (blockType === Config.BLOCK_WATER || blockType === Config.BLOCK_AIR) {
-                 addWaterUpdateCandidate(c, r);
-             }
-             if (blockType === Config.BLOCK_WATER || (GridCollision.isSolid(c, r) && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 2)) {
-                 queueWaterCandidatesAroundChange(c, r);
-             }
+            const blockType = WorldData.getBlockType(c, r);
+            if (blockType === Config.BLOCK_WATER || blockType === Config.BLOCK_AIR) {
+                addWaterUpdateCandidate(c, r);
+            }
+            if (blockType === Config.BLOCK_WATER || (GridCollision.isSolid(c, r) && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET - 2)) {
+                queueWaterCandidatesAroundChange(c, r);
+            }
         }
     }
     console.log(`WorldManager: Seeded Water Update Queue with ${waterUpdateQueue.size} candidates.`);
@@ -128,9 +128,9 @@ export function damageBlock(col, row, damageAmount) {
         return false;
     }
     if (typeof block.hp !== 'number' || isNaN(block.hp)) {
-         console.error(`Invalid HP type for block at [${col}, ${row}]. HP: ${block.hp}. Resetting HP.`);
-         block.hp = block.maxHp;
-         return false;
+        console.error(`Invalid HP type for block at [${col}, ${row}]. HP: ${block.hp}. Resetting HP.`);
+        block.hp = block.maxHp;
+        return false;
     }
 
     block.hp -= damageAmount;
@@ -170,7 +170,7 @@ export function damageBlock(col, row, damageAmount) {
             updateStaticWorldAt(col, row);
             queueWaterCandidatesAroundChange(col, row);
         } else {
-             console.error(`WorldManager damageBlock failed to set AIR at [${col}, ${row}] after destruction.`);
+            console.error(`WorldManager damageBlock failed to set AIR at [${col}, ${row}] after destruction.`);
         }
     }
     return true;
@@ -181,7 +181,6 @@ export function damageBlock(col, row, damageAmount) {
 // -----------------------------------------------------------------------------
 
 export function addProposedAgingChanges(changes) {
-    // Aging animations are always on, directly add to queue.
     changes.forEach(change => agingAnimationQueue.push(change));
     console.log(`[WorldManager] Added ${changes.length} proposed aging changes to animation queue. Total: ${agingAnimationQueue.length}`);
 }
@@ -192,7 +191,7 @@ function updateAgingAnimations(dt) {
         const change = agingAnimationQueue.shift();
         const existingAnimIndex = activeAgingAnimations.findIndex(anim => anim.c === change.c && anim.r === change.r);
         if (existingAnimIndex !== -1) {
-             console.warn(`[WorldManager] Trying to start new animation for [${change.c},${change.r}] while one is active. Skipping.`);
+            console.warn(`[WorldManager] Trying to start new animation for [${change.c},${change.r}] while one is active. Skipping.`);
         } else {
             activeAgingAnimations.push({
                 c: change.c,
@@ -225,7 +224,7 @@ function updateAgingAnimations(dt) {
             if (anim.timer <= 0) {
                 anim.phase = 'pop';
                 anim.timer = Config.AGING_ANIMATION_POP_DURATION;
-                 anim.currentScale = 1.0;
+                anim.currentScale = 1.0;
             }
         } else if (anim.phase === 'pop') {
             if (anim.timer <= 0) {
@@ -255,12 +254,12 @@ function drawAgingAnimations(ctx) {
         } else if (anim.phase === 'pop') {
             const newColor = Config.BLOCK_COLORS[anim.newBlockType];
             if (newColor && anim.newBlockType !== Config.BLOCK_AIR) {
-                 const popProgress = Math.max(0, 1.0 - (anim.timer / Config.AGING_ANIMATION_POP_DURATION));
-                 const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI);
-                 ctx.globalAlpha = alpha;
-                 ctx.fillStyle = Config.AGING_ANIMATION_NEW_BLOCK_COLOR;
-                 ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
-                 ctx.globalAlpha = 1.0;
+                const popProgress = Math.max(0, 1.0 - (anim.timer / Config.AGING_ANIMATION_POP_DURATION));
+                const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI);
+                ctx.globalAlpha = alpha;
+                ctx.fillStyle = Config.AGING_ANIMATION_NEW_BLOCK_COLOR;
+                ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
+                ctx.globalAlpha = 1.0;
             }
         }
         ctx.restore();
@@ -301,25 +300,25 @@ export function updateStaticWorldAt(col, row) {
     const blockH = Math.ceil(Config.BLOCK_HEIGHT);
     gridCtx.clearRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
     if (block !== Config.BLOCK_AIR && block !== null && block !== undefined) {
-         const currentBlockType = typeof block === 'object' && block !== null ? block.type : block;
-         if (currentBlockType === Config.BLOCK_AIR) return;
-         const blockColor = Config.BLOCK_COLORS[currentBlockType];
-         if (blockColor) {
+        const currentBlockType = typeof block === 'object' && block !== null ? block.type : block;
+        if (currentBlockType === Config.BLOCK_AIR) return;
+        const blockColor = Config.BLOCK_COLORS[currentBlockType];
+        if (blockColor) {
             gridCtx.fillStyle = blockColor;
             gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
             const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
             if (isPlayerPlaced) {
-                 gridCtx.save();
-                 gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
-                 gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
-                 const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
-                  gridCtx.strokeRect(
-                     Math.floor(blockX) + outlineInset,
-                     Math.floor(blockY) + outlineInset,
-                     blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS,
-                     blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
-                 );
-                 gridCtx.restore();
+                gridCtx.save();
+                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
+                gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
+                const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
+                gridCtx.strokeRect(
+                    Math.floor(blockX) + outlineInset,
+                    Math.floor(blockY) + outlineInset,
+                    blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS,
+                    blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+                );
+                gridCtx.restore();
             }
             if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
                 const hpRatio = block.hp / block.maxHp;
@@ -391,16 +390,13 @@ export function update(dt) {
         const candidatesArray = Array.from(waterUpdateQueue.values());
         candidatesArray.sort((a, b) => b.r - a.r);
         const candidatesToProcess = candidatesArray.slice(0, Config.WATER_UPDATES_PER_FRAME);
-
         candidatesToProcess.forEach(({c, r}) => {
             const key = `${c},${r}`;
             waterUpdateQueue.delete(key);
         });
-
         candidatesToProcess.forEach(({c, r}) => {
             if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return;
             const currentBlockType = WorldData.getBlockType(c, r);
-
             if (currentBlockType === Config.BLOCK_AIR) {
                 if (r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
                     let adjacentToWater = false;
@@ -433,18 +429,18 @@ export function update(dt) {
                     const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR);
 
                     if (isBelowSolidOrWater) {
-                         let spreadOccurred = false;
-                         if (WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
-                             addWaterUpdateCandidate(c - 1, r);
-                             spreadOccurred = true;
-                         }
-                         if (WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
-                             addWaterUpdateCandidate(c + 1, r);
-                             spreadOccurred = true;
-                         }
-                         if (spreadOccurred) {
-                              addWaterUpdateCandidate(c, r);
-                         }
+                        let spreadOccurred = false;
+                        if (WorldData.getBlockType(c - 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
+                            addWaterUpdateCandidate(c - 1, r);
+                            spreadOccurred = true;
+                        }
+                        if (WorldData.getBlockType(c + 1, r) === Config.BLOCK_AIR && r >= Config.WORLD_WATER_LEVEL_ROW_TARGET) {
+                            addWaterUpdateCandidate(c + 1, r);
+                            spreadOccurred = true;
+                        }
+                        if (spreadOccurred) {
+                            addWaterUpdateCandidate(c, r);
+                        }
                     }
                 }
             }

@@ -2,14 +2,14 @@
 // root/js/enemy.js - Enemy Class (Refactored for Config & AI Strategy)
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
-import * as ItemManager from './itemManager.js'; // Needed for drops on death
-import * as GridCollision from './utils/gridCollision.js'; // For physics and water detection
-import { E_EPSILON } from './utils/gridCollision.js';
-import { SeekCenterAI } from './ai/seekCenterAI.js';
-import { ChasePlayerAI } from './ai/chasePlayerAI.js';
-import { FlopAI } from './ai/flopAI.js';
-import * as AudioManager from './audioManager.js'; // Import AudioManager
+import * as Config from '../config.js';
+import * as ItemManager from '../itemManager.js'; // Needed for drops on death
+import * as GridCollision from './gridCollision.js'; // For physics and water detection
+import { E_EPSILON } from './gridCollision.js';
+import { SeekCenterAI } from '../ai/seekCenterAI.js';
+import { ChasePlayerAI } from '../ai/chasePlayerAI.js';
+import { FlopAI } from '../ai/flopAI.js';
+import * as AudioManager from '../audioManager.js'; // Import AudioManager
 
 // Map AI type strings from config to the actual AI Strategy classes
 const aiStrategyMap = {
@@ -103,6 +103,7 @@ export class Enemy {
         this.isActive = true; // This flag means the enemy exists and participates in game logic/collisions (until death anim ends)
         this.isInWater = false;
         this.waterJumpCooldown = 0; // Keep for non-swimming jumpers
+
         // NEW: AI-controlled state flag(s) - specific AIs can set these
         this.isFlopAttacking = false; // Specifically for Tetrapod's land hop attack
 
@@ -114,7 +115,6 @@ export class Enemy {
         // --- Animation State ---
         this.isDying = false; // New flag: Is the death animation playing?
         this.deathAnimationTimer = 0; // Timer for the death animation duration
-
 
         // --- Instantiate AI Strategy ---
         const AIStrategyClass = aiStrategyMap[this.stats.aiType];
@@ -154,7 +154,6 @@ export class Enemy {
             }
             if (!this.isActive && !this.isDying) return; // Exit if now truly inactive
         }
-
 
         // --- Handle Dying State ---
         if (this.isDying) {

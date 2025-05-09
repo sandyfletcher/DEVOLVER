@@ -1,4 +1,6 @@
-// root/js/audioManager.js - Manages game audio playback
+// -----------------------------------------------------------------------------
+// root/js/audioManager.js - Manages Audio Playback
+// -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
 
