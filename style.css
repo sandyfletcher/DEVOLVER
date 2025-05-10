@@ -431,6 +431,53 @@ body {
     box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
     border-color: #666;
 }
+/* For item boxes that will contain quadrants */
+.item-box.material-quadrant-box {
+    position: relative; /* For absolute positioning of quadrant-container and item-count */
+    /* The background-color is set by JS */
+}
+
+.quadrant-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* Two equal columns */
+    grid-template-rows: 1fr 1fr;    /* Two equal rows */
+    gap: 1px; /* Small gap between quadrants */
+    padding: 2px; /* Padding around the group of quadrants */
+    box-sizing: border-box;
+    z-index: 1; /* Quadrants are behind the item count */
+}
+
+.quadrant {
+    background-color: rgba(0, 0, 0, 0.35); /* Default empty quadrant color (darker shade relative to box bg) */
+    border: 1px solid rgba(255, 255, 255, 0.05); /* Very subtle border for empty quadrants */
+    box-sizing: border-box;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.quadrant.filled {
+    background-color: rgba(255, 255, 255, 0.25); /* Filled quadrant color (lighter shade) */
+    border-color: rgba(255, 255, 255, 0.15); /* Slightly more visible border when filled */
+}
+
+/* Ensure item count is on top of quadrants and centered */
+.item-box.material-quadrant-box .item-count {
+    position: absolute; /* Position it over the quadrants */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2; /* Above quadrants */
+    font-size: 1.1em; /* Make it slightly larger to be clear */
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    pointer-events: none; /* So it doesn't interfere with clicks on the box */
+}
+
 .item-box .item-count {
     position: absolute;
     bottom: 1px;

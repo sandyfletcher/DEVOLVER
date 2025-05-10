@@ -220,34 +220,51 @@ function createItemSlot(itemType, container, category) {
 
     if (category === 'material') {
         slotDiv.style.backgroundColor = itemConfig?.color || '#444'; // Use config color or default
+        
         const countSpan = document.createElement('span'); // Span for count overlay
         countSpan.classList.add('item-count');
         countSpan.textContent = ''; // Start empty text
-        slotDiv.appendChild(countSpan);
+        slotDiv.appendChild(countSpan); // Add count span first for z-index behavior
+        
         titleText += ' (0)'; // Initial title for materials includes count
+
+        // --- NEW: Add quadrants for dirt and vegetation ---
+        if (itemType === 'dirt' || itemType === 'vegetation') {
+            slotDiv.classList.add('material-quadrant-box'); // Special class for styling parent
+            const quadrantContainer = document.createElement('div');
+            quadrantContainer.classList.add('quadrant-container');
+
+            // Define specific classes for easier targeting if needed, though direct child selectors work
+            const quadrantClasses = ['quadrant-tl', 'quadrant-tr', 'quadrant-bl', 'quadrant-br'];
+            quadrantClasses.forEach(qClassSuffix => {
+                const quadrantDiv = document.createElement('div');
+                quadrantDiv.classList.add('quadrant', qClassSuffix); // e.g. quadrant quadrant-tl
+                quadrantContainer.appendChild(quadrantDiv);
+            });
+            // Quadrant container will be visually behind the countSpan due to z-index in CSS
+            slotDiv.insertBefore(quadrantContainer, countSpan); // Insert before, effectively behind due to z-index
+        }
+        // --- END NEW ---
+
     } else if (category === 'weapon') {
         // Add specific text content (icons) for weapons
         if (itemType === Config.WEAPON_TYPE_SWORD) slotDiv.textContent = '⚔️';
-        else if (itemType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑'; // Unicode arrow or other symbol
-        else if (itemType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️'; // Unicode pickaxe or other symbol
-        else if (itemType === Config.WEAPON_TYPE_UNARMED) slotDiv.textContent = '👊'; // Unicode fist or other symbol
+        else if (itemType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑'; 
+        else if (itemType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️'; 
+        else if (itemType === Config.WEAPON_TYPE_UNARMED) slotDiv.textContent = '👊'; 
         else slotDiv.textContent = '?'; // Fallback icon
 
-        // Initial title for weapons will show 'Not Found' or crafting recipe, updated later
         titleText += ' (Not Found)'; // Placeholder, will be updated by updatePlayerInfo
     }
 
     slotDiv.title = titleText; // Set initial title attribute
 
-    // Add Event Listener for Click
-    // This listener directly calls the handleItemSlotClick helper.
-    // Input.js handles mapping touch/mouse input on these elements to a 'click'.
     slotDiv.addEventListener('click', () => {
         handleItemSlotClick(itemType, category);
     });
 
-    container.appendChild(slotDiv); // Add the created div to the specified container
-    itemSlotDivs[itemType] = slotDiv; // Store reference for later updates
+    container.appendChild(slotDiv); 
+    itemSlotDivs[itemType] = slotDiv; 
 }
 
 // Helper function to handle clicks on item/weapon slots
@@ -443,53 +460,55 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
     // Ensure essential UI elements exist before proceeding
     if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
         console.error("UI UpdatePlayerInfo: Missing essential elements.");
-        // Still try to update health bar if available
         if(playerHealthBarFillEl){
             const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
             const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
             playerHealthBarFillEl.style.width = `${healthPercent}%`;
         }
-        return; // Cannot proceed with slot updates if containers are missing
+        return; 
     }
-
-    // Update Health Bar (Top Sidebar)
     const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
     const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
     playerHealthBarFillEl.style.width = `${healthPercent}%`;
 
 
-    // --- Update Item/Weapon Selection Boxes (Bottom Sidebar) ---
-
-    // Get the currently selected item type from the player reference IF it exists
-    // If playerRef is null (e.g., before game start or after game over), treat selectedItem as null/unarmed implicitly
     const selectedItem = playerRef ? playerRef.getCurrentlySelectedItem() : null;
+    const getPartialCollectionFn = playerRef ? playerRef.getPartialCollection.bind(playerRef) : () => 0;
 
-    // Update Material Boxes
+
     for (const materialType of Config.INVENTORY_MATERIALS) {
         const slotDiv = itemSlotDivs[materialType];
-        // Ensure the corresponding slot div exists
-        if (!slotDiv) {
-            // console.warn(`UI updatePlayerInfo: Material slot div not found for type "${materialType}".`);
-            continue; // Skip if the element wasn't created
-        }
+        if (!slotDiv) continue;
 
-        const count = inventory[materialType] || 0; // Get count from the passed inventory object
+        const count = inventory[materialType] || 0;
         const countSpan = slotDiv.querySelector('.item-count');
-        // Update the count text, capping display at 99+
         if (countSpan) countSpan.textContent = count > 0 ? Math.min(count, 99) : '';
 
-        // A material slot is disabled if the player has 0 of that material
-        const isDisabled = count === 0;
+        let isDisabled;
+        let currentTitle = `${materialType.toUpperCase()} (${count})`;
+
+        if (materialType === 'dirt' || materialType === 'vegetation') {
+            const partialCount = getPartialCollectionFn(materialType);
+            isDisabled = (count === 0 && partialCount === 0);
+            currentTitle = `${materialType.toUpperCase()} (${count} full, ${partialCount}/4 collected)`;
+
+            const quadrants = slotDiv.querySelectorAll('.quadrant-container .quadrant');
+            // Assuming quadrants are ordered TL, TR, BL, BR in the DOM by createItemSlot
+            if (quadrants.length === 4) { // Ensure we have 4 quadrant elements
+                 quadrants[0].classList.toggle('filled', partialCount >= 1);
+                 quadrants[1].classList.toggle('filled', partialCount >= 2);
+                 quadrants[2].classList.toggle('filled', partialCount >= 3);
+                 quadrants[3].classList.toggle('filled', partialCount >= 4); // Should not happen as it resets to 0 + 1 full
+            }
+        } else {
+            isDisabled = (count === 0);
+        }
+        
         slotDiv.classList.toggle('disabled', isDisabled);
-
-        // A material slot is active if the player has this material selected AND has at least 1 count
-        // The check for count > 0 is technically redundant due to the 'disabled' logic, but makes it explicit.
-        slotDiv.classList.toggle('active', playerRef && selectedItem === materialType && count > 0);
-
-        // Update the title attribute for the hover tooltip
-        slotDiv.title = `${materialType.toUpperCase()} (${count})`;
+        slotDiv.classList.toggle('active', playerRef && selectedItem === materialType && !isDisabled);
+        slotDiv.title = currentTitle;
     }
-
+    
     // Update Weapon Boxes
     // Use the passed boolean flags for weapon possession
     const playerPossession = {

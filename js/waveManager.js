@@ -350,13 +350,25 @@ export function update(dt, gameState) {
                 if (warpPhaseTimer <= 0) {
                     warpPhaseTimer = 0;
                     console.log("[WaveMgr] WARPPHASE timer ended.");
-                    WorldManager.finalizeAllAgingAnimations(); // Finalize any ongoing aging animations immediately
-                    // Now that all World changes are visually committed (or forced),
-                    // re-render the entire static canvas and seed water.
+                    
+                    // 1. Finalize aging animations (applies logical changes from aging to World.grid and updates static canvas for those blocks)
+                    WorldManager.finalizeAllAgingAnimations(); 
+                    console.log("[WaveMgr] Aging animations finalized.");
+
+                    // 2. Apply Gravity Settlement (modifies World.grid)
+                    console.log("[WaveMgr] Applying gravity settlement post-aging...");
+                    const settlementChangedCoords = WorldManager.applyGravitySettlement(portalRef);
+                    // Note: settlementChangedCoords is currently just for logging/potential future use.
+                    // The world grid IS modified by applyGravitySettlement.
+                    
+                    // 3. Re-render the entire static canvas to reflect ALL changes (aging + settlement)
                     console.log("[WaveMgr] Rendering final static world and seeding water queue after WARPPHASE.");
-                    WorldManager.renderStaticWorldToGridCanvas();
+                    WorldManager.renderStaticWorldToGridCanvas(); // This will draw the final state after aging and settlement
+                    
+                    // 4. Seed water simulation queue based on the final settled and aged world
                     WorldManager.seedWaterUpdateQueue();
                 
+                    // 5. Start the next wave
                     startNextWave(); // Transition to next WAVE_COUNTDOWN or VICTORY
                 }
                 break;

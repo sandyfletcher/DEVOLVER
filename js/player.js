@@ -29,6 +29,7 @@ export class Player {
         this.hasSpear = false;
         this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Start unarmed
         this.inventory = {}; // Stores counts of materials: { 'dirt': 10, 'stone': 5 }
+         this.partialCollection = {}; // NEW: Stores partial collection counts: { 'dirt': 0, 'vegetation': 0 }
         this.placementCooldown = 0; // Timer for delaying consecutive block placements (time-based)
         // --- Combat State ---
         this.isAttacking = false;    // Is the attack animation/hitbox active? (Controlled by attackTimer now)
@@ -815,30 +816,44 @@ export class Player {
     // --- Inventory & Item Methods ---
     // Handles picking up an item. Updates inventory or weapon possession state.
     pickupItem(item) {
-        if (!item || !item.type) return false; // Invalid item
+        if (!item || !item.type) return false;
         let pickedUp = false;
-        // Check item type and update player state accordingly
-        if (item.type === Config.WEAPON_TYPE_SWORD) {
-            if (!this.hasSword) { this.hasSword = true; /* console.log("Player picked up the sword!"); */ pickedUp = true; }
-        } else if (item.type === Config.WEAPON_TYPE_SPEAR) {
-            if (!this.hasSpear) { this.hasSpear = true; /* console.log("Player picked up the spear!"); */ pickedUp = true; }
-        } else if (item.type === Config.WEAPON_TYPE_SHOVEL) {
-            if (!this.hasShovel) { this.hasShovel = true; /* console.log("Player picked up the shovel!"); */ pickedUp = true; }
-        } else if (Config.INVENTORY_MATERIALS.includes(item.type)) {
-            // Add material to inventory, initializing count if necessary
-            this.inventory[item.type] = (this.inventory[item.type] || 0) + 1;
-            // console.log(`Player picked up ${item.type}. Count: ${this.inventory[item.type]}`);
+
+        const materialType = item.type;
+        const GATHER_REQUIREMENT = 4; // How many ground items make one inventory item for special materials
+
+        if (materialType === 'dirt' || materialType === 'vegetation') {
+            this.partialCollection[materialType] = (this.partialCollection[materialType] || 0) + 1;
+            pickedUp = true; // Item was "picked up" from ground
+
+            if (this.partialCollection[materialType] >= GATHER_REQUIREMENT) {
+                this.partialCollection[materialType] = 0; // Reset partial
+                this.inventory[materialType] = (this.inventory[materialType] || 0) + 1; // Add one full block
+                // console.log(`Player collected enough ${materialType} to form one block. Total: ${this.inventory[materialType]}`);
+            } else {
+                // console.log(`Player collected partial ${materialType}. Progress: ${this.partialCollection[materialType]}/${GATHER_REQUIREMENT}`);
+            }
+        } else if (this.isWeaponType(materialType)) { // Weapons
+            if (materialType === Config.WEAPON_TYPE_SWORD) {
+                if (!this.hasSword) { this.hasSword = true; pickedUp = true; }
+            } else if (materialType === Config.WEAPON_TYPE_SPEAR) {
+                if (!this.hasSpear) { this.hasSpear = true; pickedUp = true; }
+            } else if (materialType === Config.WEAPON_TYPE_SHOVEL) {
+                if (!this.hasShovel) { this.hasShovel = true; pickedUp = true; }
+            }
+            // If a weapon was just picked up, equip it immediately ONLY if player is currently unarmed
+            if (pickedUp && this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
+                this.equipItem(materialType);
+            }
+        } else if (Config.INVENTORY_MATERIALS.includes(materialType)) { // Other materials (non-dirt/veg)
+            this.inventory[materialType] = (this.inventory[materialType] || 0) + 1;
             pickedUp = true;
+            // console.log(`Player picked up ${materialType}. Count: ${this.inventory[materialType]}`);
         } else {
-            console.warn(`Player encountered unknown item type: ${item.type}`);
+            console.warn(`Player encountered unknown item type: ${materialType}`);
         }
-        // If a weapon was just picked up, equip it immediately ONLY if player is currently unarmed
-        if (pickedUp && this.isWeaponType(item.type) && this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
-            this.equipItem(item.type); // Equip the newly picked up weapon TODO: should this be changed to equip after assembling a new weapon?
-        }
-        return pickedUp; // Return whether the item was processed
-    }
-    /** Checks if the player possesses a specific weapon type. */
+        return pickedUp;
+    }    /** Checks if the player possesses a specific weapon type. */
     hasWeapon(weaponType) {
         switch (weaponType) {
             case Config.WEAPON_TYPE_SWORD: return this.hasSword;
@@ -962,6 +977,11 @@ export class Player {
         }
         // 4. Return success status
         return craftedSuccessfully;
+    }
+
+        // --- NEW: Getter for partial collection state ---
+    getPartialCollection(materialType) {
+        return this.partialCollection[materialType] || 0;
     }
     // --- State/Type Check Helpers ---
     /** Checks if an item type string corresponds to a known weapon type. */
@@ -1127,6 +1147,7 @@ export class Player {
         this.hitBlocksThisSwing = [];
         // Inventory & Weapons
         this.inventory = {}; // Clear inventory
+        this.partialCollection = {};
         // Reset weapon possession flags - Shovel is a starting item again
         this.hasShovel = true; // Player starts with shovel on reset
         this.hasSword = false;
