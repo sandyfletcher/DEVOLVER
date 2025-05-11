@@ -54,14 +54,13 @@ function getWaterDepthAbove(c, r) {
 // --- Main Aging Function ---
 /**
  * Applies aging effects (erosion, growth, stoneification, etc.) to the world grid.
- * Aging is probabilistic and influenced by intensity, environment.
+ * Aging is probabilistic and influenced by environment.
  * Protected radius around the portal is applied *only if* portalRef is provided.
  * Returns list of coordinates {c, r} that were changed by aging (for static world visual updates).
  * @param {Portal | null} portalRef - Reference to the Portal instance (or null if none).
- * @param {number} intensityFactor - Multiplier for aging probabilities.
  * @returns {Array<{c: number, r: number, oldBlockType: number, newBlockType: number, finalBlockData: object | number}>} - An array of detailed changes.
  */
-export function applyAging(portalRef, intensityFactor) {
+export function applyAging(portalRef) { // intensityFactor removed
     if (!agingNoiseGenerator) {
          console.error("Aging noise generator not initialized!");
          return [];
@@ -71,11 +70,10 @@ export function applyAging(portalRef, intensityFactor) {
         console.error("World grid is not available or empty for aging.");
         return [];
     }
-    const clampedIntensity = Math.max(0.0, intensityFactor);
-    if (clampedIntensity <= 0) {
-        return [];
-    }
-    let changedCellsAndTypes = []; // MODIFIED: Store detailed changes
+    // clampedIntensity removed
+    // if (clampedIntensity <= 0) removed
+
+    let changedCellsAndTypes = [];
 
     for (let r = 0; r < Config.GRID_ROWS; r++) { // iterate through ALL cells
         for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -96,8 +94,8 @@ export function applyAging(portalRef, intensityFactor) {
                  }
             }
 
-            const blockBeforeChange = World.getBlock(c, r); // Get block object or AIR
-            if (blockBeforeChange === null) continue; // Should not happen in a valid grid
+            const blockBeforeChange = World.getBlock(c, r);
+            if (blockBeforeChange === null) continue;
 
             const originalType = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? blockBeforeChange.type : blockBeforeChange;
             let newType = originalType;
@@ -110,12 +108,12 @@ export function applyAging(portalRef, intensityFactor) {
             // Rule 1: SAND Erosion (Highest Priority)
             if (originalType === Config.BLOCK_SAND) {
                  if (waterDepthAbove > 0) {
-                      const erosionProb = Config.AGING_PROB_WATER_EROSION_SAND * clampedIntensity;
+                      const erosionProb = Config.AGING_PROB_WATER_EROSION_SAND; // removed * clampedIntensity
                       if (Math.random() < erosionProb) {
                            newType = Config.BLOCK_WATER;
                       }
-                 } else if (isExposedToAir) {
-                      const erosionProb = Config.AGING_PROB_AIR_EROSION_SAND * clampedIntensity;
+                 } else if (isExposedToAir) { // Check newType to ensure it wasn't already changed by water erosion
+                      const erosionProb = Config.AGING_PROB_AIR_EROSION_SAND; // removed * clampedIntensity
                        if (Math.random() < erosionProb) {
                             newType = Config.BLOCK_AIR;
                        }
@@ -125,7 +123,7 @@ export function applyAging(portalRef, intensityFactor) {
             // Rule 2: DIRT/VEGETATION Water Erosion -> SAND
             if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION)) {
                  if (waterDepthAbove > 0) {
-                      const erosionProb = Config.AGING_PROB_WATER_EROSION_DIRT_VEGETATION * clampedIntensity;
+                      const erosionProb = Config.AGING_PROB_WATER_EROSION_DIRT_VEGETATION; // removed * clampedIntensity
                       if (Math.random() < erosionProb) {
                            newType = Config.BLOCK_SAND;
                       }
@@ -142,7 +140,7 @@ export function applyAging(portalRef, intensityFactor) {
                       if (neighborTypes.right === Config.BLOCK_AIR) airSidesCount++;
                       let growthProb = Config.AGING_PROB_VEGETATION_GROWTH_BASE;
                       growthProb += Math.min(airSidesCount, Config.AGING_MAX_AIR_SIDES_FOR_VEGETATION_BONUS) * Config.AGING_PROB_VEGETATION_GROWTH_PER_AIR_SIDE;
-                      growthProb *= clampedIntensity;
+                      // growthProb *= clampedIntensity; // removed
                       if (Math.random() < growthProb) {
                            newType = Config.BLOCK_VEGETATION;
                       }
@@ -153,7 +151,7 @@ export function applyAging(portalRef, intensityFactor) {
             if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION || originalType === Config.BLOCK_SAND)) {
                 const depthInPixels = r * Config.BLOCK_HEIGHT;
                 if (depthInPixels > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) {
-                    const stoneProb = Config.AGING_PROB_STONEIFICATION_DEEP * clampedIntensity;
+                    const stoneProb = Config.AGING_PROB_STONEIFICATION_DEEP; // removed * clampedIntensity
                      if (Math.random() < stoneProb) {
                          newType = Config.BLOCK_STONE;
                      }
@@ -164,7 +162,7 @@ export function applyAging(portalRef, intensityFactor) {
              if (newType === originalType && originalType === Config.BLOCK_STONE) {
                  const isSurfaceStone = neighborTypes.above === Config.BLOCK_AIR || neighborTypes.above === Config.BLOCK_WATER;
                   if (isSurfaceStone) {
-                       const stoneErosionProb = Config.AGING_PROB_EROSION_SURFACE_STONE * clampedIntensity;
+                       const stoneErosionProb = Config.AGING_PROB_EROSION_SURFACE_STONE; // removed * clampedIntensity
                        if (Math.random() < stoneErosionProb) {
                            newType = Config.BLOCK_AIR;
                        }
@@ -182,7 +180,7 @@ export function applyAging(portalRef, intensityFactor) {
                  }
                  const hasSolidBelowOrIsBottom = (firstSolidRowBelow !== -1) || (r === Config.GRID_ROWS - 1);
                  if (hasSolidBelowOrIsBottom) {
-                     const sedimentationProb = Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER * clampedIntensity;
+                     const sedimentationProb = Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER; // removed * clampedIntensity
                      if (Math.random() < sedimentationProb) {
                          newType = Config.BLOCK_SAND;
                      }
@@ -191,34 +189,30 @@ export function applyAging(portalRef, intensityFactor) {
 
             // --- Apply Change to World ---
             if (newType !== originalType) {
-                const success = World.setBlock(c, r, newType, false); // setBlock creates the new block object
+                const success = World.setBlock(c, r, newType, false);
                 if (!success) {
                      console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
                 } else {
-                    const blockAfterChange = World.getBlock(c, r); // Get the new block object or AIR
+                    const blockAfterChange = World.getBlock(c, r);
                     changedCellsAndTypes.push({
                         c,
                         r,
                         oldBlockType: originalType,
                         newBlockType: newType,
-                        finalBlockData: blockAfterChange // The actual block object/value after change
+                        finalBlockData: blockAfterChange
                     });
                 }
             }
 
             // --- Rule 1.5: SAND Sedimentation Downwards from (c, r) ---
-            // This rule might change blocks at (c, nr) which is different from (c,r)
-            // Important: Get `originalType` again for this specific rule, as `newType` might have changed above.
-            //            However, this rule is specific to `BLOCK_SAND` at `c,r`.
-            //            The `blockBeforeChange` and `originalType` fetched at the start of the (c,r) loop are still relevant for this.
-            if (originalType === Config.BLOCK_SAND) { // Use the original type of the (c,r) block for this rule's condition
-                if (waterDepthAbove > 0) { // `waterDepthAbove` is relative to (c,r)
+            if (originalType === Config.BLOCK_SAND) {
+                if (waterDepthAbove > 0) {
                     const maxSandDepthBelowInBlocks = Math.min(waterDepthAbove, Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH);
                     for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelowInBlocks; potentialDepth++) {
-                        const nr = r + potentialDepth; // Target row for sedimentation
+                        const nr = r + potentialDepth;
                         if (nr >= Config.GRID_ROWS) break;
 
-                        const targetBlockBeforeSedimentation = World.getBlock(c, nr); // Get block object or AIR
+                        const targetBlockBeforeSedimentation = World.getBlock(c, nr);
                         const targetBlockTypeBeforeChange = (typeof targetBlockBeforeSedimentation === 'object' && targetBlockBeforeSedimentation !== null)
                             ? targetBlockBeforeSedimentation.type
                             : targetBlockBeforeSedimentation;
@@ -226,7 +220,7 @@ export function applyAging(portalRef, intensityFactor) {
                         const isConvertibleMaterial = Config.AGING_MATERIAL_CONVERSION_FACTORS[targetBlockTypeBeforeChange] !== undefined;
 
                         if (isConvertibleMaterial) {
-                            const sedimentationProb = Config.AGING_PROB_SAND_SEDIMENTATION_BELOW * clampedIntensity;
+                            const sedimentationProb = Config.AGING_PROB_SAND_SEDIMENTATION_BELOW; // removed * clampedIntensity
                             if (Math.random() < sedimentationProb) {
                                 if (targetBlockTypeBeforeChange !== Config.BLOCK_SAND) {
                                     const success = World.setBlock(c, nr, Config.BLOCK_SAND, false);
@@ -245,7 +239,7 @@ export function applyAging(portalRef, intensityFactor) {
                                 }
                             }
                         } else {
-                            break; // Stop sedimentation if non-convertible block is hit
+                            break;
                         }
                     }
                 }

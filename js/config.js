@@ -65,7 +65,6 @@ export const ISLAND_CENTER_TAPER_WIDTH_COLS = 80; // Width in columns for taperi
 
 // --- Aging Parameters ---
 
-export const AGING_BASE_INTENSITY = 1.0; // Default intensity factor for aging algorithms.
 export const AGING_NOISE_SCALE = 0.03;   // Scale for Perlin noise used in aging.
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 0.45); // Threshold in rows for stoneification.
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT; // Threshold in pixels.
@@ -465,7 +464,6 @@ export const WAVES = [
         duration: 117,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave1,
-        agingIntensity: 1.0,
         agingPasses: 10,
         subWaves: [
             { enemyGroups: [
@@ -489,7 +487,6 @@ export const WAVES = [
         duration: 137,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave2,
-        agingIntensity: 1.0,
         agingPasses: 10,
         subWaves: [
             { enemyGroups: [
@@ -513,7 +510,6 @@ export const WAVES = [
         duration: 90,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave3,
-        agingIntensity: 1.0,
         agingPasses: 10,
         subWaves: [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
@@ -534,7 +530,7 @@ export const CUTSCENE_IMAGE_PATHS = [
     'assets/gendimage4.png',
 ];
 export const CUTSCENE_TEXTS = [
-    "In the near future, dolphins master nuclear fusion and seize control of the planet...",
+    "In the near future, dolphins master nuclear fusion and seize control of the planet.",
     "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time.",
     "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position.",
     "Only one thing has followed you back in time - a simple shovel. Will that be enough?"

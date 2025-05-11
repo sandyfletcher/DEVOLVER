@@ -180,10 +180,9 @@ function triggerWarpCleanupAndCalculations() {
 
     if (nextWaveData && typeof nextWaveData === 'object') {
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
-        const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
-        
+
         for (let i = 0; i < passes; i++) {
-            const detailedChangesInPass = AgingManager.applyAging(portalRef, intensity);
+            const detailedChangesInPass = AgingManager.applyAging(portalRef);
             allAgingChangesDetailed.push(...detailedChangesInPass);
         }
         

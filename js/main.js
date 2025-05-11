@@ -411,7 +411,7 @@ function initializeAndRunGame() {
         console.log(`[main.js] Applying initial world aging (${initialAgingPasses} passes) after generation...`);
         const changedCellsInitialAging = new Map();
         for (let i = 0; i < initialAgingPasses; i++) {
-            const changedCellsInPass = AgingManager.applyAging(null, Config.AGING_BASE_INTENSITY);
+            const changedCellsInPass = AgingManager.applyAging(null); // intensityFactor argument removed
             changedCellsInPass.forEach(({ c, r }) => {
                 const key = `${c},${r}`;
                 if (!changedCellsInitialAging.has(key)) {
