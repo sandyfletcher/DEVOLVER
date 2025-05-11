@@ -59,7 +59,7 @@ function getWaterDepthAbove(c, r) {
  * Returns list of coordinates {c, r} that were changed by aging (for static world visual updates).
  * @param {Portal | null} portalRef - Reference to the Portal instance (or null if none).
  * @param {number} intensityFactor - Multiplier for aging probabilities.
- * @returns {Array<{c: number, r: number}>} - An array of grid coordinates {c, r} that were changed by aging.
+ * @returns {Array<{c: number, r: number, oldBlockType: number, newBlockType: number, finalBlockData: object | number}>} - An array of detailed changes.
  */
 export function applyAging(portalRef, intensityFactor) {
     if (!agingNoiseGenerator) {
@@ -75,18 +75,18 @@ export function applyAging(portalRef, intensityFactor) {
     if (clampedIntensity <= 0) {
         return [];
     }
-    let changedCellsThisPass = []; // initialize array to store changes
+    let changedCellsAndTypes = []; // MODIFIED: Store detailed changes
+
     for (let r = 0; r < Config.GRID_ROWS; r++) { // iterate through ALL cells
         for (let c = 0; c < Config.GRID_COLS; c++) {
             if (portalRef) {
                  const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
                  const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
 
-                 // --- FIXED: Get portal center and safety radius from portalRef ---
-                 const portalCenter = portalRef.getPosition(); // portalRef.getPosition() returns {x, y} of the portal's center
+                 const portalCenter = portalRef.getPosition();
                  const portalX = portalCenter.x;
                  const portalY = portalCenter.y;
-                 const protectedRadiusSq = portalRef.safetyRadius * portalRef.safetyRadius; // portalRef.safetyRadius is a property
+                 const protectedRadiusSq = portalRef.safetyRadius * portalRef.safetyRadius;
 
                  const dx = blockCenterX - portalX;
                  const dy = blockCenterY - portalY;
@@ -96,15 +96,15 @@ export function applyAging(portalRef, intensityFactor) {
                  }
             }
 
-            const block = World.getBlock(c, r);
-            if (block === null) continue;
+            const blockBeforeChange = World.getBlock(c, r); // Get block object or AIR
+            if (blockBeforeChange === null) continue; // Should not happen in a valid grid
 
-            const originalType = (typeof block === 'object' && block !== null) ? block.type : block; // Ensure block is not null before accessing type
+            const originalType = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? blockBeforeChange.type : blockBeforeChange;
             let newType = originalType;
 
-            const neighborTypes = getNeighborTypes(c, r); // Get neighbors once
-            const isExposedToAir = isExposedTo(neighborTypes, Config.BLOCK_AIR); // Use cached neighbors
-            const isExposedToWater = isExposedTo(neighborTypes, Config.BLOCK_WATER); // Use cached neighbors
+            const neighborTypes = getNeighborTypes(c, r);
+            const isExposedToAir = isExposedTo(neighborTypes, Config.BLOCK_AIR);
+            const isExposedToWater = isExposedTo(neighborTypes, Config.BLOCK_WATER);
             const waterDepthAbove = getWaterDepthAbove(c, r);
 
             // Rule 1: SAND Erosion (Highest Priority)
@@ -135,23 +135,14 @@ export function applyAging(portalRef, intensityFactor) {
             // Rule 3: DIRT VEGETATION Growth -> VEGETATION
              if (newType === originalType && originalType === Config.BLOCK_DIRT) {
                  const isBelowSolidAndWithinBounds = GridCollision.isSolid(c, r + 1);
-                 // Check if exposed to air, NOT exposed to water, and has solid ground below
                  if (isExposedToAir && !isExposedToWater && isBelowSolidAndWithinBounds) {
-                      // --- CORRECTED PROBABILITY CALCULATION ---
                       let airSidesCount = 0;
                       if (neighborTypes.above === Config.BLOCK_AIR) airSidesCount++;
-                      // neighborTypes.below cannot be air due to isBelowSolidAndWithinBounds
                       if (neighborTypes.left === Config.BLOCK_AIR) airSidesCount++;
                       if (neighborTypes.right === Config.BLOCK_AIR) airSidesCount++;
-
-                      // Calculate growth probability based on config values
-                      let growthProb = Config.AGING_PROB_VEGETATION_GROWTH_BASE; // Base probability
-                      // Add bonus for the number of actual air-exposed sides (above, left, right)
+                      let growthProb = Config.AGING_PROB_VEGETATION_GROWTH_BASE;
                       growthProb += Math.min(airSidesCount, Config.AGING_MAX_AIR_SIDES_FOR_VEGETATION_BONUS) * Config.AGING_PROB_VEGETATION_GROWTH_PER_AIR_SIDE;
-                      
-                      growthProb *= clampedIntensity; // Apply overall intensity factor
-                      // --- END CORRECTED PROBABILITY ---
-
+                      growthProb *= clampedIntensity;
                       if (Math.random() < growthProb) {
                            newType = Config.BLOCK_VEGETATION;
                       }
@@ -200,35 +191,54 @@ export function applyAging(portalRef, intensityFactor) {
 
             // --- Apply Change to World ---
             if (newType !== originalType) {
-                const success = World.setBlock(c, r, newType, false);
+                const success = World.setBlock(c, r, newType, false); // setBlock creates the new block object
                 if (!success) {
                      console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
                 } else {
-                    changedCellsThisPass.push({ c, r }); // add to changed cells
+                    const blockAfterChange = World.getBlock(c, r); // Get the new block object or AIR
+                    changedCellsAndTypes.push({
+                        c,
+                        r,
+                        oldBlockType: originalType,
+                        newBlockType: newType,
+                        finalBlockData: blockAfterChange // The actual block object/value after change
+                    });
                 }
             }
 
             // --- Rule 1.5: SAND Sedimentation Downwards from (c, r) ---
             // This rule might change blocks at (c, nr) which is different from (c,r)
-            if (originalType === Config.BLOCK_SAND) {
-                if (waterDepthAbove > 0) {
+            // Important: Get `originalType` again for this specific rule, as `newType` might have changed above.
+            //            However, this rule is specific to `BLOCK_SAND` at `c,r`.
+            //            The `blockBeforeChange` and `originalType` fetched at the start of the (c,r) loop are still relevant for this.
+            if (originalType === Config.BLOCK_SAND) { // Use the original type of the (c,r) block for this rule's condition
+                if (waterDepthAbove > 0) { // `waterDepthAbove` is relative to (c,r)
                     const maxSandDepthBelowInBlocks = Math.min(waterDepthAbove, Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH);
                     for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelowInBlocks; potentialDepth++) {
-                        const nr = r + potentialDepth;
+                        const nr = r + potentialDepth; // Target row for sedimentation
                         if (nr >= Config.GRID_ROWS) break;
-                        const targetBlockTypeBeforeChange = World.getBlockType(c, nr); // Get type *before* this rule might change it
+
+                        const targetBlockBeforeSedimentation = World.getBlock(c, nr); // Get block object or AIR
+                        const targetBlockTypeBeforeChange = (typeof targetBlockBeforeSedimentation === 'object' && targetBlockBeforeSedimentation !== null)
+                            ? targetBlockBeforeSedimentation.type
+                            : targetBlockBeforeSedimentation;
+
                         const isConvertibleMaterial = Config.AGING_MATERIAL_CONVERSION_FACTORS[targetBlockTypeBeforeChange] !== undefined;
 
                         if (isConvertibleMaterial) {
                             const sedimentationProb = Config.AGING_PROB_SAND_SEDIMENTATION_BELOW * clampedIntensity;
                             if (Math.random() < sedimentationProb) {
-                                // Only record change if the type is actually different
                                 if (targetBlockTypeBeforeChange !== Config.BLOCK_SAND) {
                                     const success = World.setBlock(c, nr, Config.BLOCK_SAND, false);
                                     if (success) {
-                                        // Check if this cell was already added in this pass to avoid duplicates if main.js doesn't dedupe
-                                        // For simplicity, let's assume main.js handles deduping or this specific call site doesn't mind.
-                                        changedCellsThisPass.push({ c, r: nr }); // add this changed cell
+                                        const blockAfterSedimentation = World.getBlock(c, nr);
+                                        changedCellsAndTypes.push({
+                                            c: c,
+                                            r: nr,
+                                            oldBlockType: targetBlockTypeBeforeChange,
+                                            newBlockType: Config.BLOCK_SAND,
+                                            finalBlockData: blockAfterSedimentation
+                                        });
                                     } else {
                                         console.error(`Aging failed to set block data at [${c}, ${nr}] to SAND during sedimentation below rule.`);
                                     }
@@ -242,6 +252,5 @@ export function applyAging(portalRef, intensityFactor) {
             }
         }
     }
-    // console.log(`Aging pass complete (intensity: ${clampedIntensity.toFixed(2)}). World modified.`); // Keep console cleaner
-    return changedCellsThisPass; // return the array of changes
+    return changedCellsAndTypes;
 }
