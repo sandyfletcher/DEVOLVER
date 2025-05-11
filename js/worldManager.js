@@ -19,119 +19,403 @@ let agingAnimationQueue = []; // Stores { c, r, oldBlockType, newBlockType } for
 let activeAgingAnimations = []; // Stores { c, r, oldBlockType, newBlockType, timer, phase, currentScale }
 let newAnimationStartTimer = 0; // Timer to delay starting new animations from the queue
 
-// Maximum passes for the gravity settlement loop to prevent infinite loops in complex scenarios.
-const MAX_GRAVITY_SETTLEMENT_PASSES = Config.GRID_ROWS;
+// Gravity Animation State
+let gravityAnimationQueue = []; // Stores { c, r_start, r_end, blockData }
+let activeGravityAnimations = []; // Stores { c, r_current_pixel_y, r_end_pixel_y, blockData, fallSpeed }
+let newGravityAnimationStartTimer = 0; // Timer for staggering gravity animations
 
-export function applyGravitySettlement(portalRef) {
-    if (!portalRef) {
-        console.error("[WorldManager] applyGravitySettlement: Portal reference is null. Skipping settlement.");
-        return []; // Return empty array indicating no changes processed
+const MAX_FALLING_BLOCKS_AT_ONCE = 20; // Configurable: how many blocks fall visually at once
+const GRAVITY_ANIMATION_FALL_SPEED = 200; // Configurable: pixels per second for visual fall
+const NEW_GRAVITY_ANIM_DELAY = 0.02; // Configurable: delay between starting falling block visuals
+
+// This function will take the output of `diffGrids` and try to identify falling blocks.
+function parseGravityDiffsIntoFallingBlocks(diffs) {
+    const fallingBlocks = [];
+    const disappeared = new Map(); // c -> Map(r_old -> blockType)
+    const appeared = new Map();    // c -> Map(r_new -> blockType_or_blockData)
+
+    diffs.forEach(diff => {
+        // If a solid block became AIR, it "disappeared" from its old spot.
+        if (diff.oldBlockType !== Config.BLOCK_AIR && diff.oldBlockType !== Config.BLOCK_WATER && diff.newBlockType === Config.BLOCK_AIR) {
+            if (!disappeared.has(diff.c)) disappeared.set(diff.c, new Map());
+            // We need the actual block data that disappeared, not just its type.
+            // This is a challenge if diffGrids only gives types.
+            // Let's assume `applyGravitySettlement` has updated `World.grid`.
+            // `diff.oldBlockType` is what *was* there.
+            // We need to know *what block object* moved.
+            //
+            // **Simplification for now:** Assume `diffGrids` can be enhanced or we can reconstruct.
+            // For now, let's just store the type. We'll need to refine how `blockData` is passed.
+            // IDEALLY: `applyGravitySettlement` itself would return `[{ c, r_old, r_new, blockData }]`.
+            //
+            // If `applyGravitySettlement` returns the list of *chunks* that fell:
+            // `chunksFallen = [{ blocks: [{c, r_original, blockData}, ...], fallDistance: d }, ...]`
+            // Then `addProposedGravityChanges` would iterate `chunksFallen` and directly queue:
+            // `{ c: block.c, r_start: block.r_original, r_end: block.r_original + chunk.fallDistance, blockData: block.blockData }`
+            // This bypasses needing `parseGravityDiffsIntoFallingBlocks`.
+            // Let's assume `applyGravitySettlement` can be modified to return this.
+            // For now, this function will be a placeholder if `diffGrids` is the input.
+        }
+        // If AIR became a solid block, it "appeared" in its new spot.
+        else if (diff.oldBlockType === Config.BLOCK_AIR && diff.newBlockType !== Config.BLOCK_AIR && diff.newBlockType !== Config.BLOCK_WATER) {
+            if (!appeared.has(diff.c)) appeared.set(diff.c, new Map());
+            // The `World.grid` now contains the block object at `diff.c, diff.r`.
+            appeared.get(diff.c).set(diff.r, World.getBlock(diff.c, diff.r));
+        }
+    });
+
+    // Match disappeared with appeared for the same column
+    appeared.forEach((rowMapNew, c) => {
+        if (disappeared.has(c)) {
+            const rowMapOld = disappeared.get(c);
+            rowMapOld.forEach((_, rOld) => { // We stored oldType, but need to find corresponding new
+                // Find the "lowest" appeared block in this column that is below rOld
+                let bestMatchRNew = -1;
+                let matchedBlockData = null;
+
+                rowMapNew.forEach((blockDataNew, rNew) => {
+                    if (rNew > rOld) { // Must have fallen downwards
+                        if (bestMatchRNew === -1 || rNew < bestMatchRNew) { // Find closest new position
+                            // This matching logic is tricky with just types.
+                            // If `blockDataNew.type` matches what `oldType` was (from `rowMapOld.get(rOld)`),
+                            // it's a potential match.
+                            // For now, let's assume any solid appearance below a disappearance is a fall.
+                            bestMatchRNew = rNew;
+                            matchedBlockData = blockDataNew;
+                        }
+                    }
+                });
+
+                if (bestMatchRNew !== -1 && matchedBlockData) {
+                    fallingBlocks.push({
+                        c: c,
+                        r_start: rOld,
+                        r_end: bestMatchRNew,
+                        blockData: matchedBlockData // The actual block object that landed
+                    });
+                    // Remove the matched appeared block so it's not processed again
+                    rowMapNew.delete(bestMatchRNew);
+                }
+            });
+        }
+    });
+    return fallingBlocks;
+}
+
+// --- NEW: Gravity Animation ---
+export function addProposedGravityChanges(changes) {
+    // 'changes' should be an array of { c, r_start, r_end, blockData }
+    // where blockData is the actual block object that fell.
+    changes.forEach(change => {
+        // Ensure we don't queue if an animation for this start/end is already active/queued
+        // This check might be complex if multiple things could happen to the same cell.
+        // For now, assume distinct changes.
+        gravityAnimationQueue.push(change);
+    });
+    // console.log(`[WorldManager] Added ${changes.length} proposed gravity changes to animation queue. Total: ${gravityAnimationQueue.length}`);
+}
+
+function updateGravityAnimations(dt) {
+    if (dt <= 0) return;
+
+    // Start new gravity animations
+    newGravityAnimationStartTimer -= dt;
+    if (newGravityAnimationStartTimer <= 0 && gravityAnimationQueue.length > 0 && activeGravityAnimations.length < MAX_FALLING_BLOCKS_AT_ONCE) {
+        const change = gravityAnimationQueue.shift();
+
+        // Clear the block from its original position on the static canvas
+        // This makes it "disappear" from its old spot to prepare for the falling visual
+        const gridCtx = Renderer.getGridContext();
+        if (gridCtx) {
+            gridCtx.clearRect(
+                Math.floor(change.c * Config.BLOCK_WIDTH),
+                Math.floor(change.r_start * Config.BLOCK_HEIGHT),
+                Math.ceil(Config.BLOCK_WIDTH),
+                Math.ceil(Config.BLOCK_HEIGHT)
+            );
+        }
+
+        activeGravityAnimations.push({
+            c: change.c,
+            r_start_pixel_y: change.r_start * Config.BLOCK_HEIGHT, // Store pixel positions
+            r_current_pixel_y: change.r_start * Config.BLOCK_HEIGHT,
+            r_end_pixel_y: change.r_end * Config.BLOCK_HEIGHT,
+            blockData: change.blockData, // The block object itself
+            fallSpeed: GRAVITY_ANIMATION_FALL_SPEED, // pixels/sec
+        });
+        newGravityAnimationStartTimer = NEW_GRAVITY_ANIM_DELAY;
     }
 
-    const grid = World.getGrid();
-    if (!grid || !Array.isArray(grid) || grid.length === 0 || (grid.length > 0 && !Array.isArray(grid[0]))) {
-        console.error("[WorldManager] applyGravitySettlement: World grid is not available or invalid.");
-        return [];
+    // Update active gravity animations
+    for (let i = activeGravityAnimations.length - 1; i >= 0; i--) {
+        const anim = activeGravityAnimations[i];
+        anim.r_current_pixel_y += anim.fallSpeed * dt;
+
+        if (anim.r_current_pixel_y >= anim.r_end_pixel_y) {
+            // Animation finished, update the world grid's static visual at the new location
+            // The logical World.grid was already updated by applyGravitySettlement.
+            // We just need to ensure the static canvas reflects the block in its new spot.
+            // Need to convert r_end_pixel_y back to a row index for updateStaticWorldAt
+            const end_row = Math.round(anim.r_end_pixel_y / Config.BLOCK_HEIGHT); // Use round for precision
+            updateStaticWorldAt(anim.c, end_row); // This will draw the blockData at its final spot
+            
+            queueWaterCandidatesAroundChange(anim.c, anim.r_start); // Check original spot for water
+            queueWaterCandidatesAroundChange(anim.c, end_row);   // Check new spot for water
+
+            activeGravityAnimations.splice(i, 1);
+        }
     }
+}
+
+function drawGravityAnimations(ctx) {
+    activeGravityAnimations.forEach(anim => {
+        const blockPixelX = anim.c * Config.BLOCK_WIDTH;
+        // Use anim.r_current_pixel_y for drawing
+        const blockPixelY = anim.r_current_pixel_y;
+
+        const blockColor = Config.BLOCK_COLORS[anim.blockData.type];
+        if (blockColor) {
+            ctx.fillStyle = blockColor;
+            ctx.fillRect(
+                Math.floor(blockPixelX),
+                Math.floor(blockPixelY),
+                Math.ceil(Config.BLOCK_WIDTH),
+                Math.ceil(Config.BLOCK_HEIGHT)
+            );
+            // Optionally draw player-placed outline if anim.blockData.isPlayerPlaced
+            if (anim.blockData.isPlayerPlaced) {
+                ctx.save();
+                ctx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
+                ctx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
+                const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
+                ctx.strokeRect(
+                    Math.floor(blockPixelX) + outlineInset,
+                    Math.floor(blockPixelY) + outlineInset,
+                    Config.BLOCK_WIDTH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS,
+                    Config.BLOCK_HEIGHT - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+                );
+                ctx.restore();
+            }
+        }
+    });
+}
+
+export function areGravityAnimationsComplete() {
+    return gravityAnimationQueue.length === 0 && activeGravityAnimations.length === 0;
+}
+
+export function finalizeAllGravityAnimations() {
+    console.log(`[WorldManager] Finalizing ${gravityAnimationQueue.length} queued and ${activeGravityAnimations.length} active gravity animations...`);
+    while (gravityAnimationQueue.length > 0) {
+        const change = gravityAnimationQueue.shift();
+        const end_row = Math.round(change.r_end_pixel_y / Config.BLOCK_HEIGHT); // r_end might not be pixel if queue stores rows
+        updateStaticWorldAt(change.c, change.r_start); // Clear original spot
+        updateStaticWorldAt(change.c, end_row);   // Draw in new spot
+        queueWaterCandidatesAroundChange(change.c, change.r_start);
+        queueWaterCandidatesAroundChange(change.c, end_row);
+    }
+    while (activeGravityAnimations.length > 0) {
+        const anim = activeGravityAnimations.shift();
+        const end_row = Math.round(anim.r_end_pixel_y / Config.BLOCK_HEIGHT);
+        updateStaticWorldAt(anim.c, Math.round(anim.r_start_pixel_y / Config.BLOCK_HEIGHT)); // Clear original
+        updateStaticWorldAt(anim.c, end_row); // Draw in new spot
+        queueWaterCandidatesAroundChange(anim.c, Math.round(anim.r_start_pixel_y / Config.BLOCK_HEIGHT));
+        queueWaterCandidatesAroundChange(anim.c, end_row);
+    }
+    gravityAnimationQueue = [];
+    activeGravityAnimations = [];
+    console.log("[WorldManager] All gravity animations finalized.");
+}
+
+// Helper for BFS/DFS to find connected solid blocks for gravity settlement
+function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
+    const chunk = [];
+    const queue = [{ c: startX, r: startY }];
+    const visitedInChunk = new Set(); // Tracks blocks visited for *this specific chunk*
+    
+    // Mark starting block as visited for this chunk and for the overall pass
+    const startKey = `${startX},${startY}`;
+    visitedInChunk.add(startKey);
+    visitedInPass.add(startKey);
 
     const portalCenter = portalRef.getPosition();
     const portalX = portalCenter.x;
     const portalY = portalCenter.y;
     const protectedRadiusSq = portalRef.safetyRadius * portalRef.safetyRadius;
 
-    let changedCoords = new Set(); // Use a Set to store unique "c,r" string keys of cells that changed
-    let changesMadeInOuterPass;
-    let outerPassCount = 0;
+    while (queue.length > 0) {
+        const { c, r } = queue.shift();
 
-    console.log("[WorldManager] Starting '4-sides non-solid + space below clear' gravity settlement process...");
+        // Check portal protection for this block
+        const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
+        const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
+        const dx = blockCenterX - portalX;
+        const dy = blockCenterY - portalY;
+        const distSqToPortal = dx * dx + dy * dy;
 
-    do {
-        changesMadeInOuterPass = false;
-        outerPassCount++;
+        if (distSqToPortal < protectedRadiusSq) {
+            // This block is protected, it cannot be part of a *falling* chunk.
+            // It acts as a fixed point / external support from other chunks' perspective.
+            continue; 
+        }
 
-        // Iterate columns left to right
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-            // Iterate rows bottom-up within each column (important for gravity cascade)
-            // A block at (c,r) needs to check (c,r+1) for space to fall into.
-            // Loop for `r` goes up to `GRID_ROWS - 2` to allow `r+1` to be a valid row.
-            for (let r = Config.GRID_ROWS - 2; r >= 0; r--) {
-                
-                // Check if the block at (c,r) is within portal safety radius
-                const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
-                const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
-                const dx = blockCenterX - portalX;
-                const dy = blockCenterY - portalY;
-                const distSqToPortal = dx * dx + dy * dy;
+        const blockData = World.getBlock(c, r); 
+        const blockType = (typeof blockData === 'object' && blockData !== null) ? blockData.type : blockData;
 
-                if (distSqToPortal < protectedRadiusSq) {
-                    continue; // Skip blocks inside safety radius
+        if (blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER && blockData !== null) {
+            chunk.push({ c, r, blockData }); // Store original block data (will be an object for solid blocks)
+        } else {
+             // This should ideally not happen if BFS starts from a solid, unvisited block.
+            continue;
+        }
+
+        const neighbors = [
+            { dc: 0, dr: -1 }, { dc: 0, dr: 1 }, // Up, Down
+            { dc: -1, dr: 0 }, { dc: 1, dr: 0 }  // Left, Right
+        ];
+
+        for (const offset of neighbors) {
+            const nc = c + offset.dc;
+            const nr = r + offset.dr;
+            const neighborKey = `${nc},${nr}`;
+
+            if (nc >= 0 && nc < Config.GRID_COLS && nr >= 0 && nr < Config.GRID_ROWS &&
+                !visitedInChunk.has(neighborKey) && !visitedInPass.has(neighborKey)) {
+
+                const neighborBlockData = World.getBlock(nc, nr);
+                const neighborType = (typeof neighborBlockData === 'object' && neighborBlockData !== null) ? neighborBlockData.type : neighborBlockData;
+
+                if (neighborType !== Config.BLOCK_AIR && neighborType !== Config.BLOCK_WATER && neighborBlockData !== null) {
+                     // Check portal protection for neighbor before adding to queue for this chunk
+                    const nBlockCenterX = nc * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
+                    const nBlockCenterY = nr * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
+                    const nDx = nBlockCenterX - portalX;
+                    const nDy = nBlockCenterY - portalY;
+                    if ( (nDx * nDx + nDy * nDy) >= protectedRadiusSq) { // Only add if NOT protected
+                        visitedInChunk.add(neighborKey);
+                        visitedInPass.add(neighborKey); 
+                        queue.push({ c: nc, r: nr });
+                    }
                 }
+            }
+        }
+    }
+    return chunk;
+}
 
-                const currentBlock = World.getBlock(c, r);
-                if (currentBlock === null) continue; 
-                
-                // Use the same style of type extraction as in the user's provided code
-                const currentBlockType = (typeof currentBlock === 'object' && currentBlock.hasOwnProperty('type')) ? currentBlock.type : currentBlock;
+export function applyGravitySettlement(portalRef) {
+    if (!portalRef) {
+        console.error("[WorldManager] applyGravitySettlement: Portal reference is null. Skipping settlement.");
+        return [];
+    }
 
-                // Only solid blocks are candidates to fall
-                if (currentBlockType === Config.BLOCK_AIR || currentBlockType === Config.BLOCK_WATER) {
+    let allMovedBlocksInSettlement = [];
+    let iterations = 0;
+    const MAX_ITERATIONS = Config.MAX_GRAVITY_SETTLEMENT_PASSES || Config.GRID_ROWS;
+
+    console.log("[WorldManager] Starting Connected Component Gravity Settlement...");
+
+    while (iterations < MAX_ITERATIONS) {
+        iterations++;
+        let blocksMovedThisIteration = false;
+        const visitedInPass = new Set();
+
+        for (let r_scan = 0; r_scan < Config.GRID_ROWS; r_scan++) {
+            for (let c_scan = 0; c_scan < Config.GRID_COLS; c_scan++) {
+                const currentKey = `${c_scan},${r_scan}`;
+                if (visitedInPass.has(currentKey)) {
                     continue;
                 }
 
-                // --- Start of the "4 sides non-solid + space below clear" conditions ---
+                const blockStart = World.getBlock(c_scan, r_scan);
+                const blockTypeStart = (typeof blockStart === 'object' && blockStart !== null) ? blockStart.type : blockStart;
 
-                // Condition 1: The space directly BELOW (c, r+1) must be non-solid (AIR or WATER)
-                const spaceBelowType = World.getBlockType(c, r + 1);
-                if (spaceBelowType !== Config.BLOCK_AIR && spaceBelowType !== Config.BLOCK_WATER) {
-                    continue; // Solid directly below, cannot fall
+                if (blockTypeStart !== Config.BLOCK_AIR && blockTypeStart !== Config.BLOCK_WATER && blockStart !== null) {
+                    const chunk = getConnectedSolidChunk(c_scan, r_scan, visitedInPass, portalRef);
+
+                    if (chunk.length === 0) continue;
+
+                    let isSupported = false;
+                    for (const chunkBlock of chunk) {
+                        const cb_c = chunkBlock.c;
+                        const cb_r = chunkBlock.r;
+
+                        if (cb_r === Config.GRID_ROWS - 1) {
+                            isSupported = true;
+                            break;
+                        }
+
+                        const blockBelowType = World.getBlockType(cb_c, cb_r + 1);
+
+                        if (blockBelowType !== Config.BLOCK_AIR && blockBelowType !== Config.BLOCK_WATER && blockBelowType !== null) {
+                            const isSupportInternal = chunk.some(b => b.c === cb_c && b.r === cb_r + 1);
+                            if (!isSupportInternal) {
+                                isSupported = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (isSupported) {
+                        continue;
+                    }
+
+                    let minFallDistance = Config.GRID_ROWS;
+                    for (const chunkBlock of chunk) {
+                        let currentFall = 0;
+                        for (let fall_r = chunkBlock.r + 1; fall_r < Config.GRID_ROWS; fall_r++) {
+                            const blockAtFallTarget = World.getBlock(chunkBlock.c, fall_r);
+                            const typeAtFallTarget = (typeof blockAtFallTarget === 'object' && blockAtFallTarget !== null) ? blockAtFallTarget.type : blockAtFallTarget;
+                            const isTargetBelowPartOfChunk = chunk.some(b => b.c === chunkBlock.c && b.r === fall_r);
+
+                            if (isTargetBelowPartOfChunk) {
+                                currentFall++;
+                            } else if (typeAtFallTarget !== Config.BLOCK_AIR && typeAtFallTarget !== Config.BLOCK_WATER && blockAtFallTarget !== null) {
+                                break;
+                            } else {
+                                currentFall++;
+                            }
+                        }
+                        minFallDistance = Math.min(minFallDistance, currentFall);
+                    }
+
+                    if (minFallDistance > 0) {
+                        blocksMovedThisIteration = true;
+                        chunk.sort((a, b) => b.r - a.r);
+
+                        const currentChunkMoves = [];
+                        for (const chunkBlock of chunk) {
+                            currentChunkMoves.push({
+                                c: chunkBlock.c,
+                                r_start: chunkBlock.r,
+                                r_end: chunkBlock.r + minFallDistance,
+                                blockData: chunkBlock.blockData
+                            });
+                        }
+                        allMovedBlocksInSettlement.push(...currentChunkMoves); // <<< --- ACCUMULATE HERE ---
+
+                        for (const chunkBlock of chunk) {
+                            World.setBlockData(chunkBlock.c, chunkBlock.r, createBlock(Config.BLOCK_AIR, false));
+                        }
+                        for (const chunkBlock of chunk) {
+                            const newR = chunkBlock.r + minFallDistance;
+                            World.setBlockData(chunkBlock.c, newR, chunkBlock.blockData);
+                        }
+                    }
                 }
-
-                // Condition 2: The space to the LEFT (c-1, r) must be non-solid.
-                // GridCollision.isSolid returns true if solid, false if AIR, WATER, or out-of-bounds.
-                // We want to ensure it's NOT solid. So, if isSolid(left) is true, we skip.
-                if (GridCollision.isSolid(c - 1, r)) {
-                    continue; // Has solid left support
-                }
-
-                // Condition 3: The space to the RIGHT (c+1, r) must be non-solid.
-                if (GridCollision.isSolid(c + 1, r)) {
-                    continue; // Has solid right support
-                }
-                
-                // Condition 4: The space ABOVE (c, r-1) must be non-solid.
-                // For r=0 (top row), r-1 is -1. GridCollision.isSolid(c, -1) will correctly return false (not solid).
-                if (GridCollision.isSolid(c, r - 1)) {
-                    continue; // Has solid top support
-                }
-                
-                // If all above conditions passed (i.e., no `continue` was hit), then the block falls.
-                // This means: current block is solid, space below is clear,
-                // and left, right, and top are not solid.
-
-                const blockToMoveData = (typeof currentBlock === 'object') ? { ...currentBlock } : createBlock(currentBlockType, false); 
-
-                World.setBlockData(c, r + 1, blockToMoveData); // Move block down
-                World.setBlock(c, r, Config.BLOCK_AIR, false);   // Original spot becomes air
-
-                changedCoords.add(`${c},${r}`);
-                changedCoords.add(`${c},${r+1}`);
-                
-                changesMadeInOuterPass = true; 
             }
         }
-    } while (changesMadeInOuterPass && outerPassCount < MAX_GRAVITY_SETTLEMENT_PASSES); 
-
-    if (outerPassCount >= MAX_GRAVITY_SETTLEMENT_PASSES && changesMadeInOuterPass) {
-        console.warn(`[WorldManager] '4-sides non-solid + space below clear' settlement reached max outer passes (${MAX_GRAVITY_SETTLEMENT_PASSES}). Settlement might be incomplete.`);
+        if (!blocksMovedThisIteration) {
+            break;
+        }
     }
-    console.log(`[WorldManager] '4-sides non-solid + space below clear' settlement finished in ${outerPassCount} outer pass(es). Unique cells affected: ${changedCoords.size}`);
-    
-    const finalChangedCoordsArray = [];
-    changedCoords.forEach(key => {
-        const [cStr, rStr] = key.split(',');
-        finalChangedCoordsArray.push({ c: parseInt(cStr), r: parseInt(rStr) });
-    });
-    return finalChangedCoordsArray;
+
+    if (iterations >= MAX_ITERATIONS && blocksMovedThisIteration) {
+        console.warn(`[WorldManager] Connected Component Gravity Settlement reached max iterations (${MAX_ITERATIONS}). Settlement might be incomplete.`);
+    }
+    console.log(`[WorldManager] Connected Component Gravity Settlement finished in ${iterations} iteration(s). Blocks moved: ${allMovedBlocksInSettlement.length}`);
+
+    return allMovedBlocksInSettlement; // <<< --- RETURN THE ACCUMULATED MOVES ---
 }
 
 // -----------------------------------------------------------------------------
@@ -576,6 +860,7 @@ export function draw(ctx) {
     }
 
     // Draw active aging animations on top
+    drawGravityAnimations(ctx); //
     drawAgingAnimations(ctx);
 }
 
@@ -674,5 +959,6 @@ export function update(dt) {
     }
 
     // --- Aging Animations ---
+    updateGravityAnimations(dt);
     updateAgingAnimations(dt);
 }

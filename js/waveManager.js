@@ -200,48 +200,17 @@ function diffGrids(gridStateBefore, gridStateAfterSnapshot) {
 
 /** Function to trigger aging, animation queuing, and entity cleanup */
 function triggerWarpCleanup() {
-    console.log("[WaveMgr] Triggering Warp Cleanup...");
+    console.log("[WaveMgr] Triggering Warp Cleanup (Entity Clearing & Portal Radius)...");
     if (!portalRef) {
         console.error("[WaveMgr] Warp Cleanup failed: Portal reference is null.");
         return;
     }
-    // 1. Update portal safety radius
     portalRef.setSafetyRadius(portalRef.safetyRadius + Config.PORTAL_RADIUS_GROWTH_PER_WAVE);
-    console.log(`[WaveMgr] Portal Safety Radius Increased to ${portalRef.safetyRadius.toFixed(1)}.`);
-    // 2. Clear Enemies and Items Outside the Portal's Safety Radius
     const portalCenter = portalRef.getPosition();
     const safeRadius = portalRef.safetyRadius;
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
-    console.log(`[WaveMgr] Cleared entities/items outside portal radius ${safeRadius.toFixed(1)}.`);
-    const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
-    const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
-    if (nextWaveData && typeof nextWaveData === 'object') { // Ensure nextWaveData is a valid object
-        const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
-        const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
-        console.log(`[WaveMgr] Preparing aging for upcoming Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'} (${passes} passes, intensity ${intensity.toFixed(2)})...`);
-        const gridStateBeforeAging = captureCurrentGridState();
-        for (let i = 0; i < passes; i++) {
-            AgingManager.applyAging(portalRef, intensity);
-        }
-        console.log(`[WaveMgr] Aging passes complete for Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'}. World updated.`);
-
-        const finalGridState = World.getGrid();
-        const proposedVisualChanges = diffGrids(gridStateBeforeAging, finalGridState);
-        console.log(`[WaveMgr] Found ${proposedVisualChanges.length} net visual changes for animation.`);
-        if (proposedVisualChanges.length > 0) {
-            WorldManager.addProposedAgingChanges(proposedVisualChanges);
-        }
-        // Show Epoch Text for the upcoming wave
-        const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
-        UI.showEpochText(epochName);
-    } else {
-        console.warn(`[WaveMgr] triggerWarpCleanup: No valid nextWaveData found. Index: ${nextWaveIndexToPrepareFor}. Skipping aging and epoch text for next wave.`);
-        // Fallback epoch text if no next wave (should ideally not happen if victory state is handled correctly)
-        UI.showEpochText("Final Preparations...");
-    }
-    // The renderStaticWorldToGridCanvas() and seedWaterUpdateQueue() calls will now happen
-    // at the END of the WARPPHASE timer in the main update loop of WaveManager.
+    // DO NOT trigger aging or epoch text here anymore. It's moved to the end of WARP_CLEANUP timer.
 }
 // --- Exported Functions ---
 // --- Initializes the wave manager to its default state, accepts an optional callback and portal reference ---
@@ -332,17 +301,111 @@ export function update(dt, gameState) {
                 }
                 break;
             case 'BUILDPHASE':
-                // Build phase timer always runs if dt > 0, regardless of main gameState RUNNING/PAUSED
                 buildPhaseTimer -= dt;
                 if (buildPhaseTimer <= 0) {
                     buildPhaseTimer = 0;
-                    state = 'WARPPHASE';
-                    warpPhaseTimer = Config.WARPPHASE_DURATION;
-                    currentMaxTimer = Config.WARPPHASE_DURATION;
-                    console.log(`[WaveMgr] Transitioned to WARPPHASE (${warpPhaseTimer.toFixed(2)}s).`);
-                    triggerWarpCleanup(); // Call cleanup (which now queues animations)
-                    console.log(`[WaveMgr] Aging animation queuing triggered for WARPPHASE.`);
+                    state = 'WARP_CLEANUP'; // New intermediate state
+                    currentMaxTimer = Config.WARPPHASE_DURATION; // Initial timer for cleanup tasks
+                    warpPhaseTimer = Config.WARPPHASE_DURATION; // Use this for the cleanup duration
+                    console.log(`[WaveMgr] Transitioned to WARP_CLEANUP (${warpPhaseTimer.toFixed(2)}s).`);
+                    
+                    // triggerWarpCleanup now only does entity clearing and portal radius update.
+                    // It NO LONGER triggers aging or epoch text for the next wave directly.
+                    triggerWarpCleanup(); 
                 }
+                break;
+
+            case 'WARP_CLEANUP': // New state for the initial part of original WARPPHASE
+                warpPhaseTimer -=dt;
+                if (warpPhaseTimer <= 0) {
+                    warpPhaseTimer = 0;
+                    console.log("[WaveMgr] WARP_CLEANUP timer ended. Processing world changes...");
+
+                    // --- PROCESS LOGICAL WORLD CHANGES ---
+                    console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
+                    let gravityAnimationChanges = [];
+                    if (portalRef) {
+                        // applyGravitySettlement MODIFIED to return [{ c, r_start, r_end, blockData }, ...]
+                        gravityAnimationChanges = WorldManager.applyGravitySettlement(portalRef);
+                    } else {
+                        console.error("[WaveMgr] Cannot apply gravity settlement: portalRef is null.");
+                    }
+                    console.log(`[WaveMgr] Gravity settlement (LOGICAL) complete. ${gravityAnimationChanges.length} blocks moved.`);
+                    if (gravityAnimationChanges.length > 0) {
+                        WorldManager.addProposedGravityChanges(gravityAnimationChanges);
+                    }
+
+                    console.log("[WaveMgr] Applying aging process (LOGICAL) post-settlement...");
+                    const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
+                    const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
+                    let agingAnimationChanges = [];
+
+                    if (nextWaveData && typeof nextWaveData === 'object') {
+                        const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
+                        const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
+                        
+                        const gridStateBeforeAging = captureCurrentGridState(); // After gravity
+                        for (let i = 0; i < passes; i++) {
+                            AgingManager.applyAging(portalRef, intensity);
+                        }
+                        const finalGridStateAfterAging = World.getGrid();
+                        agingAnimationChanges = diffGrids(gridStateBeforeAging, finalGridStateAfterAging);
+                        
+                        console.log(`[WaveMgr] Aging (LOGICAL) complete. ${agingAnimationChanges.length} net visual changes.`);
+                        if (agingAnimationChanges.length > 0) {
+                            WorldManager.addProposedAgingChanges(agingAnimationChanges);
+                        }
+                        const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
+                        UI.showEpochText(epochName); // Show epoch text now
+                    } else {
+                        UI.showEpochText("Final Preparations...");
+                    }
+                    // --- TRANSITION TO ANIMATION STATES ---
+                    if (!WorldManager.areGravityAnimationsComplete()) {
+                        state = 'ANIMATING_GRAVITY';
+                        console.log("[WaveMgr] Transitioned to ANIMATING_GRAVITY.");
+                        currentMaxTimer = 1; // Or some estimated duration
+                    } else if (!WorldManager.areAgingAnimationsComplete()) {
+                        state = 'ANIMATING_AGING';
+                        console.log("[WaveMgr] Transitioned to ANIMATING_AGING (gravity was already complete).");
+                        currentMaxTimer = 1;
+                    } else {
+                        console.log("[WaveMgr] No animations to play. Finalizing warp.");
+                        // Directly finalize if no animations queued
+                        WorldManager.renderStaticWorldToGridCanvas();
+                        WorldManager.seedWaterUpdateQueue();
+                        startNextWave();
+                    }
+                }
+                break;
+
+            case 'ANIMATING_GRAVITY':
+                // WorldManager.update(dt) is called in main.js, which updates animations
+                if (WorldManager.areGravityAnimationsComplete()) {
+                    console.log("[WaveMgr] Gravity animations complete.");
+                    if (!WorldManager.areAgingAnimationsComplete()) {
+                        state = 'ANIMATING_AGING';
+                        console.log("[WaveMgr] Transitioned to ANIMATING_AGING.");
+                        currentMaxTimer = 1; // Or some estimated duration
+                    } else {
+                        console.log("[WaveMgr] All animations complete (aging was already done). Finalizing warp.");
+                        WorldManager.renderStaticWorldToGridCanvas();
+                        WorldManager.seedWaterUpdateQueue();
+                        startNextWave();
+                    }
+                }
+                // UI timer can just show "Warping..." or a generic progress
+                break;
+
+            case 'ANIMATING_AGING':
+                // WorldManager.update(dt) handles animation updates
+                if (WorldManager.areAgingAnimationsComplete()) {
+                    console.log("[WaveMgr] Aging animations complete. Finalizing warp.");
+                    WorldManager.renderStaticWorldToGridCanvas(); // Final render after all animations
+                    WorldManager.seedWaterUpdateQueue();
+                    startNextWave(); // Transition to next WAVE_COUNTDOWN or VICTORY
+                }
+                // UI timer can show "Morphing..." or generic progress
                 break;
             case 'WARPPHASE':
                 // Warp phase timer always runs if dt > 0
@@ -350,25 +413,69 @@ export function update(dt, gameState) {
                 if (warpPhaseTimer <= 0) {
                     warpPhaseTimer = 0;
                     console.log("[WaveMgr] WARPPHASE timer ended.");
-                    
-                    // 1. Finalize aging animations (applies logical changes from aging to World.grid and updates static canvas for those blocks)
-                    WorldManager.finalizeAllAgingAnimations(); 
-                    console.log("[WaveMgr] Aging animations finalized.");
 
-                    // 2. Apply Gravity Settlement (modifies World.grid)
-                    console.log("[WaveMgr] Applying gravity settlement post-aging...");
-                    const settlementChangedCoords = WorldManager.applyGravitySettlement(portalRef);
-                    // Note: settlementChangedCoords is currently just for logging/potential future use.
-                    // The world grid IS modified by applyGravitySettlement.
-                    
-                    // 3. Re-render the entire static canvas to reflect ALL changes (aging + settlement)
+                    // --- NEW ORDER OF OPERATIONS ---
+
+                    // 1. Apply Gravity Settlement (modifies World.grid logically)
+                    console.log("[WaveMgr] Applying gravity settlement (BEFORE aging)...");
+                    if (portalRef) {
+                        // Gravity settlement now directly modifies the World.grid
+                        WorldManager.applyGravitySettlement(portalRef);
+                    } else {
+                        console.error("[WaveMgr] Cannot apply gravity settlement: portalRef is null.");
+                    }
+                    console.log("[WaveMgr] Gravity settlement complete.");
+
+                    // 2. Trigger Aging Process & Queue Animations
+                    // AgingManager.applyAging will now work on the settled grid.
+                    // WorldManager.addProposedAgingChanges will queue up visual changes.
+                    console.log("[WaveMgr] Triggering aging process post-settlement...");
+                    const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
+                    const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
+
+                    if (nextWaveData && typeof nextWaveData === 'object') {
+                        const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
+                        const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
+                        console.log(`[WaveMgr] Preparing aging for upcoming Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'} (${passes} passes, intensity ${intensity.toFixed(2)})...`);
+
+                        const gridStateBeforeAging = captureCurrentGridState(); // Capture state *after* settlement
+
+                        for (let i = 0; i < passes; i++) {
+                            AgingManager.applyAging(portalRef, intensity); // AgingManager modifies World.grid
+                        }
+                        console.log(`[WaveMgr] Aging passes complete for Wave ${nextWaveData.mainWaveNumber ?? 'Unknown'}.`);
+
+                        const finalGridStateAfterAging = World.getGrid(); // Get grid *after* aging
+                        const proposedVisualChanges = diffGrids(gridStateBeforeAging, finalGridStateAfterAging);
+                        console.log(`[WaveMgr] Found ${proposedVisualChanges.length} net visual changes from aging for animation.`);
+                        if (proposedVisualChanges.length > 0) {
+                            WorldManager.addProposedAgingChanges(proposedVisualChanges);
+                        }
+
+                        // Show Epoch Text for the upcoming wave (related to aging/preparation)
+                        const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
+                        UI.showEpochText(epochName);
+                    } else {
+                        console.warn(`[WaveMgr] triggerWarpCleanup (aging part): No valid nextWaveData found. Index: ${nextWaveIndexToPrepareFor}. Skipping aging.`);
+                        UI.showEpochText("Final Preparations...");
+                    }
+                    console.log("[WaveMgr] Aging process triggered and animations queued.");
+
+                    // 3. Finalize any queued aging animations (this applies their visual changes to the static canvas)
+                    // Since aging happens immediately after settlement, these animations are from the aging process.
+                    WorldManager.finalizeAllAgingAnimations();
+                    console.log("[WaveMgr] Aging animations finalized immediately after aging process.");
+
+                    // 4. Re-render the entire static canvas to reflect ALL changes (settlement + aging)
+                    // This render captures the state after both gravity and aging have logically modified the grid,
+                    // and after aging animations have been "finalized" (their end state drawn to the static canvas).
                     console.log("[WaveMgr] Rendering final static world and seeding water queue after WARPPHASE.");
-                    WorldManager.renderStaticWorldToGridCanvas(); // This will draw the final state after aging and settlement
-                    
-                    // 4. Seed water simulation queue based on the final settled and aged world
+                    WorldManager.renderStaticWorldToGridCanvas();
+
+                    // 5. Seed water simulation queue based on the final settled and aged world
                     WorldManager.seedWaterUpdateQueue();
-                
-                    // 5. Start the next wave
+
+                    // 6. Start the next wave
                     startNextWave(); // Transition to next WAVE_COUNTDOWN or VICTORY
                 }
                 break;
