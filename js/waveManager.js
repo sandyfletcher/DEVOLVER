@@ -17,12 +17,12 @@ let currentGroupIndex = 0;
 let enemiesSpawnedThisGroup = 0;
 let groupSpawnTimer = 0;
 let groupStartDelayTimer = 0;
-// MODIFIED States: PRE_WAVE, WAVE_COUNTDOWN, BUILDPHASE, WARP_LOGIC, WARP_ANIMATING, VICTORY, GAME_OVER
+// MODIFIED States: PRE_WAVE, WAVE_COUNTDOWN, BUILDPHASE, WARP_ANIMATING, VICTORY, GAME_OVER
 let state = 'PRE_WAVE';
 let preWaveTimer = Config.WAVE_START_DELAY;
 let mainWaveTimer = 0;
 let buildPhaseTimer = 0;
-let warpPhaseTimer = 0; // Used for WARP_LOGIC duration
+// Removed: warpPhaseTimer, as WARP_LOGIC state is removed.
 let currentMaxTimer = 0;
 let waveStartCallback = null;
 let portalRef = null;
@@ -88,12 +88,15 @@ function startNextWave() {
         currentMaxTimer = 0;
         return false;
     }
-    if (currentMainWaveIndex === 0 && waveData.epochName) {
-         UI.showEpochText(waveData.epochName);
-    } else if (currentMainWaveIndex === 0) {
-        UI.showEpochText(`Starting Wave ${waveData.mainWaveNumber}`);
+    // Epoch text for the very first wave shown here.
+    // Epoch text for subsequent waves is shown at the end of BUILDPHASE / start of calculations.
+    if (currentMainWaveIndex === 0) {
+        if (waveData.epochName) {
+            UI.showEpochText(waveData.epochName);
+        } else {
+            UI.showEpochText(`Starting Wave ${waveData.mainWaveNumber}`);
+        }
     }
-    // Else: epoch text for subsequent waves is shown during WARP_LOGIC
 
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration;
@@ -128,9 +131,11 @@ function endWave() {
     }
     if (currentMainWaveIndex + 1 < Config.WAVES.length) {
         state = 'BUILDPHASE';
-        const waveIntermissionDuration = waveData.intermissionDuration ?? (Config.WARPPHASE_DURATION + 5.0); // Adjusted fallback
-        buildPhaseTimer = Math.max(0, waveIntermissionDuration - Config.WARPPHASE_DURATION); // WARPPHASE_DURATION is now for WARP_LOGIC
-        warpPhaseTimer = 0;
+        // Intermission duration = buildPhaseTimer + animation time.
+        // Config.WARPPHASE_DURATION is no longer used for a timed state.
+        // We just use the intermissionDuration from the wave config for the build phase.
+        // If it's not defined, use a default.
+        buildPhaseTimer = waveData.intermissionDuration ?? (Config.AGING_DEFAULT_PASSES_PER_WAVE * 0.5 + 10.0); // Example default
         currentMaxTimer = buildPhaseTimer;
         AudioManager.stopGameMusic();
     } else {
@@ -144,17 +149,55 @@ function endWave() {
     groupStartDelayTimer = 0;
 }
 
-function triggerWarpCleanup() {
-    console.log("[WaveMgr] Triggering Warp Cleanup (Entity Clearing & Portal Radius)...");
+function triggerWarpCleanupAndCalculations() {
+    console.log("[WaveMgr] End of BUILDPHASE. Triggering entity cleanup, calculations, and animation queuing...");
     if (!portalRef) {
-        console.error("[WaveMgr] Warp Cleanup failed: Portal reference is null.");
+        console.error("[WaveMgr] Warp process failed: Portal reference is null.");
         return;
     }
+
+    // 1. Entity Clearing & Portal Radius
     portalRef.setSafetyRadius(portalRef.safetyRadius + Config.PORTAL_RADIUS_GROWTH_PER_WAVE);
     const portalCenter = portalRef.getPosition();
     const safeRadius = portalRef.safetyRadius;
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
+    console.log("[WaveMgr] Entity cleanup and portal radius update complete.");
+
+    // 2. Logical Gravity Settlement
+    console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
+    let gravityAnimationChanges = WorldManager.applyGravitySettlement(portalRef);
+    console.log(`[WaveMgr] Gravity settlement (LOGICAL) complete. ${gravityAnimationChanges.length} blocks moved.`);
+    if (gravityAnimationChanges.length > 0) {
+        WorldManager.addProposedGravityChanges(gravityAnimationChanges);
+    }
+
+    // 3. Logical Aging Process
+    console.log("[WaveMgr] Applying aging process (LOGICAL) post-settlement...");
+    const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
+    const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
+    let allAgingChangesDetailed = [];
+
+    if (nextWaveData && typeof nextWaveData === 'object') {
+        const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
+        const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
+        
+        for (let i = 0; i < passes; i++) {
+            const detailedChangesInPass = AgingManager.applyAging(portalRef, intensity);
+            allAgingChangesDetailed.push(...detailedChangesInPass);
+        }
+        
+        console.log(`[WaveMgr] Aging (LOGICAL) complete. ${allAgingChangesDetailed.length} detailed changes from AgingManager.`);
+        if (allAgingChangesDetailed.length > 0) {
+            WorldManager.addProposedAgingChanges(allAgingChangesDetailed);
+        }
+        
+        const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
+        UI.showEpochText(epochName); // Show epoch text for upcoming wave
+    } else {
+        UI.showEpochText("Final Preparations..."); // Fallback if no next wave data
+        console.warn("[WaveMgr] No next wave data found for aging process. This might be the last wave transition before victory.");
+    }
 }
 
 // --- Exported Functions ---
@@ -170,7 +213,7 @@ export function init(callback = null, portalObject = null) {
     currentMaxTimer = Config.WAVE_START_DELAY;
     mainWaveTimer = 0;
     buildPhaseTimer = 0;
-    warpPhaseTimer = 0;
+    // warpPhaseTimer removed
     waveStartCallback = callback;
     portalRef = portalObject;
     console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s.`);
@@ -234,80 +277,26 @@ export function update(dt, gameState) {
             buildPhaseTimer -= dt;
             if (buildPhaseTimer <= 0) {
                 buildPhaseTimer = 0;
-                state = 'WARP_LOGIC'; // Transition to WARP_LOGIC
-                warpPhaseTimer = Config.WARPPHASE_DURATION; // Set timer for logical processing
-                currentMaxTimer = Config.WARPPHASE_DURATION;
-                console.log(`[WaveMgr] Transitioned to WARP_LOGIC (${warpPhaseTimer.toFixed(2)}s).`);
-                triggerWarpCleanup(); // Entity clearing & portal radius happens at start of WARP_LOGIC
-            }
-            break;
-
-        case 'WARP_LOGIC': // New state for logical changes and animation queuing
-            warpPhaseTimer -= dt;
-            if (warpPhaseTimer <= 0) {
-                warpPhaseTimer = 0;
-                console.log("[WaveMgr] WARP_LOGIC timer ended. Processing world changes & queueing animations...");
-
-                // 1. Logical Gravity Settlement
-                console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
-                let gravityAnimationChanges = [];
-                if (portalRef) {
-                    gravityAnimationChanges = WorldManager.applyGravitySettlement(portalRef);
-                } else {
-                    console.error("[WaveMgr] Cannot apply gravity settlement: portalRef is null.");
-                }
-                console.log(`[WaveMgr] Gravity settlement (LOGICAL) complete. ${gravityAnimationChanges.length} blocks moved.`);
-                if (gravityAnimationChanges.length > 0) {
-                    WorldManager.addProposedGravityChanges(gravityAnimationChanges);
-                }
-
-                // 2. Logical Aging Process (using simplified return from AgingManager)
-                console.log("[WaveMgr] Applying aging process (LOGICAL) post-settlement...");
-                const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
-                const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
-                let allAgingChangesDetailed = [];
-
-                if (nextWaveData && typeof nextWaveData === 'object') {
-                    const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
-                    const intensity = nextWaveData.agingIntensity ?? Config.AGING_BASE_INTENSITY;
-                    
-                    for (let i = 0; i < passes; i++) {
-                        // AgingManager.applyAging now returns detailed changes
-                        const detailedChangesInPass = AgingManager.applyAging(portalRef, intensity); 
-                        allAgingChangesDetailed.push(...detailedChangesInPass);
-                        // TODO: Consider if deduplication of changes is needed if a block ages multiple times.
-                        // For now, each change will queue an animation.
-                    }
-                    
-                    console.log(`[WaveMgr] Aging (LOGICAL) complete. ${allAgingChangesDetailed.length} detailed changes from AgingManager.`);
-                    if (allAgingChangesDetailed.length > 0) {
-                        WorldManager.addProposedAgingChanges(allAgingChangesDetailed);
-                    }
-                    
-                    const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
-                    UI.showEpochText(epochName); // Show epoch text for upcoming wave
-                } else {
-                    UI.showEpochText("Final Preparations..."); // Fallback if no next wave data
-                }
-                
+                // Perform calculations and queue animations
+                triggerWarpCleanupAndCalculations();
+                // Transition to WARP_ANIMATING
                 state = 'WARP_ANIMATING';
-                console.log("[WaveMgr] Transitioned to WARP_ANIMATING. Waiting for animations to complete.");
-                currentMaxTimer = 1; // UI shows text "Warping..." or similar
+                console.log("[WaveMgr] Transitioned from BUILDPHASE to WARP_ANIMATING. Waiting for animations.");
+                currentMaxTimer = 1; // UI shows text "Warping..." or similar, no fixed countdown
             }
             break;
 
-        case 'WARP_ANIMATING': // New state for waiting for animations
-            // WorldManager.update(dt) is called by main.js and will advance animations.
+        // WARP_LOGIC state removed
+
+        case 'WARP_ANIMATING':
             if (WorldManager.areGravityAnimationsComplete() && WorldManager.areAgingAnimationsComplete()) {
                 console.log("[WaveMgr] All warp animations complete. Finalizing warp.");
-                WorldManager.renderStaticWorldToGridCanvas(); // Final render after all animations
+                WorldManager.renderStaticWorldToGridCanvas();
                 WorldManager.seedWaterUpdateQueue();
                 startNextWave(); // Transition to next WAVE_COUNTDOWN or VICTORY
             }
-            // UI timer can show "Warping..." or "Morphing..."
             break;
 
-        // VICTORY and GAME_OVER states do not have active timers to decrement.
         case 'VICTORY':
         case 'GAME_OVER':
             break;
@@ -319,7 +308,7 @@ export function update(dt, gameState) {
 export function setGameOver() {
     if (state !== 'GAME_OVER') {
         state = 'GAME_OVER';
-        preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0; warpPhaseTimer = 0;
+        preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0;
         groupSpawnTimer = 0; groupStartDelayTimer = 0;
         currentMaxTimer = 0;
     }
@@ -328,7 +317,7 @@ export function setGameOver() {
 export function setVictory() {
     if (state !== 'VICTORY') {
         state = 'VICTORY';
-        preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0; warpPhaseTimer = 0;
+        preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0;
         groupSpawnTimer = 0; groupStartDelayTimer = 0;
         currentMaxTimer = 0;
     }
@@ -342,7 +331,7 @@ export function getCurrentWaveNumber() {
     if (state === 'GAME_OVER' || state === 'VICTORY') {
         return Math.max(0, currentMainWaveIndex + 1);
     }
-    if (state === 'BUILDPHASE' || state === 'WARP_LOGIC' || state === 'WARP_ANIMATING') {
+    if (state === 'BUILDPHASE' || state === 'WARP_ANIMATING') { // WARP_LOGIC removed
         return currentMainWaveIndex + 2; // Show upcoming wave number
     }
     return (currentMainWaveIndex < 0) ? 1 : currentMainWaveIndex + 1;
@@ -360,17 +349,12 @@ export function getWaveInfo() {
             break;
         case 'WAVE_COUNTDOWN':
             timer = mainWaveTimer;
-            // maxTimerToUse is already set
             break;
         case 'BUILDPHASE':
             timer = buildPhaseTimer;
-            // maxTimerToUse is already set
             break;
-        case 'WARP_LOGIC': // Timer for logical processing
-            timer = warpPhaseTimer;
-            // maxTimerToUse is already set (Config.WARPPHASE_DURATION)
-            break;
-        case 'WARP_ANIMATING': // No specific timer, but UI can show text
+        // WARP_LOGIC removed
+        case 'WARP_ANIMATING':
             timer = 1; maxTimerToUse = 1; // Indicates progress but not a countdown
             break;
         case 'GAME_OVER':
