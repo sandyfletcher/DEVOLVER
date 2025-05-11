@@ -48,6 +48,8 @@ export const CAVE_NOISE_SCALE_Y = 0.07; // Can be different for X and Y to stret
 export const CAVE_THRESHOLD = 0.5; // Noise values above this threshold become air (range typically [-1,1] or [0,1] - adjust based on noise2D output) - If noise2D outputs roughly [-1,1], a threshold of 0.6 means ~20% of area could be caves.
 export const CAVE_MIN_ROWS_BELOW_SURFACE = 0; // Caves start at least this many rows below the generated surface
 export const CAVE_MIN_ROWS_ABOVE_BOTTOM = 15; // Caves stop at least this many rows above the grid bottom
+export const CAVE_EDGE_ZONE_PERCENTAGE = 0.20; // NEW: Percentage of map width for edge zones (0.0 to 0.5)
+export const CAVE_EDGE_WATER_PROTECTION_DEPTH = 3; // NEW: How many blocks above/below water level to protect in edge zones
 
 export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WATER_LEVEL + 5; // Target row for ocean floor near the island
 export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // Target row for ocean stone near the island

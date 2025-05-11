@@ -401,7 +401,12 @@ function initializeAndRunGame() {
         } else {
             portal = new Portal(portalSpawnX, portalSpawnY);
         }
-        WorldManager.init(portal);
+        WorldManager.init(portal); // <<<<<<< THIS NOW DOES:
+                                   // 1. World.initializeGrid()
+                                   // 2. worldGenerator.generateInitialWorld() (landmass, caves)
+                                   // 3. WorldManager.applyGravitySettlement(null) (LOGICAL, modifies World.grid)
+                                   // 4. applyInitialFloodFill() (LOGICAL, modifies World.grid)
+                                   // 5. Renderer check & anim queue init
         const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
         console.log(`[main.js] Applying initial world aging (${initialAgingPasses} passes) after generation...`);
         const changedCellsInitialAging = new Map();

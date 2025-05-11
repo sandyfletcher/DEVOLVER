@@ -228,44 +228,59 @@ export function finalizeAllGravityAnimations() {
 }
 
 // Helper for BFS/DFS to find connected solid blocks for gravity settlement
-function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
+// Helper for BFS/DFS to find connected solid blocks for gravity settlement
+function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) { // portalRef can be null
     const chunk = [];
     const queue = [{ c: startX, r: startY }];
     const visitedInChunk = new Set(); // Tracks blocks visited for *this specific chunk*
-    
-    // Mark starting block as visited for this chunk and for the overall pass
+
     const startKey = `${startX},${startY}`;
     visitedInChunk.add(startKey);
     visitedInPass.add(startKey);
 
-    const portalCenter = portalRef.getPosition();
-    const portalX = portalCenter.x;
-    const portalY = portalCenter.y;
-    const protectedRadiusSq = portalRef.safetyRadius * portalRef.safetyRadius;
+    // --- MODIFICATION START ---
+    let portalX, portalY, protectedRadiusSq;
+    let applyPortalProtection = false;
+
+    if (portalRef && typeof portalRef.getPosition === 'function' && typeof portalRef.safetyRadius === 'number') {
+        const portalCenter = portalRef.getPosition();
+        if (portalCenter && typeof portalCenter.x === 'number' && typeof portalCenter.y === 'number') {
+            portalX = portalCenter.x;
+            portalY = portalCenter.y;
+            protectedRadiusSq = portalRef.safetyRadius * portalRef.safetyRadius;
+            applyPortalProtection = true;
+        } else {
+            console.warn("[getConnectedSolidChunk] portalRef provided, but getPosition() did not return valid coordinates. No portal protection applied.");
+        }
+    }
+    // --- MODIFICATION END ---
+
 
     while (queue.length > 0) {
         const { c, r } = queue.shift();
 
-        // Check portal protection for this block
-        const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
-        const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
-        const dx = blockCenterX - portalX;
-        const dy = blockCenterY - portalY;
-        const distSqToPortal = dx * dx + dy * dy;
+        // --- MODIFICATION START ---
+        if (applyPortalProtection) {
+            // Check portal protection for this block
+            const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
+            const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
+            const dx = blockCenterX - portalX;
+            const dy = blockCenterY - portalY;
+            const distSqToPortal = dx * dx + dy * dy;
 
-        if (distSqToPortal < protectedRadiusSq) {
-            // This block is protected, it cannot be part of a *falling* chunk.
-            // It acts as a fixed point / external support from other chunks' perspective.
-            continue; 
+            if (distSqToPortal < protectedRadiusSq) {
+                // This block is protected, it cannot be part of a *falling* chunk.
+                continue;
+            }
         }
+        // --- MODIFICATION END ---
 
-        const blockData = World.getBlock(c, r); 
+        const blockData = World.getBlock(c, r);
         const blockType = (typeof blockData === 'object' && blockData !== null) ? blockData.type : blockData;
 
         if (blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER && blockData !== null) {
-            chunk.push({ c, r, blockData }); // Store original block data (will be an object for solid blocks)
+            chunk.push({ c, r, blockData });
         } else {
-             // This should ideally not happen if BFS starts from a solid, unvisited block.
             continue;
         }
 
@@ -286,16 +301,23 @@ function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
                 const neighborType = (typeof neighborBlockData === 'object' && neighborBlockData !== null) ? neighborBlockData.type : neighborBlockData;
 
                 if (neighborType !== Config.BLOCK_AIR && neighborType !== Config.BLOCK_WATER && neighborBlockData !== null) {
-                     // Check portal protection for neighbor before adding to queue for this chunk
-                    const nBlockCenterX = nc * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
-                    const nBlockCenterY = nr * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
-                    const nDx = nBlockCenterX - portalX;
-                    const nDy = nBlockCenterY - portalY;
-                    if ( (nDx * nDx + nDy * nDy) >= protectedRadiusSq) { // Only add if NOT protected
+                    // --- MODIFICATION START ---
+                    let canAddToQueue = true;
+                    if (applyPortalProtection) {
+                        const nBlockCenterX = nc * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
+                        const nBlockCenterY = nr * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
+                        const nDx = nBlockCenterX - portalX;
+                        const nDy = nBlockCenterY - portalY;
+                        if ((nDx * nDx + nDy * nDy) < protectedRadiusSq) { // Only add if NOT protected
+                            canAddToQueue = false;
+                        }
+                    }
+                    if (canAddToQueue) {
                         visitedInChunk.add(neighborKey);
-                        visitedInPass.add(neighborKey); 
+                        visitedInPass.add(neighborKey);
                         queue.push({ c: nc, r: nr });
                     }
+                    // --- MODIFICATION END ---
                 }
             }
         }
@@ -303,23 +325,28 @@ function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
     return chunk;
 }
 
+// applyGravitySettlement will be called by init() for the initial world.
+// It directly modifies World.grid.
 export function applyGravitySettlement(portalRef) {
-    if (!portalRef) {
-        console.error("[WorldManager] applyGravitySettlement: Portal reference is null. Skipping settlement.");
-        return [];
-    }
+    // If portalRef is null (like during initial generation), no protection is applied.
+    // The existing implementation of applyGravitySettlement already handles portalRef being null
+    // for the protection check.
 
     let allMovedBlocksInSettlement = [];
     let iterations = 0;
-    const MAX_ITERATIONS = Config.MAX_GRAVITY_SETTLEMENT_PASSES || Config.GRID_ROWS;
+    const MAX_ITERATIONS = Config.MAX_GRAVITY_SETTLEMENT_PASSES || Config.GRID_ROWS; // Use a config or default
 
     console.log("[WorldManager] Starting Connected Component Gravity Settlement...");
 
-    while (iterations < MAX_ITERATIONS) {
+    let blocksMovedThisIteration = true; // Start true to enter loop
+    while (blocksMovedThisIteration && iterations < MAX_ITERATIONS) {
         iterations++;
-        let blocksMovedThisIteration = false;
-        const visitedInPass = new Set();
+        blocksMovedThisIteration = false; // Reset for this pass
+        const visitedInPass = new Set(); // Fresh set for each full pass over the grid
 
+        // Scan from bottom-up for more stable settlement in fewer passes,
+        // though top-down also works with iteration.
+        // Let's stick to top-down for consistency with how it might have been before.
         for (let r_scan = 0; r_scan < Config.GRID_ROWS; r_scan++) {
             for (let c_scan = 0; c_scan < Config.GRID_COLS; c_scan++) {
                 const currentKey = `${c_scan},${r_scan}`;
@@ -331,25 +358,33 @@ export function applyGravitySettlement(portalRef) {
                 const blockTypeStart = (typeof blockStart === 'object' && blockStart !== null) ? blockStart.type : blockStart;
 
                 if (blockTypeStart !== Config.BLOCK_AIR && blockTypeStart !== Config.BLOCK_WATER && blockStart !== null) {
+                    // Get the chunk, ensuring portalRef is passed to getConnectedSolidChunk
                     const chunk = getConnectedSolidChunk(c_scan, r_scan, visitedInPass, portalRef);
 
                     if (chunk.length === 0) continue;
 
+                    // Check if chunk is supported
                     let isSupported = false;
                     for (const chunkBlock of chunk) {
                         const cb_c = chunkBlock.c;
                         const cb_r = chunkBlock.r;
 
-                        if (cb_r === Config.GRID_ROWS - 1) {
+                        if (cb_r === Config.GRID_ROWS - 1) { // At the bottom of the world
                             isSupported = true;
                             break;
                         }
 
-                        const blockBelowType = World.getBlockType(cb_c, cb_r + 1);
+                        // Check block directly below
+                        const blockBelowData = World.getBlock(cb_c, cb_r + 1);
+                        const blockBelowType = (typeof blockBelowData === 'object' && blockBelowData !== null) ? blockBelowData.type : blockBelowData;
 
-                        if (blockBelowType !== Config.BLOCK_AIR && blockBelowType !== Config.BLOCK_WATER && blockBelowType !== null) {
+
+                        if (blockBelowType !== Config.BLOCK_AIR && blockBelowType !== Config.BLOCK_WATER && blockBelowData !== null) {
+                            // It's solid or some other non-air/water type.
+                            // Now check if this supporting block is *part of the current chunk*.
                             const isSupportInternal = chunk.some(b => b.c === cb_c && b.r === cb_r + 1);
                             if (!isSupportInternal) {
+                                // Supported by a block NOT in this chunk
                                 isSupported = true;
                                 break;
                             }
@@ -357,91 +392,178 @@ export function applyGravitySettlement(portalRef) {
                     }
 
                     if (isSupported) {
-                        continue;
+                        continue; // Chunk is supported, move to the next potential starting block
                     }
 
-                    let minFallDistance = Config.GRID_ROWS;
+                    // If not supported, calculate how far it can fall
+                    let minFallDistance = Config.GRID_ROWS; // Initialize with max possible fall
                     for (const chunkBlock of chunk) {
                         let currentFall = 0;
                         for (let fall_r = chunkBlock.r + 1; fall_r < Config.GRID_ROWS; fall_r++) {
-                            const blockAtFallTarget = World.getBlock(chunkBlock.c, fall_r);
-                            const typeAtFallTarget = (typeof blockAtFallTarget === 'object' && blockAtFallTarget !== null) ? blockAtFallTarget.type : blockAtFallTarget;
+                            const blockAtFallTargetData = World.getBlock(chunkBlock.c, fall_r);
+                            const typeAtFallTarget = (typeof blockAtFallTargetData === 'object' && blockAtFallTargetData !== null) ? blockAtFallTargetData.type : blockAtFallTargetData;
+
                             const isTargetBelowPartOfChunk = chunk.some(b => b.c === chunkBlock.c && b.r === fall_r);
 
                             if (isTargetBelowPartOfChunk) {
+                                // If the block below is part of the same falling chunk, it doesn't stop this specific block yet
                                 currentFall++;
-                            } else if (typeAtFallTarget !== Config.BLOCK_AIR && typeAtFallTarget !== Config.BLOCK_WATER && blockAtFallTarget !== null) {
-                                break;
+                            } else if (typeAtFallTarget !== Config.BLOCK_AIR && typeAtFallTarget !== Config.BLOCK_WATER && blockAtFallTargetData !== null) {
+                                // Hits a solid block (or other non-air/water) not part of the chunk
+                                break; // Stop falling for this block
                             } else {
+                                // It's AIR or WATER, can continue falling through
                                 currentFall++;
                             }
                         }
                         minFallDistance = Math.min(minFallDistance, currentFall);
                     }
 
+                    // If the chunk can fall
                     if (minFallDistance > 0) {
-                        blocksMovedThisIteration = true;
+                        blocksMovedThisIteration = true; // A move occurred in this iteration
+                        // Sort chunk from bottom up to avoid overwriting blocks that need to move
                         chunk.sort((a, b) => b.r - a.r);
 
                         const currentChunkMoves = [];
                         for (const chunkBlock of chunk) {
+                            // Store details for animation queue (even if not animated initially, good for consistency)
                             currentChunkMoves.push({
                                 c: chunkBlock.c,
                                 r_start: chunkBlock.r,
                                 r_end: chunkBlock.r + minFallDistance,
-                                blockData: chunkBlock.blockData
+                                blockData: chunkBlock.blockData // The actual block object
                             });
-                        }
-                        allMovedBlocksInSettlement.push(...currentChunkMoves); // <<< --- ACCUMULATE HERE ---
-
-                        for (const chunkBlock of chunk) {
+                            // Clear old position in the logical grid
                             World.setBlockData(chunkBlock.c, chunkBlock.r, createBlock(Config.BLOCK_AIR, false));
                         }
+                        // Place blocks in new positions in the logical grid
                         for (const chunkBlock of chunk) {
                             const newR = chunkBlock.r + minFallDistance;
                             World.setBlockData(chunkBlock.c, newR, chunkBlock.blockData);
                         }
+                        allMovedBlocksInSettlement.push(...currentChunkMoves);
                     }
                 }
             }
         }
         if (!blocksMovedThisIteration) {
-            break;
+            break; // No blocks moved in this full pass, settlement is stable
         }
     }
 
     if (iterations >= MAX_ITERATIONS && blocksMovedThisIteration) {
         console.warn(`[WorldManager] Connected Component Gravity Settlement reached max iterations (${MAX_ITERATIONS}). Settlement might be incomplete.`);
     }
-    console.log(`[WorldManager] Connected Component Gravity Settlement finished in ${iterations} iteration(s). Blocks moved: ${allMovedBlocksInSettlement.length}`);
+    console.log(`[WorldManager] Connected Component Gravity Settlement finished in ${iterations} iteration(s). Total blocks affected (moved or part of moved chunks): ${allMovedBlocksInSettlement.length}`);
 
-    return allMovedBlocksInSettlement; // <<< --- RETURN THE ACCUMULATED MOVES ---
+    return allMovedBlocksInSettlement; // Return for potential animation queuing (not used for initial, but consistent)
 }
+
 
 // -----------------------------------------------------------------------------
 // --- Initialization ---
 // -----------------------------------------------------------------------------
 
-export function init(portalRef) {
+export function init(portalRef) { // portalRef will be null during initial game load
     console.log("Initializing WorldManager...");
-    World.initializeGrid();
-    generateInitialWorld();
+    // 1. Generate the basic world structure (landmass, caves)
+    //    This calls World.initializeGrid() internally.
+    generateInitialWorld(); // This modifies World.grid
 
+    // 2. Apply one pass of gravity settlement (LOGICAL ONLY, NO ANIMATION)
+    //    Pass null for portalRef as no portal protection during initial world gen.
+    console.log("[WorldManager Init] Applying initial gravity settlement (LOGICAL)...");
+    const initialGravityChanges = applyGravitySettlement(null); // Modifies World.grid
+    // We are NOT animating this, so we don't call addProposedGravityChanges.
+    // The World.grid is now logically settled.
+    console.log(`[WorldManager Init] Initial gravity settlement (LOGICAL) complete. ${initialGravityChanges.length} blocks potentially moved.`);
+
+    // 3. Apply flood fill for water AFTER gravity settlement
+    //    This ensures water fills into spaces potentially opened up by falling blocks.
+    //    worldGenerator.applyFloodFill directly modifies World.grid based on Config.WATER_LEVEL
+    //    Let's make applyFloodFill a local function or move it here for clarity.
+    //    For now, assume applyFloodFill is available and works on the current World.grid.
+    //    If applyFloodFill was part of worldGenerator.js, we need to call it here.
+    //    Let's assume we move applyFloodFill to be callable from here or it's part of World.js utils.
+    //    Replicating its logic here for clarity if it's not directly callable:
+    (function applyInitialFloodFill() {
+        console.log(`[WorldManager Init] Applying initial flood fill up to row ${Config.WATER_LEVEL}...`);
+        const queue = [];
+        const visited = new Set();
+
+        for (let r = Config.WATER_LEVEL; r < Config.GRID_ROWS; r++) {
+            for (let c = 0; c < Config.GRID_COLS; c++) {
+                if (World.getBlockType(c, r) === Config.BLOCK_AIR) {
+                    // Check if it's an exposed air block suitable for seeding water
+                    const neighbors = [{dc:0,dr:-1},{dc:0,dr:1},{dc:-1,dr:0},{dc:1,dr:0}];
+                    let isSeed = false;
+                    for(const n_off of neighbors) {
+                        const nc = c + n_off.dc;
+                        const nr = r + n_off.dr;
+                        if (nr < Config.WATER_LEVEL || // Neighbor is above water line
+                            World.getBlockType(nc,nr) !== Config.BLOCK_AIR) { // Neighbor is not air (or out of bounds)
+                            isSeed = true;
+                            break;
+                        }
+                    }
+                    if(isSeed || r === Config.GRID_ROWS -1) { // Also seed bottom row air blocks
+                         const key = `${c},${r}`;
+                         if (!visited.has(key)) {
+                            queue.push({ c, r });
+                            visited.add(key);
+                         }
+                    }
+                }
+            }
+        }
+
+        let processed = 0;
+        while (queue.length > 0) {
+            const { c, r } = queue.shift();
+            if (r < Config.WATER_LEVEL || World.getBlockType(c, r) !== Config.BLOCK_AIR) continue;
+
+            World.setBlock(c, r, Config.BLOCK_WATER, false);
+            processed++;
+
+            const neighbors = [{dc:0,dr:-1},{dc:0,dr:1},{dc:-1,dr:0},{dc:1,dr:0}];
+            for(const n_off of neighbors) {
+                const nc = c + n_off.dc;
+                const nr = r + n_off.dr;
+                 const nKey = `${nc},${nr}`;
+                if (nr >= Config.WATER_LEVEL && nr < Config.GRID_ROWS && nc >= 0 && nc < Config.GRID_COLS &&
+                    World.getBlockType(nc,nr) === Config.BLOCK_AIR && !visited.has(nKey)) {
+                    visited.add(nKey);
+                    queue.push({ c: nc, r: nr });
+                }
+            }
+        }
+        console.log(`[WorldManager Init] Initial flood fill complete. Filled ${processed} water blocks.`);
+    })();
+
+
+    // 4. Ensure Renderer's grid canvas is ready
     const gridCanvas = Renderer.getGridCanvas();
     if (!gridCanvas) {
-        console.error("FATAL: Grid Canvas not found! Ensure Renderer.createGridCanvas() runs before WorldManager.init().");
-        Renderer.createGridCanvas();
+        console.error("FATAL: Grid Canvas not found during WorldManager.init! Ensure Renderer.createGridCanvas() runs before.");
+        Renderer.createGridCanvas(); // Attempt to create it as a fallback
         if (!Renderer.getGridCanvas()) {
             throw new Error("FATAL: Renderer.createGridCanvas() failed during WorldManager.init fallback.");
         }
         console.warn("Renderer.createGridCanvas() was called as a fallback during WorldManager.init.");
     }
 
+    // 5. Initialize animation queues (will be empty initially for aging/gravity)
     agingAnimationQueue = [];
     activeAgingAnimations = [];
     newAnimationStartTimer = 0;
+    gravityAnimationQueue = [];
+    activeGravityAnimations = [];
+    newGravityAnimationStartTimer = 0;
 
-    console.log("WorldManager initialized.");
+
+    console.log("WorldManager initialized (after procedural gen, gravity settlement, and flood fill).");
+    // The static world canvas will be rendered by main.js after this using renderStaticWorldToGridCanvas()
 }
 
 // -----------------------------------------------------------------------------
