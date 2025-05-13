@@ -1,6 +1,6 @@
 // root/js/ui.js - Manages HTML Sidebar Elements and Updates
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 import * as EnemyManager from './enemyManager.js';
 import * as AudioManager from './audioManager.js';
 import * as WorldManager from './worldManager.js';

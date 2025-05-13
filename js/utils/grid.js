@@ -2,7 +2,7 @@
 // root/js/utils/grid.js - Draws the grid lines onto the off-screen canvas
 // -----------------------------------------------------------------------------
 
-import * as Config from '../config.js';
+import * as Config from './config.js';
 
 export function drawStaticGrid(ctx, showGrid) { // draws grid lines onto provided canvas context
     if (!ctx || !showGrid) {

@@ -2,7 +2,7 @@
 // root/js/utils/worldGenerator.js - Semi-random world generation to start game
 // -----------------------------------------------------------------------------
 
-import * as Config from '../config.js';
+import * as Config from './config.js';
 import { PerlinNoise } from './noise.js';
 import { createBlock } from './block.js';
 import * as World from './world.js';

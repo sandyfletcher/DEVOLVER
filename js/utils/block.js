@@ -2,7 +2,7 @@
 // js/utils/block.js - Block Object Creation and Definition
 // -----------------------------------------------------------------------------
 
-import * as Config from '../config.js';
+import * as Config from './config.js';
 
 export function createBlock(type, isPlayerPlaced = false) { // creates standard block data object used within the world grid, including properties like type and health
     if (type === Config.BLOCK_AIR) { // handle Air blocks, represented directly by the constant value

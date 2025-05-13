@@ -1,8 +1,8 @@
 // -----------------------------------------------------------------------------
 // root/js/ai/flopAI.js - AI Strategy for Tetrapod-like flopping behavior
 // -----------------------------------------------------------------------------
-import * as GridCollision from '../utils/gridCollision.js';
-import * as World from '../utils/world.js';
+import * as GridCollision from '../gridCollision.js';
+import * as World from '../world.js';
 import * as Config from '../config.js';
 export class FlopAI {
 constructor(enemy) {

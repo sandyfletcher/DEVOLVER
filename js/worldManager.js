@@ -2,7 +2,7 @@
 // root/js/worldManager.js - Manages world state, drawing, and interactions
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 import * as Renderer from './renderer.js';
 import * as World from './utils/world.js';
 import * as ItemManager from './itemManager.js';

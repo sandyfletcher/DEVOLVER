@@ -1,9 +1,10 @@
 // -----------------------------------------------------------------------------
 // root/js/ai/chasePlayerAI.js - AI Strategy for chasing the player
 // -----------------------------------------------------------------------------
-import * as GridCollision from '../utils/gridCollision.js';
-import * as World from '../utils/world.js';
+import * as GridCollision from '../gridCollision.js';
+import * as World from '../world.js';
 import * as Config from '../config.js';
+
 export class ChasePlayerAI {
 constructor(enemy) {
 this.enemy = enemy;

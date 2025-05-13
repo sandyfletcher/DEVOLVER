@@ -2,7 +2,7 @@
 // root/js/player.js - Player Character Class
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 import * as GridCollision from './utils/gridCollision.js';
 import * as WorldManager from './worldManager.js';
 import * as World from './utils/world.js';
@@ -1148,8 +1148,8 @@ export class Player {
         // Inventory & Weapons
         this.inventory = {}; // Clear inventory
         this.partialCollection = {};
-        // Reset weapon possession flags - Shovel is a starting item again
-        this.hasShovel = true; // Player starts with shovel on reset
+        // Reset weapon possession flags - Shovel not a starting item anymore
+        this.hasShovel = false; 
         this.hasSword = false;
         this.hasSpear = false;
         this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Player starts with unarmed, but possessing the shovel.
@@ -1170,14 +1170,12 @@ export class Player {
             this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
             this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
         }
-        // console.log(`Player state reset. Has Shovel: ${this.hasShovel}, Equipped: ${this.selectedItem}`);
     }
     // --- Resets only the player's position and physics state (e.g., after falling out) ---
     resetPosition() {
         // Falling out now triggers the death animation
         this.die(); // This will set isDying, stop movement, etc.
     }
-    // Add isActive getter for clarity, though main.js checks the property directly
     isActive() {
         return this.isActive;
     }

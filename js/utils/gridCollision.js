@@ -2,7 +2,7 @@
 // root/js/utils/gridCollision.js - Handles Entity vs World Grid Collision Logic
 // -----------------------------------------------------------------------------
 
-import * as Config from '../config.js';
+import * as Config from './config.js';
 import * as World from './world.js';
 
 export const E_EPSILON = 1e-4; // tiny offset to prevent floating point errors / sticking (pixels)

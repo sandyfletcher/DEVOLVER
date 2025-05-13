@@ -2,7 +2,7 @@
 // root/js/enemyManager.js - Manages Enemy Instances
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 import { Enemy } from './utils/enemy.js';
 import * as GridCollision from './utils/gridCollision.js';
 

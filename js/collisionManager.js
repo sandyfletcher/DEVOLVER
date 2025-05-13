@@ -2,7 +2,7 @@
 // root/js/collisionManager.js - Collision handling
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 import * as WorldManager from './worldManager.js'; // Needed to damage blocks
 import * as GridCollision from './utils/gridCollision.js'; // Needed for coordinate conversion
 

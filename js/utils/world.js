@@ -2,7 +2,7 @@
 // root/js/utils/world.js - Manages core world grid data structure
 // -----------------------------------------------------------------------------
 
-import * as Config from '../config.js';
+import * as Config from './config.js';
 import { createBlock } from './block.js';
 
 let worldGrid = [];

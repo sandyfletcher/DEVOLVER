@@ -2,7 +2,7 @@
 // root/js/audioManager.js - Manages Audio Playback
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 
 let gameMusicAudio = null; // Audio element for gameplay wave music
 let uiMusicAudio = null; // Audio element for UI/menu music

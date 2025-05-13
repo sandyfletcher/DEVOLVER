@@ -1,4 +1,4 @@
-import * as Config from '../config.js';
+import * as Config from './config.js';
 import * as GridCollision from './gridCollision.js';
 
 export class Item {

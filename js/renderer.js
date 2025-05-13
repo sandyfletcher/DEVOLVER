@@ -2,7 +2,7 @@
 // js/renderer.js - Handles Canvas Setup and Drawing Operations
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 
 // --- Module State ---
 let canvas = null;

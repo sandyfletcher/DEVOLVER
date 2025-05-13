@@ -2,7 +2,7 @@
 // root/js/agingManager.js - Handles World Aging Effects (erosion, growth, etc.)
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 import { PerlinNoise } from './utils/noise.js'; // Import noise utility
 import * as World from './utils/world.js'; // Import world data access
 import * as GridCollision from './utils/gridCollision.js'; // Import solid checks, hasSolidNeighbor

@@ -2,7 +2,7 @@
 // root/js/itemManager.js - Handles All Items (Weapons/Materials)
 // -----------------------------------------------------------------------------
 
-import * as Config from './config.js';
+import * as Config from './utils/config.js';
 import * as GridCollision from './utils/gridCollision.js';
 import { Item } from './utils/item.js';
 

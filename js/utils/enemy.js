@@ -2,13 +2,13 @@
 // root/js/enemy.js - Enemy Class (Refactored for Config & AI Strategy)
 // -----------------------------------------------------------------------------
 
-import * as Config from '../config.js';
+import * as Config from './config.js';
 import * as ItemManager from '../itemManager.js'; // Needed for drops on death
 import * as GridCollision from './gridCollision.js'; // For physics and water detection
 import { E_EPSILON } from './gridCollision.js';
-import { SeekCenterAI } from '../ai/seekCenterAI.js';
-import { ChasePlayerAI } from '../ai/chasePlayerAI.js';
-import { FlopAI } from '../ai/flopAI.js';
+import { SeekCenterAI } from './ai/seekCenterAI.js';
+import { ChasePlayerAI } from './ai/chasePlayerAI.js';
+import { FlopAI } from './ai/flopAI.js';
 import * as AudioManager from '../audioManager.js'; // Import AudioManager
 
 // Map AI type strings from config to the actual AI Strategy classes
