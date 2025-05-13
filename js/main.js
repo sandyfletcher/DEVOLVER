@@ -17,41 +17,40 @@ import * as GridCollision from './utils/gridCollision.js';
 import * as CollisionManager from './collisionManager.js';
 import { Player } from './player.js';
 import { Portal } from './portal.js';
-import * as World from './utils/world.js'; // Make sure World is imported if using its functions directly
+import * as World from './utils/world.js';
 
 
 // =============================================================================
 // --- Global Variables ---
 // =============================================================================
 
-let gameStartTime = 0; // track when current game started for playtime stat
-let lastTime = 0; // time since last frame
-let gameLoopId = null; // requestAnimationFrame ID for pausing
-let isAutoPaused = false; // flag if paused due to tab visibility
+let gameStartTime = 0;
+let lastTime = 0;
+let gameLoopId = null;
+let isAutoPaused = false;
 let isGridVisible = false;
 
 let player = null;
 let portal = null;
 let cameraX = 0;
 let cameraY = 0;
-let cameraScale = 1.0; // 1 = normal zoom
+let cameraScale = 1.0;
 
 let appContainer = null;
 let bootOverlayEl = null;
 let menuOverlayEl = null;
 let epochOverlayEl = null;
 
-// NEW: Game world element references
 let topSidebarEl = null;
 let gameWrapperEl = null;
 let bottomSidebarEl = null;
 
-let cutsceneImages = []; // array of HTMLImageElements
+let cutsceneImages = [];
 let currentCutsceneImageIndex = 0;
 let cutsceneTimer = 0;
 let cutsceneDurationPerImage = Config.CUTSCENE_IMAGE_DURATION;
-let cutsceneTextContentEl = null; // For the <p> tag to display cutscene text
-let cutsceneTextContainerEl = null; // For the <div> #cutscene-text-box
+let cutsceneTextContentEl = null;
+let cutsceneTextContainerEl = null;
 
 let titleStartButton = null;
 let mainmenuStartGameButton = null;
@@ -62,31 +61,40 @@ let restartButtonGameOver = null;
 let restartButtonVictory = null;
 let restartButtonPause = null;
 let cutsceneSkipButton = null;
-let btnToggleGrid = null;
+let btnToggleGrid = null; // Note: This ID was 'btn-toggle-grid' in HTML, but 'settings-btn-toggle-grid' in CSS. Assuming HTML uses 'settings-btn-toggle-grid'.
 let muteMusicButtonEl = null;
 let muteSfxButtonEl = null;
+let settingsButtonPauseOverlay = null; // NEW: Button for settings from pause menu
 
-// Overlay content divs (for direct manipulation in MAIN_MENU state)
+// Overlay content divs
+let overlayTitleContentEl = null;
+let overlayErrorContentEl = null;
 let overlayMainMenuContentEl = null;
 let overlaySettingsContentEl = null;
+let overlayCutsceneContentEl = null;
+let overlayPauseContentEl = null;
+let overlayGameOverContentEl = null;
+let overlayVictoryContentEl = null;
+
 let gameOverStatsTextP = null;
 let victoryStatsTextP = null;
 let errorOverlayMessageP = null;
 
-const GameState = Object.freeze({ // game state enum
-    TITLE: 'TITLE',         // Title screen (was PRE_GAME)
-    MAIN_MENU: 'MAIN_MENU', // Main menu screen (now includes settings as an overlay variation)
-    CUTSCENE: 'CUTSCENE',   // Intro cutscene playing
-    RUNNING: 'RUNNING',     // Loop active, timers decrement, physics run, state transitions occur
-    PAUSED: 'PAUSED',       // Loop paused, no updates
-    GAME_OVER: 'GAME_OVER', // Gameover screen
-    VICTORY: 'VICTORY',     // Victory screen
-    ERROR: 'ERROR'          // Error overlay
+const GameState = Object.freeze({
+    TITLE: 'TITLE',
+    MAIN_MENU: 'MAIN_MENU',
+    SETTINGS: 'SETTINGS', // NEW
+    CUTSCENE: 'CUTSCENE',
+    RUNNING: 'RUNNING',
+    PAUSED: 'PAUSED',
+    GAME_OVER: 'GAME_OVER',
+    VICTORY: 'VICTORY',
+    ERROR: 'ERROR'
 });
+let currentGameState = GameState.TITLE;
+let settingsOpenedFrom = null; // NEW: To track origin of settings menu (null, GameState.MAIN_MENU, or GameState.PAUSED)
 
-let currentGameState = GameState.TITLE; // initial state
 
-// Global state for background world generation
 let worldGenerationPromise = null;
 let isWorldGenerated = false;
 
@@ -96,12 +104,11 @@ let isWorldGenerated = false;
 
 function getWorldPixelWidth() { return Config.CANVAS_WIDTH; }
 function getWorldPixelHeight() { return Config.GRID_ROWS * Config.BLOCK_HEIGHT; }
-window.pauseGameCallback = pauseGame; // expose pauseGame globally for UI pause button
-window.updateCameraScale = function(deltaScale) { // expose updateCameraScale globally for input (mouse wheel)
+window.pauseGameCallback = pauseGame;
+window.updateCameraScale = function(deltaScale) {
     if (currentGameState !== GameState.RUNNING && currentGameState !== GameState.PAUSED) {
         return;
     }
-    // const oldScale = cameraScale; // Not used
     let newScale = cameraScale + deltaScale;
     const internalCanvasWidth = Config.CANVAS_WIDTH;
     const internalCanvasHeight = Config.CANVAS_HEIGHT;
@@ -116,7 +123,6 @@ window.updateCameraScale = function(deltaScale) { // expose updateCameraScale gl
 }
 function getMouseWorldCoords(inputMousePos) {
     if (!inputMousePos || typeof inputMousePos.x !== 'number' || typeof inputMousePos.y !== 'number' || isNaN(inputMousePos.x) || isNaN(inputMousePos.y)) {
-        // console.warn("getMouseWorldCoords: Invalid input mouse position.", inputMousePos);
         return {
             x: cameraX + (Config.CANVAS_WIDTH / 2) / cameraScale,
             y: cameraY + (Config.CANVAS_HEIGHT / 2) / cameraScale
@@ -131,61 +137,51 @@ function getMouseGridCoords(inputMousePos) {
     return GridCollision.worldToGridCoords(worldX, worldY);
 }
 function handleWaveStart(waveNumber) {
-    console.log(`Triggered by WaveManager - Starting Wave ${waveNumber}`);
+    // console.log(`Triggered by WaveManager - Starting Wave ${waveNumber}`);
 }
 window.toggleGridDisplay = toggleGridDisplay;
 function toggleGridDisplay() {
     isGridVisible = !isGridVisible;
-    console.log(`Main: Grid display is now ${isGridVisible ? 'ON' : 'OFF'}.`);
+    // console.log(`Main: Grid display is now ${isGridVisible ? 'ON' : 'OFF'}.`);
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 }
 window.toggleMusicMute = toggleMusicMute;
 function toggleMusicMute() {
     const newState = AudioManager.toggleMusicMute();
-    console.log(`Main: Music is now ${newState ? 'muted' : 'unmuted'}.`);
-    UI.updateSettingsButtonStates(isGridVisible, newState, AudioManager.getSfxMutedState()); // Pass new music state
+    // console.log(`Main: Music is now ${newState ? 'muted' : 'unmuted'}.`);
+    UI.updateSettingsButtonStates(isGridVisible, newState, AudioManager.getSfxMutedState());
 }
 window.toggleSfxMute = toggleSfxMute;
 function toggleSfxMute() {
     const newState = AudioManager.toggleSfxMute();
-    console.log(`Main: SFX is now ${newState ? 'muted' : 'unmuted'}.`);
-    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState); // Pass new SFX state
+    // console.log(`Main: SFX is now ${newState ? 'muted' : 'unmuted'}.`);
+    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
 }
 
 
-// NEW: Function to perform world generation steps in the background
 async function performBackgroundWorldGeneration() {
     if (worldGenerationPromise && isWorldGenerated) {
-        // console.log("[Main] Background world generation already completed."); // Less verbose
         return;
     }
     if (worldGenerationPromise && !isWorldGenerated) {
-        // console.log("[Main] Background world generation already in progress."); // Less verbose
         return worldGenerationPromise;
     }
-
-    console.log("[Main] Starting background world generation...");
+    // console.log("[Main] Starting background world generation...");
     isWorldGenerated = false;
-
     worldGenerationPromise = (async () => {
         try {
             WorldManager.executeInitialWorldGenerationSequence();
-
             const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
-            // console.log(`[Main Background] Applying initial world aging (${initialAgingPasses} passes)...`); // Less verbose
             for (let i = 0; i < initialAgingPasses; i++) {
                 AgingManager.applyAging(null);
             }
-            // console.log(`[Main Background] Initial world aging complete.`); // Less verbose
-
             if (!Renderer.getGridCanvas()) {
-                Renderer.createGridCanvas(); // Ensure it exists
+                Renderer.createGridCanvas();
             }
             WorldManager.renderStaticWorldToGridCanvas();
             WorldManager.seedWaterUpdateQueue();
-
             isWorldGenerated = true;
-            console.log("[Main] Background world generation COMPLETE.");
+            // console.log("[Main] Background world generation COMPLETE.");
         } catch (error) {
             console.error("[Main] FATAL error during background world generation:", error);
             isWorldGenerated = false;
@@ -204,51 +200,85 @@ function showOverlay(stateToShow) {
         console.error("ShowOverlay: Core overlay/app or game world container elements not found!");
         return;
     }
-    bootOverlayEl.className = '';
-    menuOverlayEl.className = '';
+
+    // --- 1. Resetting Classes and Visibility ---
+    bootOverlayEl.className = ''; // Clear all classes
+    menuOverlayEl.className = ''; // Clear all classes
+    appContainer.classList.remove('overlay-active'); // Remove blur by default
+
+    // Hide all individual overlay content sections
+    const allContentDivs = [
+        overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
+        overlaySettingsContentEl, overlayCutsceneContentEl, overlayPauseContentEl,
+        overlayGameOverContentEl, overlayVictoryContentEl
+    ];
+    allContentDivs.forEach(div => { if (div) div.style.display = 'none'; });
+
+    // Default game UI visibility (will be overridden for full-screen overlays)
     topSidebarEl.style.display = '';
     gameWrapperEl.style.display = '';
     bottomSidebarEl.style.display = '';
-    appContainer.classList.remove('overlay-active');
+
+    // --- 2. Handle Cutscene Specific Cleanup (if not showing cutscene) ---
     if (stateToShow !== GameState.CUTSCENE) {
         if (cutsceneImages && cutsceneImages.length > 0) {
-            cutsceneImages.forEach(img => {
-                if (img) img.classList.remove('active');
-            });
+            cutsceneImages.forEach(img => { if (img) img.classList.remove('active'); });
         }
         if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
         if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.remove('visible');
         if (cutsceneSkipButton) cutsceneSkipButton.classList.remove('visible');
     }
-    if (overlayMainMenuContentEl) overlayMainMenuContentEl.style.display = '';
-    if (overlaySettingsContentEl) overlaySettingsContentEl.style.display = '';
 
+    // --- 3. Configure Overlay Based on `stateToShow` ---
     switch (stateToShow) {
         case GameState.TITLE:
             topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
             bootOverlayEl.classList.add('show-title');
+            if (overlayTitleContentEl) overlayTitleContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
             break;
+
         case GameState.MAIN_MENU:
             topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
             menuOverlayEl.classList.add('active', 'show-mainmenu', 'force-opaque');
+            if (overlayMainMenuContentEl) overlayMainMenuContentEl.style.display = 'flex';
             AudioManager.stopGameMusic(); AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
+
+        case GameState.SETTINGS: // NEW
+            menuOverlayEl.classList.add('active', 'show-settings');
+            if (overlaySettingsContentEl) overlaySettingsContentEl.style.display = 'flex';
+            if (settingsOpenedFrom === GameState.PAUSED) {
+                // For settings from pause, keep semi-transparent background & blur
+                appContainer.classList.add('overlay-active');
+                // UI music from pause state (AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause)) should continue.
+            } else { // From Main Menu
+                menuOverlayEl.classList.add('force-opaque');
+                topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
+                // UI music from main menu (AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause)) should continue.
+            }
+            break;
+
         case GameState.CUTSCENE:
             menuOverlayEl.classList.add('active', 'show-cutscene');
-            appContainer.classList.add('overlay-active');
+            if (overlayCutsceneContentEl) overlayCutsceneContentEl.style.display = 'flex';
+            appContainer.classList.add('overlay-active'); // Blur background
             AudioManager.stopUIMusic(); AudioManager.stopGameMusic();
-            if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
+            if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = ''; // Cleared here, updated by startCutscene
             break;
+
         case GameState.PAUSED:
             menuOverlayEl.classList.add('active', 'show-pause');
+            if (overlayPauseContentEl) overlayPauseContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
             AudioManager.pauseGameMusic(); AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
+
         case GameState.GAME_OVER:
             menuOverlayEl.classList.add('active', 'show-gameover');
+            if (overlayGameOverContentEl) overlayGameOverContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
             AudioManager.stopGameMusic();
             if (gameOverStatsTextP && WaveManager) gameOverStatsTextP.textContent = `You reached Wave ${WaveManager.getCurrentWaveNumber()}!`;
@@ -256,8 +286,10 @@ function showOverlay(stateToShow) {
             if (Config.AUDIO_TRACKS.gameOver) AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver);
             else if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
+
         case GameState.VICTORY:
             menuOverlayEl.classList.add('active', 'show-victory');
+            if (overlayVictoryContentEl) overlayVictoryContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
             AudioManager.stopGameMusic();
             if (victoryStatsTextP && Config.WAVES) victoryStatsTextP.textContent = `You cleared all ${Config.WAVES.length} waves!`;
@@ -265,28 +297,41 @@ function showOverlay(stateToShow) {
             if (Config.AUDIO_TRACKS.victory) AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory);
             else if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
+
         case GameState.ERROR:
             topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
             bootOverlayEl.classList.add('show-error');
+            if (overlayErrorContentEl) overlayErrorContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
             break;
+
         default:
             console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}. Defaulting to TITLE.`);
             topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
             bootOverlayEl.classList.add('show-title');
+            if (overlayTitleContentEl) overlayTitleContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
             break;
     }
 }
 
-function hideOverlay() {
-    if (!bootOverlayEl || !menuOverlayEl || !appContainer || !topSidebarEl || !gameWrapperEl || !bottomSidebarEl) {
-        console.error("HideOverlay: Core overlay/app or game world container elements not found!");
-        return;
-    }
-    topSidebarEl.style.display = ''; gameWrapperEl.style.display = ''; bottomSidebarEl.style.display = '';
-    bootOverlayEl.className = ''; menuOverlayEl.className = '';
+
+function hideAllOverlays() { // Used when transitioning to RUNNING state
+    if (!bootOverlayEl || !menuOverlayEl || !appContainer) return;
+    bootOverlayEl.className = '';
+    menuOverlayEl.className = '';
     appContainer.classList.remove('overlay-active');
+
+    const allContentDivs = [
+        overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
+        overlaySettingsContentEl, overlayCutsceneContentEl, overlayPauseContentEl,
+        overlayGameOverContentEl, overlayVictoryContentEl
+    ];
+    allContentDivs.forEach(div => { if (div) div.style.display = 'none'; });
+
+    topSidebarEl.style.display = '';
+    gameWrapperEl.style.display = '';
+    bottomSidebarEl.style.display = '';
 }
 
 // =============================================================================
@@ -297,23 +342,31 @@ function handleTitleStart() {
     currentGameState = GameState.MAIN_MENU;
     showOverlay(GameState.MAIN_MENU);
 }
-function showMainMenu() {
-    AudioManager.stopGameMusic();
-    EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity); // Clear all enemies
-    ItemManager.clearItemsOutsideRadius(0, 0, Infinity);   // Clear all items
-    currentGameState = GameState.MAIN_MENU;
-    showOverlay(GameState.MAIN_MENU);
+
+function openSettingsFromMainMenu() {
+    settingsOpenedFrom = GameState.MAIN_MENU;
+    currentGameState = GameState.SETTINGS;
+    showOverlay(GameState.SETTINGS);
 }
-function showSettingsContent() {
-    if (currentGameState !== GameState.MAIN_MENU || !overlayMainMenuContentEl || !overlaySettingsContentEl) return;
-    overlayMainMenuContentEl.style.display = 'none';
-    overlaySettingsContentEl.style.display = 'flex';
+
+function openSettingsFromPause() {
+    settingsOpenedFrom = GameState.PAUSED;
+    currentGameState = GameState.SETTINGS; // Change state to SETTINGS
+    showOverlay(GameState.SETTINGS); // Show overlay will handle PAUSED context
 }
-function backToMainMenuFromSettings() {
-    if (currentGameState !== GameState.MAIN_MENU || !overlayMainMenuContentEl || !overlaySettingsContentEl) return;
-    overlaySettingsContentEl.style.display = 'none';
-    overlayMainMenuContentEl.style.display = 'flex';
+
+function closeSettings() {
+    if (settingsOpenedFrom === GameState.MAIN_MENU) {
+        currentGameState = GameState.MAIN_MENU;
+        showOverlay(GameState.MAIN_MENU);
+    } else if (settingsOpenedFrom === GameState.PAUSED) {
+        currentGameState = GameState.PAUSED;
+        showOverlay(GameState.PAUSED); // This will re-show the pause menu correctly
+    }
+    settingsOpenedFrom = null;
 }
+
+
 function updateCutsceneText() {
     if (!cutsceneTextContentEl || currentGameState !== GameState.CUTSCENE) {
         if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
@@ -324,6 +377,7 @@ function updateCutsceneText() {
     if (text) cutsceneTextContentEl.textContent = text;
     else cutsceneTextContentEl.textContent = '';
 }
+
 function startCutscene() {
     currentGameState = GameState.CUTSCENE;
     showOverlay(GameState.CUTSCENE);
@@ -339,7 +393,7 @@ function startCutscene() {
                  if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.add('visible');
                  if (cutsceneSkipButton) cutsceneSkipButton.classList.add('visible');
             }
-        }, 100);
+        }, 100); // Delay for text box to appear after image transition starts
     } else {
         console.error("Cutscene ERROR: First image element not found!");
         initializeAndRunGame(); // Skip to game if image missing
@@ -360,7 +414,7 @@ function updateCutscene(dt) {
             cutsceneTimer = cutsceneDurationPerImage;
             if (cutsceneImages[currentCutsceneImageIndex]) {
                 cutsceneImages[currentCutsceneImageIndex].classList.add('active');
-                setTimeout(() => {
+                setTimeout(() => { // Delay for text box
                     if (currentGameState === GameState.CUTSCENE && currentCutsceneImageIndex < cutsceneImages.length) {
                          if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.add('visible');
                          if (cutsceneSkipButton) cutsceneSkipButton.classList.add('visible');
@@ -377,7 +431,7 @@ function updateCutscene(dt) {
         }
     }
 }
-window.skipCutscene = skipCutscene; // Expose for button
+window.skipCutscene = skipCutscene;
 function skipCutscene() {
     if (currentGameState !== GameState.CUTSCENE) return;
     if (cutsceneImages[currentCutsceneImageIndex]) cutsceneImages[currentCutsceneImageIndex].classList.remove('active');
@@ -389,23 +443,19 @@ function skipCutscene() {
 }
 
 async function initializeAndRunGame() {
+    // console.log(`[Main] Attempting to initialize and run game from state: ${currentGameState}`);
     if (currentGameState === GameState.RUNNING) {
-        console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
+        // console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
         return;
-    }
-    if (currentGameState !== GameState.MAIN_MENU && currentGameState !== GameState.CUTSCENE &&
-        currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY &&
-        currentGameState !== GameState.PAUSED) {
-        // console.warn(`[main.js] initializeAndRunGame called from unexpected state: ${currentGameState}. Allowing, but investigate.`);
     }
 
     try {
         if (!isWorldGenerated) {
             if (!worldGenerationPromise) {
-                console.warn("[Main] World generation promise not found. Attempting to start generation now.");
+                // console.warn("[Main] World generation promise not found. Attempting to start generation now.");
                 await performBackgroundWorldGeneration();
             } else {
-                console.log("[Main] Waiting for background world generation to finish...");
+                // console.log("[Main] Waiting for background world generation to finish...");
                 await worldGenerationPromise;
             }
             if (!isWorldGenerated) {
@@ -416,7 +466,6 @@ async function initializeAndRunGame() {
                 showOverlay(GameState.ERROR);
                 return;
             }
-            // console.log("[Main] Background world generation confirmed complete. Proceeding with game setup."); // Less verbose
         }
 
         UI.setPlayerReference(null);
@@ -443,12 +492,12 @@ async function initializeAndRunGame() {
             } else {
                 player = new Player(playerSpawnX, playerSpawnY, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
             }
+            player.reset(); // Ensure player starts with correct defaults (like shovel equipped)
             UI.setPlayerReference(player);
             UI.setPortalReference(portal);
         } catch (error) {
             player = null; portal = null;
             console.error("[main.js] FATAL: Game Object Creation/Init Error Message:", error.message);
-            // console.error("[main.js] Error Stack:", error.stack); // Can be noisy
             currentGameState = GameState.TITLE; showOverlay(GameState.TITLE);
             if (errorOverlayMessageP) errorOverlayMessageP.textContent = `Error: Could not create game objects. ${error.message}`;
             currentGameState = GameState.ERROR; showOverlay(GameState.ERROR);
@@ -456,20 +505,17 @@ async function initializeAndRunGame() {
         }
 
         WaveManager.reset(handleWaveStart, portal);
-        // console.log("[main.js] WaveManager reset for new game."); // Less verbose
-
         calculateInitialCamera();
         isAutoPaused = false;
-        isGridVisible = false;
+        isGridVisible = false; // Default grid to off
         AudioManager.setVolume('game', Config.AUDIO_DEFAULT_GAME_VOLUME);
         AudioManager.setVolume('sfx', Config.AUDIO_DEFAULT_SFX_VOLUME);
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 
-        // console.log(`[main.js] Transitioning to GameState.RUNNING from ${currentGameState}`); // Less verbose
         currentGameState = GameState.RUNNING;
-        hideOverlay();
+        hideAllOverlays(); // Use this to ensure clean transition to game
         gameStartTime = performance.now();
-        console.log(">>> [main.js] Game Started <<<");
+        // console.log(">>> [main.js] Game Started <<<");
 
     } catch (error) {
         console.error("[main.js] FATAL Error during initializeAndRunGame:", error);
@@ -481,21 +527,22 @@ async function initializeAndRunGame() {
 
 function pauseGame() {
     if (currentGameState !== GameState.RUNNING) return;
-    console.log(">>> [main.js] Pausing Game <<<");
+    // console.log(">>> [main.js] Pausing Game <<<");
     currentGameState = GameState.PAUSED;
+    settingsOpenedFrom = null; // Reset this when pausing directly
     showOverlay(GameState.PAUSED);
 }
 function resumeGame() {
     if (currentGameState !== GameState.PAUSED) return;
-    console.log(">>> [main.js] Resuming Game <<<");
+    // console.log(">>> [main.js] Resuming Game <<<");
     isAutoPaused = false;
     currentGameState = GameState.RUNNING;
-    hideOverlay();
+    hideAllOverlays();
     AudioManager.unpauseGameMusic();
 }
 function handleGameOver() {
     if (currentGameState === GameState.GAME_OVER) return;
-    console.log(">>> [main.js] Handling Game Over <<<");
+    // console.log(">>> [main.js] Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER;
     WaveManager.setGameOver();
     EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
@@ -505,7 +552,7 @@ function handleGameOver() {
 }
 function handleVictory() {
     if (currentGameState === GameState.VICTORY) return;
-    console.log(">>> [main.js] Handling Victory! <<<");
+    // console.log(">>> [main.js] Handling Victory! <<<");
     currentGameState = GameState.VICTORY;
     WaveManager.setVictory();
     EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
@@ -513,26 +560,25 @@ function handleVictory() {
     showOverlay(GameState.VICTORY);
     isAutoPaused = false;
 }
-function restartGame() {
-    if (currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY &&
-        currentGameState !== GameState.PAUSED && currentGameState !== GameState.MAIN_MENU) {
-        return;
-    }
-    console.log(">>> [main.js] Restarting Game (Returning to Main Menu) <<<");
+function restartGame() { // This function now effectively takes you to the main menu
+    // console.log(">>> [main.js] Restarting Game (Returning to Main Menu) <<<");
     player = null; portal = null;
     UI.setPlayerReference(null); UI.setPortalReference(null);
     EnemyManager.clearAllEnemies(); ItemManager.clearAllItems();
     AudioManager.stopAllMusic();
     cameraX = 0; cameraY = 0; cameraScale = 1.0;
     isAutoPaused = false; isGridVisible = false;
+    settingsOpenedFrom = null;
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
     currentCutsceneImageIndex = 0; cutsceneTimer = 0;
-    cutsceneImages.forEach(img => img.classList.remove('active'));
+    if (cutsceneImages) cutsceneImages.forEach(img => img.classList.remove('active'));
     if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.remove('visible');
     if (cutsceneSkipButton) cutsceneSkipButton.classList.remove('visible');
     worldGenerationPromise = null;
     isWorldGenerated = false;
-    showMainMenu();
+
+    currentGameState = GameState.MAIN_MENU; // Transition to main menu
+    showOverlay(GameState.MAIN_MENU);       // Show main menu overlay
 }
 
 function gameLoop(timestamp) {
@@ -543,7 +589,7 @@ function gameLoop(timestamp) {
         rawDt = Math.min(rawDt, Config.MAX_DELTA_TIME);
         let dt = 0;
         if (currentGameState === GameState.RUNNING || currentGameState === GameState.CUTSCENE ||
-            (WaveManager.getWaveInfo().state === 'WARPPHASE' && currentGameState !== GameState.PAUSED)) { // WARPPHASE was WARP_ANIMATING
+            (WaveManager.getWaveInfo().state === 'WARP_ANIMATING' && currentGameState !== GameState.PAUSED)) {
             dt = rawDt;
         }
 
@@ -572,7 +618,7 @@ function gameLoop(timestamp) {
             if (portal && portal.isAlive()) {
                 CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
             }
-            if ((player && !player.isActive) || (portal && !portal.isAlive())) { // isActive check, not isDying
+            if ((player && !player.isActive) || (portal && !portal.isAlive())) {
                 handleGameOver();
             } else if (updatedWaveInfo.allWavesCleared) {
                 handleVictory();
@@ -581,19 +627,21 @@ function gameLoop(timestamp) {
             updateCutscene(dt);
         }
 
-        if (dt > 0) WorldManager.update(dt); // Update world animations and water sim
+        if (dt > 0) WorldManager.update(dt);
 
         Renderer.clear();
         const mainCtx = Renderer.getContext();
         const isGameWorldVisible = currentGameState === GameState.RUNNING || currentGameState === GameState.PAUSED ||
                                  currentGameState === GameState.GAME_OVER || currentGameState === GameState.VICTORY ||
-                                 (currentGameState === GameState.CUTSCENE || WaveManager.getWaveInfo().state === 'WARPPHASE'); // WARPPHASE was WARP_ANIMATING
+                                 (currentGameState === GameState.CUTSCENE && WaveManager.getWaveInfo().state !== 'PRE_WAVE') || // Show world during cutscene unless pre-wave
+                                 (WaveManager.getWaveInfo().state === 'WARP_ANIMATING');
+
 
         if (isGameWorldVisible && gameWrapperEl && gameWrapperEl.style.display !== 'none') {
             mainCtx.save();
             mainCtx.scale(cameraScale, cameraScale);
             mainCtx.translate(-cameraX, -cameraY);
-            WorldManager.draw(mainCtx); // Draws static world canvas + animations
+            WorldManager.draw(mainCtx);
             GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
             ItemManager.draw(mainCtx);
             if (portal) portal.draw(mainCtx);
@@ -602,7 +650,8 @@ function gameLoop(timestamp) {
                 player.draw(mainCtx);
                 const waveInfoAtDraw = WaveManager.getWaveInfo();
                 const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
-                const isGameplayActiveAtDraw = ['PRE_WAVE', 'WAVE_COUNTDOWN', 'BUILDPHASE', 'WARPPHASE'].includes(currentWaveManagerStateAtDraw);
+                const isGameplayActiveAtDraw = ['WAVE_COUNTDOWN', 'BUILDPHASE', 'WARP_ANIMATING'].includes(currentWaveManagerStateAtDraw);
+
                 const playerIsInteractableAtDraw = player && player.isActive && !player.isDying;
                 if (playerIsInteractableAtDraw && isGameplayActiveAtDraw && player.isMaterialSelected()) {
                     player.drawGhostBlock(mainCtx);
@@ -645,7 +694,7 @@ function gameLoop(timestamp) {
 function calculateInitialCamera() {
     if (player && player.isActive) {
         const viewWidth = Config.CANVAS_WIDTH; const viewHeight = Config.CANVAS_HEIGHT;
-        cameraScale = 1.0; // Reset scale for initial calculation
+        cameraScale = 1.0;
         const visibleWorldWidth = viewWidth / cameraScale;
         const visibleWorldHeight = viewHeight / cameraScale;
         const playerCenterX = player.x + player.width / 2;
@@ -662,7 +711,6 @@ function calculateInitialCamera() {
         if (worldPixelHeightVal <= visibleWorldHeight) cameraY = (worldPixelHeightVal - visibleWorldHeight) / 2;
     } else {
         cameraX = 0; cameraY = 0; cameraScale = 1.0;
-        // console.log("Initial Camera Set: Player not active or not found, defaulting camera to (0,0) @ scale 1.0");
     }
 }
 function calculateCameraPosition() {
@@ -674,19 +722,20 @@ function calculateCameraPosition() {
     const playerCenterY = player.y + player.height / 2;
     let targetX = playerCenterX - (visibleWorldWidth / 2);
     let targetY = playerCenterY - (visibleWorldHeight / 2);
-    cameraX = targetX; cameraY = targetY; // For smoother follow, could lerp cameraX/Y towards targetX/Y
+    cameraX = targetX; cameraY = targetY;
     const worldPixelWidthVal = getWorldPixelWidth();
     const worldPixelHeightVal = getWorldPixelHeight();
     const maxCameraX = Math.max(0, worldPixelWidthVal - visibleWorldWidth);
     const maxCameraY = Math.max(0, worldPixelHeightVal - visibleWorldHeight);
     cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
-    cameraY = Math.max(0, Math.min(cameraY, maxCameraY)); // Corrected targetY to cameraY
+    cameraY = Math.max(0, Math.min(cameraY, maxCameraY));
     if (worldPixelWidthVal <= visibleWorldWidth) cameraX = (worldPixelWidthVal - visibleWorldWidth) / 2;
     if (worldPixelHeightVal <= visibleWorldHeight) cameraY = (worldPixelHeightVal - visibleWorldHeight) / 2;
 }
 
 function init() {
     currentGameState = GameState.TITLE;
+    let success = true;
     try {
         appContainer = document.getElementById('app-container');
         bootOverlayEl = document.getElementById('boot-overlay');
@@ -694,10 +743,21 @@ function init() {
         topSidebarEl = document.getElementById('top-sidebar');
         gameWrapperEl = document.getElementById('game-wrapper');
         bottomSidebarEl = document.getElementById('bottom-sidebar');
+
+        overlayTitleContentEl = document.getElementById('overlay-title-content');
+        overlayErrorContentEl = document.getElementById('overlay-error-content');
+        overlayMainMenuContentEl = document.getElementById('overlay-mainmenu-content');
+        overlaySettingsContentEl = document.getElementById('overlay-settings-content');
+        overlayCutsceneContentEl = document.getElementById('overlay-cutscene-content');
+        overlayPauseContentEl = document.getElementById('overlay-pause-content');
+        overlayGameOverContentEl = document.getElementById('overlay-gameover-content');
+        overlayVictoryContentEl = document.getElementById('overlay-victory-content');
+
         titleStartButton = document.getElementById('start-game-button');
         mainmenuStartGameButton = document.getElementById('mainmenu-start-game-button');
         mainmenuSettingsButton = document.getElementById('mainmenu-settings-button');
         settingsBackButton = document.getElementById('settings-back-button');
+        settingsButtonPauseOverlay = document.getElementById('settings-button-overlay-pause'); // NEW
         resumeButton = document.getElementById('resume-button');
         restartButtonGameOver = document.getElementById('restart-button-overlay');
         restartButtonVictory = document.getElementById('restart-button-overlay-victory');
@@ -708,27 +768,52 @@ function init() {
         cutsceneSkipButton = document.getElementById('cutscene-skip-button');
         cutsceneTextContentEl = document.getElementById('cutscene-text-content');
         cutsceneTextContainerEl = document.getElementById('cutscene-text-box');
-        btnToggleGrid = document.getElementById('btn-toggle-grid');
-        muteMusicButtonEl = document.getElementById('btn-mute-music');
-        muteSfxButtonEl = document.getElementById('btn-mute-sfx');
+        btnToggleGrid = document.getElementById('settings-btn-toggle-grid'); // Corrected ID assumption
+        muteMusicButtonEl = document.getElementById('settings-btn-mute-music');
+        muteSfxButtonEl = document.getElementById('settings-btn-mute-sfx');
         epochOverlayEl = document.getElementById('epoch-overlay');
-        overlayMainMenuContentEl = document.getElementById('overlay-mainmenu-content');
-        overlaySettingsContentEl = document.getElementById('overlay-settings-content');
+
         cutsceneImages = [];
         Config.CUTSCENE_IMAGE_PATHS.forEach((_, index) => {
             const img = document.getElementById(`cutscene-image-${index + 1}`);
             if (img) cutsceneImages.push(img);
+            else console.warn(`Cutscene image cutscene-image-${index + 1} not found.`);
         });
-        // ... (element existence check as before) ...
+
+        const requiredCoreElements = [appContainer, bootOverlayEl, menuOverlayEl, topSidebarEl, gameWrapperEl, bottomSidebarEl, epochOverlayEl];
+        const requiredContentElements = [
+            overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl, overlaySettingsContentEl,
+            overlayCutsceneContentEl, overlayPauseContentEl, overlayGameOverContentEl, overlayVictoryContentEl
+        ];
+        const requiredButtonElements = [
+            titleStartButton, mainmenuStartGameButton, mainmenuSettingsButton, settingsBackButton, settingsButtonPauseOverlay,
+            resumeButton, restartButtonGameOver, restartButtonVictory, restartButtonPause, cutsceneSkipButton,
+            btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl
+        ];
+        const requiredTextElements = [gameOverStatsTextP, victoryStatsTextP, errorOverlayMessageP, cutsceneTextContentEl, cutsceneTextContainerEl];
+
+        [...requiredCoreElements, ...requiredContentElements, ...requiredButtonElements, ...requiredTextElements].forEach(el => {
+            if (!el) {
+                // Find the variable name for the missing element for better error message
+                const varName = Object.keys(window).find(key => window[key] === el) || // For globals if they were
+                                Object.keys(this).find(key => this[key] === el) ||    // For `this` if in a class
+                                "an unknown element (check init())";                  // Fallback
+                console.error(`FATAL INIT ERROR: UI Element "${varName}" (or one by its ID) not found in HTML.`);
+                success = false;
+            }
+        });
+        if (!success) throw new Error("One or more critical UI elements are missing from the HTML.");
+
 
         Renderer.init();
         AudioManager.init();
         AgingManager.init();
-        if (!UI.initGameUI()) throw new Error("FATAL INIT ERROR: UI initialization failed.");
+        if (!UI.initGameUI()) throw new Error("FATAL INIT ERROR: UI.initGameUI() failed.");
         Input.init();
 
         lastTime = 0; isAutoPaused = false; isGridVisible = false;
         currentCutsceneImageIndex = 0; cutsceneTimer = 0;
+        settingsOpenedFrom = null;
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 
         performBackgroundWorldGeneration().catch(err => {
@@ -745,8 +830,9 @@ function init() {
         document.addEventListener('visibilitychange', handleVisibilityChange);
         titleStartButton.addEventListener('click', handleTitleStart);
         mainmenuStartGameButton.addEventListener('click', startCutscene);
-        mainmenuSettingsButton.addEventListener('click', showSettingsContent);
-        settingsBackButton.addEventListener('click', backToMainMenuFromSettings);
+        mainmenuSettingsButton.addEventListener('click', openSettingsFromMainMenu);
+        settingsButtonPauseOverlay.addEventListener('click', openSettingsFromPause); // NEW
+        settingsBackButton.addEventListener('click', closeSettings);                // MODIFIED
         resumeButton.addEventListener('click', resumeGame);
         restartButtonGameOver.addEventListener('click', restartGame);
         restartButtonVictory.addEventListener('click', restartGame);
@@ -758,8 +844,8 @@ function init() {
 
     } catch (error) {
         console.error("FATAL: Initialization Error:", error);
-        if (bootOverlayEl && errorOverlayMessageP) {
-            errorOverlayMessageP.textContent = `Error: ${error.message}`;
+        if (bootOverlayEl && errorOverlayMessageP && currentGameState !== GameState.ERROR) {
+            errorOverlayMessageP.textContent = `Initialization Error: ${error.message}. Check console.`;
             currentGameState = GameState.ERROR;
             showOverlay(GameState.ERROR);
         } else {

@@ -164,13 +164,13 @@ body {
 #bottom-sidebar {
     flex-shrink: 0;
     width: 100%;
-    padding: 0.5rem 0.5rem; 
+    padding: 0.5rem 0.5rem;
     box-sizing: border-box;
     border: 0.2rem solid white;
     position: relative;
     display: flex;
     flex-direction: column;
-    min-height: 18%; 
+    min-height: 18%;
     transition: min-height 0.3s ease-in-out;
     overflow-y: auto;
 }
@@ -291,38 +291,46 @@ body {
     flex-direction: column;
     text-align: center;
     color: white;
+    /* Hidden by default */
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s; /* Default for fade-out */
 }
+
+/* --- Boot Overlay (Opaque for Title/Error) --- */
 #boot-overlay {
-    background-color: black;
-    z-index: 200;
+    background-color: black; /* Fully opaque */
+    z-index: 200; /* Higher z-index */
 }
 #boot-overlay.show-title,
 #boot-overlay.show-error {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s;
+    transition: opacity 0.3s ease, visibility 0s linear 0s; /* Faster visibility for fade-in */
 }
+
+/* --- Menu Overlay (Semi-transparent for Menus, Pause, etc.) --- */
 #menu-overlay {
-    background-color: rgba(0, 0, 0, 0.75);
+    background-color: rgba(0, 0, 0, 0.75); /* Semi-transparent default */
     z-index: 100;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0s;
 }
+/* New class to be added by JS for opaque states (e.g., main menu, or settings from main menu) */
 #menu-overlay.force-opaque {
-    background-color: black;
+    background-color: black; /* Fully opaque */
 }
-#menu-overlay.active {
+#menu-overlay.active { /* This class makes the menu overlay visible */
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
     transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
 }
+
+/* --- Overlay Content Styling --- */
 .overlay-content {
-    display: none;
+    display: none; /* All overlay content divs are hidden by default, JS will set display:flex */
     flex-direction: column;
     align-items: center;
     width: 80%;
@@ -330,52 +338,53 @@ body {
     padding: 20px;
     box-sizing: border-box;
 }
-#boot-overlay.show-title #overlay-title-content,
-#boot-overlay.show-error #overlay-error-content {
-    display: flex;
-}
-#menu-overlay.active.show-mainmenu #overlay-mainmenu-content,
-#menu-overlay.active.show-settings #overlay-settings-content,
-#menu-overlay.active.show-cutscene #overlay-cutscene-content,
-#menu-overlay.active.show-pause #overlay-pause-content,
-#menu-overlay.active.show-gameover #overlay-gameover-content,
-#menu-overlay.active.show-victory #overlay-victory-content {
-    display: flex;
-}
+
+/* JS will manage display:flex on the correct child .overlay-content div.
+   The classes like .show-title on #boot-overlay or .show-mainmenu on #menu-overlay
+   are now primarily for semantic state or if CSS needs to target the parent overlay
+   based on what it's showing.
+*/
+
+/* Specific styles for the cutscene container when active (layout properties) */
 #menu-overlay.active.show-cutscene #overlay-cutscene-content {
     width: 100%;
     height: 100%;
     max-width: none;
-    position: relative;
+    position: relative; /* Important for absolute positioning of children */
 }
+
+/* Styles for the new Settings Menu layout */
 #overlay-settings-content {
-    display: none;
+    /* display: none; is handled by .overlay-content default */
     flex-direction: column;
     align-items: center;
     width: 80%;
-    max-width: 400px;
+    max-width: 400px; /* Adjusted max-width */
     padding: 20px;
     box-sizing: border-box;
-    gap: 15px;
+    gap: 15px; /* Add gap between rows */
 }
+
 .settings-row {
-    display: flex;
-    justify-content: space-between;
+    display: flex; /* Use flexbox for row layout */
+    justify-content: space-between; /* Space out button and value */
     align-items: center;
     width: 100%;
-    padding: 5px 0;
+    padding: 5px 0; /* Add some padding */
 }
+
+/* Style the new settings buttons */
 #overlay-settings-content .settings-button {
     padding: 10px 20px;
     font-size: 1.1em;
-    min-width: 180px;
-    text-align: left;
-    cursor: pointer; 
-    border-radius: 5px; 
-    border: 1px solid #ccc; 
-    background-color: #eee; 
-    color: #333; 
-    font-weight: bold; 
+    min-width: 180px; /* Give buttons a minimum width */
+    text-align: left; /* Align text left */
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    background-color: #eee;
+    color: #333;
+    font-weight: bold;
     transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
 }
 #overlay-settings-content .settings-button:hover {
@@ -384,32 +393,39 @@ body {
 #overlay-settings-content .settings-button:active {
     transform: scale(0.97);
 }
+
+/* Style the placeholder spans for setting values */
 #overlay-settings-content .settings-row span {
     font-size: 1.1em;
     font-weight: bold;
-    color: #ccc;
-    min-width: 50px;
+    color: #ccc; /* Lighter color for the value */
+    min-width: 50px; /* Ensure space for ON/OFF/MUTED */
     text-align: right;
 }
-#overlay-settings-content .settings-button.muted, 
-#overlay-settings-content .settings-button.active {
+
+/* Keep styles for muted/active states, they will apply to the new buttons */
+#overlay-settings-content .settings-button.muted,
+#overlay-settings-content .settings-button.active { /* .active for grid button */
     border-color: darkred;
     color: darkred;
     background-color: #fee;
 }
+
+/* Specific for grid button when active */
 #overlay-settings-content #settings-btn-toggle-grid.active {
     background-color: #dfd;
     border-color: darkgreen;
     color: darkgreen;
 }
-#boot-overlay.show-error {
+
+/* Styles for the Error Overlay (within #boot-overlay) */
+#boot-overlay.show-error { /* Background and general color for error overlay */
     background-color: rgba(0, 0, 0, 0.95);
     color: red;
-    padding: 20px;
+    padding: 20px; /* Original had this on the #boot-overlay.show-error */
 }
-#overlay-error-content {
-    max-width: 600px;
-}
+
+/* #overlay-error-content will use max-width from .overlay-content (500px) */
 #overlay-error-content h1 {
     font-family: 'RubikIso', sans-serif;
     font-size: 2.5em;
@@ -436,6 +452,8 @@ body {
     font-size: 1em;
     color: #ffdddd;
 }
+
+/* General Overlay Text & Button Styling */
 #boot-overlay h1, #menu-overlay h1 {
     font-family: 'RubikIso', sans-serif;
     font-size: 3.5em;
@@ -457,6 +475,8 @@ body {
 #boot-overlay button:active, #menu-overlay button:active {
     transform: scale(0.97);
 }
+
+/* Title Screen Button Styles (within #boot-overlay #overlay-title-content) */
 #overlay-title-content #start-game-button {
     background-color: black;
     color: white;
@@ -472,6 +492,8 @@ body {
     border-color: #e0e0e0;
     transform: scale(0.97);
 }
+
+/* Restart Button Styles (within #menu-overlay various content divs) */
 #restart-button-overlay,
 #restart-button-overlay-pause {
     background-color: darkred; color: white; border-color: #ffaaaa;
@@ -486,6 +508,18 @@ body {
 #restart-button-overlay-victory:hover {
     background-color: green;
 }
+
+/* NEW: Style for Settings button in Pause Menu */
+#settings-button-overlay-pause {
+    background-color: #555; /* Darker grey, distinct from resume/restart */
+    color: white;
+    border-color: #888;
+}
+#settings-button-overlay-pause:hover {
+    background-color: #666;
+}
+
+
 #app-container.overlay-active > #top-sidebar,
 #app-container.overlay-active > #game-wrapper,
 #app-container.overlay-active > #bottom-sidebar {
@@ -520,13 +554,19 @@ noscript p {
 #top-sidebar::-webkit-scrollbar, #bottom-sidebar::-webkit-scrollbar {
     display: none;
 }
-#top-sidebar, #bottom-sidebar {
+#top-sidebar, #bottom-sidebar { /* For Firefox scrollbar hiding */
     -ms-overflow-style: none; scrollbar-width: none;
 }
+
+/* Cutscene Specific Styles (within #menu-overlay #overlay-cutscene-content) */
+/* #overlay-cutscene-content itself inherits display:none from .overlay-content.
+   JS will set display:flex when it's active.
+   The #menu-overlay.active.show-cutscene #overlay-cutscene-content rule above handles layout.
+*/
 #overlay-cutscene-content {
     position: relative;
     overflow: hidden;
-    display: flex;
+    /* display: flex; is now handled by JS for .overlay-content */
     flex-direction: column;
     justify-content: center;
     align-items: center;
@@ -552,7 +592,7 @@ noscript p {
     transition: opacity 0.7s ease-in-out, visibility 0s linear 0.7s;
     pointer-events: none;
 }
-#menu-overlay.active.show-cutscene #cutscene-text-box {
+#menu-overlay.active.show-cutscene #cutscene-text-box { /* This rule makes the textbox appear when cutscene content is shown */
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -573,7 +613,7 @@ noscript p {
     font-family: 'Arial', sans-serif;
     box-shadow: 0 2px 15px rgba(0,0,0,0.6);
 }
-#menu-overlay.active.show-cutscene #overlay-cutscene-content #cutscene-skip-button {
+#menu-overlay.active.show-cutscene #overlay-cutscene-content #cutscene-skip-button { /* This makes skip button appear with cutscene */
     position: absolute;
     bottom: 1rem;
     right: 1rem;
@@ -585,7 +625,7 @@ noscript p {
     border-color: rgba(255, 255, 255, 0.3);
 }
 #cutscene-text-box.visible,
-#overlay-cutscene-content #cutscene-skip-button.visible {
+#overlay-cutscene-content #cutscene-skip-button.visible { /* JS adds .visible for fade-in effect of text/skip button */
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -608,6 +648,7 @@ noscript p {
     transform: scale(0.97);
     background-color: rgba(0, 0, 0, 0.9);
 }
+
 @media (orientation: portrait) {
     #app-container { display: none; }
     #landscape-warning { display: flex; }
