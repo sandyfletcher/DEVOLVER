@@ -17,31 +17,28 @@ export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
 
 export const ISLAND_WIDTH_MIN = 0.75; // minimum width of island
 export const ISLAND_WIDTH_MAX = 0.85; // as percentage of GRID_COLS
-
 export const WATER_LEVEL_FRACTION = 0.25; // % of bottom GRID_ROWS water covers
 export const WATER_LEVEL = Math.floor(GRID_ROWS * (1.0 - WATER_LEVEL_FRACTION)); // calculate target row for water surface
-
 export const MEAN_GROUND_LEVEL = WATER_LEVEL - Math.floor(GRID_ROWS * 0.20); // mean row for ground surface
-
 export const AVERAGE_SUBSURFACE_LANDMASS_THICKNESS = (GRID_ROWS - 1) - MEAN_GROUND_LEVEL;
 export const DIRT_LAYER_THICKNESS_FACTOR = 0.7;
 export const STONE_DEPTH_BELOW_GROUND = Math.max(3, Math.round(DIRT_LAYER_THICKNESS_FACTOR * AVERAGE_SUBSURFACE_LANDMASS_THICKNESS)); // # of rows deep stone starts below average ground level
 export const MEAN_STONE_LEVEL = MEAN_GROUND_LEVEL + STONE_DEPTH_BELOW_GROUND; // mean row for top of stone layer
-
 export const WORLD_GROUND_VARIATION = 4; // Variation in rows for ground level noise
 export const WORLD_STONE_VARIATION = 2; // Variation in rows for stone level noise
 export const WORLD_NOISE_SCALE = 0.03; // Scale factor for Perlin noise used in terrain generation
 
 // --- Terrain Octave Parameters ---
+
 export const GROUND_NOISE_OCTAVES = 4;        // Number of octaves for ground surface noise
 export const GROUND_NOISE_PERSISTENCE = 0.5;  // Amplitude multiplier for each subsequent octave
 export const GROUND_NOISE_LACUNARITY = 2.0;   // Frequency multiplier for each subsequent octave
-
 export const STONE_NOISE_OCTAVES = 3;         // Number of octaves for stone layer noise
 export const STONE_NOISE_PERSISTENCE = 0.45;
 export const STONE_NOISE_LACUNARITY = 2.2;
 
 // --- Cave Generation Parameters ---
+
 export const ENABLE_CAVES = true;
 export const CAVE_NOISE_SCALE_X = 0.08; // Scale for 2D Perlin noise for caves (adjust for smaller/larger caves)
 export const CAVE_NOISE_SCALE_Y = 0.07; // Can be different for X and Y to stretch caves
@@ -51,13 +48,14 @@ export const CAVE_MIN_ROWS_ABOVE_BOTTOM = 15; // Caves stop at least this many r
 export const CAVE_EDGE_ZONE_PERCENTAGE = 0.20; // Percentage of map width for edge zones (0.0 to 0.5)
 export const CAVE_EDGE_WATER_PROTECTION_DEPTH = 3; // How many blocks above/below water level to protect in edge zones
 
+// --- Beach Smoothing Parameters ---
+
 export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WATER_LEVEL + 5; // Target row for ocean floor near the island
 export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // Target row for ocean stone near the island
 export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1); // Offset in rows for deep ocean from water level
 export const DEEP_OCEAN_MAX_ROW = GRID_ROWS - 3; // Maximum row depth for the deep ocean floor
 export const DEEP_OCEAN_FLOOR_START_ROW = Math.min(DEEP_OCEAN_MAX_ROW, WATER_LEVEL + DEEP_OCEAN_BASE_ROW_OFFSET); // Starting row for deep ocean floor
 export const DEEP_OCEAN_STONE_START_ROW = DEEP_OCEAN_FLOOR_START_ROW + 8; // Starting row for deep ocean stone
-
 export const EDGE_TAPER_WIDTH_FACTOR = 0.15; // Percentage of GRID_COLS for edge tapering
 export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 15; // Target stone level offset (in rows) at the absolute world edge
 export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 20; // Target floor level offset (in rows) at the absolute world edge
@@ -69,7 +67,7 @@ export const AGING_NOISE_SCALE = 0.03;   // Scale for Perlin noise used in aging
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 0.45); // Threshold in rows for stoneification.
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT; // Threshold in pixels.
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
-export const AGING_INITIAL_PASSES = 15; // Number of aging passes on initial world generation.
+export const AGING_INITIAL_PASSES = 25; // Number of aging passes on initial world generation.
 export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default aging passes between waves.
 export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Probabilities (chance per eligible block per pass)
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
@@ -79,12 +77,12 @@ export const AGING_PROB_HORIZONTAL_SAND_SPREAD = 0.85; // Chance for dirt/VEGETA
 export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001;
 export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
-
 export const AGING_PROB_VEGETATION_GROWTH_BASE = 0.1;         // Base probability if ANY side is exposed to air
 export const AGING_PROB_VEGETATION_GROWTH_PER_AIR_SIDE = 0.2; // Additional probability per air-exposed side
 export const AGING_MAX_AIR_SIDES_FOR_VEGETATION_BONUS = 3;    // Max number of air sides that contribute to bonus probability (e.g., 1-3 sides 
 
-// --- NEW: Vegetation & Tree Growth Parameters ---
+// --- Tree Growth Parameters ---
+
 export const AGING_PROB_VEGETATION_GROW_UP = 0.05; // Chance for existing VEGETATION to grow upwards into AIR
 export const TREE_MIN_HEIGHT_TO_FORM = 5;         // Minimum contiguous VEGETATION blocks required to form a tree
 export const TREE_INITIAL_CANOPY_RADIUS = 2;      // Radius (in blocks) of the initial VEGETATION canopy when a tree forms (0=just top, 1=3x3, 2=5x5)
@@ -103,8 +101,6 @@ export const AGING_ANIMATION_SWELL_SCALE = 1.8;   // Max scale factor during swe
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
 export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (bddriefly)
 export const WARPPHASE_DURATION = 8.0; // Fixed duration of WARP PHASE in seconds (time-based).
-
-// --- Time-based Animation Parameters ---
 
 export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // Total time in seconds for enemy death animation.
 export const ENEMY_SWELL_DURATION = 0.3;        // Time in seconds for the swell part of enemy death.
@@ -125,7 +121,6 @@ export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
 export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
 export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70%
 export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // show X when HP <= 30%
-
 export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
 export const CAN_PLACE_IN_WATER = false;
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
@@ -135,18 +130,18 @@ export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
 
 export const GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ = 100; // Base acceleration in block heights per second squared.
 export const GRAVITY_ACCELERATION = GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_HEIGHT; // Pixels per second squared.
-
 export const MAX_FALL_SPEED_BLOCKS_PER_SEC = 120; // Base max fall speed in block heights per second.
 export const MAX_FALL_SPEED = MAX_FALL_SPEED_BLOCKS_PER_SEC * BLOCK_HEIGHT; // Pixels per second.
-
 export const MAX_DELTA_TIME = 0.05; // Max time step in seconds to prevent physics glitches (~20fps min simulation).
 
 // Entity step-up allowance, defined as factors of entity height (already relative to scaled entity).
+
 export const ENTITY_STEP_TIER1_MAX_HEIGHT_FACTOR = 1/3;
 export const ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR = 1/2;
 export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.7; // Factor to multiply horizontal velocity by after a tier 2 step.
 
 // Water physics factors (unitless multipliers).
+
 export const WATER_GRAVITY_FACTOR = 0.4;
 export const WATER_HORIZONTAL_DAMPING = 0.1; // Lower values mean stronger damping.
 export const WATER_VERTICAL_DAMPING = 0.05;
@@ -154,18 +149,15 @@ export const WATER_MAX_SPEED_FACTOR = 0.6;
 export const WATER_ACCELERATION_FACTOR = 0.5;
 
 // Water movement speeds defined in block units, then scaled to pixels.
+
 export const WATER_SWIM_VELOCITY_BLOCKS_PER_SEC = 50; // Base upward speed from a swim 'stroke' in block heights/sec.
 export const WATER_SWIM_VELOCITY = WATER_SWIM_VELOCITY_BLOCKS_PER_SEC * BLOCK_HEIGHT; // Pixels per second.
-
 export const WATER_MAX_SWIM_UP_SPEED_BLOCKS_PER_SEC = 20; // Base max upward swim speed in block heights/sec.
 export const WATER_MAX_SWIM_UP_SPEED = WATER_MAX_SWIM_UP_SPEED_BLOCKS_PER_SEC * BLOCK_HEIGHT; // Pixels per second.
-
 export const WATER_MAX_SINK_SPEED_BLOCKS_PER_SEC = 25; // Base max downward speed in water in block heights/sec.
 export const WATER_MAX_SINK_SPEED = WATER_MAX_SINK_SPEED_BLOCKS_PER_SEC * BLOCK_HEIGHT; // Pixels per second.
-
 export const ENEMY_WATER_BUOYANCY_ACCEL_BLOCKS_PER_SEC_SQ = 45; // Base buoyancy acceleration in block heights/sec^2.
 export const ENEMY_WATER_BUOYANCY_ACCEL = ENEMY_WATER_BUOYANCY_ACCEL_BLOCKS_PER_SEC_SQ * BLOCK_HEIGHT; // Pixels/sec^2.
-
 export const WATER_JUMP_COOLDOWN_DURATION = 0.2; // Time in seconds.
 export const WATER_PROPAGATION_DELAY = 0.05;    // Time in seconds between water simulation ticks.
 export const WATER_UPDATES_PER_FRAME = 500;   // Max number of water cells to process per simulation tick.
@@ -230,22 +222,16 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
 export const PORTAL_COLOR = 'rgb(100, 100, 255)';
 export const PORTAL_WIDTH_BLOCKS = 6;  // Portal width in block units.
 export const PORTAL_HEIGHT_BLOCKS = 8; // Portal height in block units
-
 export const PORTAL_BORDER_COLOR = 'silver';
 export const PORTAL_BORDER_WIDTH = 10; // Pixel width of the border
-
 export const PORTAL_WIDTH = PORTAL_WIDTH_BLOCKS * BLOCK_WIDTH;   // Pixel width.
 export const PORTAL_HEIGHT = PORTAL_HEIGHT_BLOCKS * BLOCK_HEIGHT; // Pixel height.
 export const PORTAL_INITIAL_HEALTH = 500;
-
 export const PORTAL_ABSORB_ANIMATION_DURATION = 0.75; // seconds
-
 export const PORTAL_SAFETY_RADIUS_BLOCKS = 30; // Radius in block units.
 export const PORTAL_SAFETY_RADIUS = PORTAL_SAFETY_RADIUS_BLOCKS * BASE_BLOCK_PIXEL_SIZE; // Pixel radius.
-
 export const PORTAL_RADIUS_GROWTH_PER_WAVE_BLOCKS = 5; // Radius growth in block units per intermission.
 export const PORTAL_RADIUS_GROWTH_PER_WAVE = PORTAL_RADIUS_GROWTH_PER_WAVE_BLOCKS * BASE_BLOCK_PIXEL_SIZE; // Pixel growth.
-
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above mean ground for portal top.
 
 // --- Player Parameters ---
@@ -255,66 +241,46 @@ export const PLAYER_WIDTH_BLOCKS = 3;  // Player width in block units.
 export const PLAYER_HEIGHT_BLOCKS = 6; // Player height in block units.
 export const PLAYER_WIDTH = PLAYER_WIDTH_BLOCKS * BLOCK_WIDTH;   // Pixel width.
 export const PLAYER_HEIGHT = PLAYER_HEIGHT_BLOCKS * BLOCK_HEIGHT; // Pixel height.
-
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2; // Player start position (pixels, derived from block-based world constants).
 export const PLAYER_START_Y = (MEAN_GROUND_LEVEL * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT);
-
 export const PLAYER_INITIAL_HEALTH = 100;       // Unitless.
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;   // Unitless, for UI.
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // Seconds.
-
 export const PLAYER_MOVE_ACCELERATION_BLOCKS_PER_SEC_SQ = 200; // Base acceleration in block widths/sec^2.
 export const PLAYER_MOVE_ACCELERATION = PLAYER_MOVE_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_WIDTH; // Pixels/sec^2.
-
 export const PLAYER_MAX_SPEED_X_BLOCKS_PER_SEC = 30; // Base max horizontal speed in block widths/sec.
 export const PLAYER_MAX_SPEED_X = PLAYER_MAX_SPEED_X_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixels/sec.
-
 export const PLAYER_FRICTION_BASE = 0.01; // Factor for ground friction (lower means stronger friction).
-
 export const PLAYER_JUMP_VELOCITY_BLOCKS_PER_SEC = 50; // Base initial upward velocity in block heights/sec.
 export const PLAYER_JUMP_VELOCITY = PLAYER_JUMP_VELOCITY_BLOCKS_PER_SEC * BLOCK_HEIGHT; // Pixels/sec.
-
 export const PLAYER_INTERACTION_RANGE_BLOCKS = 12; // Max interaction distance in block units.
 export const PLAYER_INTERACTION_RANGE = PLAYER_INTERACTION_RANGE_BLOCKS * BLOCK_WIDTH; // Pixel range.
 export const PLAYER_INTERACTION_RANGE_SQ = PLAYER_INTERACTION_RANGE * PLAYER_INTERACTION_RANGE; // Squared pixel range.
-
 export const PLAYER_ITEM_ATTRACT_RADIUS_BLOCKS = 25; // Item attraction distance in block units.
 export const PLAYER_ITEM_ATTRACT_RADIUS = PLAYER_ITEM_ATTRACT_RADIUS_BLOCKS * BLOCK_WIDTH; // Pixel radius.
 export const PLAYER_ITEM_ATTRACT_RADIUS_SQ = PLAYER_ITEM_ATTRACT_RADIUS * PLAYER_ITEM_ATTRACT_RADIUS; // Squared pixel radius.
-
 export const PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SEC = 60; // Base speed for attracted items in block widths/sec.
 export const PLAYER_ITEM_ATTRACT_SPEED = PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixels/sec.
-
 export const PLAYER_PLACEMENT_COOLDOWN = 0.01; // seconds between block placement
 
 // --- Items & Weapons ---
 
 export const ITEM_BOBBLE_AMOUNT = 0.15; // Factor relative to item height.
 export const ITEM_BOBBLE_SPEED = 2.0;   // Radians per second for bobbing cycle (time-based).
-
-// Weapon types (string constants)
-export const WEAPON_TYPE_UNARMED = 'unarmed';
+export const WEAPON_TYPE_UNARMED = 'unarmed'; // Weapon types (string constants)
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
 export const WEAPON_TYPE_SPEAR = 'spear';
-
-// Weapon dimensions (defined in block units, then scaled to pixels).
-export const SHOVEL_WIDTH_BLOCKS = 1; export const SHOVEL_HEIGHT_BLOCKS = 2;
+export const SHOVEL_WIDTH_BLOCKS = 1; export const SHOVEL_HEIGHT_BLOCKS = 2; // Weapon dimensions (defined in block units, then scaled to pixels).
 export const SHOVEL_WIDTH = SHOVEL_WIDTH_BLOCKS * BLOCK_WIDTH; export const SHOVEL_HEIGHT = SHOVEL_HEIGHT_BLOCKS * BLOCK_HEIGHT;
-
 export const SWORD_WIDTH_BLOCKS = 3; export const SWORD_HEIGHT_BLOCKS = 1;
 export const SWORD_WIDTH = SWORD_WIDTH_BLOCKS * BLOCK_WIDTH; export const SWORD_HEIGHT = SWORD_HEIGHT_BLOCKS * BLOCK_HEIGHT;
-
 export const SPEAR_WIDTH_BLOCKS = 4; export const SPEAR_HEIGHT_BLOCKS = 1;
 export const SPEAR_WIDTH = SPEAR_WIDTH_BLOCKS * BLOCK_WIDTH; export const SPEAR_HEIGHT = SPEAR_HEIGHT_BLOCKS * BLOCK_HEIGHT;
-
-// Weapon colors (fixed)
-export const SHOVEL_COLOR = 'rgb(160, 160, 160)';
+export const SHOVEL_COLOR = 'rgb(160, 160, 160)'; // Weapon colors (fixed)
 export const SWORD_COLOR = 'rgb(180, 180, 190)';
 export const SPEAR_COLOR = 'rgb(210, 180, 140)';
-
-// Player attack damage (unitless), reach/hitbox (block units -> pixels), durations (seconds).
-export const PLAYER_SHOVEL_ATTACK_DAMAGE = 5;
+export const PLAYER_SHOVEL_ATTACK_DAMAGE = 5; // Player attack damage (unitless), reach/hitbox (block units -> pixels), durations (seconds).
 export const PLAYER_SHOVEL_BLOCK_DAMAGE = 25;
 export const PLAYER_SHOVEL_ATTACK_REACH_X_BLOCKS = PLAYER_WIDTH_BLOCKS/2 + SHOVEL_WIDTH_BLOCKS*1.5;
 export const PLAYER_SHOVEL_ATTACK_REACH_X = PLAYER_SHOVEL_ATTACK_REACH_X_BLOCKS * BLOCK_WIDTH;
@@ -327,7 +293,6 @@ export const PLAYER_SHOVEL_ATTACK_HEIGHT = PLAYER_SHOVEL_ATTACK_HEIGHT_BLOCKS * 
 export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3;
 export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.4;
 export const PLAYER_SHOVEL_ATTACK_COLOR = 'rgba(180, 180, 180, 0.5)';
-
 export const PLAYER_SWORD_ATTACK_DAMAGE = 15;
 export const PLAYER_SWORD_BLOCK_DAMAGE = 0;
 export const PLAYER_SWORD_ATTACK_REACH_X_BLOCKS = PLAYER_WIDTH_BLOCKS * 0.8;
@@ -341,7 +306,6 @@ export const PLAYER_SWORD_ATTACK_HEIGHT = PLAYER_SWORD_ATTACK_HEIGHT_BLOCKS * BL
 export const PLAYER_SWORD_ATTACK_DURATION = 0.2;
 export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.3;
 export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
-
 export const PLAYER_SPEAR_ATTACK_DAMAGE = 8;
 export const PLAYER_SPEAR_BLOCK_DAMAGE = 0;
 export const PLAYER_SPEAR_ATTACK_REACH_X_BLOCKS = PLAYER_WIDTH_BLOCKS * 1.2;
@@ -355,9 +319,7 @@ export const PLAYER_SPEAR_ATTACK_HEIGHT = PLAYER_SPEAR_ATTACK_HEIGHT_BLOCKS * BL
 export const PLAYER_SPEAR_ATTACK_DURATION = 0.3;
 export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5;
 export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)';
-
-// Item configuration (pixel dimensions are derived from block-unit constants above).
-export const ITEM_CONFIG = {
+export const ITEM_CONFIG = { // Item configuration (pixel dimensions are derived from block-unit constants above).
     [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
     [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
     [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
@@ -369,9 +331,7 @@ export const ITEM_CONFIG = {
     'metal': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_METAL] },
     'bone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_BONE] },
 };
-
-// Crafting recipes (fixed material types and amounts)
-export const CRAFTING_RECIPES = {
+export const CRAFTING_RECIPES = { // Crafting recipes (fixed material types and amounts)
     [WEAPON_TYPE_SWORD]: [{ type: 'stone', amount: 5 }],
     [WEAPON_TYPE_SPEAR]: [{ type: 'wood', amount: 2 }, { type: 'stone', amount: 1 }],
 };
@@ -379,38 +339,26 @@ export const CRAFTING_RECIPES = {
 // --- Enemy Parameters ---
 
 export const MAX_ENEMIES = 150; // TODO: determine if necessary or if being restrictive for future spawning logic
-
 export const ENEMY_SPAWN_EDGE_MARGIN_BLOCKS = 10; // Distance from screen edge in block units.
 export const ENEMY_SPAWN_EDGE_MARGIN = ENEMY_SPAWN_EDGE_MARGIN_BLOCKS * BLOCK_WIDTH; // Pixel margin.
-
 export const ENEMY_FLASH_DURATION = 0.15; // Seconds (time-based).
-
 export const DEFAULT_ENEMY_WIDTH_BLOCKS = 2;
 export const DEFAULT_ENEMY_HEIGHT_BLOCKS = 2;
 export const DEFAULT_ENEMY_WIDTH = DEFAULT_ENEMY_WIDTH_BLOCKS * BLOCK_WIDTH;   // Pixel width (for reference, Enemy.js calculates its own).
 export const DEFAULT_ENEMY_HEIGHT = DEFAULT_ENEMY_HEIGHT_BLOCKS * BLOCK_HEIGHT; // Pixel height.
-
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // Factor of enemy's own width.
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC = 15; // Base push strength in block widths/sec
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixel strength/sec (for reference)
-
-// Enemy types (string constants)
-export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
+export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker'; // Enemy types (string constants)
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
-
-// Tetrapod specific constants (damage is unitless, velocity is block units).
-export const TETRAPOD_WATER_CONTACT_DAMAGE = 1;
+export const TETRAPOD_WATER_CONTACT_DAMAGE = 1; // Tetrapod specific constants (damage is unitless, velocity is block units).
 export const TETRAPOD_LAND_FLOP_DAMAGE = 1;
 export const TETRAPOD_LAND_STILL_DAMAGE = 0;
 export const TETRAPOD_FLOP_ATTACK_DURATION = 0.2; // Seconds (time-based).
 export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5; // Seconds (time-based).
 export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0; // Seconds (time-based).
-
-// Enemy Stats: Speeds/velocities/forces are base values in block units per second (or per sec^2).
-// These will be scaled in enemy.js based on the *current* BLOCK_WIDTH/HEIGHT.
-// Dimensions are in block units. Health/damage are unitless.
-export const ENEMY_STATS = {
+export const ENEMY_STATS = { // Enemy Stats: Speeds/velocities/forces are base values in block units per second (or per sec^2).
     [ENEMY_TYPE_TETRAPOD]: {
         displayName: "Tetrapod", aiType: 'flopAI', color: 'rgb(100, 120, 80)',
         width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS,     // Width in block units.
@@ -431,9 +379,9 @@ export const ENEMY_STATS = {
         displayName: "Seeker", aiType: 'seekCenter', color: 'rgb(80, 150, 80)',
         width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS,
         height_BLOCKS: DEFAULT_ENEMY_HEIGHT_BLOCKS,
-        maxSpeedX_BLOCKS_PER_SEC: 10,    // Formerly 40 relative to 4px
-        maxSpeedY_BLOCKS_PER_SEC: 12.5,  // Formerly 50
-        swimSpeed_BLOCKS_PER_SEC: 12.5,  // Formerly 50
+        maxSpeedX_BLOCKS_PER_SEC: 10,
+        maxSpeedY_BLOCKS_PER_SEC: 12.5,
+        swimSpeed_BLOCKS_PER_SEC: 12.5,
         health: 1, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
         canJump: true,
         jumpVelocity_BLOCKS_PER_SEC: 25, // Formerly 100 (200*0.5) relative to 4px
@@ -446,9 +394,9 @@ export const ENEMY_STATS = {
         displayName: "Chaser", aiType: 'chasePlayer', color: 'rgb(150, 80, 80)',
         width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS,
         height_BLOCKS: DEFAULT_ENEMY_HEIGHT_BLOCKS,
-        maxSpeedX_BLOCKS_PER_SEC: 13.75, // Formerly 55
-        maxSpeedY_BLOCKS_PER_SEC: 12.5,  // Formerly 50
-        swimSpeed_BLOCKS_PER_SEC: 12.5,  // Formerly 50
+        maxSpeedX_BLOCKS_PER_SEC: 13.75,
+        maxSpeedY_BLOCKS_PER_SEC: 12.5,
+        swimSpeed_BLOCKS_PER_SEC: 12.5,
         health: 2, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
         canJump: true,
         jumpVelocity_BLOCKS_PER_SEC: 37.5, // Formerly 150 (200*0.75)
@@ -459,13 +407,10 @@ export const ENEMY_STATS = {
     },
 };
 
-// =============================================================================
-// --- Wave Scripting --- (Time-based, no pixel scaling needed for durations/counts)
-// =============================================================================
+// --- Wave Scripting ---
 
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
-
 export const WAVES = [
     {
         mainWaveNumber: 1,
@@ -527,9 +472,7 @@ export const WAVES = [
     }
 ];
 
-// =============================================================================
 // --- Cutscene Parameters ---
-// =============================================================================
 
 export const CUTSCENE_IMAGE_DURATION = 2.0; // Seconds each image is displayed.
 export const CUTSCENE_IMAGE_PATHS = [
