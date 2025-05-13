@@ -38,29 +38,18 @@
                  </canvas>
                  <div id="epoch-overlay"></div>
             </main>
-            <aside id="bottom-sidebar" class="controls-hidden">
+            
+            <!-- REMOVED: .controls-hidden class and toggle button -->
+            <aside id="bottom-sidebar"> 
                 <div id="item-selection-area">
                     <div id="inventory-boxes-container">Loading...</div>
                     <h2>INVENTORY</h2>
                     <div id="weapon-slots-container">Loading...</div>
                 </div>
-                <button id="toggle-controls-button" title="Show Controls">▲ TOUCH CONTROLS ▲</button>
-                <div id="action-buttons-area">
-                    <div class="action-button-group">
-                        <button id="btn-move-left" class="action-button" title="Move Left (A/←)">◀</button>
-                        <button id="btn-move-right" class="action-button" title="Move Right (D/→)">▶</button>
-                    </div>
-                    <button id="btn-pause" class="action-button" title="Pause (Esc)">⏸️</button>
-                    <div class="action-button-group">
-                        <button id="btn-jump" class="action-button" title="Jump (W/↑/Space)">▲</button>
-                        <button id="btn-attack" class="action-button" title="Attack/Use (F/Click)">⚔️</button>
-                    </div>
-                    <div class="action-button-group settings-group">
-                        <button id="btn-toggle-grid" class="action-button" title="Toggle Grid">▦</button>
-                        <button id="btn-mute-music" class="action-button" title="Toggle Music">🎵</button>
-                        <button id="btn-mute-sfx" class="action-button" title="Toggle SFX">🔊</button>
-                    </div>
-                </div>
+                
+                <!-- REMOVED: toggle-controls-button -->
+                <!-- REMOVED: action-buttons-area -->
+                
             </aside>
 
             <!-- Boot Overlay: For Title Screen and Error Messages (Opaque) -->
@@ -88,12 +77,26 @@
                     <button id="mainmenu-settings-button">SETTINGS</button>
                 </div>
 
-                 <!-- Settings Menu (Roughed Out) -->
+                 <!-- Settings Menu -->
                  <div id="overlay-settings-content" class="overlay-content">
                      <h2>SETTINGS</h2>
-                     <button>AUDIO</button>
-                     <button>CONTROLS</button>
-                     <button>CREDITS</button>
+                     <!-- NEW: Actual Settings Buttons -->
+                     <div class="settings-row"> 
+                         <button id="settings-btn-toggle-grid" class="settings-button">Toggle Grid</button>
+                         <!-- Placeholder for state indicator -->
+                         <span id="settings-value-grid"></span> 
+                     </div>
+                     <div class="settings-row">
+                         <button id="settings-btn-mute-music" class="settings-button">Toggle Music</button>
+                         <span id="settings-value-music"></span>
+                     </div>
+                     <div class="settings-row">
+                         <button id="settings-btn-mute-sfx" class="settings-button">Toggle SFX</button>
+                         <span id="settings-value-sfx"></span>
+                     </div>
+                     <!-- <button>AUDIO</button> --> <!-- REMOVED Placeholder -->
+                     <!-- <button>CONTROLS</button> --> <!-- REMOVED Placeholder -->
+                     <!-- <button>CREDITS</button> --> <!-- REMOVED Placeholder -->
                      <button id="settings-back-button">BACK</button>
                  </div>
 

@@ -84,6 +84,15 @@ export const AGING_PROB_VEGETATION_GROWTH_BASE = 0.1;         // Base probabilit
 export const AGING_PROB_VEGETATION_GROWTH_PER_AIR_SIDE = 0.2; // Additional probability per air-exposed side
 export const AGING_MAX_AIR_SIDES_FOR_VEGETATION_BONUS = 3;    // Max number of air sides that contribute to bonus probability (e.g., 1-3 sides 
 
+// --- NEW: Vegetation & Tree Growth Parameters ---
+export const AGING_PROB_VEGETATION_GROW_UP = 0.05; // Chance for existing VEGETATION to grow upwards into AIR
+export const TREE_MIN_HEIGHT_TO_FORM = 5;         // Minimum contiguous VEGETATION blocks required to form a tree
+export const TREE_INITIAL_CANOPY_RADIUS = 2;      // Radius (in blocks) of the initial VEGETATION canopy when a tree forms (0=just top, 1=3x3, 2=5x5)
+export const AGING_PROB_TREE_CANOPY_GROW = 0.1;  // Chance for a tree canopy block to expand into adjacent AIR
+export const TREE_MAX_CANOPY_RADIUS = 4;          // Maximum radius (in blocks) a tree canopy can reach
+export const AGING_PROB_TREE_TRUNK_DECAY = 0.005; // Chance for a tree WOOD block (part of a trunk) to decay into AIR
+export const AGING_PROB_TREE_CANOPY_DECAY = 0.01; // Chance for a tree VEGETATION block (part of canopy) to decay
+
 // --- Aging Animation Parameters ---
 
 export const AGING_ANIMATION_BLOCKS_AT_ONCE = 5; // Max number of blocks animating simultaneously

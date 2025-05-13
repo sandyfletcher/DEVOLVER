@@ -9,43 +9,48 @@ import * as WorldManager from './worldManager.js';
 
 // Top Sidebar
 let topSidebarEl = null;
-let playerColumnEl, portalColumnEl; // Keep column refs for structure/class
-let playerHealthBarContainerEl, playerHealthBarFillEl; // Updated player health bar elements
-let portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl; // Updated portal health bar elements (added H2 ref)
-let timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl; // New timer elements
+let playerColumnEl, portalColumnEl;
+let playerHealthBarContainerEl, playerHealthBarFillEl;
+let portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl;
+let timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl;
 
 // Bottom Sidebar
 let bottomSidebarEl;
 let itemSelectionAreaEl;
 let inventoryBoxesContainerEl, weaponSlotsContainerEl;
-let actionButtonsAreaEl;
-let toggleControlsButtonEl;
-export let actionButtons = {}; // Exported so Input.js can reference buttons
-let toggleGridButtonEl = null;
-let muteMusicButtonEl = null;
-let muteSfxButtonEl = null;
+
+// --- REMOVED Action Buttons References ---
+// let actionButtonsAreaEl;
+// let toggleControlsButtonEl;
+// export let actionButtons = {}; // REMOVED
+
+// --- NEW Settings Menu References ---
+let settingsBtnToggleGrid = null;
+let settingsBtnMuteMusic = null;
+let settingsBtnMuteSfx = null;
+let settingsValueGrid = null;
+let settingsValueMusic = null;
+let settingsValueSfx = null;
 
 // Overlay
-let bootOverlayEl = null; // Changed from gameOverlay to bootOverlayEl
-let epochOverlayEl = null; // Kept for epoch text
-
+let bootOverlayEl = null;
+let epochOverlayEl = null;
 
 // --- Internal State ---
-let playerRef = null; // Reference to the Player instance
-let portalRef = null; // Reference to the Portal instance
-const itemSlotDivs = {}; // Map itemType string to its HTML div element
-let buttonIlluminationTimers = {}; // Map actionName to timer ID for button illumination
-const ILLUMINATION_DURATION = 150; // ms
-// Order matters for weapon slots display
+let playerRef = null;
+let portalRef = null;
+const itemSlotDivs = {};
+// --- REMOVED Illumination Timer ---
+// let buttonIlluminationTimers = {};
+// const ILLUMINATION_DURATION = 150;
+
 const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
-// Add a flag to track if UI init was successful
 let isUIReady = false;
 
 // --- Initialization ---
 
-// Initializes only the core overlay element reference (called early by main.js)
 export function initOverlay() {
-    bootOverlayEl = document.getElementById('boot-overlay'); // Changed from gameOverlay to bootOverlayEl
+    bootOverlayEl = document.getElementById('boot-overlay');
     if (!bootOverlayEl) {
         console.error("UI InitOverlay: Could not find core boot overlay element!");
         return false;
@@ -53,158 +58,152 @@ export function initOverlay() {
     return true;
 }
 
-// Initializes the main game UI elements in the sidebars (called by main.js on DOMContentLoaded)
 export function initGameUI() {
-    let success = true; // Assume success until proven otherwise
+    let success = true;
 
     // --- Find Top Sidebar Elements ---
-    topSidebarEl = document.getElementById('top-sidebar'); // Get the main top sidebar
-    playerColumnEl = document.getElementById('player-column'); // Player column (container)
-    portalColumnEl = document.getElementById('portal-column'); // Portal column (container)
-    playerHealthBarContainerEl = document.getElementById('player-health-bar-container'); // Player bar container
-    playerHealthBarFillEl = document.getElementById('player-health-bar-fill'); // Player bar fill
-    portalColumnH2El = document.getElementById('portal-health-title'); // Portal title (now superimposed H2)
-    portalHealthBarContainerEl = document.getElementById('portal-health-bar-container'); // Portal bar container
-    portalHealthBarFillEl = document.getElementById('portal-health-bar-fill'); // Portal bar fill
-    timerRowEl = document.getElementById('timer-row'); // Timer row container
-    timerBarContainerEl = document.getElementById('timer-bar-container'); // Timer bar container
-    timerBarFillEl = document.getElementById('timer-bar-fill'); // Timer bar fill
-    timerTextOverlayEl = document.getElementById('timer-text-overlay'); // Timer text overlay
+    topSidebarEl = document.getElementById('top-sidebar');
+    playerColumnEl = document.getElementById('player-column');
+    portalColumnEl = document.getElementById('portal-column');
+    playerHealthBarContainerEl = document.getElementById('player-health-bar-container');
+    playerHealthBarFillEl = document.getElementById('player-health-bar-fill');
+    portalColumnH2El = document.getElementById('portal-health-title');
+    portalHealthBarContainerEl = document.getElementById('portal-health-bar-container');
+    portalHealthBarFillEl = document.getElementById('portal-health-bar-fill');
+    timerRowEl = document.getElementById('timer-row');
+    timerBarContainerEl = document.getElementById('timer-bar-container');
+    timerBarFillEl = document.getElementById('timer-bar-fill');
+    timerTextOverlayEl = document.getElementById('timer-text-overlay');
 
     // --- Find Bottom Sidebar Elements ---
     bottomSidebarEl = document.getElementById('bottom-sidebar');
     itemSelectionAreaEl = document.getElementById('item-selection-area');
     inventoryBoxesContainerEl = document.getElementById('inventory-boxes-container');
     weaponSlotsContainerEl = document.getElementById('weapon-slots-container');
-    actionButtonsAreaEl = document.getElementById('action-buttons-area');
-    toggleControlsButtonEl = document.getElementById('toggle-controls-button');
 
-    // Find Action Button Elements and map them to action names
-    actionButtons.left = document.getElementById('btn-move-left');
-    actionButtons.right = document.getElementById('btn-move-right');
-    actionButtons.pause = document.getElementById('btn-pause');
-    actionButtons.jump = document.getElementById('btn-jump');
-    actionButtons.attack = document.getElementById('btn-attack');
+    // --- REMOVED Finding Action Button Elements ---
+    // actionButtonsAreaEl = document.getElementById('action-buttons-area');
+    // toggleControlsButtonEl = document.getElementById('toggle-controls-button');
+    // actionButtons.left = document.getElementById('btn-move-left');
+    // ... etc ...
 
-    // Find Settings Button Elements and map them
-    toggleGridButtonEl = document.getElementById('btn-toggle-grid');
-    muteMusicButtonEl = document.getElementById('btn-mute-music');
-    muteSfxButtonEl = document.getElementById('btn-mute-sfx');
-    actionButtons.toggleGrid = toggleGridButtonEl; // Add to actionButtons map for illumination
-    actionButtons.muteMusic = muteMusicButtonEl;   // Add to actionButtons map for illumination
-    actionButtons.muteSfx = muteSfxButtonEl;       // Add to actionButtons map for illumination
+    // --- NEW: Find Settings Menu Elements ---
+    settingsBtnToggleGrid = document.getElementById('settings-btn-toggle-grid');
+    settingsBtnMuteMusic = document.getElementById('settings-btn-mute-music');
+    settingsBtnMuteSfx = document.getElementById('settings-btn-mute-sfx');
+    settingsValueGrid = document.getElementById('settings-value-grid');
+    settingsValueMusic = document.getElementById('settings-value-music');
+    settingsValueSfx = document.getElementById('settings-value-sfx');
 
     // Find Epoch Overlay Element
     epochOverlayEl = document.getElementById('epoch-overlay');
 
-
-    // --- Verification - Check if all required DOM elements were found ---
+    // --- Verification ---
     const requiredElements = [
         topSidebarEl, playerColumnEl, portalColumnEl,
         playerHealthBarContainerEl, playerHealthBarFillEl,
         portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl,
         timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl,
         bottomSidebarEl, itemSelectionAreaEl, inventoryBoxesContainerEl, weaponSlotsContainerEl,
-        actionButtonsAreaEl, toggleControlsButtonEl,
-        actionButtons.left, actionButtons.right, actionButtons.pause, actionButtons.jump, actionButtons.attack,
-        actionButtons.toggleGrid, actionButtons.muteMusic, actionButtons.muteSfx, // Ensure settings buttons are included
-        epochOverlayEl // Ensure epoch overlay element is included
+        // REMOVED: actionButtonsAreaEl, toggleControlsButtonEl, actionButtons...
+        // NEW: Check settings elements
+        settingsBtnToggleGrid, settingsBtnMuteMusic, settingsBtnMuteSfx,
+        settingsValueGrid, settingsValueMusic, settingsValueSfx,
+        epochOverlayEl
     ];
 
-    // Use Array.prototype.some() for a concise check.
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
-        const elementNames = [ // Map indices to names for logging
+        const elementNames = [
             'topSidebarEl', 'playerColumnEl', 'portalColumnEl',
             'playerHealthBarContainerEl', 'playerHealthBarFillEl',
             'portalColumnH2El', 'portalHealthBarContainerEl', 'portalHealthBarFillEl',
             'timerRowEl', 'timerBarContainerEl', 'timerBarFillEl', 'timerTextOverlayEl',
             'bottomSidebarEl', 'itemSelectionAreaEl', 'inventoryBoxesContainerEl', 'weaponSlotsContainerEl',
-            'actionButtonsAreaEl', 'toggleControlsButtonEl',
-            'actionButtons.left', 'actionButtons.right', 'actionButtons.pause', 'actionButtons.jump', 'actionButtons.attack',
-            'actionButtons.toggleGrid', 'actionButtons.muteMusic', 'actionButtons.muteSfx',
+            // NEW: Check settings elements
+            'settingsBtnToggleGrid', 'settingsBtnMuteMusic', 'settingsBtnMuteSfx',
+            'settingsValueGrid', 'settingsValueMusic', 'settingsValueSfx',
             'epochOverlayEl'
         ];
         requiredElements.forEach((el, index) => {
             if (!el) console.error(`Missing UI element: ${elementNames[index]}`);
         });
-        success = false; // Mark initialization as failed
+        success = false;
     }
 
     // --- Clear previous dynamic content and listeners ---
     if (inventoryBoxesContainerEl) inventoryBoxesContainerEl.innerHTML = 'Loading...';
     if (weaponSlotsContainerEl) weaponSlotsContainerEl.innerHTML = '';
-    // Clear the itemSlotDivs map and illumination timers from any previous game instance
+
     for (const key in itemSlotDivs) {
-        const slotDiv = itemSlotDivs[key];
-        if (slotDiv) {
-            // Optionally remove event listeners here if memory leaks are suspected in long-running scenarios,
-            // but since we clear innerHTML and repopulate on init, it's usually not necessary.
-            // slotDiv.removeEventListener('click', ...);
-        }
-        delete itemSlotDivs[key]; // Remove reference from the map
+        delete itemSlotDivs[key];
     }
-    for (const key in buttonIlluminationTimers) {
-        clearTimeout(buttonIlluminationTimers[key]);
-    }
-    buttonIlluminationTimers = {}; // Reset timers map
+    // REMOVED: Clear buttonIlluminationTimers
 
     // --- Create Item/Weapon Selection Boxes Dynamically ---
     if (inventoryBoxesContainerEl && weaponSlotsContainerEl) {
-        inventoryBoxesContainerEl.innerHTML = ''; // Clear loading text
-        weaponSlotsContainerEl.innerHTML = ''; // Clear loading text
+        inventoryBoxesContainerEl.innerHTML = '';
+        weaponSlotsContainerEl.innerHTML = '';
 
-        // Create Material Boxes
         for (const materialType of Config.INVENTORY_MATERIALS) {
             createItemSlot(materialType, inventoryBoxesContainerEl, 'material');
         }
-        // Create Weapon Boxes in the defined order
         for (const weaponType of WEAPON_SLOTS_ORDER) {
             createItemSlot(weaponType, weaponSlotsContainerEl, 'weapon');
         }
-        // Add an unarmed slot? Not currently defined in Config.WEAPON_SLOTS_ORDER.
-        // If needed, add it here: createItemSlot(Config.WEAPON_TYPE_UNARMED, weaponSlotsContainerEl, 'weapon');
-
     } else {
-        success = false; // If containers are missing, dynamic creation fails
+        success = false;
     }
-
 
     // --- Set Initial States and Add Event Listeners ---
     if (success) {
-        // Toggle controls button listener
-        // Ensure toggleControlsButtonEl exists before adding the listener
-        if(toggleControlsButtonEl) {
-            toggleControlsButtonEl.addEventListener('click', toggleActionControls);
-        } else {
-            success = false; // Mark failed if the button is missing
-        }
+        // --- REMOVED: Toggle controls button listener ---
+        // if(toggleControlsButtonEl) { ... }
 
+        // --- NEW: Add Event Listeners for Settings Buttons ---
+        settingsBtnToggleGrid.addEventListener('click', () => {
+            if (typeof window.toggleGridDisplay === 'function') {
+                window.toggleGridDisplay();
+            } else {
+                console.error("UI Error: toggleGridDisplay function not found on window.");
+            }
+        });
+        settingsBtnMuteMusic.addEventListener('click', () => {
+            if (typeof window.toggleMusicMute === 'function') {
+                window.toggleMusicMute();
+            } else {
+                console.error("UI Error: toggleMusicMute function not found on window.");
+            }
+        });
+        settingsBtnMuteSfx.addEventListener('click', () => {
+            if (typeof window.toggleSfxMute === 'function') {
+                window.toggleSfxMute();
+            } else {
+                console.error("UI Error: toggleSfxMute function not found on window.");
+            }
+        });
 
-        // Initial states - These will be updated properly by main.js on game start
-        // but setting defaults prevents empty/stale UI on first load.
-        updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // Set initial empty state
-        updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH); // Set initial portal health
-        // Set initial timer state - Use a placeholder waveInfo object
+        // Initial states
+        updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false);
+        updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH);
         updateWaveTimer({ state: 'LOADING', timer: 0, maxTimer: 1, progressText: "Loading...", mainWaveNumber: 0 });
 
-
         // Initial settings button states are set by main.js after AudioManager.init
-        // updateSettingsButtonStates(); // This call is handled by main.js
 
-        isUIReady = true; // Mark UI as ready if all steps succeeded
+        isUIReady = true;
     } else {
-        isUIReady = false; // Mark UI as not ready on failure
+        isUIReady = false;
         console.error("UI: Failed to initialize some critical Game UI elements.");
     }
 
-    return success; // Return overall success status
+    return success;
 }
 
-// Helper to create and setup a single item/weapon slot div
+// Helper to create and setup a single item/weapon slot div (no changes needed here)
 function createItemSlot(itemType, container, category) {
-    // Ensure container element exists before trying to append
-    if (!container) {
+    // ... (keep existing implementation) ...
+     // Ensure container element exists before trying to append
+     if (!container) {
         console.error(`UI createItemSlot: Container element is null for type "${itemType}".`);
         return;
     }
@@ -220,12 +219,12 @@ function createItemSlot(itemType, container, category) {
 
     if (category === 'material') {
         slotDiv.style.backgroundColor = itemConfig?.color || '#444'; // Use config color or default
-        
+
         const countSpan = document.createElement('span'); // Span for count overlay
         countSpan.classList.add('item-count');
         countSpan.textContent = ''; // Start empty text
         slotDiv.appendChild(countSpan); // Add count span first for z-index behavior
-        
+
         titleText += ' (0)'; // Initial title for materials includes count
 
         // --- NEW: Add quadrants for dirt and vegetation ---
@@ -249,9 +248,9 @@ function createItemSlot(itemType, container, category) {
     } else if (category === 'weapon') {
         // Add specific text content (icons) for weapons
         if (itemType === Config.WEAPON_TYPE_SWORD) slotDiv.textContent = '⚔️';
-        else if (itemType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑'; 
-        else if (itemType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️'; 
-        else if (itemType === Config.WEAPON_TYPE_UNARMED) slotDiv.textContent = '👊'; 
+        else if (itemType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑';
+        else if (itemType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️';
+        else if (itemType === Config.WEAPON_TYPE_UNARMED) slotDiv.textContent = '👊';
         else slotDiv.textContent = '?'; // Fallback icon
 
         titleText += ' (Not Found)'; // Placeholder, will be updated by updatePlayerInfo
@@ -263,15 +262,15 @@ function createItemSlot(itemType, container, category) {
         handleItemSlotClick(itemType, category);
     });
 
-    container.appendChild(slotDiv); 
-    itemSlotDivs[itemType] = slotDiv; 
+    container.appendChild(slotDiv);
+    itemSlotDivs[itemType] = slotDiv;
 }
 
-// Helper function to handle clicks on item/weapon slots
-// This function is called by the click event listener attached to the item slot divs.
+// Helper function to handle clicks on item/weapon slots (no changes needed here)
 function handleItemSlotClick(itemType, category) {
-    // Ensure playerRef exists and UI is ready before allowing interaction
-    if (!playerRef || !isUIReady) {
+    // ... (keep existing implementation) ...
+     // Ensure playerRef exists and UI is ready before allowing interaction
+     if (!playerRef || !isUIReady) {
         // console.log("UI Item Click: Interaction ignored (playerRef null or UI not ready).");
         // Optional: Add visual feedback (e.g., shake) to the element that was clicked even if action wasn't performed
         const slotDiv = itemSlotDivs[itemType];
@@ -311,29 +310,14 @@ function handleItemSlotClick(itemType, category) {
             ], { duration: 150, easing: 'ease-out' });
         }
     }
-    // Note: The 'active' class on the slot is handled by updatePlayerInfo running in the main loop.
-    // The 'disabled' class is also handled by updatePlayerInfo.
 }
 
+// --- REMOVED toggleActionControls function ---
+// export function toggleActionControls() { ... }
 
-// Toggles the visibility of the action buttons area in the bottom sidebar
-export function toggleActionControls() {
-    // Ensure elements exist before toggling classes
-    if (bottomSidebarEl && actionButtonsAreaEl && toggleControlsButtonEl) {
-        bottomSidebarEl.classList.toggle('controls-hidden');
-        const isHidden = bottomSidebarEl.classList.contains('controls-hidden');
-        // Update the button text and title to reflect the new state
-        toggleControlsButtonEl.textContent = isHidden ? '▲ TOUCH CONTROLS ▲' : '▼ TOUCH CONTROLS ▼';
-        toggleControlsButtonEl.title = isHidden ? 'Show Controls' : 'Hide Controls';
-        // Note: Input.js must be aware of this state change to ignore touch inputs on hidden buttons.
-        // This is handled in Input.js touch handlers by checking the element's visibility or parent's class.
-    } else {
-        console.error("UI toggleActionControls: Missing elements.");
-    }
-}
-
-// Sets the reference to the player object (called by main.js)
+// Sets the reference to the player object (reset logic is fine)
 export function setPlayerReference(playerObject) {
+    // ... (keep existing implementation) ...
     playerRef = playerObject;
     // When player reference is set (on game start) or cleared (on game end), update UI
     if (playerRef) {
@@ -379,8 +363,9 @@ export function setPlayerReference(playerObject) {
     }
 }
 
-// Sets the reference to the portal object (called by main.js)
+// Sets the reference to the portal object (no changes needed)
 export function setPortalReference(portalObject) {
+    // ... (keep existing implementation) ...
     portalRef = portalObject;
     // When portal reference is set (on game start) or cleared (on game end), update UI
     if (portalRef) {
@@ -396,76 +381,48 @@ export function setPortalReference(portalObject) {
     }
 }
 
-// Briefly illuminates a specific action button (called by Input.js or main.js toggles)
-export function illuminateButton(actionName) {
-    // actionButtons map is populated in initGameUI with button IDs
-    // Ensure the button exists in the map
-    const button = actionButtons[actionName];
-    if (!button) {
-        // console.warn(`UI illuminateButton: Button mapping not found for action "${actionName}".`);
-        return; // Button element not found
-    }
+// --- REMOVED illuminateButton function ---
+// export function illuminateButton(actionName) { ... }
 
-    // Prevent illumination if the controls area is hidden (except for pause)
-    // Check if the button's parent area (actionButtonsAreaEl) is hidden by the 'controls-hidden' class.
-    // Ensure actionButtonsAreaEl exists before checking classList.
-    if (actionButtonsAreaEl && bottomSidebarEl && bottomSidebarEl.classList.contains('controls-hidden') && actionName !== 'pause') {
-        // Also ensure the button itself is within the hidden area (most are, but safeguard)
-        if(actionButtonsAreaEl.contains(button)) {
-            return;
-        }
-    }
-
-    // Clear any existing timer for this button to reset the flash
-    if (buttonIlluminationTimers[actionName]) {
-        clearTimeout(buttonIlluminationTimers[actionName]);
-    }
-
-    // Add the 'illuminated' class to trigger the CSS animation/style
-    button.classList.add('illuminated');
-
-    // Set a new timer to remove the 'illuminated' class after the duration
-    buttonIlluminationTimers[actionName] = setTimeout(() => {
-        button.classList.remove('illuminated');
-        // Clean up the timer reference
-        delete buttonIlluminationTimers[actionName];
-    }, ILLUMINATION_DURATION);
-}
-
-// Updates the visual state (active/muted class) of settings buttons (called by main.js or toggle functions)
+// Updates the visual state (active/muted class) of settings buttons
+// *** MODIFIED to target new elements and update text spans ***
 export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMuted) {
     // Ensure elements exist before modifying their classes/titles
-    if (toggleGridButtonEl) {
-        // Use 'active' class for grid button when grid is visible
-        toggleGridButtonEl.classList.toggle('active', isGridVisible);
-        toggleGridButtonEl.title = isGridVisible ? 'Hide Grid' : 'Show Grid';
+    if (settingsBtnToggleGrid && settingsValueGrid) {
+        settingsBtnToggleGrid.classList.toggle('active', isGridVisible);
+        settingsBtnToggleGrid.title = isGridVisible ? 'Hide Grid Overlay' : 'Show Grid Overlay';
+        settingsValueGrid.textContent = isGridVisible ? 'ON' : 'OFF';
+        // Optionally change text color based on state
+        settingsValueGrid.style.color = isGridVisible ? 'lime' : '#ccc';
     }
-    if (muteMusicButtonEl) {
-        // Use 'muted' class for music button when music is muted
-        muteMusicButtonEl.classList.toggle('muted', isMusicMuted);
-        muteMusicButtonEl.title = isMusicMuted ? 'Unmute Music' : 'Toggle Music';
+    if (settingsBtnMuteMusic && settingsValueMusic) {
+        settingsBtnMuteMusic.classList.toggle('muted', isMusicMuted);
+        settingsBtnMuteMusic.title = isMusicMuted ? 'Unmute Music' : 'Mute Music';
+        settingsValueMusic.textContent = isMusicMuted ? 'MUTED' : 'ON';
+        settingsValueMusic.style.color = isMusicMuted ? 'red' : 'lime';
     }
-    if (muteSfxButtonEl) {
-        // Use 'muted' class for sfx button when sfx is muted
-        muteSfxButtonEl.classList.toggle('muted', isSfxMuted);
-        muteSfxButtonEl.title = isSfxMuted ? 'Unmute SFX' : 'Toggle SFX';
+    if (settingsBtnMuteSfx && settingsValueSfx) {
+        settingsBtnMuteSfx.classList.toggle('muted', isSfxMuted);
+        settingsBtnMuteSfx.title = isSfxMuted ? 'Unmute SFX' : 'Mute SFX';
+        settingsValueSfx.textContent = isSfxMuted ? 'MUTED' : 'ON';
+        settingsValueSfx.style.color = isSfxMuted ? 'red' : 'lime';
     }
 }
-
 
 // --- Update Functions (Called by main.js game loop) ---
 
-// Updates player health bar and inventory/weapon slots based on current player state
+// Updates player health bar and inventory/weapon slots (no significant changes needed here, logic was already correct)
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
-    // Ensure essential UI elements exist before proceeding
-    if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
+    // ... (keep existing implementation) ...
+     // Ensure essential UI elements exist before proceeding
+     if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
         console.error("UI UpdatePlayerInfo: Missing essential elements.");
         if(playerHealthBarFillEl){
             const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
             const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
             playerHealthBarFillEl.style.width = `${healthPercent}%`;
         }
-        return; 
+        return;
     }
     const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
     const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
@@ -503,12 +460,12 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         } else {
             isDisabled = (count === 0);
         }
-        
+
         slotDiv.classList.toggle('disabled', isDisabled);
         slotDiv.classList.toggle('active', playerRef && selectedItem === materialType && !isDisabled);
         slotDiv.title = currentTitle;
     }
-    
+
     // Update Weapon Boxes
     // Use the passed boolean flags for weapon possession
     const playerPossession = {
@@ -585,9 +542,9 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
     }
 }
 
-
-// Updates the portal health bar and its title color
+// Updates the portal health bar and its title color (no changes needed)
 export function updatePortalInfo(currentHealth, maxHealth) {
+    // ... (keep existing implementation) ...
     // Ensure essential UI elements exist before proceeding
     if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) {
         console.error("UI UpdatePortalInfo: Missing essential elements.");
@@ -612,12 +569,11 @@ export function updatePortalInfo(currentHealth, maxHealth) {
         else if (healthPercentRatio > 0.2) portalColumnH2El.style.color = 'yellow'; // Yellowish (Damaged)
         else portalColumnH2El.style.color = 'red'; // Reddish (Critical)
     }
-    // Text content remains "PORTAL" as defined in HTML, or set by main.js potentially
 }
 
-// Updates the wave timer bar and text based on wave info state (called by main.js)
-// Accepts the entire waveInfo object now from WaveManager.getWaveInfo()
+// Updates the wave timer bar and text (no changes needed)
 export function updateWaveTimer(waveInfo) {
+    // ... (keep existing implementation) ...
     // Ensure essential UI elements exist
     if (!timerBarFillEl || !timerTextOverlayEl || !timerRowEl) {
         console.error("UI UpdateWaveTimer: Missing essential elements.");
@@ -648,12 +604,7 @@ export function updateWaveTimer(waveInfo) {
             if (livingEnemies > 0) {
                 timerText = `WAVE ${mainWaveNumber} (${livingEnemies} LEFT)`;
             } else {
-                // Check if spawning is complete for the current wave
-                // This needs WaveManager to expose if all groups/subwaves are done.
-                // For now, simplify: if no enemies and timer < 5, show "Intermission Soon"
-                // This check is a bit simplistic as spawning might still be happening.
-                // A more robust check would be needed from WaveManager itself.
-                if (clampedTimer <= 5 && livingEnemies === 0) { // A rough check
+                if (clampedTimer <= 5 && livingEnemies === 0) {
                     timerText = "INTERMISSION SOON!";
                 } else {
                     timerText = `WAVE ${mainWaveNumber} (CLEARING)`;
@@ -661,15 +612,15 @@ export function updateWaveTimer(waveInfo) {
             }
             break;
         case 'BUILDPHASE':
-            timerText = `BUILD TIME (WAVE ${mainWaveNumber} NEXT)`; // Show which wave is upcoming
+            timerText = `BUILD TIME (WAVE ${mainWaveNumber} NEXT)`;
             break;
-        case 'WARPPHASE':
+        case 'WARPPHASE': // Renamed from WARP_ANIMATING
             let animStatus = "";
-            if (WorldManager && !WorldManager.areAgingAnimationsComplete()) { // Check WorldManager exists
-                animStatus = " (MORPHING...)";
+            if (WorldManager && typeof WorldManager.areAgingAnimationsComplete === 'function' && typeof WorldManager.areGravityAnimationsComplete === 'function' && (!WorldManager.areAgingAnimationsComplete() || !WorldManager.areGravityAnimationsComplete())) {
+                 animStatus = " (MORPHING...)";
             }
             timerText = `WARPING TO WAVE ${mainWaveNumber}${animStatus}`;
-            displayTimerValue = true; // Show timer during warp
+            displayTimerValue = true;
             break;
         case 'GAME_OVER':
             timerText = "GAME OVER";
@@ -679,14 +630,13 @@ export function updateWaveTimer(waveInfo) {
             timerText = "VICTORY!";
             displayTimerValue = false;
             break;
-        case 'LOADING': // Fallthrough for initial load
+        case 'LOADING':
         default:
             timerText = "LOADING...";
             displayTimerValue = false;
             break;
     }
 
-    // Append formatted time if displayTimerValue is true
     if (displayTimerValue) {
         const minutes = Math.floor(clampedTimer / 60);
         const seconds = Math.floor(clampedTimer % 60);
@@ -697,12 +647,11 @@ export function updateWaveTimer(waveInfo) {
     timerTextOverlayEl.textContent = timerText;
 }
 
-
-// Function to display the epoch text overlay above the game canvas
-// Clears any pending hide timer and sets a new one
-export function showEpochText(epochMessage) { // Changed parameter name for clarity
-    // Ensure the epoch overlay element exists
-    if (!epochOverlayEl) {
+// Function to display the epoch text overlay (no changes needed)
+export function showEpochText(epochMessage) {
+    // ... (keep existing implementation) ...
+     // Ensure the epoch overlay element exists
+     if (!epochOverlayEl) {
         console.warn("UI showEpochText: Element not found.", epochOverlayEl);
         return;
     }
@@ -737,7 +686,6 @@ export function showEpochText(epochMessage) { // Changed parameter name for clar
 
     }, displayDurationMs); // Delay before starting fade-out
 }
-
 
 // Add a getter to check if the main game UI initialization was successful
 export function isInitialized() {

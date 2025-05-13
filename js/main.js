@@ -752,9 +752,6 @@ function init() {
         restartButtonVictory.addEventListener('click', restartGame);
         restartButtonPause.addEventListener('click', restartGame);
         cutsceneSkipButton.addEventListener('click', skipCutscene);
-        btnToggleGrid.addEventListener('click', toggleGridDisplay);
-        muteMusicButtonEl.addEventListener('click', toggleMusicMute);
-        muteSfxButtonEl.addEventListener('click', toggleSfxMute);
 
         showOverlay(GameState.TITLE);
         gameLoopId = requestAnimationFrame(gameLoop);
