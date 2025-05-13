@@ -30,280 +30,6 @@ body {
     transition: filter 0.3s ease;
     overflow: hidden;
 }
-
-/* --- Default Overlay Styling --- */
-#boot-overlay,
-#menu-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    text-align: center;
-    color: white;
-
-    /* Hidden by default */
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
-    transition: opacity 0.3s ease, visibility 0s linear 0.3s; /* Default for fade-out */
-}
-
-/* --- Boot Overlay (Opaque for Title/Error) --- */
-#boot-overlay {
-    background-color: black; /* Fully opaque */
-    z-index: 200; /* Higher z-index */
-}
-#boot-overlay.show-title,
-#boot-overlay.show-error {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s; /* Faster visibility for fade-in */
-}
-
-/* --- Menu Overlay (Semi-transparent for Menus, Pause, etc.) --- */
-#menu-overlay {
-    background-color: rgba(0, 0, 0, 0.75); /* Semi-transparent */
-    z-index: 100;
-    transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0s;
-}
-/* New class to be added by JS for opaque states */
-#menu-overlay.force-opaque {
-    background-color: black; /* Fully opaque */
-}
-#menu-overlay.active { /* This class makes the menu overlay visible */
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
-}
-
-/* --- Overlay Content Styling --- */
-.overlay-content {
-    display: none; /* All overlay content divs are hidden by default */
-    flex-direction: column;
-    align-items: center;
-    width: 80%;
-    max-width: 500px;
-    padding: 20px;
-    box-sizing: border-box;
-}
-
-/* Show specific content for Boot Overlay */
-#boot-overlay.show-title #overlay-title-content,
-#boot-overlay.show-error #overlay-error-content {
-    display: flex;
-}
-
-/* Show specific content for Menu Overlay (when #menu-overlay.active is also present) */
-#menu-overlay.active.show-mainmenu #overlay-mainmenu-content,
-#menu-overlay.active.show-settings #overlay-settings-content, /* For direct settings view if needed */
-#menu-overlay.active.show-cutscene #overlay-cutscene-content,
-#menu-overlay.active.show-pause #overlay-pause-content,
-#menu-overlay.active.show-gameover #overlay-gameover-content,
-#menu-overlay.active.show-victory #overlay-victory-content {
-    display: flex;
-}
-
-
-/* Specific styles for the cutscene container when active */
-#menu-overlay.active.show-cutscene #overlay-cutscene-content {
-    width: 100%;
-    height: 100%;
-    max-width: none;
-    position: relative; /* Important for absolute positioning of children */
-}
-
-/* Styles for the new Settings Menu layout */
-#overlay-settings-content {
-    display: none; /* Keep hidden by default */
-    flex-direction: column;
-    align-items: center;
-    width: 80%;
-    max-width: 400px; /* Adjusted max-width */
-    padding: 20px;
-    box-sizing: border-box;
-    gap: 15px; /* Add gap between rows */
-}
-
-.settings-row {
-    display: flex; /* Use flexbox for row layout */
-    justify-content: space-between; /* Space out button and value */
-    align-items: center;
-    width: 100%;
-    padding: 5px 0; /* Add some padding */
-}
-
-/* Style the new settings buttons */
-#overlay-settings-content .settings-button {
-    /* Inherit general button styles from overlay or define specific ones */
-    padding: 10px 20px;
-    font-size: 1.1em;
-    min-width: 180px; /* Give buttons a minimum width */
-    text-align: left; /* Align text left */
-    /* Reuse existing overlay button styles if desired */
-    cursor: pointer; 
-    border-radius: 5px; 
-    border: 1px solid #ccc; 
-    background-color: #eee; 
-    color: #333; 
-    font-weight: bold; 
-    transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
-}
-#overlay-settings-content .settings-button:hover {
-    background-color: #fff;
-}
-#overlay-settings-content .settings-button:active {
-    transform: scale(0.97);
-}
-
-/* Style the placeholder spans for setting values */
-#overlay-settings-content .settings-row span {
-    font-size: 1.1em;
-    font-weight: bold;
-    color: #ccc; /* Lighter color for the value */
-    min-width: 50px; /* Ensure space for ON/OFF/MUTED */
-    text-align: right;
-}
-
-
-/* Keep styles for muted/active states, they will apply to the new buttons */
-/* Make sure the selectors target the buttons within the settings overlay */
-#overlay-settings-content .settings-button.muted, 
-#overlay-settings-content .settings-button.active { /* .active for grid button */
-    border-color: darkred; /* Default for muted, can be overridden for grid */
-    color: darkred;       /* Default for muted, can be overridden for grid */
-    background-color: #fee; /* Slight red background for muted */
-}
-
-/* Specific for grid button when active */
-#overlay-settings-content #settings-btn-toggle-grid.active {
-    background-color: #dfd; /* Light green background */
-    border-color: darkgreen;
-    color: darkgreen;
-}
-
-
-/* Styles for the Error Overlay (within #boot-overlay) */
-#boot-overlay.show-error {
-    background-color: rgba(0, 0, 0, 0.95); /* Override for more opaque error bg */
-    color: red;
-    padding: 20px; /* Padding on the overlay itself */
-}
-
-#overlay-error-content { /* Content within error overlay */
-    max-width: 600px;
-}
-#overlay-error-content h1 {
-    font-family: 'RubikIso', sans-serif;
-    font-size: 2.5em;
-    margin-bottom: 1rem;
-    color: red;
-    text-shadow: 1px 1px 3px rgba(255, 100, 100, 0.5);
-}
-#overlay-error-content p {
-    font-size: 1.2em;
-    margin-bottom: 1.5rem;
-    color: #ffdddd;
-}
-#overlay-error-content p#error-message-text {
-    font-size: 1.1em;
-    margin-bottom: 2rem;
-    word-break: break-word;
-    color: white;
-    background-color: rgba(50,0,0,0.5);
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid red;
-}
-#overlay-error-content p:last-child {
-    font-size: 1em;
-    color: #ffdddd;
-}
-
-
-/* General Overlay Text & Button Styling */
-#boot-overlay h1, #menu-overlay h1 { /* Target H1 in both */
-    font-family: 'RubikIso', sans-serif;
-    font-size: 3.5em;
-    margin-bottom: 1.5rem;
-    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
-}
-#boot-overlay h2, #menu-overlay h2 {
-    font-size: 2.5em; margin-bottom: 1.5rem;
-}
-#boot-overlay p, #menu-overlay p {
-    font-size: 1.2em; margin-bottom: 1.5rem;
-}
-#boot-overlay button, #menu-overlay button {
-    padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background-color: #eee; color: #333; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
-}
-#boot-overlay button:hover, #menu-overlay button:hover {
-    background-color: #fff;
-}
-#boot-overlay button:active, #menu-overlay button:active {
-    transform: scale(0.97);
-}
-
-/* Title Screen Button Styles (within #boot-overlay) */
-#overlay-title-content #start-game-button {
-    background-color: black;
-    color: white;
-    border: 2px solid white;
-}
-#overlay-title-content #start-game-button:hover {
-    background-color: #1a1a1a;
-    border-color: #f0f0f0;
-    color: #f0f0f0;
-}
-#overlay-title-content #start-game-button:active {
-    background-color: #0d0d0d;
-    border-color: #e0e0e0;
-    transform: scale(0.97);
-}
-
-
-/* Restart Button Styles (within #menu-overlay) */
-#restart-button-overlay,
-#restart-button-overlay-pause {
-    background-color: darkred; color: white; border-color: #ffaaaa;
-}
-#restart-button-overlay:hover,
-#restart-button-overlay-pause:hover {
-    background-color: red;
-}
-#restart-button-overlay-victory {
-    background-color: darkgreen; color: white; border-color: #aaffaa;
-}
-#restart-button-overlay-victory:hover {
-    background-color: green;
-}
-
-/*
-  Blur effect on app-container's children is applied when #app-container has .overlay-active.
-  This class is added by JS when #menu-overlay is shown and game world is meant to be blurred.
-*/
-#app-container.overlay-active > #top-sidebar,
-#app-container.overlay-active > #game-wrapper,
-#app-container.overlay-active > #bottom-sidebar {
-    filter: blur(4px) brightness(0.6);
-    pointer-events: none;
-    transition: filter 0.3s ease;
-}
-#app-container > #top-sidebar,
-#app-container > #game-wrapper,
-#app-container > #bottom-sidebar {
-    filter: none; /* Default: no blur */
-    pointer-events: auto;
-    transition: filter 0.3s ease;
-}
-
-/* ... rest of your CSS ... */
 #top-sidebar, #bottom-sidebar {
     flex-shrink: 0;
     width: 100%;
@@ -432,7 +158,7 @@ body {
     z-index: 50;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s; /* Match visibility delay to opacity */
+    transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
     pointer-events: none;
 }
 #bottom-sidebar {
@@ -501,12 +227,9 @@ body {
     box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
     border-color: #666;
 }
-/* For item boxes that will contain quadrants */
 .item-box.material-quadrant-box {
-    position: relative; /* For absolute positioning of quadrant-container and item-count */
-    /* The background-color is set by JS */
+    position: relative;
 }
-
 .quadrant-container {
     position: absolute;
     top: 0;
@@ -514,40 +237,36 @@ body {
     width: 100%;
     height: 100%;
     display: grid;
-    grid-template-columns: 1fr 1fr; /* Two equal columns */
-    grid-template-rows: 1fr 1fr;    /* Two equal rows */
-    gap: 1px; /* Small gap between quadrants */
-    padding: 2px; /* Padding around the group of quadrants */
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 1px;
+    padding: 2px;
     box-sizing: border-box;
-    z-index: 1; /* Quadrants are behind the item count */
+    z-index: 1;
 }
-
 .quadrant {
-    background-color: rgba(0, 0, 0, 0.35); /* Default empty quadrant color (darker shade relative to box bg) */
-    border: 1px solid rgba(255, 255, 255, 0.05); /* Very subtle border for empty quadrants */
+    background-color: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.05);
     box-sizing: border-box;
     transition: background-color 0.15s ease-in-out;
 }
-
 .quadrant.filled {
-    background-color: rgba(255, 255, 255, 0.25); /* Filled quadrant color (lighter shade) */
-    border-color: rgba(255, 255, 255, 0.15); /* Slightly more visible border when filled */
+    background-color: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.15);
 }
-
-/* Ensure item count is on top of quadrants and centered */
 .item-box.material-quadrant-box .item-count {
-    position: absolute; /* Position it over the quadrants */
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 2; /* Above quadrants */
-    font-size: 1.1em; /* Make it slightly larger to be clear */
+    z-index: 2;
+    font-size: 1.1em;
     font-weight: bold;
     color: white;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    pointer-events: none; /* So it doesn't interfere with clicks on the box */
+    pointer-events: none;
 }
-.item-box .item-count { /* This is for general item counts, if quadrant-box isn't used */
+.item-box .item-count {
     position: absolute;
     bottom: 1px;
     right: 2px;
@@ -556,6 +275,230 @@ body {
     color: white;
     text-shadow: 1px 1px 1px black;
     pointer-events: none;
+}
+
+/* --- Default Overlay Styling --- */
+#boot-overlay,
+#menu-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    color: white;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+#boot-overlay {
+    background-color: black;
+    z-index: 200;
+}
+#boot-overlay.show-title,
+#boot-overlay.show-error {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, visibility 0s linear 0s;
+}
+#menu-overlay {
+    background-color: rgba(0, 0, 0, 0.75);
+    z-index: 100;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0s;
+}
+#menu-overlay.force-opaque {
+    background-color: black;
+}
+#menu-overlay.active {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
+}
+.overlay-content {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    max-width: 500px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+#boot-overlay.show-title #overlay-title-content,
+#boot-overlay.show-error #overlay-error-content {
+    display: flex;
+}
+#menu-overlay.active.show-mainmenu #overlay-mainmenu-content,
+#menu-overlay.active.show-settings #overlay-settings-content,
+#menu-overlay.active.show-cutscene #overlay-cutscene-content,
+#menu-overlay.active.show-pause #overlay-pause-content,
+#menu-overlay.active.show-gameover #overlay-gameover-content,
+#menu-overlay.active.show-victory #overlay-victory-content {
+    display: flex;
+}
+#menu-overlay.active.show-cutscene #overlay-cutscene-content {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    position: relative;
+}
+#overlay-settings-content {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    max-width: 400px;
+    padding: 20px;
+    box-sizing: border-box;
+    gap: 15px;
+}
+.settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 5px 0;
+}
+#overlay-settings-content .settings-button {
+    padding: 10px 20px;
+    font-size: 1.1em;
+    min-width: 180px;
+    text-align: left;
+    cursor: pointer; 
+    border-radius: 5px; 
+    border: 1px solid #ccc; 
+    background-color: #eee; 
+    color: #333; 
+    font-weight: bold; 
+    transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+}
+#overlay-settings-content .settings-button:hover {
+    background-color: #fff;
+}
+#overlay-settings-content .settings-button:active {
+    transform: scale(0.97);
+}
+#overlay-settings-content .settings-row span {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #ccc;
+    min-width: 50px;
+    text-align: right;
+}
+#overlay-settings-content .settings-button.muted, 
+#overlay-settings-content .settings-button.active {
+    border-color: darkred;
+    color: darkred;
+    background-color: #fee;
+}
+#overlay-settings-content #settings-btn-toggle-grid.active {
+    background-color: #dfd;
+    border-color: darkgreen;
+    color: darkgreen;
+}
+#boot-overlay.show-error {
+    background-color: rgba(0, 0, 0, 0.95);
+    color: red;
+    padding: 20px;
+}
+#overlay-error-content {
+    max-width: 600px;
+}
+#overlay-error-content h1 {
+    font-family: 'RubikIso', sans-serif;
+    font-size: 2.5em;
+    margin-bottom: 1rem;
+    color: red;
+    text-shadow: 1px 1px 3px rgba(255, 100, 100, 0.5);
+}
+#overlay-error-content p {
+    font-size: 1.2em;
+    margin-bottom: 1.5rem;
+    color: #ffdddd;
+}
+#overlay-error-content p#error-message-text {
+    font-size: 1.1em;
+    margin-bottom: 2rem;
+    word-break: break-word;
+    color: white;
+    background-color: rgba(50,0,0,0.5);
+    padding: 0.5rem;
+    border-radius: 4px;
+    border: 1px solid red;
+}
+#overlay-error-content p:last-child {
+    font-size: 1em;
+    color: #ffdddd;
+}
+#boot-overlay h1, #menu-overlay h1 {
+    font-family: 'RubikIso', sans-serif;
+    font-size: 3.5em;
+    margin-bottom: 1.5rem;
+    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
+}
+#boot-overlay h2, #menu-overlay h2 {
+    font-size: 2.5em; margin-bottom: 1.5rem;
+}
+#boot-overlay p, #menu-overlay p {
+    font-size: 1.2em; margin-bottom: 1.5rem;
+}
+#boot-overlay button, #menu-overlay button {
+    padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px; cursor: pointer; border-radius: 5px; border: 1px solid #ccc; background-color: #eee; color: #333; font-weight: bold; transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+}
+#boot-overlay button:hover, #menu-overlay button:hover {
+    background-color: #fff;
+}
+#boot-overlay button:active, #menu-overlay button:active {
+    transform: scale(0.97);
+}
+#overlay-title-content #start-game-button {
+    background-color: black;
+    color: white;
+    border: 2px solid white;
+}
+#overlay-title-content #start-game-button:hover {
+    background-color: #1a1a1a;
+    border-color: #f0f0f0;
+    color: #f0f0f0;
+}
+#overlay-title-content #start-game-button:active {
+    background-color: #0d0d0d;
+    border-color: #e0e0e0;
+    transform: scale(0.97);
+}
+#restart-button-overlay,
+#restart-button-overlay-pause {
+    background-color: darkred; color: white; border-color: #ffaaaa;
+}
+#restart-button-overlay:hover,
+#restart-button-overlay-pause:hover {
+    background-color: red;
+}
+#restart-button-overlay-victory {
+    background-color: darkgreen; color: white; border-color: #aaffaa;
+}
+#restart-button-overlay-victory:hover {
+    background-color: green;
+}
+#app-container.overlay-active > #top-sidebar,
+#app-container.overlay-active > #game-wrapper,
+#app-container.overlay-active > #bottom-sidebar {
+    filter: blur(4px) brightness(0.6);
+    pointer-events: none;
+    transition: filter 0.3s ease;
+}
+#app-container > #top-sidebar,
+#app-container > #game-wrapper,
+#app-container > #bottom-sidebar {
+    filter: none;
+    pointer-events: auto;
+    transition: filter 0.3s ease;
 }
 #landscape-warning {
     display: none;
@@ -573,10 +516,6 @@ body {
 }
 noscript p {
     color: white; text-align: center; padding: 20px;
-    }
-@media (orientation: portrait) {
-    #app-container { display: none; }
-    #landscape-warning { display: flex; }
 }
 #top-sidebar::-webkit-scrollbar, #bottom-sidebar::-webkit-scrollbar {
     display: none;
@@ -584,8 +523,6 @@ noscript p {
 #top-sidebar, #bottom-sidebar {
     -ms-overflow-style: none; scrollbar-width: none;
 }
-
-/* Cutscene Specific Styles (within #menu-overlay) */
 #overlay-cutscene-content {
     position: relative;
     overflow: hidden;
@@ -594,7 +531,6 @@ noscript p {
     justify-content: center;
     align-items: center;
 }
-
 .cutscene-image {
     position: absolute;
     top: 0;
@@ -604,27 +540,22 @@ noscript p {
     object-fit: contain;
     opacity: 0;
     transition: opacity 1s ease-in-out;
-    z-index: 1; /* Images are behind text box and skip button */
+    z-index: 1;
 }
-
 .cutscene-image.active {
     opacity: 1;
 }
-
 #cutscene-text-box,
 #overlay-cutscene-content #cutscene-skip-button {
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.7s ease-in-out, visibility 0s linear 0.7s; /* Fade out duration */
+    transition: opacity 0.7s ease-in-out, visibility 0s linear 0.7s;
     pointer-events: none;
 }
-
 #menu-overlay.active.show-cutscene #cutscene-text-box {
-    /* display: flex; /* No longer needed here for visibility, but for internal content alignment */
-    display: flex; /* Retain for aligning internal <p> */
+    display: flex;
     align-items: center;
     justify-content: flex-start;
-
     position: absolute;
     bottom: 5%;
     left: 50%;
@@ -642,9 +573,7 @@ noscript p {
     font-family: 'Arial', sans-serif;
     box-shadow: 0 2px 15px rgba(0,0,0,0.6);
 }
-
 #menu-overlay.active.show-cutscene #overlay-cutscene-content #cutscene-skip-button {
-    /* display: block; /* No longer needed here for visibility */
     position: absolute;
     bottom: 1rem;
     right: 1rem;
@@ -655,17 +584,13 @@ noscript p {
     color: white;
     border-color: rgba(255, 255, 255, 0.3);
 }
-
-/* Class to make text box and skip button visible and interactive */
 #cutscene-text-box.visible,
 #overlay-cutscene-content #cutscene-skip-button.visible {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition: opacity 0.7s ease-in-out, visibility 0s linear 0s; /* Fade in duration */
+    transition: opacity 0.7s ease-in-out, visibility 0s linear 0s;
 }
-
-
 #cutscene-text-content {
     margin: 0;
     font-size: 1.2em;
@@ -675,13 +600,15 @@ noscript p {
     max-height: 100px;
     overflow-y: auto;
 }
-
 #overlay-cutscene-content #cutscene-skip-button:hover {
     background-color: rgba(0, 0, 0, 0.7);
     border-color: rgba(255, 255, 255, 0.6);
 }
-
 #overlay-cutscene-content #cutscene-skip-button:active {
     transform: scale(0.97);
     background-color: rgba(0, 0, 0, 0.9);
+}
+@media (orientation: portrait) {
+    #app-container { display: none; }
+    #landscape-warning { display: flex; }
 }

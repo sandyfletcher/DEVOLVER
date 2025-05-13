@@ -533,7 +533,7 @@ export const WAVES = [
 
 export const CUTSCENE_IMAGE_DURATION = 2.0; // Seconds each image is displayed.
 export const CUTSCENE_IMAGE_PATHS = [
-    'assets/gendimage1.png',
+    'assets/cut1.jpg',
     'assets/gendimage2.png',
     'assets/gendimage3.png',
     'assets/gendimage4.png',

@@ -3,7 +3,7 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-        <meta name="description" content="DEVOLVER - A 2D wave survival game built with HTML Canvas and JavaScript.">
+        <meta name="description" content="DEVOLVER - 2D Wave Survival Against Humanity's Original Opponents">
         <title>DEVOLVER</title>
         <link rel="stylesheet" href="style.css">
         <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
@@ -33,42 +33,32 @@
                 </div>
             </aside>
             <main id="game-wrapper">
-                 <canvas id="game-canvas" width="800" height="800">
-                     Your browser does not support the HTML canvas.
-                 </canvas>
-                 <div id="epoch-overlay"></div>
+                <canvas id="game-canvas" width="800" height="800">
+                    Your browser does not support the HTML canvas.
+                </canvas>
+                <div id="epoch-overlay"></div>
             </main>
-            
-            <!-- REMOVED: .controls-hidden class and toggle button -->
             <aside id="bottom-sidebar"> 
                 <div id="item-selection-area">
                     <div id="inventory-boxes-container">Loading...</div>
                     <h2>INVENTORY</h2>
                     <div id="weapon-slots-container">Loading...</div>
-                </div>
-                
-                <!-- REMOVED: toggle-controls-button -->
-                <!-- REMOVED: action-buttons-area -->
-                
+                </div>                
             </aside>
-
-            <!-- Boot Overlay: For Title Screen and Error Messages (Opaque) -->
+            <!-- Opaque Overlay: Title Screen / Error Messages -->
             <div id="boot-overlay" class="show-title">
-                <!-- Title Screen -->
                 <div id="overlay-title-content" class="overlay-content">
                     <h1>DEVOLVER</h1>
                     <button id="start-game-button">START</button>
                 </div>
-                <!-- Error Overlay -->
                 <div id="overlay-error-content" class="overlay-content">
                     <h1>Game Error</h1>
                     <p>An unrecoverable error occurred during initialization.</p>
                     <p id="error-message-text">Error: [Dynamic error message here]</p>
-                    <p>Please check the browser's developer console (usually by pressing F12) for more technical details and try refreshing the page.</p>
+                    <p>Check the browser's developer console for technical details or refresh the page</p>
                 </div>
             </div>
-
-            <!-- Menu Overlay: For Main Menu, Settings, Cutscene, Pause, Game Over, Victory (Semi-Transparent) -->
+            <!-- Menu Overlay: Main Menu, Settings, Cutscene, Pause, Game Over, Victory (Semi-Transparent) -->
             <div id="menu-overlay">
                 <!-- Main Menu -->
                 <div id="overlay-mainmenu-content" class="overlay-content">
@@ -76,48 +66,41 @@
                     <button id="mainmenu-start-game-button">START GAME</button>
                     <button id="mainmenu-settings-button">SETTINGS</button>
                 </div>
-
-                 <!-- Settings Menu -->
-                 <div id="overlay-settings-content" class="overlay-content">
-                     <h2>SETTINGS</h2>
-                     <!-- NEW: Actual Settings Buttons -->
-                     <div class="settings-row"> 
-                         <button id="settings-btn-toggle-grid" class="settings-button">Toggle Grid</button>
-                         <!-- Placeholder for state indicator -->
-                         <span id="settings-value-grid"></span> 
-                     </div>
-                     <div class="settings-row">
-                         <button id="settings-btn-mute-music" class="settings-button">Toggle Music</button>
-                         <span id="settings-value-music"></span>
-                     </div>
-                     <div class="settings-row">
-                         <button id="settings-btn-mute-sfx" class="settings-button">Toggle SFX</button>
-                         <span id="settings-value-sfx"></span>
-                     </div>
-                     <!-- <button>AUDIO</button> --> <!-- REMOVED Placeholder -->
-                     <!-- <button>CONTROLS</button> --> <!-- REMOVED Placeholder -->
-                     <!-- <button>CREDITS</button> --> <!-- REMOVED Placeholder -->
-                     <button id="settings-back-button">BACK</button>
-                 </div>
-
-                 <!-- Intro Cutscene Content -->
-                 <div id="overlay-cutscene-content" class="overlay-content">
-                     <img id="cutscene-image-1" class="cutscene-image" src="assets/gendimage1.png" alt="Cutscene Image 1">
-                     <img id="cutscene-image-2" class="cutscene-image" src="assets/gendimage2.png" alt="Cutscene Image 2">
-                     <img id="cutscene-image-3" class="cutscene-image" src="assets/gendimage1.png" alt="Cutscene Image 3">
-                     <img id="cutscene-image-4" class="cutscene-image" src="assets/gendimage2.png" alt="Cutscene Image 4">
-                     <div id="cutscene-text-box">
-                         <p id="cutscene-text-content"></p>
-                     </div>
-                     <button id="cutscene-skip-button">SKIP</button>
-                 </div>
-
+                <!-- Settings Menu -->
+                <div id="overlay-settings-content" class="overlay-content">
+                    <h2>SETTINGS</h2>
+                    <div class="settings-row"> 
+                        <button id="settings-btn-toggle-grid" class="settings-button">Toggle Grid</button>
+                        <span id="settings-value-grid"></span> 
+                    </div>
+                    <div class="settings-row">
+                        <button id="settings-btn-mute-music" class="settings-button">Toggle Music</button>
+                        <span id="settings-value-music"></span>
+                    </div>
+                    <div class="settings-row">
+                        <button id="settings-btn-mute-sfx" class="settings-button">Toggle SFX</button>
+                        <span id="settings-value-sfx"></span>
+                    </div>
+                    <button id="settings-back-button">BACK</button>
+                </div>
+                <!-- Intro Cutscene -->
+                <div id="overlay-cutscene-content" class="overlay-content">
+                    <img id="cutscene-image-1" class="cutscene-image" src="assets/cut1.jpg" alt="dolphin scientists">
+                    <img id="cutscene-image-2" class="cutscene-image" src="assets/gendimage2.png" alt="Cutscene Image 2">
+                    <img id="cutscene-image-3" class="cutscene-image" src="assets/gendimage3.png" alt="Cutscene Image 3">
+                    <img id="cutscene-image-4" class="cutscene-image" src="assets/gendimage5.png" alt="Cutscene Image 4">
+                    <div id="cutscene-text-box">
+                        <p id="cutscene-text-content"></p>
+                    </div>
+                    <button id="cutscene-skip-button">SKIP</button>
+                </div>
                 <!-- Pause -->
-                 <div id="overlay-pause-content" class="overlay-content">
-                     <h2>PAUSED</h2>
-                     <button id="resume-button">RESUME</button>
-                     <button id="restart-button-overlay-pause" class="pause-restart-button">RESTART</button>
-                 </div>
+                <div id="overlay-pause-content" class="overlay-content">
+                    <h2>PAUSED</h2>
+                    <button id="resume-button">RESUME</button>
+                    <button id="settings-button-overlay-pause">SETTINGS</button>
+                    <button id="restart-button-overlay-pause" class="pause-restart-button">RESTART</button>
+                </div>
                 <!-- Game Over -->
                 <div id="overlay-gameover-content" class="overlay-content">
                     <h2>GAME OVER</h2>
