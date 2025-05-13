@@ -9,6 +9,7 @@ import * as GridCollision from './utils/gridCollision.js'; // Import solid check
 import { createBlock } from './utils/block.js'; // Import createBlock
 
 let agingNoiseGenerator = null; // dedicated noise instance for aging
+let allGravityChangesFromAgingThisPass = []; // This will store gravity changes from aging, to be returned by applyAging
 
 export function init() { // initialize the dedicated noise generator for aging
     agingNoiseGenerator = new PerlinNoise(Math.random()); // different seed each time
@@ -55,27 +56,30 @@ function getWaterDepthAbove(c, r) {
     return depth;
 }
 
-// --- NEW HELPER: Calculate vertical pillar height downwards ---
+// --- MODIFIED HELPER: Calculate *natural* vertical wood pillar height downwards ---
 /**
- * Calculates the height of a contiguous vertical pillar of a specific block type starting from (c, r) and going downwards.
+ * Calculates the height of a contiguous vertical pillar of natural (not player-placed) WOOD blocks
+ * starting from (c, r_start) and going downwards.
  * @param {number} c Column index.
- * @param {number} r Starting row index.
- * @param {number} pillarType The block type ID to count.
- * @returns {number} The height of the pillar (including the starting block).
+ * @param {number} r_start Starting row index.
+ * @returns {number} The height of the natural wood pillar.
  */
-function getPillarHeightDownwards(c, r, pillarType) {
+function getNaturalWoodPillarHeightDownwards(c, r_start) {
     let height = 0;
-    for (let checkR = r; checkR < Config.GRID_ROWS; checkR++) {
-        if (World.getBlockType(c, checkR) === pillarType) {
+    for (let checkR = r_start; checkR < Config.GRID_ROWS; checkR++) {
+        const blockData = World.getBlock(c, checkR);
+        // Check if it's a WOOD block AND not player-placed
+        if (blockData && typeof blockData === 'object' && blockData.type === Config.BLOCK_WOOD && !blockData.isPlayerPlaced) {
             height++;
         } else {
-            break; // Stop counting when the type changes or hits AIR/WATER/OutOfBounds
+            break; // Stop if not natural wood, or it's air, water, or end of grid
         }
     }
     return height;
 }
 
-// --- NEW HELPER: Place tree canopy ---
+
+// --- NEW HELPER: Place tree canopy (remains mostly the same) ---
 /**
  * Places the initial tree canopy around a given trunk top position.
  * @param {number} trunkC Column of the trunk top.
@@ -119,7 +123,7 @@ function placeInitialCanopy(trunkC, trunkTopR, radius, changedCellsArray) {
     }
 }
 
-// --- NEW HELPER: Check if a WOOD block is likely part of a tree trunk ---
+// --- NEW HELPER: Check if a WOOD block is likely part of a tree trunk (remains the same) ---
 /**
  * Heuristic check if a wood block is part of a tree trunk.
  * Checks for wood below and vegetation/air above.
@@ -141,7 +145,7 @@ function isLikelyTreeTrunk(c, r) {
     return hasSupport && hasCanopyOrAirAbove;
 }
 
-// --- NEW HELPER: Expand tree canopy ---
+// --- NEW HELPER: Expand tree canopy (remains the same) ---
 /**
  * Tries to expand the canopy around a given vegetation block.
  * @param {number} canopyC Column of the canopy block.
@@ -199,27 +203,22 @@ function expandCanopy(canopyC, canopyR, changedCellsArray) {
  * Applies aging effects (erosion, growth, stoneification, etc.) to the world grid.
  * Aging is probabilistic and influenced by environment.
  * Protected radius around the portal is applied *only if* portalRef is provided.
- * Returns list of coordinates {c, r} that were changed by aging (for static world visual updates).
  * @param {Portal | null} portalRef - Reference to the Portal instance (or null if none).
- * @returns {Array<{c: number, r: number, oldBlockType: number, newBlockType: number, finalBlockData: object | number}>} - An array of detailed changes.
+ * @returns {{visualChanges: Array<{c: number, r: number, oldBlockType: number, newBlockType: number, finalBlockData: object | number}>, gravityChanges: Array<{c: number, r_start: number, r_end: number, blockData: object}>}} - Object containing arrays of detailed visual changes and gravity changes.
  */
-export function applyAging(portalRef) { // intensityFactor removed
+export function applyAging(portalRef) {
     if (!agingNoiseGenerator) {
          console.error("Aging noise generator not initialized!");
-         return [];
+         return { visualChanges: [], gravityChanges: [] }; // Return structure
     }
     const grid = World.getGrid();
     if (!grid || grid.length === 0 || grid[0].length === 0) {
         console.error("World grid is not available or empty for aging.");
-        return [];
+        return { visualChanges: [], gravityChanges: [] }; // Return structure
     }
 
-    let changedCellsAndTypes = [];
-    // --- IMPORTANT: Create a copy of the grid state BEFORE this pass ---
-    // This prevents rules applied early in the pass from affecting conditions for rules later in the same pass.
-    // We'll read from the original state and write changes to the actual world grid.
-    // For simplicity here, we'll read directly from World.getBlockType, which reads the current state.
-    // A more robust implementation might snapshot the grid types first.
+    let changedCellsAndTypes = []; // This will be part of the return
+    allGravityChangesFromAgingThisPass = []; // Reset for this pass
 
     for (let r = 0; r < Config.GRID_ROWS; r++) { // iterate through ALL cells
         for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -244,14 +243,6 @@ export function applyAging(portalRef) { // intensityFactor removed
             if (blockBeforeChange === null) continue;
             const originalType = (typeof blockBeforeChange === 'object') ? blockBeforeChange.type : blockBeforeChange;
 
-            // --- Skip processing AIR blocks unless needed for a specific rule (like sedimentation) ---
-            // Most rules modify existing solid/vegetation blocks.
-            if (originalType === Config.BLOCK_AIR && r < Config.WATER_LEVEL) { // Optimization: Skip AIR above water unless needed
-                // Keep check for Underwater AIR Sedimentation (Rule 6) later
-                // If other rules needed to target AIR, adjust this condition
-                // continue; <-- Temporarily disabling this optimization to ensure tree growth works
-            }
-
             // Determine environmental factors based on the *current* world state
             const neighborTypes = getNeighborTypes(c, r);
             const isExposedToAir = isExposedTo(neighborTypes, Config.BLOCK_AIR);
@@ -267,15 +258,6 @@ export function applyAging(portalRef) { // intensityFactor removed
             // Changes are applied to `newType` and then committed at the end.
             // ==============================================================
 
-            // --- Rule Priorities ---
-            // 1. Erosion (Sand -> Air/Water, Dirt/Veg -> Sand)
-            // 2. Growth (Dirt -> Vegetation, Vegetation -> Upwards/Tree)
-            // 3. Tree Canopy Growth / Decay
-            // 4. Stoneification (Deep)
-            // 5. Stone Erosion (Surface)
-            // 6. Sedimentation (Underwater Air/Water -> Sand, Sand -> Deeper)
-
-
             // Rule 1: SAND Erosion (Highest Priority)
             if (originalType === Config.BLOCK_SAND) {
                  if (waterDepthAbove > 0) { // Water erosion takes precedence
@@ -290,7 +272,6 @@ export function applyAging(portalRef) { // intensityFactor removed
             }
 
             // Rule 1.5: DIRT/VEGETATION Water Erosion -> SAND
-            // Only apply if the block wasn't already changed (e.g., from VEG to something else)
             if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION)) {
                  if (waterDepthAbove > 0) {
                       if (Math.random() < Config.AGING_PROB_WATER_EROSION_DIRT_VEGETATION) {
@@ -298,8 +279,6 @@ export function applyAging(portalRef) { // intensityFactor removed
                       }
                  }
             }
-
-            // --- Rule 2: Growth ---
 
             // Rule 2.1: DIRT -> VEGETATION Growth
             if (newType === originalType && originalType === Config.BLOCK_DIRT) {
@@ -317,7 +296,7 @@ export function applyAging(portalRef) { // intensityFactor removed
                  }
             }
 
-            // --- Rule 2.2: VEGETATION -> Grow Upwards / Form Tree ---
+            // --- Rule 2.2: VEGETATION -> Grow Upwards / Form Tree (MODIFIED) ---
             if (newType === originalType && originalType === Config.BLOCK_VEGETATION) {
                 const blockAboveType = neighborTypes.above;
                 const hasSolidBelow = GridCollision.isSolid(c, r + 1);
@@ -328,8 +307,8 @@ export function applyAging(portalRef) { // intensityFactor removed
                         // Attempt to place vegetation above
                         const growUpR = r - 1;
                         if (growUpR >= 0) { // Ensure not growing off the top of the map
-                            const success = World.setBlock(c, growUpR, Config.BLOCK_VEGETATION, false);
-                            if (success) {
+                            const successGrowUp = World.setBlock(c, growUpR, Config.BLOCK_VEGETATION, false);
+                            if (successGrowUp) {
                                 blockPlacedThisTurn = World.getBlock(c, growUpR); // Get the newly placed block data
                                 changedCellsAndTypes.push({
                                     c: c, r: growUpR,
@@ -338,36 +317,132 @@ export function applyAging(portalRef) { // intensityFactor removed
                                     finalBlockData: blockPlacedThisTurn
                                 });
 
-                                // --- CHECK FOR TREE FORMATION ---
-                                // Calculate height starting from the newly grown block
-                                const pillarHeight = getPillarHeightDownwards(c, growUpR, Config.BLOCK_VEGETATION);
+                                // --- NEW TREE FORMATION CONDITION ---
+                                const treeFormationCheckTopR = growUpR; // Top of the potential 4-block trunk
+                                let vegetationCountInArea = 0;
+                                const TREE_FORMATION_CHECK_DEPTH = 4; // How many rows down to check (total 4 rows including start)
+                                const TREE_FORMATION_VEGETATION_THRESHOLD = 10; // Min vegetation blocks in 3x4 area
+                                const TRUNK_SEGMENT_ON_FORMATION_HEIGHT = 4; // Height of wood blocks to form
 
-                                if (pillarHeight >= Config.TREE_MIN_HEIGHT_TO_FORM) {
-                                    // console.log(`Tree forming at [${c}, ${growUpR}] with height ${pillarHeight}`);
-                                    // Convert pillar to wood
-                                    for (let h = 0; h < pillarHeight; h++) {
-                                        const trunkR = growUpR + h;
-                                        const oldTrunkType = World.getBlockType(c, trunkR); // Should be VEGETATION
-                                        if (oldTrunkType === Config.BLOCK_VEGETATION) {
+                                // Check 3-column wide, TREE_FORMATION_CHECK_DEPTH deep area
+                                for (let dr_check = 0; dr_check < TREE_FORMATION_CHECK_DEPTH; dr_check++) {
+                                    const check_r_area = treeFormationCheckTopR + dr_check;
+                                    if (check_r_area >= Config.GRID_ROWS) break; // Don't check out of bounds
+
+                                    for (let dc_check = -1; dc_check <= 1; dc_check++) { // Columns c-1, c, c+1
+                                        const check_c_area = c + dc_check;
+                                        if (check_c_area < 0 || check_c_area >= Config.GRID_COLS) continue; // Skip out of bounds columns
+
+                                        if (World.getBlockType(check_c_area, check_r_area) === Config.BLOCK_VEGETATION) {
+                                            vegetationCountInArea++;
+                                        }
+                                    }
+                                }
+
+                                if (vegetationCountInArea >= TREE_FORMATION_VEGETATION_THRESHOLD) {
+                                    // Condition met, form 4 wood blocks in the central column
+                                    let successfullyPlacedWoodBlocks = 0;
+                                    for (let h = 0; h < TRUNK_SEGMENT_ON_FORMATION_HEIGHT; h++) {
+                                        const trunkR = treeFormationCheckTopR + h;
+                                        if (trunkR >= Config.GRID_ROWS) break; // Don't place wood out of bounds
+
+                                        // Ensure the block is currently vegetation before converting
+                                        const oldTrunkTypeAtLoc = World.getBlockType(c, trunkR);
+
+                                        if (oldTrunkTypeAtLoc === Config.BLOCK_VEGETATION) {
+                                            // Create wood block (not player placed)
                                             const setWoodSuccess = World.setBlock(c, trunkR, Config.BLOCK_WOOD, false);
                                             if (setWoodSuccess) {
+                                                successfullyPlacedWoodBlocks++;
                                                 const woodBlockData = World.getBlock(c, trunkR);
-                                                changedCellsAndTypes.push({
-                                                    c: c, r: trunkR,
-                                                    oldBlockType: Config.BLOCK_VEGETATION,
-                                                    newBlockType: Config.BLOCK_WOOD,
-                                                    finalBlockData: woodBlockData
-                                                });
+                                                // Update changedCellsAndTypes: If vegetation was just placed here (e.g. growUpR), modify that entry.
+                                                // Otherwise, add a new entry.
+                                                let existingChangeIndex = changedCellsAndTypes.findIndex(ch => ch.c === c && ch.r === trunkR);
+                                                if (existingChangeIndex !== -1) {
+                                                    changedCellsAndTypes[existingChangeIndex].newBlockType = Config.BLOCK_WOOD;
+                                                    changedCellsAndTypes[existingChangeIndex].finalBlockData = woodBlockData;
+                                                } else {
+                                                    changedCellsAndTypes.push({
+                                                        c: c, r: trunkR,
+                                                        oldBlockType: Config.BLOCK_VEGETATION, // Original was vegetation
+                                                        newBlockType: Config.BLOCK_WOOD,
+                                                        finalBlockData: woodBlockData
+                                                    });
+                                                }
                                             }
                                         }
                                     }
-                                    // Place initial canopy (around the top trunk block at growUpR)
-                                    placeInitialCanopy(c, growUpR, Config.TREE_INITIAL_CANOPY_RADIUS, changedCellsAndTypes);
-                                }
-                            }
-                        }
-                    }
-                }
+
+                                    // --- CHECK FOR "TOO HIGH" TREE COLLAPSE ---
+                                    if (successfullyPlacedWoodBlocks > 0) { // Only check if some wood was actually placed
+                                        const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 15;
+                                        const totalNaturalWoodPillarHeight = getNaturalWoodPillarHeightDownwards(c, treeFormationCheckTopR);
+
+                                        if (totalNaturalWoodPillarHeight > MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE) {
+                                            // console.log(`Tree at [${c}, ${treeFormationCheckTopR}] is too tall (${totalNaturalWoodPillarHeight}). Collapsing.`);
+                                            let blocksToMakeFallThisCollapse = [];
+                                            // Iterate through the *natural* part of the pillar that's collapsing
+                                            for (let h_fall = 0; h_fall < totalNaturalWoodPillarHeight; h_fall++) {
+                                                const fallR = treeFormationCheckTopR + h_fall;
+                                                if (fallR >= Config.GRID_ROWS) break;
+
+                                                const currentBlockDataForFall = World.getBlock(c, fallR);
+                                                // Ensure it's still natural wood (should be, as getNatural.. checked)
+                                                if (currentBlockDataForFall && currentBlockDataForFall.type === Config.BLOCK_WOOD && !currentBlockDataForFall.isPlayerPlaced) {
+                                                    // Store the block's data *before* setting to air
+                                                    const fallingBlockData = { ...currentBlockDataForFall }; // Shallow copy is fine
+
+                                                    // Set the original location to AIR immediately (logical change)
+                                                    World.setBlock(c, fallR, Config.BLOCK_AIR, false);
+
+                                                    // Calculate where this block will land
+                                                    let r_end_fall = Config.GRID_ROWS - 1; // Default to bottom of map
+                                                    for (let check_r_fall = fallR + 1; check_r_fall < Config.GRID_ROWS; check_r_fall++) {
+                                                        if (GridCollision.isSolid(c, check_r_fall)) {
+                                                            r_end_fall = check_r_fall - 1;
+                                                            break;
+                                                        }
+                                                    }
+                                                    r_end_fall = Math.max(fallR, r_end_fall); // Ensure end is not above start
+
+                                                    blocksToMakeFallThisCollapse.push({
+                                                        c: c, r_start: fallR, r_end: r_end_fall, blockData: fallingBlockData
+                                                    });
+
+                                                    // Update changedCellsAndTypes for the block that is now AIR
+                                                    let collapseChangeIndex = changedCellsAndTypes.findIndex(ch => ch.c === c && ch.r === fallR);
+                                                    if (collapseChangeIndex !== -1) {
+                                                        // If it was already in changedCells (e.g. VEG->WOOD), update its newType to AIR
+                                                        changedCellsAndTypes[collapseChangeIndex].newBlockType = Config.BLOCK_AIR;
+                                                        changedCellsAndTypes[collapseChangeIndex].finalBlockData = createBlock(Config.BLOCK_AIR, false);
+                                                    } else {
+                                                        // If it wasn't previously changed in this pass (unlikely for just-formed trunk), add new entry
+                                                        changedCellsAndTypes.push({
+                                                            c: c, r: fallR,
+                                                            oldBlockType: Config.BLOCK_WOOD, // It was wood before collapsing
+                                                            newBlockType: Config.BLOCK_AIR,
+                                                            finalBlockData: createBlock(Config.BLOCK_AIR, false)
+                                                        });
+                                                    }
+                                                } else {
+                                                    // This shouldn't happen if getNaturalWoodPillarHeightDownwards is correct
+                                                    break; 
+                                                }
+                                            }
+                                            if (blocksToMakeFallThisCollapse.length > 0) {
+                                                allGravityChangesFromAgingThisPass.push(...blocksToMakeFallThisCollapse);
+                                            }
+                                            // NO CANOPY IF COLLAPSED
+                                        } else {
+                                            // Tree formed and is not too tall, place initial canopy
+                                            placeInitialCanopy(c, treeFormationCheckTopR, Config.TREE_INITIAL_CANOPY_RADIUS, changedCellsAndTypes);
+                                        }
+                                    }
+                                } // End if vegetationCount >= threshold
+                            } // End if successGrowUp
+                        } // End if growUpR >= 0
+                    } // End if random < prob
+                } // End if blockAboveType === AIR && hasSolidBelow
             } // End Rule 2.2
 
 
@@ -375,12 +450,11 @@ export function applyAging(portalRef) { // intensityFactor removed
 
             // Rule 3.1: Tree Canopy Growth (applied to VEGETATION blocks likely part of a canopy)
             if (newType === originalType && originalType === Config.BLOCK_VEGETATION) {
-                // Heuristic: Is it adjacent (inc diagonals) to a WOOD block likely part of a trunk?
                 let isNearTrunk = false;
-                for (let dr = -1; dr <= 1; dr++) {
-                    for (let dc = -1; dc <= 1; dc++) {
-                        if (dr === 0 && dc === 0) continue;
-                        if (isLikelyTreeTrunk(c + dc, r + dr)) {
+                for (let dr_canopy = -1; dr_canopy <= 1; dr_canopy++) {
+                    for (let dc_canopy = -1; dc_canopy <= 1; dc_canopy++) {
+                        if (dr_canopy === 0 && dc_canopy === 0) continue;
+                        if (isLikelyTreeTrunk(c + dc_canopy, r + dr_canopy)) {
                             isNearTrunk = true;
                             break;
                         }
@@ -389,22 +463,17 @@ export function applyAging(portalRef) { // intensityFactor removed
                 }
 
                 if (isNearTrunk) {
-                    // Try to expand the canopy from this vegetation block
                     expandCanopy(c, r, changedCellsAndTypes);
-                    // Note: This might cause rapid expansion if multiple neighbors trigger it in one pass.
-                    // Consider adding a check within expandCanopy to prevent expanding into a block
-                    // that was *just* created in this same aging pass.
                 }
             }
 
             // Rule 3.2: Tree Canopy Decay (VEGETATION -> AIR)
             if (newType === originalType && originalType === Config.BLOCK_VEGETATION) {
-                 // Similar check as growth - is it likely part of a canopy?
                  let isNearTrunkDecay = false;
-                 for (let dr = -1; dr <= 1; dr++) {
-                     for (let dc = -1; dc <= 1; dc++) {
-                         if (dr === 0 && dc === 0) continue;
-                         if (isLikelyTreeTrunk(c + dc, r + dr)) {
+                 for (let dr_decay = -1; dr_decay <= 1; dr_decay++) {
+                     for (let dc_decay = -1; dc_decay <= 1; dc_decay++) {
+                         if (dr_decay === 0 && dc_decay === 0) continue;
+                         if (isLikelyTreeTrunk(c + dc_decay, r + dr_decay)) {
                              isNearTrunkDecay = true;
                              break;
                          }
@@ -421,15 +490,12 @@ export function applyAging(portalRef) { // intensityFactor removed
                   if (isLikelyTreeTrunk(c, r)) { // Check if it's part of a trunk
                        if (Math.random() < Config.AGING_PROB_TREE_TRUNK_DECAY) {
                             newType = Config.BLOCK_AIR;
-                            // OPTIONAL TODO: When trunk decays, potentially trigger decay of adjacent canopy blocks too?
-                            // Or drop WOOD items? Start simple: just turn trunk block to AIR.
                        }
                   }
              }
 
 
             // Rule 4: Deep Stoneification (Dirt/Veg/Sand -> Stone)
-            // Check if block *wasn't* changed by previous rules (like erosion/growth)
             if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION || originalType === Config.BLOCK_SAND)) {
                 const depthInPixels = r * Config.BLOCK_HEIGHT;
                 if (depthInPixels > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) {
@@ -440,7 +506,6 @@ export function applyAging(portalRef) { // intensityFactor removed
             }
 
             // Rule 5: Surface Stone Erosion (Stone -> Air)
-            // Check if block *wasn't* changed by previous rules
              if (newType === originalType && originalType === Config.BLOCK_STONE) {
                  const isSurfaceStone = neighborTypes.above === Config.BLOCK_AIR || neighborTypes.above === Config.BLOCK_WATER;
                   if (isSurfaceStone) {
@@ -451,16 +516,14 @@ export function applyAging(portalRef) { // intensityFactor removed
              }
 
             // Rule 6: Underwater AIR/WATER Sedimentation -> SAND
-            // Only apply if block wasn't changed (e.g. by tree growth above)
             if (newType === originalType && originalType === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
                  let firstSolidRowBelow = -1;
-                 for (let checkR = r + 1; checkR < Config.GRID_ROWS; checkR++) {
-                     if (GridCollision.isSolid(c, checkR)) {
-                         firstSolidRowBelow = checkR;
+                 for (let checkR_sed = r + 1; checkR_sed < Config.GRID_ROWS; checkR_sed++) {
+                     if (GridCollision.isSolid(c, checkR_sed)) {
+                         firstSolidRowBelow = checkR_sed;
                          break;
                      }
                  }
-                 // Sedimentation requires solid ground *somewhere* below it eventually, or being at the bottom row
                  const hasSolidBelowOrIsBottom = (firstSolidRowBelow !== -1) || (r === Config.GRID_ROWS - 1);
                  if (hasSolidBelowOrIsBottom) {
                      if (Math.random() < Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER) {
@@ -476,29 +539,23 @@ export function applyAging(portalRef) { // intensityFactor removed
 
             // --- Apply Change to World if `newType` is different from `originalType` ---
             if (newType !== originalType) {
-                // Special case: If a block was placed *above* this one (like upward veg growth),
-                // don't overwrite it with a change derived from the original block below.
-                // Check if blockPlacedThisTurn exists and is at `(c, r)`. This is unlikely but a safeguard.
                 let applyChange = true;
                 if(blockPlacedThisTurn && blockPlacedThisTurn.c === c && blockPlacedThisTurn.r === r) {
                     applyChange = false;
-                    // console.warn(`Aging conflict: Block placed at [${c},${r}] this turn, preventing overwrite by lower block's rule.`);
                 }
 
                 if (applyChange) {
-                    const success = World.setBlock(c, r, newType, false); // `World.setBlock` creates the block object
-                    if (!success) {
+                    const successSetBlock = World.setBlock(c, r, newType, false);
+                    if (!successSetBlock) {
                          console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
                     } else {
-                        // Successfully changed the block type at (c, r)
-                        const blockAfterChange = World.getBlock(c, r); // Get the new block data
-                        // Record the change
+                        const blockAfterChangeMain = World.getBlock(c, r);
                         changedCellsAndTypes.push({
                             c,
                             r,
                             oldBlockType: originalType,
                             newBlockType: newType,
-                            finalBlockData: blockAfterChange // Store the actual data placed
+                            finalBlockData: blockAfterChangeMain
                         });
                     }
                 }
@@ -506,65 +563,52 @@ export function applyAging(portalRef) { // intensityFactor removed
 
 
              // --- Rule 7: SAND Sedimentation Downwards from (c, r) ---
-             // This rule acts *based on* the original block type at (c, r) being SAND,
-             // but modifies blocks *below* it. This should run even if (c, r) itself changed.
              if (originalType === Config.BLOCK_SAND) {
-                 // Check if the original location was underwater
-                 // We need to check the state *before* any changes this pass, ideally.
-                 // Using waterDepthAbove calculated earlier based on current state is an approximation.
                  if (waterDepthAbove > 0) {
                      const maxSandDepthBelowInBlocks = Math.min(waterDepthAbove, Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH);
 
                      for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelowInBlocks; potentialDepth++) {
-                         const nr = r + potentialDepth; // Row below
-                         if (nr >= Config.GRID_ROWS) break; // Stop if out of bounds
+                         const nr_sand_sed = r + potentialDepth;
+                         if (nr_sand_sed >= Config.GRID_ROWS) break;
 
-                         // Check the block type at the target row *below* the original sand block
-                         const targetBlockBeforeSedimentation = World.getBlock(c, nr); // Get current state
+                         const targetBlockBeforeSedimentation = World.getBlock(c, nr_sand_sed);
                          const targetBlockTypeBeforeChange = (typeof targetBlockBeforeSedimentation === 'object' && targetBlockBeforeSedimentation !== null)
                              ? targetBlockBeforeSedimentation.type
                              : targetBlockBeforeSedimentation;
 
-                         // Check if the material below is something sand can convert
                          const isConvertibleMaterial = Config.AGING_MATERIAL_CONVERSION_FACTORS[targetBlockTypeBeforeChange] !== undefined;
 
                          if (isConvertibleMaterial) {
-                             // Check probability for sedimentation
                              if (Math.random() < Config.AGING_PROB_SAND_SEDIMENTATION_BELOW) {
-                                 // Only apply change if it's not already sand
                                  if (targetBlockTypeBeforeChange !== Config.BLOCK_SAND) {
-                                     // Attempt to set the block below to SAND
-                                     const success = World.setBlock(c, nr, Config.BLOCK_SAND, false);
-                                     if (success) {
-                                         const blockAfterSedimentation = World.getBlock(c, nr); // Get the new sand block data
-                                         // Record this change
+                                     const successSed = World.setBlock(c, nr_sand_sed, Config.BLOCK_SAND, false);
+                                     if (successSed) {
+                                         const blockAfterSedimentation = World.getBlock(c, nr_sand_sed);
                                          changedCellsAndTypes.push({
                                              c: c,
-                                             r: nr, // Note the row is the one *below*
-                                             oldBlockType: targetBlockTypeBeforeChange, // Original type of the block below
+                                             r: nr_sand_sed,
+                                             oldBlockType: targetBlockTypeBeforeChange,
                                              newBlockType: Config.BLOCK_SAND,
                                              finalBlockData: blockAfterSedimentation
                                          });
-                                     } else {
-                                         console.error(`Aging failed to set block data at [${c}, ${nr}] to SAND during sedimentation below rule.`);
                                      }
                                  }
-                                 // If it converted, continue checking deeper
                              } else {
-                                // Probability check failed, stop trying to sediment deeper in this column
                                 break;
                              }
                          } else {
-                             // Hit a non-convertible block (like AIR, WATER, or maybe BEDROCK if added), stop sedimenting downwards
                              break;
                          }
-                     } // End loop for potential depth
-                 } // End if waterDepthAbove > 0
+                     }
+                 }
              } // End Rule 7
 
         } // End column loop (c)
     } // End row loop (r)
 
-    // Return the list of all changes made in this pass
-    return changedCellsAndTypes;
+    // Return both visual changes and any gravity changes (like falling tree trunks)
+    return {
+        visualChanges: changedCellsAndTypes,
+        gravityChanges: allGravityChangesFromAgingThisPass
+    };
 } // End applyAging function
