@@ -28,33 +28,30 @@ body {
     margin: auto;
     position: relative;
     transition: filter 0.3s ease;
-    overflow: hidden; /* Important for absolute positioning of children within padding */
+    overflow: hidden;
 }
-
-/* New Top UI Overlay (replaces top-sidebar) */
 #top-ui-overlay {
     position: absolute;
-    top: 0.5rem; /* Align with app-container padding */
-    left: 0.5rem; /* Align with app-container padding */
-    right: 0.5rem; /* Align with app-container padding */
-    padding: 0.2rem;
+    top: 0.5rem;
+    left: 0.5rem; 
+    right: 0.5rem;
+    padding: 0.3rem;
     background-color: black;
-    border: 0.2rem solid white; /* Keep consistent border */
+    border: 0.2rem solid white;
     box-sizing: border-box;
-    z-index: 51; /* Above game canvas/epoch, below menus */
+    z-index: 51;
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
 }
-
 #top-info-row {
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
+    justify-content: space-around;
     align-items: center;
     width: 100%;
     flex-grow: 1;
-    gap: 0.5rem;
+    gap: 0.3rem;
     min-height: 1rem;
 }
 .top-info-column {
@@ -62,7 +59,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: space-around;
     position: relative;
 }
 .top-info-column h2 {
@@ -108,11 +105,11 @@ body {
     align-items: center;
     justify-content: center;
     width: 100%;
-    height: 1.5rem; /* Match player/portal bar height */
+    height: 1.5rem;
 }
 #timer-bar-container {
-     width: 100%;
-     height: 100%;
+    width: 100%;
+    height: 100%;
 }
 #timer-bar-fill {
     background-color: rgba(80, 180, 80, 0.7);
@@ -123,17 +120,17 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 3;
-    font-size: 1.1em;
+    font-size: 1rem;
     color: white;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     pointer-events: none;
 }
 #game-wrapper {
-    flex-grow: 1; /* Will fill space not taken by other flex items (none in this direction now) */
-    height: 100%; /* Ensure it tries to take full height of app-container */
-    width: 100%;  /* Ensure it tries to take full width of app-container */
-    min-height: 0; /* For flexbox */
-    position: relative; /* For epoch-overlay and canvas centering */
+    flex-grow: 1;
+    height: 100%;
+    width: 100%;
+    min-height: 0;
+    position: relative;
     border: 0.2rem solid white;
     box-sizing: border-box;
     display: flex;
@@ -143,12 +140,12 @@ body {
     background-color: #111;
 }
 #game-canvas {
-     display: block;
-     max-width: 100%;
-     max-height: 100%;
-     object-fit: contain;
-     image-rendering: pixelated;
-     image-rendering: crisp-edges;
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
 #epoch-overlay {
     position: absolute;
@@ -160,32 +157,26 @@ body {
     font-size: 3em;
     color: white;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
-    z-index: 50; /* Below new UI overlays */
+    z-index: 50;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
     pointer-events: none;
 }
-
-/* New Bottom UI Overlay (replaces bottom-sidebar) */
 #bottom-ui-overlay {
     position: absolute;
-    bottom: 0.5rem; /* Align with app-container padding */
-    left: 0.5rem;   /* Align with app-container padding */
-    right: 0.5rem;  /* Align with app-container padding */
+    bottom: 0.5rem;
+    left: 0.5rem;
+    right: 0.5rem;
     padding: 0.5rem;
-    background-color: black; /* Solid black background */
+    background-color: black;
     box-sizing: border-box;
-    z-index: 51; /* Above game canvas/epoch, below menus */
+    z-index: 51;
     display: flex;
     flex-direction: column;
-    overflow-y: auto; /* In case content becomes too tall */
-    /* border-radius: 6px; */ /* Removed rounded corners */
-    border: 0.2rem solid white; /* Added border to match top-ui-overlay and game-wrapper */
+    overflow-y: auto;
+    border: 0.2rem solid white;
 }
-
-/* No h2 in bottom-ui-overlay directly */
-
 #item-selection-area {
     display: flex;
     flex-direction: column;
@@ -233,7 +224,7 @@ body {
     box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
     border-color: #666;
 }
-.item-box.placeholder-slot { /* Styling for empty/placeholder slots */
+.item-box.placeholder-slot {
     background-color: #2a2a2a;
     opacity: 0.3;
     cursor: default;
@@ -289,8 +280,6 @@ body {
     text-shadow: 1px 1px 1px black;
     pointer-events: none;
 }
-
-/* --- Default Overlay Styling --- */
 #boot-overlay,
 #menu-overlay {
     position: absolute;
@@ -304,46 +293,38 @@ body {
     flex-direction: column;
     text-align: center;
     color: white;
-    /* Hidden by default */
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity 0.3s ease, visibility 0s linear 0.3s; /* Default for fade-out */
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
 }
-
-/* --- Boot Overlay (Opaque for Title/Error) --- */
 #boot-overlay {
-    background-color: black; /* Fully opaque */
-    z-index: 200; /* Higher z-index */
+    background-color: black;
+    z-index: 200;
 }
 #boot-overlay.show-title,
 #boot-overlay.show-error {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s; /* Faster visibility for fade-in */
+    transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
-
-/* --- Menu Overlay (Semi-transparent for Menus, Pause, etc.) --- */
 #menu-overlay {
-    background-color: rgba(0, 0, 0, 0.75); /* Semi-transparent default */
+    background-color: rgba(0, 0, 0, 0.75);
     z-index: 100;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0s;
 }
-/* New class to be added by JS for opaque states (e.g., main menu, or settings from main menu) */
 #menu-overlay.force-opaque {
-    background-color: black; /* Fully opaque */
+    background-color: black;
 }
-#menu-overlay.active { /* This class makes the menu overlay visible */
+#menu-overlay.active {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
     transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
 }
-
-/* --- Overlay Content Styling --- */
 .overlay-content {
-    display: none; /* All overlay content divs are hidden by default, JS will set display:flex */
+    display: none;
     flex-direction: column;
     align-items: center;
     width: 80%;
@@ -351,47 +332,33 @@ body {
     padding: 20px;
     box-sizing: border-box;
 }
-
-/* JS will manage display:flex on the correct child .overlay-content div.
-   The classes like .show-title on #boot-overlay or .show-mainmenu on #menu-overlay
-   are now primarily for semantic state or if CSS needs to target the parent overlay
-   based on what it's showing.
-*/
-
-/* Specific styles for the cutscene container when active (layout properties) */
 #menu-overlay.active.show-cutscene #overlay-cutscene-content {
     width: 100%;
     height: 100%;
     max-width: none;
-    position: relative; /* Important for absolute positioning of children */
+    position: relative;
 }
-
-/* Styles for the new Settings Menu layout */
 #overlay-settings-content {
-    /* display: none; is handled by .overlay-content default */
     flex-direction: column;
     align-items: center;
     width: 80%;
-    max-width: 400px; /* Adjusted max-width */
+    max-width: 400px;
     padding: 20px;
     box-sizing: border-box;
-    gap: 15px; /* Add gap between rows */
+    gap: 15px;
 }
-
 .settings-row {
-    display: flex; /* Use flexbox for row layout */
-    justify-content: space-between; /* Space out button and value */
+    display: flex;
+    justify-content: space-between;
     align-items: center;
     width: 100%;
-    padding: 5px 0; /* Add some padding */
+    padding: 5px 0;
 }
-
-/* Style the new settings buttons */
 #overlay-settings-content .settings-button {
     padding: 10px 20px;
     font-size: 1.1em;
-    min-width: 180px; /* Give buttons a minimum width */
-    text-align: left; /* Align text left */
+    min-width: 180px;
+    text-align: left;
     cursor: pointer;
     border-radius: 5px;
     border: 1px solid #ccc;
@@ -406,39 +373,29 @@ body {
 #overlay-settings-content .settings-button:active {
     transform: scale(0.97);
 }
-
-/* Style the placeholder spans for setting values */
 #overlay-settings-content .settings-row span {
     font-size: 1.1em;
     font-weight: bold;
-    color: #ccc; /* Lighter color for the value */
-    min-width: 50px; /* Ensure space for ON/OFF/MUTED */
+    color: #ccc;
+    min-width: 50px;
     text-align: right;
 }
-
-/* Keep styles for muted/active states, they will apply to the new buttons */
 #overlay-settings-content .settings-button.muted,
-#overlay-settings-content .settings-button.active { /* .active for grid button */
+#overlay-settings-content .settings-button.active {
     border-color: darkred;
     color: darkred;
     background-color: #fee;
 }
-
-/* Specific for grid button when active */
 #overlay-settings-content #settings-btn-toggle-grid.active {
     background-color: #dfd;
     border-color: darkgreen;
     color: darkgreen;
 }
-
-/* Styles for the Error Overlay (within #boot-overlay) */
-#boot-overlay.show-error { /* Background and general color for error overlay */
+#boot-overlay.show-error {
     background-color: rgba(0, 0, 0, 0.95);
     color: red;
-    padding: 20px; /* Original had this on the #boot-overlay.show-error */
+    padding: 20px;
 }
-
-/* #overlay-error-content will use max-width from .overlay-content (500px) */
 #overlay-error-content h1 {
     font-family: 'RubikIso', sans-serif;
     font-size: 2.5em;
@@ -465,8 +422,6 @@ body {
     font-size: 1em;
     color: #ffdddd;
 }
-
-/* General Overlay Text & Button Styling */
 #boot-overlay h1, #menu-overlay h1 {
     font-family: 'RubikIso', sans-serif;
     font-size: 3.5em;
@@ -488,8 +443,6 @@ body {
 #boot-overlay button:active, #menu-overlay button:active {
     transform: scale(0.97);
 }
-
-/* Title Screen Button Styles (within #boot-overlay #overlay-title-content) */
 #overlay-title-content #start-game-button {
     background-color: black;
     color: white;
@@ -505,8 +458,6 @@ body {
     border-color: #e0e0e0;
     transform: scale(0.97);
 }
-
-/* Restart Button Styles (within #menu-overlay various content divs) */
 #restart-button-overlay,
 #restart-button-overlay-pause {
     background-color: darkred; color: white; border-color: #ffaaaa;
@@ -521,18 +472,14 @@ body {
 #restart-button-overlay-victory:hover {
     background-color: green;
 }
-
-/* NEW: Style for Settings button in Pause Menu */
 #settings-button-overlay-pause {
-    background-color: #555; /* Darker grey, distinct from resume/restart */
+    background-color: #555;
     color: white;
     border-color: #888;
 }
 #settings-button-overlay-pause:hover {
     background-color: #666;
 }
-
-/* Updated filter for overlay active state */
 #app-container.overlay-active > #top-ui-overlay,
 #app-container.overlay-active > #game-wrapper,
 #app-container.overlay-active > #bottom-ui-overlay {
@@ -547,7 +494,6 @@ body {
     pointer-events: auto;
     transition: filter 0.3s ease;
 }
-
 #landscape-warning {
     display: none;
     position: fixed;
@@ -565,8 +511,6 @@ body {
 noscript p {
     color: white; text-align: center; padding: 20px;
 }
-
-/* Scrollbar hiding for new UI overlays */
 #top-ui-overlay::-webkit-scrollbar, 
 #bottom-ui-overlay::-webkit-scrollbar {
     display: none;
@@ -575,7 +519,6 @@ noscript p {
 #bottom-ui-overlay {
     -ms-overflow-style: none; scrollbar-width: none;
 }
-
 #overlay-cutscene-content {
     position: relative;
     overflow: hidden;
@@ -625,7 +568,7 @@ noscript p {
     font-family: 'Arial', sans-serif;
     box-shadow: 0 2px 15px rgba(0,0,0,0.6);
 }
-#menu-overlay.active.show-cutscene #overlay-cutscene-content #cutscene-skip-button { /* This makes skip button appear with cutscene */
+#menu-overlay.active.show-cutscene #overlay-cutscene-content #cutscene-skip-button {
     position: absolute;
     bottom: 1rem;
     right: 1rem;
@@ -637,7 +580,7 @@ noscript p {
     border-color: rgba(255, 255, 255, 0.3);
 }
 #cutscene-text-box.visible,
-#overlay-cutscene-content #cutscene-skip-button.visible { /* JS adds .visible for fade-in effect of text/skip button */
+#overlay-cutscene-content #cutscene-skip-button.visible {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -660,7 +603,6 @@ noscript p {
     transform: scale(0.97);
     background-color: rgba(0, 0, 0, 0.9);
 }
-
 @media (orientation: portrait) {
     #app-container { display: none; }
     #landscape-warning { display: flex; }
