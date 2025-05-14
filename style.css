@@ -49,8 +49,8 @@ body {
     display: block;
     width: 100%;
     height: 100%;
-    max-width: 100%; /* Kept for safety, but width/height 100% should dominate */
-    max-height: 100%; /* Kept for safety */
+    max-width: 100%;
+    max-height: 100%;
     object-fit: contain;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
@@ -66,16 +66,16 @@ body {
     background-color: black;
     box-sizing: border-box;
     z-index: 51;
-    gap: 0.4rem;
+    gap: 0.3rem;
 }
 #top-info-row {
     display: flex;
     flex-direction: row;
-    justify-content: space-between; /* Changed from space-around to space-between */
+    justify-content: space-between;
     align-items: center;
     width: 100%;
     flex-grow: 1;
-    gap: 0.5rem;
+    gap: 0.3rem;
     min-height: 1rem;
     box-sizing: border-box;
 }
@@ -112,7 +112,7 @@ body {
     width: 100%;
     position: relative;
     z-index: 1;
-    box-sizing: border-box; /* <<< ADD THIS LINE */
+    box-sizing: border-box;
 }
 .health-bar-fill {
     height: 100%;
