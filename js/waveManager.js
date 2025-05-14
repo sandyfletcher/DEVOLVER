@@ -86,15 +86,15 @@ function startNextWave() {
         currentMaxTimer = 0;
         return false;
     }
-    // Epoch text for the very first wave shown here.
-    // Epoch text for subsequent waves is shown at the end of BUILDPHASE / start of calculations.
-    if (currentMainWaveIndex === 0) {
-        if (waveData.epochName) {
-            UI.showEpochText(waveData.epochName);
-        } else {
-            UI.showEpochText(`Starting Wave ${waveData.mainWaveNumber}`);
-        }
+
+    if (typeof waveData.mya === 'number') {
+        UI.showEpochText(waveData.mya);
+    } else if (waveData.customEpochText) {
+        UI.showEpochText(waveData.customEpochText);
+    } else {
+        UI.showEpochText(`Starting Wave ${waveData.mainWaveNumber}`);
     }
+
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration;
     currentMaxTimer = waveData.duration;
@@ -118,31 +118,30 @@ function startNextWave() {
     }
     return true;
 }
-function endWave() {
+function endWave() { // This function IS defined here
     const waveData = getCurrentWaveData();
     if (!waveData) {
-        state = 'GAME_OVER';
+        state = 'GAME_OVER'; // Should be caught by victory check first usually
         currentMaxTimer = 0;
+        console.warn("[WaveManager] endWave called but no current wave data. Setting GAME_OVER.");
         return;
     }
     if (currentMainWaveIndex + 1 < Config.WAVES.length) {
         state = 'BUILDPHASE';
-        // Intermission duration = buildPhaseTimer + animation time.
-        // Config.WARPPHASE_DURATION is no longer used for a timed state.
-        // We just use the intermissionDuration from the wave config for the build phase.
-        // If it's not defined, use a default.
-        buildPhaseTimer = waveData.intermissionDuration ?? (Config.AGING_DEFAULT_PASSES_PER_WAVE * 0.5 + 10.0); // Example default
+        buildPhaseTimer = waveData.intermissionDuration ?? (Config.AGING_DEFAULT_PASSES_PER_WAVE * 0.5 + 10.0);
         currentMaxTimer = buildPhaseTimer;
-        AudioManager.stopGameMusic();
+        AudioManager.stopGameMusic(); // Stop wave music during build phase
     } else {
         state = 'VICTORY';
         currentMaxTimer = 0;
+        AudioManager.stopGameMusic(); // Stop wave music on victory
     }
+    // Reset spawning progression for the next phase (build or next wave)
     currentSubWaveIndex = 0;
     currentGroupIndex = 0;
     enemiesSpawnedThisGroup = 0;
     groupSpawnTimer = 0;
-    groupStartDelayTimer = 0;
+    groupStartDelayTimer = 0; // Will be set by startNextWave or triggerWarp... if needed
 }
 function triggerWarpCleanupAndCalculations() {
     console.log("[WaveMgr] End of BUILDPHASE. Triggering entity cleanup, calculations, and animation queuing...");
@@ -157,6 +156,7 @@ function triggerWarpCleanupAndCalculations() {
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     console.log("[WaveMgr] Entity cleanup and portal radius update complete.");
+    
     // 2. Logical Gravity Settlement
     console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
     let gravityAnimationChanges = WorldManager.applyGravitySettlement(portalRef);
@@ -171,10 +171,27 @@ function triggerWarpCleanupAndCalculations() {
     const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
     let allVisualAgingChangesFromAgingPasses = []; 
     let allGravityChangesFromAgingPasses = [];   
+    
+    const currentWaveData = getCurrentWaveData();
+    const currentMya = currentWaveData ? currentWaveData.mya : undefined;
+    const nextMya = nextWaveData ? nextWaveData.mya : undefined;
+
+    if (typeof currentMya === 'number' && typeof nextMya === 'number') {
+        UI.startMyaEpochTransition(currentMya, nextMya, Config.MYA_TRANSITION_ANIMATION_DURATION);
+    } else {
+        if (nextWaveData) {
+            if (typeof nextWaveData.mya === 'number') UI.showEpochText(nextWaveData.mya);
+            else if (nextWaveData.customEpochText) UI.showEpochText(nextWaveData.customEpochText);
+            else UI.showEpochText(`Preparing Wave ${nextWaveData.mainWaveNumber || 'Next'}`);
+        } else {
+            UI.showEpochText("Final Preparations..."); // Should lead to victory
+        }
+    }
+
     if (nextWaveData && typeof nextWaveData === 'object') {
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
         for (let i = 0; i < passes; i++) {
-            WorldManager.applyLightingPass(); // <--- NEW: Run lighting pass
+            WorldManager.applyLightingPass();
             const changesInPass = AgingManager.applyAging(portalRef);
             if (changesInPass.visualChanges && Array.isArray(changesInPass.visualChanges)) {
                 allVisualAgingChangesFromAgingPasses.push(...changesInPass.visualChanges);
@@ -190,10 +207,7 @@ function triggerWarpCleanupAndCalculations() {
         if (allGravityChangesFromAgingPasses.length > 0) {
             WorldManager.addProposedGravityChanges(allGravityChangesFromAgingPasses);
         }
-        const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
-        UI.showEpochText(epochName);
     } else {
-        UI.showEpochText("Final Preparations...");
         console.warn("[WaveMgr] No next wave data found for aging process. This might be the last wave transition before victory.");
     }
 }
@@ -224,10 +238,10 @@ export function update(dt, gameState) {
     if (dt <= 0) return;
     switch (state) {
         case 'PRE_WAVE':
-            if (gameState === 'RUNNING') {
+            if (gameState === 'RUNNING') { // gameState here refers to FlowManager.GameState.RUNNING
                 preWaveTimer -= dt;
                 if (preWaveTimer <= 0) {
-                    startNextWave();
+                    startNextWave(); // Calls the helper
                 }
             }
             break;
@@ -236,9 +250,10 @@ export function update(dt, gameState) {
                 mainWaveTimer -= dt;
                 if (mainWaveTimer <= 0) {
                     mainWaveTimer = 0;
-                    endWave();
-                    break;
+                    endWave(); // CORRECTED: Calls the helper directly
+                    break; // Important to break after state change
                 }
+                // Spawning logic
                 const subWaveData = getCurrentSubWaveData();
                 const groupData = getCurrentGroupData();
                 if (subWaveData && groupData && currentGroupIndex !== -1) {
@@ -253,13 +268,15 @@ export function update(dt, gameState) {
                                     enemiesSpawnedThisGroup++;
                                     groupSpawnTimer = groupData.delayBetween > 0 ? groupData.delayBetween : 0.1;
                                     if (groupData.delayBetween <= 0 && enemiesSpawnedThisGroup < groupData.count) {
-                                        groupSpawnTimer = 0;
+                                        groupSpawnTimer = 0; // Allow immediate next spawn if delay is 0
                                     }
                                 } else {
-                                    groupSpawnTimer = 0.2;
+                                    // If spawn failed (e.g., max enemies), retry shortly
+                                    groupSpawnTimer = 0.2; // Wait a bit before retrying
                                 }
                             }
                         } else {
+                            // Group finished, advance to next group/subwave
                             advanceSpawnProgression();
                         }
                     }
@@ -270,24 +287,30 @@ export function update(dt, gameState) {
             buildPhaseTimer -= dt;
             if (buildPhaseTimer <= 0) {
                 buildPhaseTimer = 0;
-                triggerWarpCleanupAndCalculations(); // perform calculations and queue animations
-                state = 'WARP_ANIMATING'; // transition to WARP_ANIMATING
+                triggerWarpCleanupAndCalculations();
+                state = 'WARP_ANIMATING';
                 console.log("[WaveMgr] Transitioned from BUILDPHASE to WARP_ANIMATING. Waiting for animations.");
-                currentMaxTimer = 1; // UI shows text "Warping..." or similar, no fixed countdown
+                currentMaxTimer = Config.MYA_TRANSITION_ANIMATION_DURATION; // Max timer for UI bar during warp animation
             }
             break;
         case 'WARP_ANIMATING':
+            // During WARP_ANIMATING, the epoch text is doing its countdown.
+            // Check if world animations (gravity, aging) are complete.
             if (WorldManager.areGravityAnimationsComplete() && WorldManager.areAgingAnimationsComplete()) {
-                console.log("[WaveMgr] All warp animations complete. Finalizing warp.");
-                WorldManager.renderStaticWorldToGridCanvas();
-                WorldManager.seedWaterUpdateQueue();
-                startNextWave(); // transition to next WAVE_COUNTDOWN or VICTORY
+                console.log("[WaveMgr] All world animations complete during WARP_ANIMATING. Finalizing warp.");
+                WorldManager.renderStaticWorldToGridCanvas(); // Redraw static world
+                WorldManager.seedWaterUpdateQueue();        // Re-seed water after changes
+                startNextWave(); // This will transition to the next WAVE_COUNTDOWN or VICTORY
             }
+            // The timer for this state in UI is driven by Config.MYA_TRANSITION_ANIMATION_DURATION
+            // or a fixed visual progress if MYA transition is not happening.
             break;
         case 'VICTORY':
         case 'GAME_OVER':
+            // No time-based updates needed for these states here
             break;
         default:
+            console.warn(`[WaveManager] Unknown state: ${state}`);
             break;
     }
 }
@@ -296,7 +319,7 @@ export function setGameOver() {
         state = 'GAME_OVER';
         preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0;
         groupSpawnTimer = 0; groupStartDelayTimer = 0;
-        currentMaxTimer = 0;
+        currentMaxTimer = 0; // Or some fixed value if UI needs it
     }
 }
 export function setVictory() {
@@ -304,25 +327,26 @@ export function setVictory() {
         state = 'VICTORY';
         preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0;
         groupSpawnTimer = 0; groupStartDelayTimer = 0;
-        currentMaxTimer = 0;
+        currentMaxTimer = 0; // Or some fixed value
     }
 }
-export function isGameOver() {
+export function isGameOver() { // Simple getter
     return state === 'GAME_OVER';
 }
 export function getCurrentWaveNumber() {
     if (state === 'GAME_OVER' || state === 'VICTORY') {
-        return Math.max(0, currentMainWaveIndex + 1);
+        return Math.max(0, currentMainWaveIndex + 1); // Show the wave they reached or completed
     }
     if (state === 'BUILDPHASE' || state === 'WARP_ANIMATING') {
-        return currentMainWaveIndex + 2; // show upcoming wave number
+        return currentMainWaveIndex + 2; // Show the upcoming wave number
     }
-    return (currentMainWaveIndex < 0) ? 1 : currentMainWaveIndex + 1;
+    return (currentMainWaveIndex < 0) ? 1 : currentMainWaveIndex + 1; // Current or first wave
 }
 export function getWaveInfo() {
     let timer = 0;
-    let currentWaveNumber = getCurrentWaveNumber();
-    let maxTimerToUse = currentMaxTimer;
+    let currentWaveNumber = getCurrentWaveNumber(); // Use the helper
+    let maxTimerToUse = currentMaxTimer; // Default to currentMaxTimer
+
     switch (state) {
         case 'PRE_WAVE':
             timer = preWaveTimer;
@@ -330,21 +354,31 @@ export function getWaveInfo() {
             break;
         case 'WAVE_COUNTDOWN':
             timer = mainWaveTimer;
+            // maxTimerToUse is already set by startNextWave to waveData.duration
             break;
         case 'BUILDPHASE':
             timer = buildPhaseTimer;
+            // maxTimerToUse is already set by endWave to intermissionDuration
             break;
         case 'WARP_ANIMATING':
-            timer = 1; maxTimerToUse = 1; // indicates progress but not a countdown
+            // Timer could reflect MYA animation progress or world animation progress
+            // For simplicity, let's use remaining MYA transition time if available,
+            // otherwise a generic progress for world animations.
+            // Since MYA transition drives the UI, let maxTimer be its duration.
+            timer = Math.max(0, Config.MYA_TRANSITION_ANIMATION_DURATION - (WorldManager.areGravityAnimationsComplete() && WorldManager.areAgingAnimationsComplete() ? Config.MYA_TRANSITION_ANIMATION_DURATION : 0)); // Rough idea
+            maxTimerToUse = Config.MYA_TRANSITION_ANIMATION_DURATION; // UI bar driven by this
+            // This might need refinement based on how UI.updateMyaEpochTransition handles its timer internally.
+            // For UI.updateWaveTimer, it mostly cares about the ratio for the bar.
             break;
         case 'GAME_OVER':
         case 'VICTORY':
-            timer = 0; maxTimerToUse = 1;
+            timer = 0; maxTimerToUse = 1; // Represents a completed state, bar can be 0% or 100%
             break;
         default:
-            timer = 0; maxTimerToUse = 1;
+            timer = 0; maxTimerToUse = 1; // Default for unknown states
             break;
     }
+
     return {
         state: state,
         mainWaveNumber: currentWaveNumber,

@@ -193,15 +193,21 @@ function gameLoop(timestamp) {
         let dt = 0;
 
         const currentGameState = FlowManager.getCurrentState();
+        const waveInfo = WaveManager.getWaveInfo(); // Get wave info once for the frame
 
         if (currentGameState === GameState.RUNNING || currentGameState === GameState.CUTSCENE ||
-            (WaveManager.getWaveInfo().state === 'WARP_ANIMATING' && currentGameState !== GameState.PAUSED)) {
+            (waveInfo.state === 'WARP_ANIMATING' && currentGameState !== GameState.PAUSED)) {
             dt = rawDt;
+        }
+
+        // Update MYA transition animation if active (during WARP_ANIMATING)
+        if (waveInfo.state === 'WARP_ANIMATING') {
+            UI.updateMyaEpochTransition(dt);
         }
 
         if (currentGameState === GameState.RUNNING) {
             WaveManager.update(dt, currentGameState); // Pass currentGameState for conditional updates
-            const updatedWaveInfo = WaveManager.getWaveInfo();
+            // const updatedWaveInfo = WaveManager.getWaveInfo(); // No need to refetch, waveInfo is from start of frame
 
             if (player) {
                 const inputState = Input.getState();
@@ -230,36 +236,37 @@ function gameLoop(timestamp) {
                 CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
             }
 
+            // Use the already fetched waveInfo for game over/victory checks
             if ((player && !player.isActive) || (portal && !portal.isAlive())) {
-                WaveManager.setGameOver(); // Inform WaveManager
+                WaveManager.setGameOver(); 
                 EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
                 ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
-                FlowManager.handleGameOver(); // Let FlowManager handle state change and UI
+                FlowManager.handleGameOver();
                 isAutoPaused = false;
-            } else if (updatedWaveInfo.allWavesCleared) {
-                WaveManager.setVictory(); // Inform WaveManager
+            } else if (waveInfo.allWavesCleared) { // Check against the waveInfo from this frame
+                WaveManager.setVictory();
                 EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
                 ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
-                FlowManager.handleVictory(); // Let FlowManager handle state change and UI
+                FlowManager.handleVictory();
                 isAutoPaused = false;
             }
         } else if (currentGameState === GameState.CUTSCENE) {
             FlowManager.updateCutscene(dt);
         }
 
-        if (dt > 0) WorldManager.update(dt); // World simulation (water, gravity anims) runs even if paused if dt > 0
+        if (dt > 0) WorldManager.update(dt);
 
         Renderer.clear();
         const mainCtx = Renderer.getContext();
 
         const isGameWorldVisible = currentGameState === GameState.RUNNING || currentGameState === GameState.PAUSED ||
                                  currentGameState === GameState.GAME_OVER || currentGameState === GameState.VICTORY ||
-                                 (currentGameState === GameState.CUTSCENE && WaveManager.getWaveInfo().state !== 'PRE_WAVE') ||
-                                 (WaveManager.getWaveInfo().state === 'WARP_ANIMATING');
+                                 (currentGameState === GameState.CUTSCENE && waveInfo.state !== 'PRE_WAVE') ||
+                                 (waveInfo.state === 'WARP_ANIMATING');
 
 
         if (isGameWorldVisible && gameWrapperEl && gameWrapperEl.style.display !== 'none') {
-            Renderer.applyCameraTransforms(mainCtx); // Use Renderer's method
+            Renderer.applyCameraTransforms(mainCtx);
 
             WorldManager.draw(mainCtx);
             GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
@@ -269,7 +276,7 @@ function gameLoop(timestamp) {
 
             if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {
                 player.draw(mainCtx);
-                const waveInfoAtDraw = WaveManager.getWaveInfo();
+                const waveInfoAtDraw = WaveManager.getWaveInfo(); // Use waveInfo from start of frame
                 const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
                 const isGameplayActiveAtDraw = ['WAVE_COUNTDOWN', 'BUILDPHASE', 'WARP_ANIMATING'].includes(currentWaveManagerStateAtDraw);
                 const playerIsInteractableAtDraw = player && player.isActive && !player.isDying;
@@ -296,7 +303,7 @@ function gameLoop(timestamp) {
                 portalExists ? portal.currentHealth : 0,
                 portalExists ? portal.maxHealth : Config.PORTAL_INITIAL_HEALTH
             );
-            UI.updateWaveTimer(WaveManager.getWaveInfo());
+            UI.updateWaveTimer(waveInfo); // Use waveInfo from start of frame
         }
 
     } catch (error) {
@@ -347,9 +354,9 @@ function init() {
         restartButtonGameOver = document.getElementById('restart-button-overlay');
         restartButtonVictory = document.getElementById('restart-button-overlay-victory');
         restartButtonPause = document.getElementById('restart-button-overlay-pause');
-        btnToggleGridEl = document.getElementById('settings-btn-toggle-grid'); // Used by UI.js for updates
-        muteMusicButtonEl = document.getElementById('settings-btn-mute-music'); // Used by UI.js for updates
-        muteSfxButtonEl = document.getElementById('settings-btn-mute-sfx');     // Used by UI.js for updates
+        btnToggleGridEl = document.getElementById('settings-btn-toggle-grid'); 
+        muteMusicButtonEl = document.getElementById('settings-btn-mute-music'); 
+        muteSfxButtonEl = document.getElementById('settings-btn-mute-sfx');    
 
         // Verify all queried elements
         const allElements = [
@@ -377,7 +384,6 @@ function init() {
         Input.init();
 
         lastTime = 0; isAutoPaused = false; isGridVisible = false;
-        // currentCutsceneImageIndex, cutsceneTimer, settingsOpenedFrom moved to FlowManager
 
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 
@@ -411,18 +417,14 @@ function init() {
         restartButtonVictory.addEventListener('click', () => FlowManager.requestFullGameReset());
         restartButtonPause.addEventListener('click', () => FlowManager.requestFullGameReset());
         cutsceneSkipButton.addEventListener('click', () => FlowManager.skipCutscene());
-        // Note: toggleGrid, toggleMusicMute, toggleSfxMute buttons use global functions defined earlier
 
         gameLoopId = requestAnimationFrame(gameLoop);
 
     } catch (error) {
         console.error("FATAL: Initialization Error:", error);
-        // Try to show error on boot overlay if possible
         if (bootOverlayEl && errorOverlayMessageP && FlowManager.getCurrentState() !== GameState.ERROR) {
-             // Use FlowManager to show the error state properly
             FlowManager.changeState(GameState.ERROR, { errorMessage: `Initialization Error: ${error.message}. Check console.` });
         } else {
-            // Fallback if FlowManager or elements aren't ready
             alert(`FATAL Initialization Error:\n${error.message}\nCheck console for details.`);
         }
     }

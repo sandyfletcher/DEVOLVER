@@ -25,12 +25,23 @@ let settingsValueSfx = null;
 // Overlay
 let bootOverlayEl = null;
 let epochOverlayEl = null;
+let epochHideTimer = null; // Stores the timer ID for showEpochText's fade-out
 // --- Internal State ---
 let playerRef = null;
 let portalRef = null;
 const itemSlotDivs = {};
 const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SHOVEL, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SWORD];
 let isUIReady = false;
+
+// --- MYA Transition State ---
+let isMyaTransitionActive = false;
+let myaTransitionFrom = 0;
+let myaTransitionTo = 0;
+let myaTransitionTimer = 0;
+let myaTransitionDuration = 0;
+let myaTransitionCurrentDisplayValue = 0;
+
+
 export function initOverlay() {
     bootOverlayEl = document.getElementById('boot-overlay');
     if (!bootOverlayEl) {
@@ -459,13 +470,14 @@ export function updateWaveTimer(waveInfo) { // Updates the wave timer bar and te
             timerText = `BUILD TIME (WAVE ${mainWaveNumber} NEXT)`;
             break;
         case 'WARPPHASE': 
-        case 'WARP_ANIMATING': // Keep WARP_ANIMATING for compatibility if waveManager sends it
-            let animStatus = "";
-            if (WorldManager && typeof WorldManager.areAgingAnimationsComplete === 'function' && typeof WorldManager.areGravityAnimationsComplete === 'function' && (!WorldManager.areAgingAnimationsComplete() || !WorldManager.areGravityAnimationsComplete())) {
-                 animStatus = " (MORPHING...)";
-            }
-            timerText = `WARPING TO WAVE ${mainWaveNumber}${animStatus}`;
-            displayTimerValue = true; // Show timer as it's now a build phase countdown
+        case 'WARP_ANIMATING':
+            // Text for WARP_ANIMATING is now handled by updateMyaEpochTransition or showEpochText
+            // Timer bar might show 100% or 0% based on desired visual during this phase.
+            // For now, let it use the (1,1) values from waveManager if passed.
+            // We can hide the timer text overlay or change it if needed.
+            displayTimerValue = false; // Don't show raw timer for warp
+            timerText = ""; // Clear text, epoch overlay will show MYA
+            if (timerBarFillEl) timerBarFillEl.style.width = '100%'; // Keep bar full during warp
             break;
         case 'GAME_OVER':
             timerText = "GAME OVER";
@@ -481,7 +493,7 @@ export function updateWaveTimer(waveInfo) { // Updates the wave timer bar and te
             displayTimerValue = false;
             break;
     }
-    if (displayTimerValue && state !== 'WARP_ANIMATING' && state !== 'WARPPHASE') { // Don't show raw timer for warp animation, just text
+    if (displayTimerValue) {
         const minutes = Math.floor(clampedTimer / 60);
         const seconds = Math.floor(clampedTimer % 60);
         const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
@@ -489,28 +501,103 @@ export function updateWaveTimer(waveInfo) { // Updates the wave timer bar and te
     }
     timerTextOverlayEl.textContent = timerText;
 }
-export function showEpochText(epochMessage) { // Function to display the epoch text overlay
-     if (!epochOverlayEl) {
+
+// Helper to format MYA values
+function formatMya(myaValue) {
+    if (typeof myaValue !== 'number' || isNaN(myaValue)) return "Time Unknown";
+    if (myaValue === 0) return "Present Day";
+    return `${Math.round(myaValue)} Million Years Ago`;
+}
+
+export function showEpochText(valueOrString) {
+    if (!epochOverlayEl) {
         console.warn("UI showEpochText: Element not found.", epochOverlayEl);
         return;
     }
-    const textToDisplay = (typeof epochMessage === 'string' && epochMessage.trim() !== "") ? epochMessage : 'Wave Starting';
-    epochOverlayEl.textContent = textToDisplay;
-    if (epochOverlayEl._hideTimer) {
-        clearTimeout(epochOverlayEl._hideTimer);
-        epochOverlayEl._hideTimer = null; 
+    if (isMyaTransitionActive) {
+        return;
     }
+
+    const textToDisplay = (typeof valueOrString === 'number') ? formatMya(valueOrString) : valueOrString;
+    epochOverlayEl.textContent = textToDisplay;
+
+    if (epochHideTimer) {
+        clearTimeout(epochHideTimer);
+        epochHideTimer = null;
+    }
+
+    epochOverlayEl.style.transition = 'opacity 0.5s ease-in-out, visibility 0s linear 0s';
     epochOverlayEl.style.visibility = 'visible';
     epochOverlayEl.style.opacity = '1';
+
     const displayDurationMs = Config.EPOCH_DISPLAY_DURATION * 1000;
-    epochOverlayEl._hideTimer = setTimeout(() => {
-        epochOverlayEl.style.opacity = '0'; 
-        const transitionDurationMs = 500; 
-        epochOverlayEl._hideTimer = setTimeout(() => {
-            epochOverlayEl.style.visibility = 'hidden';
-            epochOverlayEl._hideTimer = null; 
-        }, transitionDurationMs);
-    }, displayDurationMs); 
+    epochHideTimer = setTimeout(() => {
+        epochOverlayEl.style.opacity = '0';
+        epochHideTimer = setTimeout(() => {
+            if (!isMyaTransitionActive) {
+                epochOverlayEl.style.visibility = 'hidden';
+            }
+            epochHideTimer = null;
+        }, 500); 
+    }, displayDurationMs);
+}
+
+export function startMyaEpochTransition(fromMya, toMya, duration) {
+    if (!epochOverlayEl) return;
+
+    console.log(`[UI] Starting MYA transition from ${fromMya} to ${toMya} over ${duration}s`);
+    isMyaTransitionActive = true;
+    myaTransitionFrom = fromMya;
+    myaTransitionTo = toMya;
+    myaTransitionDuration = duration;
+    myaTransitionTimer = duration;
+    myaTransitionCurrentDisplayValue = fromMya;
+
+    if (epochHideTimer) {
+        clearTimeout(epochHideTimer);
+        epochHideTimer = null;
+    }
+
+    epochOverlayEl.style.transition = 'none';
+    epochOverlayEl.style.visibility = 'visible';
+    epochOverlayEl.style.opacity = '1';
+    epochOverlayEl.textContent = formatMya(myaTransitionCurrentDisplayValue);
+}
+
+export function updateMyaEpochTransition(dt) {
+    if (!isMyaTransitionActive || !epochOverlayEl) return;
+
+    myaTransitionTimer -= dt;
+
+    if (myaTransitionTimer <= 0) {
+        isMyaTransitionActive = false;
+        epochOverlayEl.textContent = formatMya(myaTransitionTo);
+
+        epochOverlayEl.style.transition = 'opacity 0.5s ease-in-out, visibility 0s linear 0s';
+        epochOverlayEl.style.opacity = '1';
+
+        if (epochHideTimer) clearTimeout(epochHideTimer);
+
+        const finalDisplayDuration = Config.EPOCH_DISPLAY_DURATION * 500; 
+        epochHideTimer = setTimeout(() => {
+            epochOverlayEl.style.opacity = '0';
+            epochHideTimer = setTimeout(() => {
+                epochOverlayEl.style.visibility = 'hidden';
+                epochHideTimer = null;
+            }, 500);
+        }, finalDisplayDuration);
+
+        console.log(`[UI] MYA transition finished. Displaying: ${formatMya(myaTransitionTo)}`);
+        return;
+    }
+
+    const progress = Math.max(0, Math.min(1, 1 - (myaTransitionTimer / myaTransitionDuration)));
+    let nextDisplayValue = Math.round(myaTransitionFrom + (myaTransitionTo - myaTransitionFrom) * progress);
+    
+    if (nextDisplayValue !== myaTransitionCurrentDisplayValue) {
+        myaTransitionCurrentDisplayValue = nextDisplayValue;
+        epochOverlayEl.textContent = formatMya(myaTransitionCurrentDisplayValue);
+    }
 }
 export function isInitialized() { // Add a getter to check if the main game UI initialization was successful
     return isUIReady;

@@ -414,10 +414,13 @@ export const ENEMY_STATS = { // Enemy Stats: Speeds/velocities/forces are base v
 
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
+export const MYA_TRANSITION_ANIMATION_DURATION = 2.5; // seconds for the MYA number to animate
+
 export const WAVES = [
     {
         mainWaveNumber: 1,
-        epochName: "350 Million Years Ago",
+        // epochName: "350 Million Years Ago", // REMOVED
+        mya: 350, // ADDED
         duration: 117,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave1,
@@ -440,7 +443,8 @@ export const WAVES = [
     },
     {
         mainWaveNumber: 2,
-        epochName: "300 Million Years Ago",
+        // epochName: "300 Million Years Ago", // REMOVED
+        mya: 300, // ADDED
         duration: 137,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave2,
@@ -463,7 +467,8 @@ export const WAVES = [
     },
     {
         mainWaveNumber: 3,
-        epochName: "250 Million Years Ago",
+        // epochName: "250 Million Years Ago", // REMOVED
+        mya: 250, // ADDED
         duration: 90,
         intermissionDuration: 15.0,
         audioTrack: AUDIO_TRACKS.wave3,
@@ -473,4 +478,11 @@ export const WAVES = [
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
         ]
     }
+    // Example for a future wave that might be "Present Day" or a custom text
+    // {
+    //     mainWaveNumber: 4,
+    //     mya: 0, // Or customEpochText: "The Age of Mammals!"
+    //     duration: 120,
+    //     ...
+    // }
 ];
