@@ -1,559 +1,548 @@
 // -----------------------------------------------------------------------------
 // root/js/agingManager.js - Handles World Aging Effects (erosion, growth, etc.)
 // -----------------------------------------------------------------------------
-
 import * as Config from './utils/config.js';
 import { PerlinNoise } from './utils/noise.js'; // Import noise utility
 import * as World from './utils/world.js'; // Import world data access
 import * as GridCollision from './utils/gridCollision.js'; // Import solid checks, hasSolidNeighbor
 import { createBlock } from './utils/block.js'; // Import createBlock
-
 let agingNoiseGenerator = null; // dedicated noise instance for aging
 let allGravityChangesFromAgingThisPass = []; // This will store gravity changes from aging, to be returned by applyAging
-
 export function init() { // initialize the dedicated noise generator for aging
-    agingNoiseGenerator = new PerlinNoise(Math.random()); // different seed each time
+agingNoiseGenerator = new PerlinNoise(Math.random()); // different seed each time
 }
-
 // Helper function to get neighbor block types
 function getNeighborTypes(c, r) {
-    const neighborTypes = {};
-    // Cardinal directions
-    neighborTypes.above = World.getBlockType(c, r - 1);
-    neighborTypes.below = World.getBlockType(c, r + 1);
-    neighborTypes.left = World.getBlockType(c - 1, r);
-    neighborTypes.right = World.getBlockType(c + 1, r);
-    // Diagonal for canopy checks if needed later
-    // neighborTypes.aboveLeft = World.getBlockType(c - 1, r - 1);
-    // neighborTypes.aboveRight = World.getBlockType(c + 1, r - 1);
-    // neighborTypes.belowLeft = World.getBlockType(c - 1, r + 1);
-    // neighborTypes.belowRight = World.getBlockType(c + 1, r + 1);
-    return neighborTypes;
+const neighborTypes = {};
+// Cardinal directions
+neighborTypes.above = World.getBlockType(c, r - 1);
+neighborTypes.below = World.getBlockType(c, r + 1);
+neighborTypes.left = World.getBlockType(c - 1, r);
+neighborTypes.right = World.getBlockType(c + 1, r);
+// Diagonal directions
+neighborTypes.aboveLeft = World.getBlockType(c - 1, r - 1);
+neighborTypes.aboveRight = World.getBlockType(c + 1, r - 1);
+neighborTypes.belowLeft = World.getBlockType(c - 1, r + 1);
+neighborTypes.belowRight = World.getBlockType(c + 1, r + 1);
+return neighborTypes;
 }
-
 // Helper function to check exposure to a specific type (AIR or WATER)
 // Optimization: Pass neighborTypes to avoid redundant calls to World.getBlockType
 function isExposedTo(neighborTypes, exposedType) {
-    return neighborTypes.above === exposedType ||
-        neighborTypes.below === exposedType ||
-        neighborTypes.left === exposedType ||
-        neighborTypes.right === exposedType;
+return neighborTypes.above === exposedType ||
+neighborTypes.below === exposedType ||
+neighborTypes.left === exposedType ||
+neighborTypes.right === exposedType;
 }
-
 // Helper function to calculate the number of contiguous WATER blocks directly above a cell
 function getWaterDepthAbove(c, r) {
-    let depth = 0;
-    // Start checking from the row directly *above* the current cell (r - 1)
-    for (let checkR = r - 1; checkR >= 0; checkR--) {
-        const blockType = World.getBlockType(c, checkR); // Handles out of bounds above
-        if (blockType === Config.BLOCK_WATER) {
-            depth++; // Count this water block
-        } else {
-            // Stop counting when we hit a non-water block (AIR, SOLID, or out of bounds)
-            break;
-        }
-    }
-    return depth;
+let depth = 0;
+// Start checking from the row directly above the current cell (r - 1)
+for (let checkR = r - 1; checkR >= 0; checkR--) {
+const blockType = World.getBlockType(c, checkR); // Handles out of bounds above
+if (blockType === Config.BLOCK_WATER) {
+depth++; // Count this water block
+} else {
+// Stop counting when we hit a non-water block (AIR, SOLID, or out of bounds)
+break;
 }
-
-// --- MODIFIED HELPER: Calculate *natural* vertical wood pillar height downwards ---
+}
+return depth;
+}
+// --- MODIFIED HELPER: Calculate natural vertical wood pillar height downwards ---
 /**
- * Calculates the height of a contiguous vertical pillar of natural (not player-placed) WOOD blocks
- * starting from (c, r_start) and going downwards.
- * @param {number} c Column index.
- * @param {number} r_start Starting row index.
- * @returns {number} The height of the natural wood pillar.
- */
+Calculates the height of a contiguous vertical pillar of natural (not player-placed) WOOD blocks
+starting from (c, r_start) and going downwards.
+@param {number} c Column index.
+@param {number} r_start Starting row index.
+@returns {number} The height of the natural wood pillar.
+*/
 function getNaturalWoodPillarHeightDownwards(c, r_start) {
-    let height = 0;
-    for (let checkR = r_start; checkR < Config.GRID_ROWS; checkR++) {
-        const blockData = World.getBlock(c, checkR);
-        // Check if it's a WOOD block AND not player-placed
-        if (blockData && typeof blockData === 'object' && blockData.type === Config.BLOCK_WOOD && !blockData.isPlayerPlaced) {
-            height++;
-        } else {
-            break; // Stop if not natural wood, or it's air, water, or end of grid
-        }
-    }
-    return height;
+let height = 0;
+for (let checkR = r_start; checkR < Config.GRID_ROWS; checkR++) {
+const blockData = World.getBlock(c, checkR);
+// Check if it's a WOOD block AND not player-placed
+if (blockData && typeof blockData === 'object' && blockData.type === Config.BLOCK_WOOD && !blockData.isPlayerPlaced) {
+height++;
+} else {
+break; // Stop if not natural wood, or it's air, water, or end of grid
 }
-
-
+}
+return height;
+}
 // --- NEW HELPER: Place tree canopy (remains mostly the same) ---
 /**
- * Places the initial tree canopy around a given trunk top position.
- * @param {number} trunkC Column of the trunk top.
- * @param {number} trunkTopR Row of the trunk top.
- * @param {number} radius Radius of the canopy (0 = 1x1, 1 = 3x3, 2 = 5x5).
- * @param {Array} changedCellsArray Array to push changes into.
- */
+Places the initial tree canopy around a given trunk top position.
+@param {number} trunkC Column of the trunk top.
+@param {number} trunkTopR Row of the trunk top.
+@param {number} radius Radius of the canopy (0 = 1x1, 1 = 3x3, 2 = 5x5).
+@param {Array} changedCellsArray Array to push changes into.
+*/
 function placeInitialCanopy(trunkC, trunkTopR, radius, changedCellsArray) {
-    if (radius < 0) return; // No canopy if radius is negative
+if (radius < 0) return; // No canopy if radius is negative
+const centerR = trunkTopR - 1; // Canopy center is typically one block above the trunk top
+for (let dr = -radius; dr <= radius; dr++) {
+for (let dc = -radius; dc <= radius; dc++) {
+// Skip the very center if radius > 0? Maybe keep it simple and fill center too.
+// Optional: Create a more rounded shape by checking distance: if (dcdc + drdr > radius*radius) continue;
+const c = trunkC + dc;
+     const r = centerR + dr;
 
-    const centerR = trunkTopR - 1; // Canopy center is typically one block above the trunk top
+     // Check bounds
+     if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) {
+         continue;
+     }
 
-    for (let dr = -radius; dr <= radius; dr++) {
-        for (let dc = -radius; dc <= radius; dc++) {
-            // Skip the very center if radius > 0? Maybe keep it simple and fill center too.
-            // Optional: Create a more rounded shape by checking distance: if (dc*dc + dr*dr > radius*radius) continue;
-
-            const c = trunkC + dc;
-            const r = centerR + dr;
-
-            // Check bounds
-            if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) {
-                continue;
-            }
-
-            const currentBlockType = World.getBlockType(c, r);
-            // Place canopy only in AIR blocks
-            if (currentBlockType === Config.BLOCK_AIR) {
-                const success = World.setBlock(c, r, Config.BLOCK_VEGETATION, false); // Trees are not player placed
-                if (success) {
-                    const blockAfterChange = World.getBlock(c, r);
-                    changedCellsArray.push({
-                        c, r,
-                        oldBlockType: Config.BLOCK_AIR,
-                        newBlockType: Config.BLOCK_VEGETATION,
-                        finalBlockData: blockAfterChange
-                    });
-                }
-            }
-        }
-    }
+     const currentBlockType = World.getBlockType(c, r);
+     // Place canopy only in AIR blocks
+     if (currentBlockType === Config.BLOCK_AIR) {
+         const success = World.setBlock(c, r, Config.BLOCK_VEGETATION, false); // Trees are not player placed
+         if (success) {
+             const blockAfterChange = World.getBlock(c, r);
+             changedCellsArray.push({ // Corrected: changedCellsAndTypes -> changedCellsArray
+                 c, r,
+                 oldBlockType: Config.BLOCK_AIR,
+                 newBlockType: Config.BLOCK_VEGETATION,
+                 finalBlockData: blockAfterChange
+             });
+         }
+     }
+ }
 }
-
+}
 // --- NEW HELPER: Check if a WOOD block is likely part of a tree trunk (remains the same) ---
 /**
- * Heuristic check if a wood block is part of a tree trunk.
- * Checks for wood below and vegetation/air above.
- * @param {number} c Column index.
- * @param {number} r Row index.
- * @returns {boolean} True if likely part of a tree trunk.
- */
+Heuristic check if a wood block is part of a tree trunk.
+Checks for wood below and vegetation/air above.
+@param {number} c Column index.
+@param {number} r Row index.
+@returns {boolean} True if likely part of a tree trunk.
+*/
 function isLikelyTreeTrunk(c, r) {
-    const blockType = World.getBlockType(c, r);
-    if (blockType !== Config.BLOCK_WOOD) return false;
-
-    const typeBelow = World.getBlockType(c, r + 1);
-    const typeAbove = World.getBlockType(c, r - 1);
-
-    // It's wood, has wood or solid ground below, and has vegetation or air above
-    const hasSupport = (typeBelow === Config.BLOCK_WOOD || GridCollision.isSolid(c, r + 1)); // Check solid for base
-    const hasCanopyOrAirAbove = (typeAbove === Config.BLOCK_VEGETATION || typeAbove === Config.BLOCK_AIR || typeAbove === null); // null means top of world
-
-    return hasSupport && hasCanopyOrAirAbove;
+const blockType = World.getBlockType(c, r);
+if (blockType !== Config.BLOCK_WOOD) return false;
+const typeBelow = World.getBlockType(c, r + 1);
+const typeAbove = World.getBlockType(c, r - 1);
+// It's wood, has wood or solid ground below, and has vegetation or air above
+const hasSupport = (typeBelow === Config.BLOCK_WOOD || GridCollision.isSolid(c, r + 1)); // Check solid for base
+const hasCanopyOrAirAbove = (typeAbove === Config.BLOCK_VEGETATION || typeAbove === Config.BLOCK_AIR || typeAbove === null); // null means top of world
+return hasSupport && hasCanopyOrAirAbove;
 }
-
 // --- NEW HELPER: Expand tree canopy (remains the same) ---
 /**
- * Tries to expand the canopy around a given vegetation block.
- * @param {number} canopyC Column of the canopy block.
- * @param {number} canopyR Row of the canopy block.
- * @param {Array} changedCellsArray Array to push changes into.
- * @returns {boolean} True if expansion occurred.
- */
+Tries to expand the canopy around a given vegetation block.
+@param {number} canopyC Column of the canopy block.
+@param {number} canopyR Row of the canopy block.
+@param {Array} changedCellsArray Array to push changes into.
+@returns {boolean} True if expansion occurred.
+*/
 function expandCanopy(canopyC, canopyR, changedCellsArray) {
-    const neighbors = [
-        { dc: 0, dr: -1 }, { dc: 0, dr: 1 },
-        { dc: -1, dr: 0 }, { dc: 1, dr: 0 },
-        // Optional: Add diagonals for faster/bushier growth
-        { dc: -1, dr: -1 }, { dc: 1, dr: -1 },
-        { dc: -1, dr: 1 }, { dc: 1, dr: 1 },
-    ];
+const neighbors = [
+{ dc: 0, dr: -1 }, { dc: 0, dr: 1 },
+{ dc: -1, dr: 0 }, { dc: 1, dr: 0 },
+// Optional: Add diagonals for faster/bushier growth
+{ dc: -1, dr: -1 }, { dc: 1, dr: -1 },
+{ dc: -1, dr: 1 }, { dc: 1, dr: 1 },
+];
+let expansionOccurred = false;
+for (const offset of neighbors) {
+const nc = canopyC + offset.dc;
+const nr = canopyR + offset.dr;
+// Basic bounds check
+ if (nr < 0 || nr >= Config.GRID_ROWS || nc < 0 || nc >= Config.GRID_COLS) {
+     continue;
+ }
 
-    let expansionOccurred = false;
+ // TODO: Implement max radius check - more complex, needs tree origin
+ // For now, just expand into adjacent air
 
-    for (const offset of neighbors) {
-        const nc = canopyC + offset.dc;
-        const nr = canopyR + offset.dr;
-
-        // Basic bounds check
-        if (nr < 0 || nr >= Config.GRID_ROWS || nc < 0 || nc >= Config.GRID_COLS) {
-            continue;
-        }
-
-        // TODO: Implement max radius check - more complex, needs tree origin
-        // For now, just expand into adjacent air
-
-        if (World.getBlockType(nc, nr) === Config.BLOCK_AIR) {
-            if (Math.random() < (Config.AGING_PROB_TREE_CANOPY_GROW ?? 0.1)) {
-                const success = World.setBlock(nc, nr, Config.BLOCK_VEGETATION, false);
-                if (success) {
-                    const blockAfterChange = World.getBlock(nc, nr);
-                    changedCellsArray.push({
-                        c: nc, r: nr,
-                        oldBlockType: Config.BLOCK_AIR,
-                        newBlockType: Config.BLOCK_VEGETATION,
-                        finalBlockData: blockAfterChange
-                    });
-                    expansionOccurred = true;
-                    // Maybe only expand one block per tick per original canopy block?
-                    // break; // Uncomment to limit growth to one new block per original block per aging pass
-                }
-            }
-        }
-    }
-    return expansionOccurred;
+ if (World.getBlockType(nc, nr) === Config.BLOCK_AIR) {
+     if (Math.random() < (Config.AGING_PROB_TREE_CANOPY_GROW ?? 0.1)) {
+         const success = World.setBlock(nc, nr, Config.BLOCK_VEGETATION, false);
+         if (success) {
+             const blockAfterChange = World.getBlock(nc, nr);
+             changedCellsArray.push({ // Corrected: changedCellsAndTypes -> changedCellsArray
+                 c: nc, r: nr,
+                 oldBlockType: Config.BLOCK_AIR,
+                 newBlockType: Config.BLOCK_VEGETATION,
+                 finalBlockData: blockAfterChange
+             });
+             expansionOccurred = true;
+             // Maybe only expand one block per tick per original canopy block?
+             // break; // Uncomment to limit growth to one new block per original block per aging pass
+         }
+     }
+ }
 }
-
-
+return expansionOccurred;
+}
 // --- Main Aging Function ---
 /**
- * Applies aging effects (erosion, growth, stoneification, etc.) to the world grid.
- * Aging is probabilistic and influenced by environment.
- * Protected radius around the portal is applied *only if* portalRef is provided.
- * @param {Portal | null} portalRef - Reference to the Portal instance (or null if none).
- * @returns {{visualChanges: Array<{c: number, r: number, oldBlockType: number, newBlockType: number, finalBlockData: object | number}>, gravityChanges: Array<{c: number, r_start: number, r_end: number, blockData: object}>}} - Object containing arrays of detailed visual changes and gravity changes.
- */
+Applies aging effects (erosion, growth, stoneification, etc.) to the world grid.
+Aging is probabilistic and influenced by environment.
+Protected radius around the portal is applied only if portalRef is provided.
+@param {Portal | null} portalRef - Reference to the Portal instance (or null if none).
+@returns {{visualChanges: Array<{c: number, r: number, oldBlockType: number, newBlockType: number, finalBlockData: object | number}>, gravityChanges: Array<{c: number, r_start: number, r_end: number, blockData: object}>}} - Object containing arrays of detailed visual changes and gravity changes.
+*/
 export function applyAging(portalRef) {
-    if (!agingNoiseGenerator) {
-        console.error("Aging noise generator not initialized!");
-        return { visualChanges: [], gravityChanges: [] }; // Return structure
-    }
-    const grid = World.getGrid();
-    if (!grid || grid.length === 0 || grid[0].length === 0) {
-        console.error("World grid is not available or empty for aging.");
-        return { visualChanges: [], gravityChanges: [] }; // Return structure
-    }
-
-    let changedCellsAndTypes = []; // This will be part of the return
-    allGravityChangesFromAgingThisPass = []; // Reset for this pass
-
-    for (let r = 0; r < Config.GRID_ROWS; r++) { // iterate through ALL cells
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-            if (portalRef) { // Portal protection check
-                const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
-                const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
-                const portalCenter = portalRef.getPosition();
-                const portalX = portalCenter.x;
-                const portalY = portalCenter.y;
-                const protectedRadiusSq = portalRef.safetyRadius * portalRef.safetyRadius;
-                const dx = blockCenterX - portalX;
-                const dy = blockCenterY - portalY;
-                const distSqToPortal = dx * dx + dy * dy;
-                if (distSqToPortal < protectedRadiusSq) {
-                    continue; // Skip aging within portal safety radius
-                }
-            }
-
-            const blockBeforeChange = World.getBlock(c, r);
-            if (blockBeforeChange === null) continue;
-            const originalType = (typeof blockBeforeChange === 'object') ? blockBeforeChange.type : blockBeforeChange;
-            const originalIsPlayerPlaced = (typeof blockBeforeChange === 'object') ? (blockBeforeChange.isPlayerPlaced ?? false) : false;
+if (!agingNoiseGenerator) {
+console.error("Aging noise generator not initialized!");
+return { visualChanges: [], gravityChanges: [] }; // Return structure
+}
+const grid = World.getGrid();
+if (!grid || grid.length === 0 || grid[0].length === 0) {
+console.error("World grid is not available or empty for aging.");
+return { visualChanges: [], gravityChanges: [] }; // Return structure
+}
+let changedCellsAndTypes = []; // This will be part of the return
+allGravityChangesFromAgingThisPass = []; // Reset for this pass
+for (let r = 0; r < Config.GRID_ROWS; r++) { // iterate through ALL cells
+for (let c = 0; c < Config.GRID_COLS; c++) {
+if (portalRef) { // Portal protection check
+const blockCenterX = c * Config.BLOCK_WIDTH + Config.BLOCK_WIDTH / 2;
+const blockCenterY = r * Config.BLOCK_HEIGHT + Config.BLOCK_HEIGHT / 2;
+const portalCenter = portalRef.getPosition();
+const portalX = portalCenter.x;
+const portalY = portalCenter.y;
+const protectedRadiusSq = portalRef.safetyRadius * portalRef.safetyRadius;
+const dx = blockCenterX - portalX;
+const dy = blockCenterY - portalY;
+const distSqToPortal = dx * dx + dy * dy;
+if (distSqToPortal < protectedRadiusSq) {
+continue; // Skip aging within portal safety radius
+}
+}
+const blockBeforeChange = World.getBlock(c, r);
+     if (blockBeforeChange === null) continue;
+     const originalType = (typeof blockBeforeChange === 'object') ? blockBeforeChange.type : blockBeforeChange;
+     const originalIsPlayerPlaced = (typeof blockBeforeChange === 'object') ? (blockBeforeChange.isPlayerPlaced ?? false) : false;
 
 
-            const neighborTypes = getNeighborTypes(c, r);
-            const isExposedToAir = isExposedTo(neighborTypes, Config.BLOCK_AIR);
-            const isExposedToWater = isExposedTo(neighborTypes, Config.BLOCK_WATER);
-            const waterDepthAbove = getWaterDepthAbove(c, r);
+     const neighborTypes = getNeighborTypes(c, r); // This now includes diagonals
+     const isExposedToAir = isExposedTo(neighborTypes, Config.BLOCK_AIR);
+     const isExposedToWater = isExposedTo(neighborTypes, Config.BLOCK_WATER);
+     const waterDepthAbove = getWaterDepthAbove(c, r);
 
-            let newType = originalType;
+     let newType = originalType;
+     let tinyTreeFormedThisCell = false; // Flag to prevent double processing if a 3x3 tree forms
 
-            // ==============================================================
-            // --- START OF AGING RULES ---
-            // ==============================================================
+     // ==============================================================
+     // --- START OF AGING RULES ---
+     // ==============================================================
 
-            // Rule 1: SAND Erosion (Highest Priority)
-            if (originalType === Config.BLOCK_SAND) {
-                if (waterDepthAbove > 0) {
-                    if (Math.random() < Config.AGING_PROB_WATER_EROSION_SAND) {
-                        newType = Config.BLOCK_WATER;
-                    }
-                } else if (isExposedToAir) {
-                    if (Math.random() < Config.AGING_PROB_AIR_EROSION_SAND) {
-                            newType = Config.BLOCK_AIR;
-                    }
-                }
-            }
+     // Rule 1: SAND Erosion (Highest Priority)
+     if (originalType === Config.BLOCK_SAND) {
+         if (waterDepthAbove > 0) {
+             if (Math.random() < Config.AGING_PROB_WATER_EROSION_SAND) {
+                 newType = Config.BLOCK_WATER;
+             }
+         } else if (isExposedToAir) {
+             if (Math.random() < Config.AGING_PROB_AIR_EROSION_SAND) {
+                     newType = Config.BLOCK_AIR;
+             }
+         }
+     }
 
-            // Rule 1.5: DIRT/VEGETATION Water Erosion -> SAND
-            if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION)) {
-                if (waterDepthAbove > 0) {
-                    if (Math.random() < Config.AGING_PROB_WATER_EROSION_DIRT_VEGETATION) {
-                        newType = Config.BLOCK_SAND;
-                    }
-                }
-            }
+     // Rule 1.5: DIRT/VEGETATION Water Erosion -> SAND
+     if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION)) {
+         if (waterDepthAbove > 0) {
+             if (Math.random() < Config.AGING_PROB_WATER_EROSION_DIRT_VEGETATION) {
+                 newType = Config.BLOCK_SAND;
+             }
+         }
+     }
 
-            // Rule 2.1: DIRT -> VEGETATION Growth
-            if (newType === originalType && originalType === Config.BLOCK_DIRT) {
-                const isBelowSolidAndWithinBounds = GridCollision.isSolid(c, r + 1);
-                
-                const isLit = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? blockBeforeChange.isLit : false; // check if the block is lit
-                if (isLit && isExposedToAir && !isExposedToWater && isBelowSolidAndWithinBounds) {
-                    let airSidesCount = 0;
-                    if (neighborTypes.above === Config.BLOCK_AIR) airSidesCount++;
-                    if (neighborTypes.left === Config.BLOCK_AIR) airSidesCount++;
-                    if (neighborTypes.right === Config.BLOCK_AIR) airSidesCount++;
-                    let growthProb = Config.AGING_PROB_VEGETATION_GROWTH_BASE;
-                    growthProb += Math.min(airSidesCount, Config.AGING_MAX_AIR_SIDES_FOR_VEGETATION_BONUS) * Config.AGING_PROB_VEGETATION_GROWTH_PER_AIR_SIDE;
-                    if (Math.random() < growthProb) {
-                        newType = Config.BLOCK_VEGETATION;
-                    }
-                }
-            }
+     // --- NEW RULE: AIR -> VEGETATION GROWTH (on lit DIRT or lit VEGETATION below) ---
+     if (newType === originalType && originalType === Config.BLOCK_AIR) {
+         const blockBelowData = World.getBlock(c, r + 1);
+         if (blockBelowData !== null && r < Config.GRID_ROWS -1) {
+             const blockBelowType = (typeof blockBelowData === 'object') ? blockBelowData.type : blockBelowData;
+             const blockBelowIsLit = (typeof blockBelowData === 'object') ? (blockBelowData.isLit ?? false) : false;
 
-            // Rule 2.2: VEGETATION -> Grow VEGETATION Upwards
-            if (newType === originalType && originalType === Config.BLOCK_VEGETATION) {
-                const blockAboveType = neighborTypes.above;
-                const hasSolidBelow = GridCollision.isSolid(c, r + 1);
+             if (blockBelowIsLit) {
+                 if (blockBelowType === Config.BLOCK_DIRT) {
+                     if (Math.random() < (Config.AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_DIRT ?? 0.01)) {
+                         newType = Config.BLOCK_VEGETATION;
+                     }
+                 } else if (blockBelowType === Config.BLOCK_VEGETATION) {
+                     if (Math.random() < (Config.AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_VEGETATION ?? 0.02)) {
+                         newType = Config.BLOCK_VEGETATION;
+                     }
+                 }
+             }
+         }
+     }
+     // --- END NEW RULE ---
 
-                if (blockAboveType === Config.BLOCK_AIR && hasSolidBelow) {
-                    if (Math.random() < (Config.AGING_PROB_VEGETATION_GROW_UP ?? 0.05)) {
-                        const growUpR = r - 1;
-                        if (growUpR >= 0) {
-                            const successGrowUp = World.setBlock(c, growUpR, Config.BLOCK_VEGETATION, false);
-                            if (successGrowUp) {
-                                const blockAfterChange = World.getBlock(c, growUpR);
-                                changedCellsAndTypes.push({
-                                    c: c, r: growUpR,
-                                    oldBlockType: Config.BLOCK_AIR,
-                                    newBlockType: Config.BLOCK_VEGETATION,
-                                    finalBlockData: blockAfterChange
-                                });
-                            }
-                        }
-                    }
-                }
-            }
+     // Rule 2.3: VEGETATION Surrounded by 8 VEGETATION -> Tiny Tree Structure
+     if (newType === originalType && originalType === Config.BLOCK_VEGETATION) {
+         const allEightNeighborsAreVeg =
+             (neighborTypes.above === Config.BLOCK_VEGETATION) &&
+             (neighborTypes.below === Config.BLOCK_VEGETATION) &&
+             (neighborTypes.left === Config.BLOCK_VEGETATION) &&
+             (neighborTypes.right === Config.BLOCK_VEGETATION) &&
+             (neighborTypes.aboveLeft === Config.BLOCK_VEGETATION) &&
+             (neighborTypes.aboveRight === Config.BLOCK_VEGETATION) &&
+             (neighborTypes.belowLeft === Config.BLOCK_VEGETATION) &&
+             (neighborTypes.belowRight === Config.BLOCK_VEGETATION);
 
-            // Rule 2.3: VEGETATION Surrounded by VEGETATION -> WOOD
-            if (newType === originalType && originalType === Config.BLOCK_VEGETATION) {
-                const isSurroundedByVeg =
-                    neighborTypes.above === Config.BLOCK_VEGETATION &&
-                    neighborTypes.below === Config.BLOCK_VEGETATION &&
-                    neighborTypes.left  === Config.BLOCK_VEGETATION &&
-                    neighborTypes.right === Config.BLOCK_VEGETATION;
+         if (allEightNeighborsAreVeg) {
+             if (Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
+                 tinyTreeFormedThisCell = true; // Mark that we are handling this cell's transformation
 
-                if (isSurroundedByVeg) {
-                    if (Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
-                        newType = Config.BLOCK_WOOD;
-                    }
-                }
-            }
+                 const pattern = [
+                     // dr, dc, newBlockType
+                     // Top row (r-1)
+                     { dr: -1, dc: -1, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: +1, type: Config.BLOCK_VEGETATION },
+                     // Mid row (r)
+                     { dr:  0, dc: -1, type: Config.BLOCK_AIR },       { dr:  0, dc: 0, type: Config.BLOCK_WOOD },        { dr:  0, dc: +1, type: Config.BLOCK_AIR },
+                     // Bot row (r+1)
+                     { dr: +1, dc: -1, type: Config.BLOCK_AIR },       { dr: +1, dc: 0, type: Config.BLOCK_WOOD },        { dr: +1, dc: +1, type: Config.BLOCK_AIR },
+                 ];
 
-            // --- Rule 2.4: WOOD -> Grow WOOD Upwards, check Collapse/Canopy ---
-            // This rule considers the state of (c,r) *after* potential change from Rule 2.3
-            // So, if VEG became WOOD, it can immediately try to grow wood upwards in the same pass.
-            // Only non-player-placed wood can grow naturally.
-            if (newType === Config.BLOCK_WOOD && !originalIsPlayerPlaced) { // Check newType and original player-placed status
-                const hasSupportBelow = GridCollision.isSolid(c, r + 1) || World.getBlockType(c, r + 1) === Config.BLOCK_WOOD;
-                const blockAboveTypeCurrent = World.getBlockType(c, r - 1); // Check current grid state for block above
+                 for (const cell of pattern) {
+                     const targetC = c + cell.dc;
+                     const targetR = r + cell.dr;
 
-                // MODIFIED Condition: Allow growing into AIR or VEGETATION
-                if (hasSupportBelow && (blockAboveTypeCurrent === Config.BLOCK_AIR || blockAboveTypeCurrent === Config.BLOCK_VEGETATION) && r > 0) {
-                    if (Math.random() < (Config.AGING_PROB_WOOD_GROWS_WOOD_UP ?? 0.1)) {
-                        const growUpR = r - 1;
-                        const oldBlockTypeAtGrowLocation = blockAboveTypeCurrent; // Store the type it's replacing
-
-                        const successGrowWoodUp = World.setBlock(c, growUpR, Config.BLOCK_WOOD, false);
-                        if (successGrowWoodUp) {
-                            const newWoodBlockData = World.getBlock(c, growUpR);
-                            changedCellsAndTypes.push({
-                                c: c, r: growUpR,
-                                oldBlockType: oldBlockTypeAtGrowLocation, // Use the actual old type
-                                newBlockType: Config.BLOCK_WOOD,
-                                finalBlockData: newWoodBlockData
-                            });
-
-                            const MAX_TRUNK_HEIGHT = Config.MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE ?? 15;
-                            const totalNaturalWoodPillarHeight = getNaturalWoodPillarHeightDownwards(c, growUpR);
-
-                            if (totalNaturalWoodPillarHeight > MAX_TRUNK_HEIGHT) {
-                                let blocksToMakeFallThisCollapse = [];
-                                for (let h_fall = 0; h_fall < totalNaturalWoodPillarHeight; h_fall++) {
-                                    const fallR = growUpR + h_fall;
-                                    if (fallR >= Config.GRID_ROWS) break;
-                                    const currentBlockDataForFall = World.getBlock(c, fallR);
-                                    if (currentBlockDataForFall && currentBlockDataForFall.type === Config.BLOCK_WOOD && !currentBlockDataForFall.isPlayerPlaced) {
-                                        const fallingBlockData = { ...currentBlockDataForFall };
-                                        World.setBlock(c, fallR, Config.BLOCK_AIR, false);
-                                        let r_end_fall = Config.GRID_ROWS - 1;
-                                        for (let check_r_fall = fallR + 1; check_r_fall < Config.GRID_ROWS; check_r_fall++) {
-                                            if (GridCollision.isSolid(c, check_r_fall)) {
-                                                r_end_fall = check_r_fall - 1;
-                                                break;
-                                            }
-                                        }
-                                        r_end_fall = Math.max(fallR, r_end_fall);
-                                        blocksToMakeFallThisCollapse.push({ c, r_start: fallR, r_end: r_end_fall, blockData: fallingBlockData });
-
-                                        let collapseChangeIndex = changedCellsAndTypes.findIndex(ch => ch.c === c && ch.r === fallR);
-                                        if (collapseChangeIndex !== -1) {
-                                            changedCellsAndTypes[collapseChangeIndex].newBlockType = Config.BLOCK_AIR;
-                                            changedCellsAndTypes[collapseChangeIndex].finalBlockData = createBlock(Config.BLOCK_AIR, false);
-                                        } else {
-                                            changedCellsAndTypes.push({
-                                                c, r: fallR,
-                                                oldBlockType: Config.BLOCK_WOOD,
-                                                newBlockType: Config.BLOCK_AIR,
-                                                finalBlockData: createBlock(Config.BLOCK_AIR, false)
-                                            });
-                                        }
-                                    } else { break; }
-                                }
-                                if (blocksToMakeFallThisCollapse.length > 0) {
-                                    allGravityChangesFromAgingThisPass.push(...blocksToMakeFallThisCollapse);
-                                }
-                            } else {
-                                const MIN_TRUNK_HEIGHT_FOR_CANOPY = Config.TREE_MIN_HEIGHT_TO_FORM_ORGANIC ?? 4;
-                                if (totalNaturalWoodPillarHeight >= MIN_TRUNK_HEIGHT_FOR_CANOPY) {
-                                    // Check space for canopy (must be AIR, as canopy doesn't replace other blocks)
-                                    const blockAboveNewWoodForCanopy = World.getBlockType(c, growUpR - 1);
-                                    if (blockAboveNewWoodForCanopy === Config.BLOCK_AIR) {
-                                        placeInitialCanopy(c, growUpR, Config.TREE_INITIAL_CANOPY_RADIUS, changedCellsAndTypes);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+                     if (targetR >= 0 && targetR < Config.GRID_ROWS && targetC >= 0 && targetC < Config.GRID_COLS) {
+                         const oldBlockAtTarget = (targetC === c && targetR === r) ? originalType : Config.BLOCK_VEGETATION;
+                         const success = World.setBlock(targetC, targetR, cell.type, false); // New tree parts are not player-placed
+                         if (success) {
+                             const blockAfterChange = World.getBlock(targetC, targetR);
+                             changedCellsAndTypes.push({
+                                 c: targetC, r: targetR,
+                                 oldBlockType: oldBlockAtTarget,
+                                 newBlockType: cell.type,
+                                 finalBlockData: blockAfterChange
+                             });
+                         }
+                     }
+                 }
+             }
+         }
+     }
 
 
-            // Rule 3: Tree Canopy Growth & Decay
-            if (newType === originalType && originalType === Config.BLOCK_VEGETATION) {
-                let isNearTrunk = false;
-                for (let dr_canopy = -1; dr_canopy <= 1; dr_canopy++) {
-                    for (let dc_canopy = -1; dc_canopy <= 1; dc_canopy++) {
-                        if (dr_canopy === 0 && dc_canopy === 0) continue;
-                        if (isLikelyTreeTrunk(c + dc_canopy, r + dr_canopy)) {
-                            isNearTrunk = true;
-                            break;
-                        }
-                    }
-                    if (isNearTrunk) break;
-                }
-                if (isNearTrunk) {
-                    expandCanopy(c, r, changedCellsAndTypes);
-                }
-            }
-            if (newType === originalType && originalType === Config.BLOCK_VEGETATION) {
-                let isNearTrunkDecay = false;
-                for (let dr_decay = -1; dr_decay <= 1; dr_decay++) {
-                    for (let dc_decay = -1; dc_decay <= 1; dc_decay++) {
-                        if (dr_decay === 0 && dc_decay === 0) continue;
-                        if (isLikelyTreeTrunk(c + dc_decay, r + dr_decay)) {
-                            isNearTrunkDecay = true;
-                            break;
-                        }
-                    }
-                    if (isNearTrunkDecay) break;
-                }
-                const isNotDirectlyOnTrunkTop = !(World.getBlockType(c,r+1) === Config.BLOCK_WOOD && isLikelyTreeTrunk(c,r+1));
-                if (isNearTrunkDecay && isNotDirectlyOnTrunkTop && Math.random() < (Config.AGING_PROB_TREE_CANOPY_DECAY ?? 0.01)) {
-                    newType = Config.BLOCK_AIR;
-                }
-            }
-            if (newType === originalType && originalType === Config.BLOCK_WOOD && !originalIsPlayerPlaced) { // Only non-player wood trunks decay
-                if (isLikelyTreeTrunk(c, r)) {
-                    if (Math.random() < (Config.AGING_PROB_TREE_TRUNK_DECAY ?? 0.005)) {
-                            newType = Config.BLOCK_AIR;
-                    }
-                }
-            }
+     // --- Rule 2.4: WOOD -> Grow WOOD Upwards, check Collapse/Canopy ---
+     // This rule considers the state of (c,r) *after* potential change from Rule 2.3 (if a tiny tree wasn't formed)
+     // So, if VEG became WOOD (by some other rule, though not currently possible for single block), it could try to grow.
+     // Only non-player-placed wood can grow naturally.
+     if (!tinyTreeFormedThisCell && newType === Config.BLOCK_WOOD && !originalIsPlayerPlaced) {
+         const hasSupportBelow = GridCollision.isSolid(c, r + 1) || World.getBlockType(c, r + 1) === Config.BLOCK_WOOD;
+         const blockAboveTypeCurrent = World.getBlockType(c, r - 1);
+
+         if (hasSupportBelow && (blockAboveTypeCurrent === Config.BLOCK_AIR || blockAboveTypeCurrent === Config.BLOCK_VEGETATION) && r > 0) {
+             if (Math.random() < (Config.AGING_PROB_WOOD_GROWS_WOOD_UP ?? 0.1)) {
+                 const growUpR = r - 1;
+                 const oldBlockTypeAtGrowLocation = blockAboveTypeCurrent;
+
+                 const successGrowWoodUp = World.setBlock(c, growUpR, Config.BLOCK_WOOD, false);
+                 if (successGrowWoodUp) {
+                     const newWoodBlockData = World.getBlock(c, growUpR);
+                     changedCellsAndTypes.push({
+                         c: c, r: growUpR,
+                         oldBlockType: oldBlockTypeAtGrowLocation,
+                         newBlockType: Config.BLOCK_WOOD,
+                         finalBlockData: newWoodBlockData
+                     });
+
+                     const MAX_TRUNK_HEIGHT = Config.MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE ?? 15;
+                     const totalNaturalWoodPillarHeight = getNaturalWoodPillarHeightDownwards(c, growUpR);
+
+                     if (totalNaturalWoodPillarHeight > MAX_TRUNK_HEIGHT) {
+                         let blocksToMakeFallThisCollapse = [];
+                         for (let h_fall = 0; h_fall < totalNaturalWoodPillarHeight; h_fall++) {
+                             const fallR = growUpR + h_fall;
+                             if (fallR >= Config.GRID_ROWS) break;
+                             const currentBlockDataForFall = World.getBlock(c, fallR);
+                             if (currentBlockDataForFall && currentBlockDataForFall.type === Config.BLOCK_WOOD && !currentBlockDataForFall.isPlayerPlaced) {
+                                 const fallingBlockData = { ...currentBlockDataForFall };
+                                 World.setBlock(c, fallR, Config.BLOCK_AIR, false);
+                                 let r_end_fall = Config.GRID_ROWS - 1;
+                                 for (let check_r_fall = fallR + 1; check_r_fall < Config.GRID_ROWS; check_r_fall++) {
+                                     if (GridCollision.isSolid(c, check_r_fall)) {
+                                         r_end_fall = check_r_fall - 1;
+                                         break;
+                                     }
+                                 }
+                                 r_end_fall = Math.max(fallR, r_end_fall);
+                                 blocksToMakeFallThisCollapse.push({ c, r_start: fallR, r_end: r_end_fall, blockData: fallingBlockData });
+
+                                 let collapseChangeIndex = changedCellsAndTypes.findIndex(ch => ch.c === c && ch.r === fallR);
+                                 if (collapseChangeIndex !== -1) {
+                                     changedCellsAndTypes[collapseChangeIndex].newBlockType = Config.BLOCK_AIR;
+                                     changedCellsAndTypes[collapseChangeIndex].finalBlockData = createBlock(Config.BLOCK_AIR, false);
+                                 } else {
+                                     changedCellsAndTypes.push({
+                                         c, r: fallR,
+                                         oldBlockType: Config.BLOCK_WOOD,
+                                         newBlockType: Config.BLOCK_AIR,
+                                         finalBlockData: createBlock(Config.BLOCK_AIR, false)
+                                     });
+                                 }
+                             } else { break; }
+                         }
+                         if (blocksToMakeFallThisCollapse.length > 0) {
+                             allGravityChangesFromAgingThisPass.push(...blocksToMakeFallThisCollapse);
+                         }
+                     } else {
+                         const MIN_TRUNK_HEIGHT_FOR_CANOPY = Config.TREE_MIN_HEIGHT_TO_FORM_ORGANIC ?? 4;
+                         if (totalNaturalWoodPillarHeight >= MIN_TRUNK_HEIGHT_FOR_CANOPY) {
+                             const blockAboveNewWoodForCanopy = World.getBlockType(c, growUpR - 1);
+                             if (blockAboveNewWoodForCanopy === Config.BLOCK_AIR) {
+                                 placeInitialCanopy(c, growUpR, Config.TREE_INITIAL_CANOPY_RADIUS, changedCellsAndTypes);
+                             }
+                         }
+                     }
+                 }
+             }
+         }
+     }
 
 
-            // Rule 4: Deep Stoneification
-            if (newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION || originalType === Config.BLOCK_SAND)) {
-                const depthInPixels = r * Config.BLOCK_HEIGHT;
-                if (depthInPixels > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) {
-                    if (Math.random() < Config.AGING_PROB_STONEIFICATION_DEEP) {
-                        newType = Config.BLOCK_STONE;
-                    }
-                }
-            }
+     // Rule 3: Tree Canopy Growth & Decay (Only if a tiny tree wasn't formed at this (c,r) which would change its type)
+     if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_VEGETATION) {
+         let isNearTrunk = false;
+         for (let dr_canopy = -1; dr_canopy <= 1; dr_canopy++) {
+             for (let dc_canopy = -1; dc_canopy <= 1; dc_canopy++) {
+                 if (dr_canopy === 0 && dc_canopy === 0) continue;
+                 if (isLikelyTreeTrunk(c + dc_canopy, r + dr_canopy)) {
+                     isNearTrunk = true;
+                     break;
+                 }
+             }
+             if (isNearTrunk) break;
+         }
+         if (isNearTrunk) {
+             expandCanopy(c, r, changedCellsAndTypes);
+         }
+     }
+     if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_VEGETATION) {
+         let isNearTrunkDecay = false;
+         for (let dr_decay = -1; dr_decay <= 1; dr_decay++) {
+             for (let dc_decay = -1; dc_decay <= 1; dc_decay++) {
+                 if (dr_decay === 0 && dc_decay === 0) continue;
+                 if (isLikelyTreeTrunk(c + dc_decay, r + dr_decay)) {
+                     isNearTrunkDecay = true;
+                     break;
+                 }
+             }
+             if (isNearTrunkDecay) break;
+         }
+         const isNotDirectlyOnTrunkTop = !(World.getBlockType(c,r+1) === Config.BLOCK_WOOD && isLikelyTreeTrunk(c,r+1));
+         if (isNearTrunkDecay && isNotDirectlyOnTrunkTop && Math.random() < (Config.AGING_PROB_TREE_CANOPY_DECAY ?? 0.01)) {
+             newType = Config.BLOCK_AIR;
+         }
+     }
+     if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_WOOD && !originalIsPlayerPlaced) {
+         if (isLikelyTreeTrunk(c, r)) {
+             if (Math.random() < (Config.AGING_PROB_TREE_TRUNK_DECAY ?? 0.005)) {
+                     newType = Config.BLOCK_AIR;
+             }
+         }
+     }
 
-            // Rule 5: Surface Stone Erosion
-            if (newType === originalType && originalType === Config.BLOCK_STONE) {
-                const isSurfaceStone = neighborTypes.above === Config.BLOCK_AIR || neighborTypes.above === Config.BLOCK_WATER;
-                if (isSurfaceStone) {
-                    if (Math.random() < Config.AGING_PROB_EROSION_SURFACE_STONE) {
-                        newType = Config.BLOCK_AIR;
-                    }
-                }
-            }
 
-            // Rule 6: Underwater AIR/WATER Sedimentation -> SAND
-            if (newType === originalType && originalType === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
-                let firstSolidRowBelow = -1;
-                for (let checkR_sed = r + 1; checkR_sed < Config.GRID_ROWS; checkR_sed++) {
-                    if (GridCollision.isSolid(c, checkR_sed)) {
-                        firstSolidRowBelow = checkR_sed;
-                        break;
-                    }
-                }
-                const hasSolidBelowOrIsBottom = (firstSolidRowBelow !== -1) || (r === Config.GRID_ROWS - 1);
-                if (hasSolidBelowOrIsBottom) {
-                    if (Math.random() < Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER) {
-                        newType = Config.BLOCK_SAND;
-                    }
-                }
-            }
+     // Rule 4: Deep Stoneification
+     if (!tinyTreeFormedThisCell && newType === originalType && (originalType === Config.BLOCK_DIRT || originalType === Config.BLOCK_VEGETATION || originalType === Config.BLOCK_SAND)) {
+         const depthInPixels = r * Config.BLOCK_HEIGHT;
+         if (depthInPixels > Config.AGING_STONEIFICATION_DEPTH_THRESHOLD) {
+             if (Math.random() < Config.AGING_PROB_STONEIFICATION_DEEP) {
+                 newType = Config.BLOCK_STONE;
+             }
+         }
+     }
 
-            // ==============================================================
-            // --- END OF AGING RULES ---
-            // ==============================================================
+     // Rule 5: Surface Stone Erosion
+     if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_STONE) {
+         const isSurfaceStone = neighborTypes.above === Config.BLOCK_AIR || neighborTypes.above === Config.BLOCK_WATER;
+         if (isSurfaceStone) {
+             if (Math.random() < Config.AGING_PROB_EROSION_SURFACE_STONE) {
+                 newType = Config.BLOCK_AIR;
+             }
+         }
+     }
 
-            if (newType !== originalType) {
-                const successSetBlock = World.setBlock(c, r, newType, originalIsPlayerPlaced); // Preserve original player-placed status if type changes
-                if (!successSetBlock) {
-                    console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
-                } else {
-                    const blockAfterChangeMain = World.getBlock(c, r);
-                    changedCellsAndTypes.push({
-                        c,
-                        r,
-                        oldBlockType: originalType,
-                        newBlockType: newType,
-                        finalBlockData: blockAfterChangeMain
-                    });
-                }
-            }
+     // Rule 6: Underwater AIR/WATER Sedimentation -> SAND
+     if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
+         let firstSolidRowBelow = -1;
+         for (let checkR_sed = r + 1; checkR_sed < Config.GRID_ROWS; checkR_sed++) {
+             if (GridCollision.isSolid(c, checkR_sed)) {
+                 firstSolidRowBelow = checkR_sed;
+                 break;
+             }
+         }
+         const hasSolidBelowOrIsBottom = (firstSolidRowBelow !== -1) || (r === Config.GRID_ROWS - 1);
+         if (hasSolidBelowOrIsBottom) {
+             if (Math.random() < Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER) {
+                 newType = Config.BLOCK_SAND;
+             }
+         }
+     }
 
-            const currentTypeAtCR = World.getBlockType(c,r);
-            if (currentTypeAtCR === Config.BLOCK_SAND) {
-                if (waterDepthAbove > 0) {
-                    const maxSandDepthBelowInBlocks = Math.min(waterDepthAbove, Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH);
-                    for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelowInBlocks; potentialDepth++) {
-                        const nr_sand_sed = r + potentialDepth;
-                        if (nr_sand_sed >= Config.GRID_ROWS) break;
-                        const targetBlockBeforeSedimentation = World.getBlock(c, nr_sand_sed);
-                        const targetBlockTypeBeforeChange = (typeof targetBlockBeforeSedimentation === 'object' && targetBlockBeforeSedimentation !== null)
-                            ? targetBlockBeforeSedimentation.type
-                            : targetBlockBeforeSedimentation;
-                        const isConvertibleMaterial = Config.AGING_MATERIAL_CONVERSION_FACTORS[targetBlockTypeBeforeChange] !== undefined;
-                        if (isConvertibleMaterial) {
-                            if (Math.random() < Config.AGING_PROB_SAND_SEDIMENTATION_BELOW) {
-                                if (targetBlockTypeBeforeChange !== Config.BLOCK_SAND) {
-                                    const successSed = World.setBlock(c, nr_sand_sed, Config.BLOCK_SAND, false);
-                                    if (successSed) {
-                                        const blockAfterSedimentation = World.getBlock(c, nr_sand_sed);
-                                        changedCellsAndTypes.push({
-                                            c: c,
-                                            r: nr_sand_sed,
-                                            oldBlockType: targetBlockTypeBeforeChange,
-                                            newBlockType: Config.BLOCK_SAND,
-                                            finalBlockData: blockAfterSedimentation
-                                        });
-                                    }
-                                }
-                            } else {
-                                break;
-                            }
-                        } else {
-                            break;
-                        }
-                    }
-                }
-            }
+     // ==============================================================
+     // --- END OF AGING RULES ---
+     // ==============================================================
 
-        }
-    }
+     // Only apply single block change if a tiny tree wasn't formed at this exact (c,r) as center
+     if (!tinyTreeFormedThisCell && newType !== originalType) {
+         const successSetBlock = World.setBlock(c, r, newType, originalIsPlayerPlaced);
+         if (!successSetBlock) {
+             console.error(`Aging failed to set block data at [${c}, ${r}] to type ${newType}.`);
+         } else {
+             const blockAfterChangeMain = World.getBlock(c, r);
+             changedCellsAndTypes.push({
+                 c,
+                 r,
+                 oldBlockType: originalType,
+                 newBlockType: newType,
+                 finalBlockData: blockAfterChangeMain
+             });
+         }
+     }
 
-    return {
-        visualChanges: changedCellsAndTypes,
-        gravityChanges: allGravityChangesFromAgingThisPass
-    };
+     // Sand Sedimentation Rule (runs regardless of tiny tree formation, as it checks current grid state)
+     const currentTypeAtCR = World.getBlockType(c,r); // This will be WOOD if a tiny tree just formed at (c,r)
+     if (currentTypeAtCR === Config.BLOCK_SAND) { // This rule should still work, it's independent of the above rules' direct output for (c,r)
+         if (waterDepthAbove > 0) {
+             const maxSandDepthBelowInBlocks = Math.min(waterDepthAbove, Config.AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH);
+             for (let potentialDepth = 1; potentialDepth <= maxSandDepthBelowInBlocks; potentialDepth++) {
+                 const nr_sand_sed = r + potentialDepth;
+                 if (nr_sand_sed >= Config.GRID_ROWS) break;
+                 const targetBlockBeforeSedimentation = World.getBlock(c, nr_sand_sed);
+                 const targetBlockTypeBeforeChange = (typeof targetBlockBeforeSedimentation === 'object' && targetBlockBeforeSedimentation !== null)
+                     ? targetBlockBeforeSedimentation.type
+                     : targetBlockBeforeSedimentation;
+                 const isConvertibleMaterial = Config.AGING_MATERIAL_CONVERSION_FACTORS[targetBlockTypeBeforeChange] !== undefined;
+                 if (isConvertibleMaterial) {
+                     if (Math.random() < Config.AGING_PROB_SAND_SEDIMENTATION_BELOW) {
+                         if (targetBlockTypeBeforeChange !== Config.BLOCK_SAND) {
+                             const successSed = World.setBlock(c, nr_sand_sed, Config.BLOCK_SAND, false);
+                             if (successSed) {
+                                 const blockAfterSedimentation = World.getBlock(c, nr_sand_sed);
+                                 changedCellsAndTypes.push({
+                                     c: c,
+                                     r: nr_sand_sed,
+                                     oldBlockType: targetBlockTypeBeforeChange,
+                                     newBlockType: Config.BLOCK_SAND,
+                                     finalBlockData: blockAfterSedimentation
+                                 });
+                             }
+                         }
+                     } else {
+                         break;
+                     }
+                 } else {
+                     break;
+                 }
+             }
+         }
+     }
+
+ }
+}
+return {
+visualChanges: changedCellsAndTypes,
+gravityChanges: allGravityChangesFromAgingThisPass
+};
 }
