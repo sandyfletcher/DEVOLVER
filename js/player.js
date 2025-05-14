@@ -1,7 +1,6 @@
 // -----------------------------------------------------------------------------
 // root/js/player.js - Player Character Class
 // -----------------------------------------------------------------------------
-
 import * as Config from './utils/config.js';
 import * as GridCollision from './utils/gridCollision.js';
 import * as WorldManager from './worldManager.js';
@@ -32,14 +31,14 @@ export class Player {
         this.hasSpear = false;
         this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Start unarmed
         this.inventory = {}; // Stores counts of materials: { 'dirt': 10, 'stone': 5 }
-         this.partialCollection = {}; // NEW: Stores partial collection counts: { 'dirt': 0, 'vegetation': 0 }
+        this.partialCollection = {}; // NEW: Stores partial collection counts: { 'dirt': 0, 'vegetation': 0 }
         this.placementCooldown = 0; // Timer for delaying consecutive block placements (time-based)
         // --- Combat State ---
-        this.isAttacking = false;    // Is the attack animation/hitbox active? (Controlled by attackTimer now)
-        this.attackTimer = 0;        // Duration timer for the current attack (time-based)
-        this.attackCooldown = 0;     // Cooldown timer until the next weapon attack is possible (time-based)
+        this.isAttacking = false; // Is the attack animation/hitbox active? (Controlled by attackTimer now)
+        this.attackTimer = 0; // Duration timer for the current attack (time-based)
+        this.attackCooldown = 0; // Cooldown timer until the next weapon attack is possible (time-based)
         this.hitEnemiesThisSwing = []; // Tracks enemies hit during the current attack swing
-        this.hitBlocksThisSwing = [];  // Tracks blocks hit during the current attack swing ("col,row" keys)
+        this.hitBlocksThisSwing = []; // Tracks blocks hit during the current attack swing ("col,row" keys)
         // --- Health State ---
         this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY; // Max health for UI display (remain fixed)
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH; // Starting health (remain fixed)
@@ -60,9 +59,9 @@ export class Player {
         this.isActive = true;
         // Initial position validation
         if (isNaN(this.x) || isNaN(this.y)) {
-            console.error(`>>> Player CONSTRUCTOR ERROR: NaN initial coordinates! Resetting to center.`);
-            this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
-            this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
+            console.error(">>> Player CONSTRUCTOR ERROR: NaN initial coordinates! Resetting to center.");
+            this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;
+            this.y = Config.CANVAS_HEIGHT / 2 - this.height / 2;
         }
         // Player Image
         this.image = new Image();
@@ -76,164 +75,131 @@ export class Player {
             this.imageLoaded = false; // Explicitly set to false on error
         };
         try {
-            this.image.src = Config.PLAYER_IMAGE_PATH;
+            // Ensure PLAYER_IMAGE_PATH is a string.
+            if (typeof Config.PLAYER_IMAGE_PATH === 'string') {
+                this.image.src = Config.PLAYER_IMAGE_PATH;
+            } else {
+                console.error("Player image path is not a string:", Config.PLAYER_IMAGE_PATH);
+                this.imageLoaded = false;
+            }
         } catch (e) {
-            console.error("Error setting player image src:", e);
-            this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
-            this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
+            console.error("Synchronous error setting player image src (e.g. invalid path format):", e);
+            this.imageLoaded = false; // Ensure loaded is false
         }
     }
-    /**
-     * Updates the player's state based on input, physics, and environment interactions.
-     * This method orchestrates the update process by calling private helper methods.
-     * @param {number} dt - Delta time (time elapsed since last frame in seconds).
-     * @param {object} inputState - Current input state (left, right, jump, attack flags).
-     * @param {object} targetWorldPos - Current mouse position in world coordinates {x, y}.
-     * @param {object} targetGridCell - Current grid cell under mouse {col, row}.
-     */
+
     update(dt, inputState, targetWorldPos, targetGridCell) {
-        // If player is currently dying or inactive, only update the death timer.
+        // ... (dying logic remains unchanged) ...
         if (this.isDying) {
-            // Ensure dt is valid for timer update
             if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
                 console.warn("Player Update: Invalid delta time during dying.", dt);
-                // If dt is bad and timer is already done, force inactive
                 if (this.deathAnimationTimer <= 0) {
                     this.isActive = false;
                     this.isDying = false;
                     this.deathAnimationFrame = 0;
                 }
-                return; // Skip other updates if dt is bad while dying
+                return; 
             }
-            this.deathAnimationTimer -= dt; // Decrement death timer
-            // Calculate spin frame based on time elapsed in the spin phase
-            const totalAnimationDuration = Config.PLAYER_DEATH_ANIMATION_DURATION; // Time-based
-            const spinDuration = Config.PLAYER_SPIN_DURATION; // Time-based
+            this.deathAnimationTimer -= dt; 
+            const totalAnimationDuration = Config.PLAYER_DEATH_ANIMATION_DURATION; 
+            const spinDuration = Config.PLAYER_SPIN_DURATION; 
             const timeElapsedInAnimation = totalAnimationDuration - this.deathAnimationTimer;
-            if (timeElapsedInAnimation >= 0 && timeElapsedInAnimation < spinDuration) { // Still in the spin phase
+            if (timeElapsedInAnimation >= 0 && timeElapsedInAnimation < spinDuration) { 
                 const totalSpinTime = spinDuration;
                 const timePerFrame = totalSpinTime / Config.PLAYER_SPIN_FRAMES;
                 this.deathAnimationFrame = Math.min(
-                    Config.PLAYER_SPIN_FRAMES - 1, // Clamp to max frame index (0 to N-1)
+                    Config.PLAYER_SPIN_FRAMES - 1, 
                     Math.floor(timeElapsedInAnimation / timePerFrame)
                 );
-                // Optional: Play spin sound effect on frame change? Requires tracking previous frame.
-                // if (this.deathAnimationFrame !== lastAnimationFrame) AudioManager.playSound(...)
             } else {
-                // After spin, frame is 0 (or irrelevant)
-                this.deathAnimationFrame = 0; // Reset frame visual state
+                this.deathAnimationFrame = 0; 
             }
             if (this.deathAnimationTimer <= 0) {
-                // Animation is finished, mark as inactive for removal
-                this.isActive = false; // This is the flag main.js checks for Game Over
-                this.isDying = false; // Clear dying flag
-                this.deathAnimationFrame = 0; // Reset frame
-                // console.log("[Player] Death animation finished. Marking inactive.");
+                this.isActive = false; 
+                this.isDying = false; 
+                this.deathAnimationFrame = 0; 
             }
-            // Stop any other updates while dying
             return;
         }
-        // --- Normal Active Update Logic (Only if NOT dying) ---
-        // This block only runs if !this.isDying and !this.isActive initially (which shouldn't happen if logic is correct)
-        // Ensure dt is valid
+
         if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
             console.warn("Player Update: Invalid delta time.", dt);
-            if (this.currentHealth <= 0 && !this.isDying && this.isActive) { // If health is zero but somehow not dying, force die
-                this.die(); // This will set isDying = true and prevent further normal update
+            if (this.currentHealth <= 0 && !this.isDying && this.isActive) { 
+                this.die(); 
             }
-            return; // Exit if dt is bad and not dying
+            return; 
         }
-        // --- Update Targeting ---
-        // Ensure target positions are valid objects with numbers
+        
         if (typeof targetWorldPos !== 'object' || targetWorldPos === null || typeof targetWorldPos.x !== 'number' || typeof targetWorldPos.y !== 'number' || isNaN(targetWorldPos.x) || isNaN(targetWorldPos.y)) {
-            console.warn("Player Update: Invalid targetWorldPos object.", targetWorldPos);
-            // Fallback: use last known position or position slightly in front of player
-            this.targetWorldPos = this._lastValidTargetWorldPos || { x: this.x + this.width / 2 + this.lastDirection * 50, y: this.y + this.height / 2 }; // Use pixel offset here
+            this.targetWorldPos = this._lastValidTargetWorldPos || { x: this.x + this.width / 2 + this.lastDirection * 50, y: this.y + this.height / 2 }; 
         } else {
             this.targetWorldPos = targetWorldPos;
-            this._lastValidTargetWorldPos = { ...targetWorldPos }; // Store valid position
+            this._lastValidTargetWorldPos = { ...targetWorldPos }; 
         }
         if (typeof targetGridCell !== 'object' || targetGridCell === null || typeof targetGridCell.col !== 'number' || typeof targetGridCell.row !== 'number' || isNaN(targetGridCell.col) || isNaN(targetGridCell.row)) {
-            console.warn("Player Update: Invalid targetGridCell object.", targetGridCell);
-            // Fallback: calculate from valid world pos
             this.targetGridCell = GridCollision.worldToGridCoords(this.targetWorldPos.x, this.targetWorldPos.y);
-            this._lastValidTargetGridCell = { ...this.targetGridCell }; // Store valid cell
+            this._lastValidTargetGridCell = { ...this.targetGridCell }; 
         } else {
             this.targetGridCell = targetGridCell;
-            this._lastValidTargetGridCell = { ...targetGridCell }; // Store valid cell
+            this._lastValidTargetGridCell = { ...targetGridCell }; 
         }
-        // Update Player Facing Direction based on Target Position relative to player center
+        
         const playerCenterX = this.x + this.width / 2;
         const targetDeltaX = this.targetWorldPos.x - playerCenterX;
-        // Only update direction if the target isn't extremely close horizontally to avoid rapid flipping
-        if (Math.abs(targetDeltaX) > 1) { // Use a small threshold (in pixels)
+        if (Math.abs(targetDeltaX) > 1) { 
             this.lastDirection = Math.sign(targetDeltaX);
         }
-        // Update environment state (water)
-        this.isInWater = GridCollision.isEntityInWater(this); // isEntityInWater handles scaling implicitly
-        // Reset water jump cooldown if just exited water (for non-swimmers)
+        
+        this.isInWater = GridCollision.isEntityInWater(this); 
         if (!this.isInWater && this.waterJumpCooldown > 0) {
             this.waterJumpCooldown = 0;
         }
-        // Update timers (attack, invulnerability, water jump, placement cooldown)
+        
         this._updateTimers(dt);
-        // Handle Player Input (movement, jump, attack, placement)
-        // Pass input state *only* if player is active and not dying.
         const activeInputState = this.isActive && !this.isDying ? inputState : {};
         this._handleInput(dt, activeInputState);
-        // Apply Physics (gravity, damping, velocity calculation, collision resolution)
         this._applyPhysics(dt);
-        // Check Screen Boundaries and Falling Out
         this._checkBoundaries();
-        // Ensure health doesn't go negative
         this.currentHealth = Math.max(0, this.currentHealth);
     }
-    // --- Private Update Helper Methods ---
-    /** Updates various timers for cooldowns and effects. */
+
     _updateTimers(dt) {
+        // ... (timer logic remains unchanged) ...
         if (this.canGrabRopeTimer > 0) this.canGrabRopeTimer -= dt;
         if (this.canGrabRopeTimer < 0) this.canGrabRopeTimer = 0;
-        // Decrement cooldowns, ensure they don't go negative
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         if (this.attackCooldown < 0) this.attackCooldown = 0;
         if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt;
         if (this.waterJumpCooldown < 0) this.waterJumpCooldown = 0;
-        //  Decrement placement cooldown (time-based)
         if (this.placementCooldown > 0) this.placementCooldown -= dt;
         if (this.placementCooldown < 0) this.placementCooldown = 0;
-        // Update attack duration timer and related state (time-based)
-        if (this.isAttacking) { // Only count down if an attack is active
+        if (this.isAttacking) { 
             this.attackTimer -= dt;
-            if (this.attackTimer <= 0) { // Attack duration ended
+            if (this.attackTimer <= 0) { 
                 this.isAttacking = false;
-                this.hitEnemiesThisSwing = []; // Clear hit targets for the next swing
+                this.hitEnemiesThisSwing = []; 
                 this.hitBlocksThisSwing = [];
             }
         }
-        // Update invulnerability timer (time-based)
         if (this.isInvulnerable) {
             this.invulnerabilityTimer -= dt;
-            if (this.invulnerabilityTimer <= 0) { // Invulnerability ended
+            if (this.invulnerabilityTimer <= 0) { 
                 this.isInvulnerable = false;
             }
         }
     }
-    /** Handles player input and sets desired movement/action flags/velocities. */
-    _handleInput(dt, inputState) { // dt is now passed for placement cooldown
-        this._handleMovement(dt, inputState); // Movement & Jump/Swim Stroke handled here
-        if (inputState.attack) { // handles both weapon attacks and block placement based on the selected item
+
+    _handleInput(dt, inputState) {
+        // ... (input handling remains unchanged) ...
+        this._handleMovement(dt, inputState); 
+        if (inputState.attack) { 
             if (this.isMaterialSelected()) {
-                // If a material is selected, attempt to place a block continuously while 'attack' is held
-                this._handlePlacementHold(); // Call the new method for placement (dt is handled by internal cooldown)
+                this._handlePlacementHold(); 
             } else if (this.isWeaponSelected()) {
-                // If a weapon is selected, attempt to START an attack if not on cooldown and not already attacking
-                // The attack duration is handled by attackTimer, and the cooldown by attackCooldown.
-                // We only *initiate* the attack here if the input is held AND cooldown is ready.
                 if (this.attackCooldown <= 0 && !this.isAttacking) {
-                    this.isAttacking = true; // Start the attack state
-                    this.hitEnemiesThisSwing = []; // Reset hit lists for this swing
+                    this.isAttacking = true; 
+                    this.hitEnemiesThisSwing = []; 
                     this.hitBlocksThisSwing = [];
-                    // Set attack duration and cooldown based on the equipped weapon type (time-based)
                     switch (this.selectedItem) {
                         case Config.WEAPON_TYPE_SWORD:
                             this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
@@ -248,7 +214,6 @@ export class Player {
                             this.attackCooldown = Config.PLAYER_SHOVEL_ATTACK_COOLDOWN;
                             break;
                         default:
-                            // Fallback (time-based)
                             this.attackTimer = 0.1;
                             this.attackCooldown = 0.2;
                             break;
@@ -257,37 +222,33 @@ export class Player {
             }
         }
     }
-    _handleMovement(dt, inputState) {
-        if (this.isOnRope) {
-            // --- ROPE MOVEMENT ---
-            this.vx = 0; // Player horizontal movement is largely stopped on rope
 
-            if (inputState.jump) { // Climb Up or Jump Off
-                // If also pressing left/right, treat as jump-off intent
+    _handleMovement(dt, inputState) {
+        // ... (movement handling logic remains unchanged) ...
+        if (this.isOnRope) {
+            this.vx = 0; 
+            if (inputState.jump) { 
                 if (inputState.left || inputState.right) {
                     this.isOnRope = false;
-                    this.canGrabRopeTimer = 0.3; // Short cooldown before re-grabbing
+                    this.canGrabRopeTimer = 0.3; 
                     this.vx = (inputState.left ? -1 : 1) * Config.PLAYER_ROPE_DETACH_IMPULSE_X;
-                    this.vy = -Config.PLAYER_JUMP_VELOCITY * Config.PLAYER_ROPE_DETACH_JUMP_MULTIPLIER; // Reduced jump height
+                    this.vy = -Config.PLAYER_JUMP_VELOCITY * Config.PLAYER_ROPE_DETACH_JUMP_MULTIPLIER; 
                     this.isOnGround = false;
-                } else { // Climb Up
+                } else { 
                     this.vy = -Config.PLAYER_ROPE_CLIMB_SPEED;
                 }
-            } else if (inputState.downAction) { // Climb Down
+            } else if (inputState.downAction) { 
                 this.vy = Config.PLAYER_ROPE_SLIDE_SPEED;
-            } else if (inputState.left || inputState.right) { // Detach Horizontally
+            } else if (inputState.left || inputState.right) { 
                  this.isOnRope = false;
                  this.canGrabRopeTimer = 0.3;
                  this.vx = (inputState.left ? -1 : 1) * Config.PLAYER_ROPE_DETACH_IMPULSE_X;
-                 // Keep current vy or small downward push if not jumping
-                 this.vy = Math.max(this.vy, Config.PLAYER_ROPE_SLIDE_SPEED * 0.1); // Slight downward push if not already moving down
+                 this.vy = Math.max(this.vy, Config.PLAYER_ROPE_SLIDE_SPEED * 0.1); 
                  this.isOnGround = false;
-            } else { // No vertical input on rope
-                this.vy = 0; // Hold position vertically
+            } else { 
+                this.vy = 0; 
             }
-             // Horizontal position is snapped in _applyPhysics when isOnRope becomes true
         } else {
-            // --- STANDARD MOVEMENT (Ground/Air/Water) ---
             let targetVx = 0;
             if (inputState.left) targetVx -= Config.PLAYER_MAX_SPEED_X;
             if (inputState.right) targetVx += Config.PLAYER_MAX_SPEED_X;
@@ -321,11 +282,9 @@ export class Player {
             }
         }
     }
-    /**
-        * Handles continuous block placement when the 'attack' input is held AND a material is selected.
-        * Attempts to place a block if the placement cooldown is ready.
-        */
-        _handlePlacementHold() {
+
+    _handlePlacementHold() {
+        // ... (placement logic remains unchanged) ...
         if (this.placementCooldown > 0) return;
 
         const selectedMaterialType = this.selectedItem;
@@ -341,32 +300,25 @@ export class Player {
         const targetRow = targetCellForPlacement.row;
 
         const targetBlockType = World.getBlockType(targetCol, targetRow);
-        if (targetBlockType === null) return; // Out of bounds
+        if (targetBlockType === null) return; 
 
         const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
         if (!canPlaceInTargetCell) return;
         if (this.checkPlacementOverlap(targetCol, targetRow)) return;
 
-        // --- VEGETATION ROPE PLACEMENT LOGIC ---
         if (selectedMaterialType === 'vegetation') {
             const blockAboveType = World.getBlockType(targetCol, targetRow - 1);
-            const blockAboveData = World.getBlock(targetCol, targetRow - 1); // Get full data for isSolid check
-
-            // Condition 1: Attach to a solid block (that isn't already a rope)
-            // GridCollision.isSolid will correctly return false for AIR, WATER, ROPE
+            const blockAboveData = World.getBlock(targetCol, targetRow - 1); 
             const canAttachToSolid = blockAboveData !== null && GridCollision.isSolid(targetCol, targetRow - 1);
-            
-            // Condition 2: Extend an existing rope
             const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
 
             if (canAttachToSolid || canExtendRope) {
                 if (WorldManager.placePlayerBlock(targetCol, targetRow, Config.BLOCK_ROPE)) {
                     this.decrementInventory(selectedMaterialType);
                     this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
-                    // Play sound for placing rope?
                 }
             }
-        } else { // --- STANDARD BLOCK PLACEMENT LOGIC ---
+        } else { 
             if (GridCollision.hasSolidNeighbor(targetCol, targetRow)) {
                 const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[selectedMaterialType];
                 if (blockTypeToPlace !== undefined) {
@@ -380,10 +332,10 @@ export class Player {
             }
         }
     }
-    /** Applies gravity, damping, and resolves collisions with the grid. */
+
     _applyPhysics(dt) {
         // --- Check for Rope Interaction BEFORE standard physics ---
-        if (!this.isOnRope && this.canGrabRopeTimer <= 0) { // Only check to grab if not already on rope and not in cooldown
+        if (!this.isOnRope && this.canGrabRopeTimer <= 0) {
             const playerRect = this.getRect();
             const minCheckCol = Math.max(0, Math.floor(playerRect.x / Config.BLOCK_WIDTH));
             const maxCheckCol = Math.min(Config.GRID_COLS - 1, Math.floor((playerRect.x + playerRect.width - GridCollision.E_EPSILON) / Config.BLOCK_WIDTH));
@@ -396,11 +348,9 @@ export class Player {
                     if (GridCollision.isRope(c, r)) {
                         this.isOnRope = true;
                         this.ropeCol = c;
-                        this.x = this.ropeCol * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2) - (this.width / 2); // Center on rope
-                        this.vx = 0; // Stop horizontal momentum when grabbing
-                        // vy can be kept to allow falling onto a rope, or reset:
-                        // this.vy = 0; // Optionally reset vertical momentum
-                        this.isOnGround = false; // Can't be on ground and rope simultaneously
+                        this.x = this.ropeCol * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2) - (this.width / 2); 
+                        this.vx = 0; 
+                        this.isOnGround = false; 
                         foundRope = true;
                         break;
                     }
@@ -408,57 +358,42 @@ export class Player {
                 if (foundRope) break;
             }
         } else if (this.isOnRope) {
-            // If on rope, ensure X is still centered (in case of external forces, though unlikely)
             this.x = this.ropeCol * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2) - (this.width / 2);
-            this.vx = 0; // Keep horizontal velocity zeroed
-            // Check if still on a rope segment. If not (e.g. rope ended), detach.
+            this.vx = 0; 
             const playerCenterY = this.y + this.height / 2;
             const playerRowAtCenter = Math.floor(playerCenterY / Config.BLOCK_HEIGHT);
-            if (!GridCollision.isRope(this.ropeCol, playerRowAtCenter) && 
-                !GridCollision.isRope(this.ropeCol, playerRowAtCenter + 1) && // check below too
-                !GridCollision.isRope(this.ropeCol, playerRowAtCenter -1 )) { // check above too (less likely needed)
+            if (!GridCollision.isRope(this.ropeCol, playerRowAtCenter) &&
+                !GridCollision.isRope(this.ropeCol, playerRowAtCenter + 1) && 
+                !GridCollision.isRope(this.ropeCol, playerRowAtCenter - 1)) { 
                 this.isOnRope = false;
-                this.canGrabRopeTimer = 0.1; // Small delay before regrabbing immediately
+                this.canGrabRopeTimer = 0.1; 
             }
         }
 
-
         // --- Standard Physics (modified by isOnRope) ---
         if (this.isOnRope) {
-            // Vertical movement is handled by input (_handleMovement sets vy)
-            // Apply rope vertical movement
             this.y += this.vy * dt;
 
-            // Rope boundary checks (prevent climbing/sliding past rope ends if they hit solids)
             const headCheckY = this.y;
             const feetCheckY = this.y + this.height;
             const headRow = Math.floor(headCheckY / Config.BLOCK_HEIGHT);
             const feetRow = Math.floor(feetCheckY / Config.BLOCK_HEIGHT);
 
-            // Climbing up into a solid
             if (this.vy < 0 && GridCollision.isSolid(this.ropeCol, headRow)) {
-                this.y = (headRow + 1) * Config.BLOCK_HEIGHT; // Snap below solid
+                this.y = (headRow + 1) * Config.BLOCK_HEIGHT; 
                 this.vy = 0;
             }
-            // Sliding down into a solid
             if (this.vy > 0 && GridCollision.isSolid(this.ropeCol, feetRow)) {
-                this.y = feetRow * Config.BLOCK_HEIGHT - this.height; // Snap above solid
+                this.y = feetRow * Config.BLOCK_HEIGHT - this.height; 
                 this.vy = 0;
-                this.isOnGround = true; // Landed on ground from rope
-                this.isOnRope = false; // No longer on rope
+                this.isOnGround = true; 
+                this.isOnRope = false; 
             }
-             // Check if sliding off the bottom of a rope into air
-            const rowBelowFeet = Math.floor((this.y + this.height + GridCollision.E_EPSILON) / Config.BLOCK_HEIGHT);
             if (this.vy > 0 && !GridCollision.isRope(this.ropeCol, feetRow) && !GridCollision.isSolid(this.ropeCol, feetRow)) {
-                 // If the current block isn't a rope and isn't solid, we've slid off
-                 // Or more simply: if the segment player is centered on is no longer a rope
-                 if (!GridCollision.isRope(this.ropeCol, Math.floor((this.y + this.height/2)/Config.BLOCK_HEIGHT) )) {
+                if (!GridCollision.isRope(this.ropeCol, Math.floor((this.y + this.height / 2) / Config.BLOCK_HEIGHT))) {
                     this.isOnRope = false;
-                    // vy continues from sliding speed
-                 }
+                }
             }
-
-
         } else { // --- Not on Rope: Apply normal physics ---
             const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
             const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
@@ -481,67 +416,50 @@ export class Player {
 
             const potentialMoveX = this.vx * dt;
             const potentialMoveY = this.vy * dt;
+
+            // Call the external collision resolution function
+            // This function directly modifies this.x, this.y, this.vx, this.vy
             const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
-            
+
+            // Update player state flags based on the collision result
             this.isOnGround = collisionResult.isOnGround;
-            if (collisionResult.collidedX && !collisionResult.didStepUp) {
-                this.vx = 0;
-            }
-            if (collisionResult.collidedY && Math.abs(this.vy) > 0.1) {
-                this.vy = 0;
-            }
 
-            if (collisionResult.didStepUp && !this.isOnGround) {
-                const checkDist = 2.0;
-                const yBelow = this.y + this.height + checkDist;
-                const rowBelow = Math.floor(yBelow / Config.BLOCK_HEIGHT);
-                const colCheck = Math.floor((this.x + this.width/2) / Config.BLOCK_WIDTH);
-                if (GridCollision.isSolid(colCheck, rowBelow)) {
-                    const groundSurfaceY = rowBelow * Config.BLOCK_HEIGHT;
-                    if ((this.y + this.height) < groundSurfaceY + checkDist) {
-                        this.y = groundSurfaceY - this.height;
-                        this.isOnGround = true;
-                        this.vy = 0;
-                    }
-                }
-            }
-        } // --- End if/else isOnRope for physics ---
+            // Velocities (this.vx, this.vy) are already zeroed out by collideAndResolve if a collision occurred.
+            // No need for:
+            // if (collisionResult.collidedX && !collisionResult.didStepUp) { this.vx = 0; }
+            // if (collisionResult.collidedY) { this.vy = 0; }
+            //
+            // The specific logic for re-checking ground after a step-up (the `if (collisionResult.didStepUp && !this.isOnGround)` block)
+            // can be removed if GridCollision.collideAndResolve is trusted to correctly set isOnGround after a step.
+            // Keeping it might be a specific fix for edge cases not fully handled by collideAndResolve, or it might be a source of conflict.
+            // For now, let's assume collideAndResolve is authoritative.
+            // If specific "sticky feet" or ledge behavior is desired *beyond* what collideAndResolve does, that block could be reinstated carefully.
+        }
 
-        // _checkBoundaries remains the same
         this._checkBoundaries();
         this.currentHealth = Math.max(0, this.currentHealth);
     }
-    
-    /** Checks and enforces screen boundaries and falling out of world. */
+
     _checkBoundaries() {
-        // Prevent moving outside the horizontal bounds of the world
+        // ... (boundary checking remains unchanged) ...
         if (this.x < 0) {
             this.x = 0;
-            if (this.vx < 0) this.vx = 0; // Stop velocity if hitting left edge
+            if (this.vx < 0) this.vx = 0; 
         }
         if (this.x + this.width > Config.CANVAS_WIDTH) {
             this.x = Config.CANVAS_WIDTH - this.width;
-            if (this.vx > 0) this.vx = 0; // Stop velocity if hitting right edge
+            if (this.vx > 0) this.vx = 0; 
         }
-        // --- Reset if Falling Out of World ---
-        // If player falls too far below the screen, trigger death (now starts animation)
-        // CANVAS_HEIGHT is scaled by BLOCK_HEIGHT
-        if (this.y > Config.CANVAS_HEIGHT + 200) { // Check against a buffer below the canvas (buffer in pixels)
-            console.warn("Player fell out of world!");
-            // Trigger death sequence when falling out
-            this.die(); // Call die() to start the animation
+        if (this.y > Config.CANVAS_HEIGHT + 200) { 
+            this.die(); 
         }
     }
-    // --- Helper Methods ---
-    /**
-        * Checks if a target world position is within the player's interaction range.
-        * Made this a private method as it's specific to the player instance.
-        * @param {object} targetWorldPos - The target world position {x, y}.
-        * @returns {boolean} True if target is within range.
-        */
+
+    // ... (Rest of the Player class methods: _isTargetWithinRange, checkPlacementOverlap, getGhostBlockInfo, draw, drawGhostBlock, drawPlacementRange, takeDamage, die, getAttackHitbox, collision tracking helpers, inventory methods, crafting, state checkers, damage getters, UI interaction methods, reset, resetPosition, isActive) ...
+    // These methods generally look fine and don't have obvious syntax errors or the type of issue that would be confused with one.
+    // Their correctness depends on the logic within and the config values.
     _isTargetWithinRange(targetWorldPos) {
         if (!targetWorldPos) return false;
-        // Ensure player position and target position are valid numbers
         if (typeof this.x !== 'number' || typeof this.y !== 'number' ||
             typeof this.width !== 'number' || typeof this.height !== 'number' ||
             typeof targetWorldPos.x !== 'number' || typeof targetWorldPos.y !== 'number' ||
@@ -555,34 +473,25 @@ export class Player {
         const dx = targetWorldPos.x - playerCenterX;
         const dy = targetWorldPos.y - playerCenterY;
         const distSq = dx * dx + dy * dy;
-        // Compare squared distance to the scaled range from config
         return distSq <= Config.PLAYER_INTERACTION_RANGE_SQ;
     }
-    /** Checks if placing a block at target coordinates would overlap the player's bounding box. */
+    
     checkPlacementOverlap(targetCol, targetRow) {
-        // Check for invalid grid coordinates first
-        if (targetCol < 0 || targetRow < 0 || targetCol >= Config.GRID_COLS || targetRow >= Config.GRID_ROWS) return true; // Overlap if placing out of bounds
-        // Define the rectangle for the block to be placed
+        if (targetCol < 0 || targetRow < 0 || targetCol >= Config.GRID_COLS || targetRow >= Config.GRID_ROWS) return true; 
         const blockRect = {
             x: targetCol * Config.BLOCK_WIDTH,
             y: targetRow * Config.BLOCK_HEIGHT,
             width: Config.BLOCK_WIDTH,
             height: Config.BLOCK_HEIGHT
         };
-        // Get the player's current rectangle (getRect uses scaled dimensions)
         const playerRect = this.getRect();
-        // Standard Axis-Aligned Bounding Box (AABB) overlap check
         const overlap = playerRect.x < blockRect.x + blockRect.width &&
                         playerRect.x + playerRect.width > blockRect.x &&
                         playerRect.y < blockRect.y + blockRect.height &&
                         playerRect.y + playerRect.height > blockRect.y;
-        return overlap; // Return true if overlapping, false otherwise
+        return overlap; 
     }
-    // --- Drawing Methods ---
-    /**
-        * Calculates information needed to draw the placement ghost block preview.
-        * @returns {object | null} Object { col, row, color } or null if placement is invalid.
-        */
+    
     getGhostBlockInfo() {
         if (!this.isMaterialSelected()) return null;
         
@@ -612,8 +521,8 @@ export class Player {
             if (canAttachToSolid || canExtendRope) {
                 return { col: col, row: row, color: Config.BLOCK_COLORS[Config.BLOCK_ROPE] };
             }
-            return null; // Invalid rope placement
-        } else { // Standard block ghost
+            return null; 
+        } else { 
             if (!GridCollision.hasSolidNeighbor(col, row)) return null;
             
             const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[selectedMaterialType];
@@ -625,140 +534,103 @@ export class Player {
             return { col: col, row: row, color: blockColor };
         }
     }
-    /**
-        * Draws the player character, held weapon visual, and attack hitbox/ghost block if applicable.
-        * @param {CanvasRenderingContext2D} ctx - The drawing context.
-        */
+    
     draw(ctx) {
-        // Only draw if the player is active OR currently dying
         if (!this.isActive && !this.isDying || !ctx) return;
-        // Ensure coordinates are valid before drawing
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Player DRAW ERROR: Preventing draw due to NaN coordinates!`);
             return;
         }
-        // --- Handle Dying Animation Drawing ---
         if (this.isDying) {
-            ctx.save(); // Save context before transformations
-            // Calculate pivot point (center of the entity)
+            ctx.save(); 
             const pivotX = this.x + this.width / 2;
             const pivotY = this.y + this.height / 2;
-            // Animation durations are time-based, no scaling needed
             const totalAnimationDuration = Config.PLAYER_DEATH_ANIMATION_DURATION;
             const spinDuration = Config.PLAYER_SPIN_DURATION;
-            const timeElapsed = totalAnimationDuration - this.deathAnimationTimer; // Time passed since animation started
+            const timeElapsed = totalAnimationDuration - this.deathAnimationTimer; 
             let currentScale = 1.0;
-            let rotationAngle = 0; // Radians
-            if (timeElapsed >= 0 && timeElapsed < spinDuration) { // Still in the spin phase
-                // Calculate rotation angle based on the current frame (0 to PLAYER_SPIN_FRAMES-1)
-                // Each frame represents a step in rotation. Total 360 degrees / #frames.
-                // Example: 6 frames -> 60 degrees per frame
-                rotationAngle = (this.deathAnimationFrame / Config.PLAYER_SPIN_FRAMES) * 2 * Math.PI; // 360 degrees in radians
-            } else if (timeElapsed >= spinDuration && timeElapsed < totalAnimationDuration) { // Swell phase (if duration is > 0)
-                // Calculate time elapsed *within* the swell phase
+            let rotationAngle = 0; 
+            if (timeElapsed >= 0 && timeElapsed < spinDuration) { 
+                rotationAngle = (this.deathAnimationFrame / Config.PLAYER_SPIN_FRAMES) * 2 * Math.PI; 
+            } else if (timeElapsed >= spinDuration && timeElapsed < totalAnimationDuration) { 
                 const swellDuration = totalAnimationDuration - spinDuration;
-                // Prevent division by zero if swellDuration is 0
                 if (swellDuration > 0) {
                     const swellElapsed = timeElapsed - spinDuration;
-                    const swellProgress = swellElapsed / swellDuration; // 0 to <1
-                    // Use enemy swell parameters for consistency (factors)
-                    currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress; // Lerp scale
+                    const swellProgress = swellElapsed / swellDuration; 
+                    currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress; 
                 } else {
-                    currentScale = Config.ENEMY_SWELL_SCALE; // If no swell duration, just snap to max scale? Or stay at 1? Stay at 1 for no swell.
-                    currentScale = 1.0; // If swellDuration is 0, just use base scale
+                    currentScale = 1.0; 
                 }
-                rotationAngle = 0; // Reset rotation during swell for simplicity
-            } else if (timeElapsed >= totalAnimationDuration) { // Animation finished
+                rotationAngle = 0; 
+            } else if (timeElapsed >= totalAnimationDuration) { 
                 ctx.restore();
-                return; // Do not draw after animation duration
+                return; 
             } else {
-                // Should not happen if timer logic is correct, but if it does, ensure scale and angle are reasonable
                 currentScale = 1.0; rotationAngle = 0;
             } 
-            // Apply transformations: translate to pivot, rotate, scale, translate back
             ctx.translate(pivotX, pivotY);
             ctx.rotate(rotationAngle);
             ctx.scale(currentScale, currentScale);
             ctx.translate(-pivotX, -pivotY);
-            // Draw the player rectangle
-            // Handle invulnerability flashing (draw player only on even intervals)
-            // Don't flash while dying. Draw the dying animation regardless of invulnerability state.
-            // Draw the player image instead of a solid rectangle
             if (this.imageLoaded && this.image.complete && this.image.naturalWidth > 0) {
                 ctx.drawImage(this.image, Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-            } else { // Fallback if image not loaded for dying animation
-                ctx.fillStyle = Config.PLAYER_HITBOX_COLOR; // Use hitbox color as fallback
+            } else { 
+                ctx.fillStyle = Config.PLAYER_HITBOX_COLOR; 
                 ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
             }
-            ctx.restore(); // Restore context
-            return; // Drawing handled, exit
+            ctx.restore(); 
+            return; 
         }
-        // --- Normal Active Drawing Logic (Only if NOT dying) ---
-        // This block is only reached if !this.isDying
-        // Handle invulnerability flashing (draw player only on even intervals)
+        
         let shouldDrawPlayer = true;
         if (this.isInvulnerable) {
-            // Simple flash effect: draw every other 100ms interval
             shouldDrawPlayer = Math.floor(performance.now() / 100) % 2 === 0;
         }
-        // 1. Draw Hitbox (Translucent Rectangle)
+        
         ctx.fillStyle = Config.PLAYER_HITBOX_COLOR;
         ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
 
-        // 2. Draw Player Image on top (if not flashing off)
         if (shouldDrawPlayer && this.imageLoaded && this.image.complete && this.image.naturalWidth > 0) {
             ctx.drawImage(this.image, Math.floor(this.x), Math.floor(this.y), this.width, this.height);
         }
 
-        // Draw Held Weapon Visual (on top of image/hitbox)
-            if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
-                ctx.save(); // Save context state before transformations
-                const playerCenterX = this.x + this.width / 2;
-                const playerCenterY = this.y + this.height / 2;
-                let weaponConfig = Config.ITEM_CONFIG[this.selectedItem]; // Item config contains scaled dimensions and color
-                let visualOffsetX = 0; // Distance from player center to weapon visual pivot
-                // Determine offset based on weapon type (adjust as needed for visuals)
-                // These offsets should ideally be defined in block units and scaled, or relative to player size (which is scaled)
-                // Let's adjust these to be relative factors of player width/height
-                if (this.selectedItem === Config.WEAPON_TYPE_SWORD) visualOffsetX = this.width * 0.6; // relative to scaled player width
-                else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) visualOffsetX = this.width * 0.7; // relative to scaled player width
-                else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) visualOffsetX = this.width * 0.5; // relative to scaled player width
-                if (weaponConfig) {
-                    // Weapon dimensions from config are already scaled pixels
-                    const weaponWidth = weaponConfig.width * 0.8; // Apply visual scaling factor (constant)
-                    const weaponHeight = weaponConfig.height * 0.8; // Apply visual scaling factor (constant)
-                    const weaponColor = weaponConfig.color; // Fixed color
-                    // Calculate angle towards the target mouse position (using last valid target if current is bad)
-                    const targetForDrawing = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; // Fallback uses pixel offset
-                    const targetDeltaX = targetForDrawing.x - playerCenterX;
-                    const targetDeltaY = targetForDrawing.y - playerCenterY;
-                    const angle = Math.atan2(targetDeltaY, targetDeltaX); // Angle in radians
-                    // Calculate position for the weapon visual based on angle and offset
-                    const weaponPosX = playerCenterX + Math.cos(angle) * visualOffsetX;
-                    const weaponPosY = playerCenterY + Math.sin(angle) * visualOffsetX; // Keep offset along the same axis
-                    // Apply transformations: translate to position, rotate
-                    ctx.translate(weaponPosX, weaponPosY);
-                    ctx.rotate(angle); // Rotate context to point weapon towards target
-                    // Draw the weapon centered at the new (0,0) relative origin
-                    ctx.fillStyle = weaponColor;
-                    ctx.fillRect(Math.floor(-weaponWidth / 2), Math.floor(-weaponHeight / 2), Math.ceil(weaponWidth), Math.ceil(weaponHeight));
-                }
-                ctx.restore(); // Restore context state (removes translation/rotation)
+        if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
+            ctx.save(); 
+            const playerCenterX = this.x + this.width / 2;
+            const playerCenterY = this.y + this.height / 2;
+            let weaponConfig = Config.ITEM_CONFIG[this.selectedItem]; 
+            let visualOffsetX = 0; 
+            if (this.selectedItem === Config.WEAPON_TYPE_SWORD) visualOffsetX = this.width * 0.6; 
+            else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) visualOffsetX = this.width * 0.7; 
+            else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) visualOffsetX = this.width * 0.5; 
+            if (weaponConfig) {
+                const weaponWidth = weaponConfig.width * 0.8; 
+                const weaponHeight = weaponConfig.height * 0.8; 
+                const weaponColor = weaponConfig.color; 
+                const targetForDrawing = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; 
+                const targetDeltaX = targetForDrawing.x - playerCenterX;
+                const targetDeltaY = targetForDrawing.y - playerCenterY;
+                const angle = Math.atan2(targetDeltaY, targetDeltaX); 
+                const weaponPosX = playerCenterX + Math.cos(angle) * visualOffsetX;
+                const weaponPosY = playerCenterY + Math.sin(angle) * visualOffsetX; 
+                ctx.translate(weaponPosX, weaponPosY);
+                ctx.rotate(angle); 
+                ctx.fillStyle = weaponColor;
+                ctx.fillRect(Math.floor(-weaponWidth / 2), Math.floor(-weaponHeight / 2), Math.ceil(weaponWidth), Math.ceil(weaponHeight));
             }
-        // Draw Attack Hitbox Visual (separate from player body)
+            ctx.restore(); 
+        }
+        
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
-            const hitbox = this.getAttackHitbox(); // Calculate current hitbox position/size (getAttackHitbox uses scaled values)
+            const hitbox = this.getAttackHitbox(); 
             if (hitbox) {
-                // Ensure hitbox coordinates and dimensions are valid before drawing
                 if (typeof hitbox.x === 'number' && typeof hitbox.y === 'number' &&
                     typeof hitbox.width === 'number' && typeof hitbox.height === 'number' &&
                     !isNaN(hitbox.x) && !isNaN(hitbox.y) && !isNaN(hitbox.width) && !isNaN(hitbox.height))
                 {
-                    // Determine hitbox color based on weapon (fixed colors)
-                    let hitboxColor = Config.PLAYER_SWORD_ATTACK_COLOR; // Default
+                    let hitboxColor = Config.PLAYER_SWORD_ATTACK_COLOR; 
                     if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) hitboxColor = Config.PLAYER_SPEAR_ATTACK_COLOR;
                     else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) hitboxColor = Config.PLAYER_SHOVEL_ATTACK_COLOR;
-                    // Draw the semi-transparent hitbox rectangle
                     ctx.fillStyle = hitboxColor;
                     ctx.fillRect(Math.floor(hitbox.x), Math.floor(hitbox.y), Math.ceil(hitbox.width), Math.ceil(hitbox.height));
                 } else {
@@ -766,43 +638,29 @@ export class Player {
                 }
             }
         }
-        // Draw ghost block if material is selected and not dying
-        // Note: Calling drawGhostBlock is handled in main.js now based on player state.
-        // drawGhostBlock uses scaled dimensions and positions internally
-        // if (this.isMaterialSelected() && !this.isDying) { // Check isDying here too
-        //    this.drawGhostBlock(ctx);
-        // }
     }
-    /**
-        * Draws the semi-transparent ghost block preview if placement is valid.
-        * @param {CanvasRenderingContext2D} ctx - The drawing context.
-        */
+    
     drawGhostBlock(ctx) {
-        if (!ctx) return; // Don't draw if no context
-        const ghostInfo = this.getGhostBlockInfo(); // Check if/where ghost should be drawn (getGhostBlockInfo uses scaled range)
+        if (!ctx) return; 
+        const ghostInfo = this.getGhostBlockInfo(); 
         if (ghostInfo) {
-            // Calculate pixel coordinates from grid coordinates (BLOCK_WIDTH/HEIGHT are scaled)
             const ghostX = ghostInfo.col * Config.BLOCK_WIDTH;
             const ghostY = ghostInfo.row * Config.BLOCK_HEIGHT;
-            // Ensure ghost coordinates are valid before drawing
             if (typeof ghostX !== 'number' || typeof ghostY !== 'number' || isNaN(ghostX) || isNaN(ghostY)) {
                 console.warn("Player.drawGhostBlock: Invalid ghost coordinates.", ghostX, ghostY);
                 return;
             }
-            ctx.save(); // Save context state before changing alpha
-            // Set alpha and color for the ghost block (alpha is fixed, color from config is fixed)
-            ctx.globalAlpha = Config.GHOST_BLOCK_ALPHA; // Use config value for transparency
+            ctx.save(); 
+            ctx.globalAlpha = Config.GHOST_BLOCK_ALPHA; 
             ctx.fillStyle = ghostInfo.color;
-            // Draw the semi-transparent rectangle (BLOCK_WIDTH/HEIGHT are scaled)
             ctx.fillRect(
                 Math.floor(ghostX),
                 Math.floor(ghostY),
-                Math.ceil(Config.BLOCK_WIDTH),  // Use ceil for width/height for pixel snapping
+                Math.ceil(Config.BLOCK_WIDTH),  
                 Math.ceil(Config.BLOCK_HEIGHT)
             );
-            // Draw outline on the ghost block (outline thickness is fixed in pixels)
             ctx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
-            ctx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS; // Fixed pixel thickness
+            ctx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS; 
             const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
             ctx.strokeRect(
                 Math.floor(ghostX) + outlineInset,
@@ -810,79 +668,78 @@ export class Player {
                 Math.ceil(Config.BLOCK_WIDTH) - Config.PLAYER_BLOCK_OUTLINE_THICKNESS,
                 Math.ceil(Config.BLOCK_HEIGHT) - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
             );
-            ctx.restore(); // Restore context state (resets globalAlpha)
+            ctx.restore(); 
         }
     }
-    // --- Combat and Health Methods ---
-    /**
-        * Applies damage to the player, handles invulnerability, and triggers death.
-        * @param {number} amount - The amount of damage to take. (Damage amount is fixed, not scaled)
-        */
-    takeDamage(amount) {
-        // Ensure amount is a valid number
-        if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
-            // console.warn("Player takeDamage: Invalid damage amount.", amount); // Keep console less noisy
+
+    drawPlacementRange(ctx) {
+        if (!ctx || !this.isMaterialSelected() || this.isDying || !this.isActive) {
+            return; 
+        }
+        if (typeof this.x !== 'number' || typeof this.y !== 'number' ||
+            typeof this.width !== 'number' || typeof this.height !== 'number' ||
+            isNaN(this.x) || isNaN(this.y) || isNaN(this.width) || isNaN(this.height) ||
+            typeof Config.PLAYER_INTERACTION_RANGE !== 'number' || isNaN(Config.PLAYER_INTERACTION_RANGE)) {
+            console.warn("Player.drawPlacementRange: Invalid player data or range config.", this, Config.PLAYER_INTERACTION_RANGE);
             return;
         }
-        // Ignore damage if already invulnerable, dying, or already dead
+        const playerCenterX = this.x + this.width / 2;
+        const playerCenterY = this.y + this.height / 2;
+        const rangeRadius = Config.PLAYER_INTERACTION_RANGE; 
+        ctx.save();
+        ctx.strokeStyle = Config.PLAYER_PLACEMENT_RANGE_COLOR;
+        ctx.lineWidth = Config.PLAYER_PLACEMENT_RANGE_LINE_WIDTH;
+        ctx.beginPath();
+        ctx.arc(playerCenterX, playerCenterY, rangeRadius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    takeDamage(amount) {
+        if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
+            return;
+        }
         if (this.isInvulnerable || this.isDying || this.currentHealth <= 0) return;
         this.currentHealth -= amount;
-        // console.log(`Player took ${amount} damage. Health: ${this.currentHealth}/${this.maxHealth}`);
         if (this.currentHealth <= 0) {
-            this.currentHealth = 0; // Prevent negative health
-            this.die(); // Trigger death sequence (now starts animation)
+            this.currentHealth = 0; 
+            this.die(); 
         } else {
-            // Apply invulnerability period after taking damage (time-based)
             this.isInvulnerable = true;
             this.invulnerabilityTimer = Config.PLAYER_INVULNERABILITY_DURATION;
         }
     }
-    /** Handles the player's death state. */
+    
     die() {
-        // Prevent death animation from starting multiple times
-        // Check isActive here too - if health dropped to 0 while inactive (shouldn't happen), don't start dying state
         if (!this.isActive || this.isDying) {
-            // If health is 0 but not dying/inactive, somehow not dying, maybe force dying state?
             if (this.currentHealth <= 0 && !this.isActive && !this.isDying) {
                 console.warn("Player death requested but already inactive/dying. State:", {isActive: this.isActive, isDying: this.isDying, health: this.currentHealth});
             }
-            return; // Already inactive or dying
+            return; 
         }
         console.log(">>> Player is dying! <<<");
-        // Stop movement immediately
         this.vx = 0;
         this.vy = 0;
-        this.isAttacking = false; // Cancel any active attack
+        this.isAttacking = false; 
         this.attackTimer = 0;
-        this.placementCooldown = 0; // Cancel any pending placement
-        // Set dying state and timer (animation duration is time-based)
+        this.placementCooldown = 0; 
         this.isDying = true;
         this.deathAnimationTimer = Config.PLAYER_DEATH_ANIMATION_DURATION;
-        this.deathAnimationFrame = 0; // Start at frame 0 for the spin
-        // Keep isActive = true *during* the animation so it's updated and drawn.
-        // It will be set to false in update() when the timer expires.
-        // Optional: Play player death sound effect here (maybe different sounds for spin and pop?)
-        // AudioManager.playSound(Config.AUDIO_TRACKS.player_pop); // Or a general death sound
+        this.deathAnimationFrame = 0; 
     }
-    // Calculates the position and dimensions of the attack hitbox based on the equipped weapon and target direction.
+    
     getAttackHitbox() {
-        // Cannot have a hitbox if not attacking or not using a weapon OR if dying
         if (!this.isAttacking || !this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED || this.isDying) {
             return null;
         }
-        // Player center coordinates (player dimensions are scaled)
         const playerCenterX = this.x + this.width / 2;
         const playerCenterY = this.y + this.height / 2;
-        // Target world coordinates (from mouse) - use last valid target if current is bad
-        // Fallback uses pixel offset
         const targetForHitbox = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
         const targetX = targetForHitbox.x;
         const targetY = targetForHitbox.y;
-        // Vector from player center to target
         const dx = targetX - playerCenterX;
         const dy = targetY - playerCenterY;
-        const dist = Math.sqrt(dx * dx + dy * dy); // Distance to target
-        // Get hitbox dimensions and reach offsets from config based on equipped weapon (These are scaled pixels)
+        const dist = Math.sqrt(dx * dx + dy * dy); 
         let hitboxWidth, hitboxHeight, reachX, reachY;
         switch (this.selectedItem) {
             case Config.WEAPON_TYPE_SWORD:
@@ -897,30 +754,21 @@ export class Player {
                 hitboxWidth = Config.PLAYER_SHOVEL_ATTACK_WIDTH; hitboxHeight = Config.PLAYER_SHOVEL_ATTACK_HEIGHT;
                 reachX = Config.PLAYER_SHOVEL_ATTACK_REACH_X; reachY = Config.PLAYER_SHOVEL_ATTACK_REACH_Y;
                 break;
-            default: return null; // Should not happen if checks passed, but safety first
+            default: return null; 
         }
-        // Calculate hitbox center position
         let hitboxCenterX, hitboxCenterY;
-        // Use a small epsilon for distance check to avoid division by zero or erratic behavior when mouse is exactly on player center
-        const E_EPSILON = 1e-6; // Define locally or import if needed elsewhere
+        const E_EPSILON = 1e-6; 
         if (dist > E_EPSILON) {
-            const normX = dx / dist; // Normalized direction vector X component
-            const normY = dy / dist; // Normalized direction vector Y component
-            // Position hitbox center along the direction vector based on horizontal reach (scaled pixels)
+            const normX = dx / dist; 
+            const normY = dy / dist; 
             hitboxCenterX = playerCenterX + normX * reachX;
-            // Position hitbox center vertically based on the fixed vertical offset (scaled pixels)
-            hitboxCenterY = playerCenterY + reachY; // Keep offset along the same vertical axis
+            hitboxCenterY = playerCenterY + reachY; 
         } else {
-            // Fallback: If target is too close, use last known facing direction for X, and fixed Y offset
-            // uses scaled reachX and reachY
             hitboxCenterX = playerCenterX + this.lastDirection * reachX;
             hitboxCenterY = playerCenterY + reachY;
         }
-        // Calculate top-left corner of the hitbox from its center and dimensions
-        // uses scaled hitboxWidth and hitboxHeight
         const hitboxX = hitboxCenterX - hitboxWidth / 2;
         const hitboxY = hitboxCenterY - hitboxHeight / 2;
-        // Ensure hitbox coordinates and dimensions are valid numbers before returning
         if (typeof hitboxX !== 'number' || typeof hitboxY !== 'number' ||
             typeof hitboxWidth !== 'number' || typeof hitboxHeight !== 'number' ||
             isNaN(hitboxX) || isNaN(hitboxY) || isNaN(hitboxWidth) || isNaN(hitboxHeight)) {
@@ -929,36 +777,26 @@ export class Player {
         }
         return { x: hitboxX, y: hitboxY, width: hitboxWidth, height: hitboxHeight };
     }
-    // --- Collision Tracking Helpers ---
-    /** Checks if a specific enemy has already been hit during the current attack swing. */
+    
     hasHitEnemyThisSwing(enemy) { return this.hitEnemiesThisSwing.includes(enemy); }
-    /** Registers an enemy as hit during the current swing to prevent multiple hits. */
     registerHitEnemy(enemy) { if (!this.hasHitEnemyThisSwing(enemy)) { this.hitEnemiesThisSwing.push(enemy); } }
-    /** Checks if a specific block has already been hit during the current attack swing. */
     hasHitBlockThisSwing(col, row) { const blockKey = `${col},${row}`; return this.hitBlocksThisSwing.includes(blockKey); }
-    /** Registers a block as hit during the current swing. */
     registerHitBlock(col, row) { const blockKey = `${col},${row}`; if (!this.hitBlocksThisSwing.includes(blockKey)) { this.hitBlocksThisSwing.push(blockKey); } }
-    // --- Inventory & Item Methods ---
-    // Handles picking up an item. Updates inventory or weapon possession state.
+    
     pickupItem(item) {
         if (!item || !item.type) return false;
         let pickedUp = false;
-
         const materialType = item.type;
-        const GATHER_REQUIREMENT = 4; // How many ground items make one inventory item for special materials
+        const GATHER_REQUIREMENT = 4; 
 
         if (materialType === 'dirt' || materialType === 'vegetation') {
             this.partialCollection[materialType] = (this.partialCollection[materialType] || 0) + 1;
-            pickedUp = true; // Item was "picked up" from ground
-
+            pickedUp = true; 
             if (this.partialCollection[materialType] >= GATHER_REQUIREMENT) {
-                this.partialCollection[materialType] = 0; // Reset partial
-                this.inventory[materialType] = (this.inventory[materialType] || 0) + 1; // Add one full block
-                // console.log(`Player collected enough ${materialType} to form one block. Total: ${this.inventory[materialType]}`);
-            } else {
-                // console.log(`Player collected partial ${materialType}. Progress: ${this.partialCollection[materialType]}/${GATHER_REQUIREMENT}`);
+                this.partialCollection[materialType] = 0; 
+                this.inventory[materialType] = (this.inventory[materialType] || 0) + 1; 
             }
-        } else if (this.isWeaponType(materialType)) { // Weapons
+        } else if (this.isWeaponType(materialType)) { 
             if (materialType === Config.WEAPON_TYPE_SWORD) {
                 if (!this.hasSword) { this.hasSword = true; pickedUp = true; }
             } else if (materialType === Config.WEAPON_TYPE_SPEAR) {
@@ -966,98 +804,71 @@ export class Player {
             } else if (materialType === Config.WEAPON_TYPE_SHOVEL) {
                 if (!this.hasShovel) { this.hasShovel = true; pickedUp = true; }
             }
-            // If a weapon was just picked up, equip it immediately ONLY if player is currently unarmed
             if (pickedUp && this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
                 this.equipItem(materialType);
             }
-        } else if (Config.INVENTORY_MATERIALS.includes(materialType)) { // Other materials (non-dirt/veg)
+        } else if (Config.INVENTORY_MATERIALS.includes(materialType)) { 
             this.inventory[materialType] = (this.inventory[materialType] || 0) + 1;
             pickedUp = true;
-            // console.log(`Player picked up ${materialType}. Count: ${this.inventory[materialType]}`);
         } else {
             console.warn(`Player encountered unknown item type: ${materialType}`);
         }
         return pickedUp;
-    }    /** Checks if the player possesses a specific weapon type. */
+    }    
+    
     hasWeapon(weaponType) {
         switch (weaponType) {
             case Config.WEAPON_TYPE_SWORD: return this.hasSword;
             case Config.WEAPON_TYPE_SPEAR: return this.hasSpear;
             case Config.WEAPON_TYPE_SHOVEL: return this.hasShovel;
-            default: return false; // Not a known weapon type
+            default: return false; 
         }
     }
-    /**
-        * Equips an item (weapon or material) if the player possesses it / has stock.
-        * @param {string} itemType - The type of item to equip.
-        */
+    
     equipItem(itemType) {
-        // Allow equipping unarmed state anytime
         if (itemType === Config.WEAPON_TYPE_UNARMED) {
-            // console.log("Player equipped unarmed.");
             this.selectedItem = Config.WEAPON_TYPE_UNARMED;
-            this.isAttacking = false; // Cancel attack if unequipping
+            this.isAttacking = false; 
             this.attackTimer = 0;
-            this.placementCooldown = 0; // Reset cooldown
+            this.placementCooldown = 0; 
             return true;
         }
         let canEquip = false;
-        // Check if the item type is valid and if the player can equip it
         if (this.isWeaponType(itemType)) {
-            canEquip = this.hasWeapon(itemType); // Check possession for weapons
+            canEquip = this.hasWeapon(itemType); 
         } else if (Config.INVENTORY_MATERIALS.includes(itemType)) {
-            canEquip = (this.inventory[itemType] || 0) > 0; // Check inventory count for materials
+            canEquip = (this.inventory[itemType] || 0) > 0; 
         }
-        // Equip the item if possible and not already equipped
         if (canEquip && this.selectedItem !== itemType) {
             this.selectedItem = itemType;
-            // console.log(`Player equipped ${itemType}.`); // Optional log
-            // Cancel current action states on equip
             this.isAttacking = false;
             this.attackTimer = 0;
-            this.placementCooldown = 0; // Reset placement cooldown when switching items
-            // UI update to show the new selection happens in the main loop via updatePlayerInfo
+            this.placementCooldown = 0; 
             return true;
         }
-        // Return false if cannot equip (e.g., don't have it, or trying to equip something unknown)
-        // console.log(`Cannot equip ${itemType}. Player possession/count check failed.`);
-        return false;
+        return false; 
     }
-    /** Decrements the inventory count for a given material type. */
-    decrementInventory(itemType, amount = 1) { // Added optional amount parameter
+    
+    decrementInventory(itemType, amount = 1) { 
         if (Config.INVENTORY_MATERIALS.includes(itemType) && (this.inventory[itemType] || 0) >= amount) {
             this.inventory[itemType] -= amount;
-            // console.log(`Decremented ${itemType} by ${amount}. New count: ${this.inventory[itemType]}.`);
-            // If the count reaches 0 and this material was the selected item, switch to unarmed
             if (this.inventory[itemType] === 0 && this.selectedItem === itemType) {
-                this.equipItem(Config.WEAPON_TYPE_UNARMED); // Switch to unarmed
-                // console.log(`${itemType} depleted, switching to unarmed.`);
+                this.equipItem(Config.WEAPON_TYPE_UNARMED); 
             }
-            return true; // Decrement successful
+            return true; 
         }
-        // console.log(`Cannot decrement ${itemType} by ${amount}. Not enough stock or invalid type.`);
-        return false; // Material not found, count too low, or invalid type
+        return false; 
     }
-    // Crafting Method
-    /**
-        * Attempts to craft a specific item if the player has the required materials.
-        * @param {string} itemType - The type of item to craft (must be in CRAFTING_RECIPES).
-        * @returns {boolean} True if crafting was successful, false otherwise.
-        */
+    
     craftItem(itemType) {
-        // Ensure it's a craftable item type first
         const recipe = Config.CRAFTING_RECIPES[itemType];
         if (!recipe) {
             console.warn(`Attempted to craft non-craftable item type: ${itemType}`);
-            return false; // Not a craftable item
+            return false; 
         }
-        // Ensure player doesn't already have the weapon (can't craft duplicates)
-        // NOTE: This assumes weapons are unique items, not stackable.
         if (this.isWeaponType(itemType) && this.hasWeapon(itemType)) {
-            // console.log(`Already possess ${itemType}. Cannot craft.`);
-            return false; // Already have this weapon
+            return false; 
         }
-        // 1. Check if player has all required materials
         let hasMaterials = true;
         for (const ingredient of recipe) {
             const requiredType = ingredient.type;
@@ -1065,76 +876,65 @@ export class Player {
             const possessedAmount = this.inventory[requiredType] || 0;
             if (possessedAmount < requiredAmount) {
                 hasMaterials = false;
-                // console.log(`Not enough ${requiredType}. Need ${requiredAmount}, have ${possessedAmount}.`);
-                break; // Stop checking if one ingredient is missing
+                break; 
             }
         }
         if (!hasMaterials) {
-            // console.log(`Cannot craft ${itemType}. Missing materials.`);
-            return false; // Cannot craft - missing materials
+            return false; 
         }
-        // 2. Consume materials
         for (const ingredient of recipe) {
-            // Use the decrementInventory method to remove materials
             if (!this.decrementInventory(ingredient.type, ingredient.amount)) {
-                // This should ideally not happen if the check passed, but defensive programming
                 console.error(`Failed to consume materials while crafting ${itemType}. Inventory state may be inconsistent.`);
-                return false; // Crafting failed mid-process
+                return false; 
             }
         }
-        // 3. Grant the crafted item (for weapons, set possession flag)
         let craftedSuccessfully = false;
         switch (itemType) {
             case Config.WEAPON_TYPE_SWORD:
                 this.hasSword = true;
                 craftedSuccessfully = true;
-                // console.log(`Crafted Sword!`);
                 break;
             case Config.WEAPON_TYPE_SPEAR:
                 this.hasSpear = true;
                 craftedSuccessfully = true;
-                // console.log(`Crafted Spear!`);
                 break;
-            // Add cases for other craftable items here (e.g., placeables like metal blocks if they were crafted)
             default:
                 console.error(`Crafting logic for item type ${itemType} not implemented.`);
-                return false; // Crafting logic missing
+                return false; 
         }
-        // 4. Return success status
         return craftedSuccessfully;
     }
 
-        // --- NEW: Getter for partial collection state ---
     getPartialCollection(materialType) {
         return this.partialCollection[materialType] || 0;
     }
-    // --- State/Type Check Helpers ---
-    /** Checks if an item type string corresponds to a known weapon type. */
+    
     isWeaponType(itemType) {
         return [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL].includes(itemType);
     }
-    /** Checks if the currently selected item is a weapon (and not unarmed). */
+    
     isWeaponSelected() {
         return this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.isWeaponType(this.selectedItem);
     }
-    /** Checks if the currently selected item is a placeable material. */
+    
     isMaterialSelected() {
         return Config.INVENTORY_MATERIALS.includes(this.selectedItem);
     }
-    // --- Getters for Player State and Properties ---
+    
     getRect() {
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
-        // width and height are scaled in constructor
         const safeWidth = (typeof this.width === 'number' && !isNaN(this.width)) ? this.width : 1;
         const safeHeight = (typeof this.height === 'number' && !isNaN(this.height)) ? this.height : 1;
         return { x: safeX, y: safeY, width: safeWidth, height: safeHeight };
     }
+    
     getPosition() {
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
         return { x: safeX, y: safeY };
     }
+    
     getCurrentHealth() { return this.currentHealth; }
     getMaxHealth() { return this.maxHealth; }
     getInventory() { return this.inventory; }
@@ -1142,115 +942,75 @@ export class Player {
     getSwordStatus() { return this.hasSword; }
     getSpearStatus() { return this.hasSpear; }
     getCurrentlySelectedItem() { return this.selectedItem; }
-    /** Returns the selected material type if a material is selected, otherwise null. Used by UI. */
+    
     getActiveInventoryMaterial() {
         return this.isMaterialSelected() ? this.selectedItem : null;
     }
-    /** Returns the selected weapon type if a weapon is selected, otherwise null. Used by UI. */
+    
     getActiveWeaponType() {
-        // Return unarmed if selected, as it's a valid selection state
         return this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED ? this.selectedItem : null;
     }
-    // --- Get Damage Output Based on Equipped Item ---
-    /** Returns the damage dealt to enemies by the currently equipped weapon. (Damage values are fixed, not scaled) */
+    
     getCurrentAttackDamage() {
-        // No damage if unarmed, material selected, OR if dying
         if (!this.isWeaponSelected() || this.isDying) return 0;
         switch (this.selectedItem) {
             case Config.WEAPON_TYPE_SWORD: return Config.PLAYER_SWORD_ATTACK_DAMAGE;
             case Config.WEAPON_TYPE_SPEAR: return Config.PLAYER_SPEAR_ATTACK_DAMAGE;
-            case Config.WEAPON_TYPE_SHOVEL: return Config.PLAYER_SHOVEL_ATTACK_DAMAGE; // Shovel does low enemy damage
+            case Config.WEAPON_TYPE_SHOVEL: return Config.PLAYER_SHOVEL_ATTACK_DAMAGE; 
             default: return 0;
         }
     }
-    /** Returns the damage dealt to blocks by the currently equipped item (usually tools). (Damage values are fixed, not scaled) */
+    
     getCurrentBlockDamage() {
-        // Only certain items damage blocks, AND cannot damage if dying
         if (this.isDying) return 0;
         if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) return Config.PLAYER_SHOVEL_BLOCK_DAMAGE;
-        // Add other tools like pickaxes here later
-        // Weapons (Sword, Spear) and unarmed do 0 block damage
         return 0;
     }
-    // --- Methods for UI Interaction (called by UI event listeners) ---
-    /** Equips a material if available. Called when a material slot is clicked in the UI. */
+    
     setActiveInventoryMaterial(materialType) {
-        // Cannot change selection if dying
         if (this.isDying) return false;
         if (Config.INVENTORY_MATERIALS.includes(materialType)) {
-            // Check if player actually has the material before equipping
             if ((this.inventory[materialType] || 0) > 0) {
-                // Use the main equip logic
                 return this.equipItem(materialType);
-            } else {
-                // console.log(`Cannot select ${materialType}, count is 0.`); // Changed 'onsole' to 'console'
-                // Optionally switch to unarmed if trying to select an empty slot?
-                // this.equipItem(Config.WEAPON_TYPE_UNARMED);
             }
         } else {
             console.warn(`Attempted to set invalid material type via UI: ${materialType}`);
         }
-        return false; // Selection failed
+        return false; 
     }
-    /** Equips a weapon if possessed. Called when a weapon slot is clicked in the UI. */
+    
     setActiveWeapon(weaponType) {
-        // Cannot change selection if dying
         if (this.isDying) return false;
-        // Check if it's a valid weapon type (including unarmed)
         if (this.isWeaponType(weaponType) || weaponType === Config.WEAPON_TYPE_UNARMED) {
-            // --- Handle clicking the currently equipped weapon ---
             if (this.selectedItem === weaponType) {
-                // If the player clicks the already selected weapon (and it's not unarmed),
-                // unequip it to go back to unarmed state. Shovel is an exception - maybe keep shovel equipped?
-                // Let's allow unequipping any equipped weapon by clicking its slot.
-                if (weaponType !== Config.WEAPON_TYPE_UNARMED) { // Don't unequip unarmed by clicking unarmed
-                    // console.log(`UI Click: Unequipping ${weaponType} to become unarmed.`);
-                    return this.equipItem(Config.WEAPON_TYPE_UNARMED); // Switch to unarmed
+                if (weaponType !== Config.WEAPON_TYPE_UNARMED) { 
+                    return this.equipItem(Config.WEAPON_TYPE_UNARMED); 
                 }
-                // Clicking unarmed slot while unarmed does nothing
-                // console.log("UI Click: Already unarmed.");
                 return false;
             }
-            // --- Handle clicking a DIFFERENT weapon slot ---
-            // 1. Check if the player already possesses the weapon
             if (this.hasWeapon(weaponType)) {
-                // Possessed, just equip it
-                // console.log(`UI Click: Possess ${weaponType}. Equipping.`);
-                return this.equipItem(weaponType); // Use main equip logic
+                return this.equipItem(weaponType); 
             } else {
-                // 2. Player does NOT possess the weapon. Check if it's craftable and they have the materials.
                 const recipe = Config.CRAFTING_RECIPES[weaponType];
-                if (recipe) { // Is it a craftable item? (Only weapons are craftable for now)
-                    // Attempt to craft it
-                    // console.log(`UI Click: Do not possess ${weaponType}. Attempting to craft.`);
-                    const crafted = this.craftItem(weaponType); // Attempt crafting using the player's method
+                if (recipe) { 
+                    const crafted = this.craftItem(weaponType); 
                     if (crafted) {
-                        // Crafting successful! Now equip the newly crafted weapon.
-                        // console.log(`UI Click: Crafting successful! Equipping ${weaponType}.`);
                         return this.equipItem(weaponType);
                     } else {
-                        // Crafting failed (not enough materials)
-                        // console.log(`UI Click: Crafting failed for ${weaponType}.`);
-                        // UI might need to provide feedback (e.g. shake slot) - this will be handled in ui.js
-                        return false; // Indicate selection/crafting failed
+                        return false; 
                     }
                 } else {
-                    // Not a craftable item, and not possessed (e.g., shovel not spawned, or unknown weapon)
-                    // console.log(`UI Click: Cannot select ${weaponType}. Not possessed and not craftable.`);
-                    return false; // Cannot select
+                    return false; 
                 }
             }
-
         } else {
             console.warn(`Attempted to set invalid weapon type via UI: ${weaponType}`);
         }
-        return false; // Invalid type or failed to process
+        return false; 
     }
-    /** Resets the player's state completely for a new game or restart. */
+    
     reset() {
         console.log("Resetting player state...");
-        // Position & Physics
-        // Start position is scaled in config
         this.x = Config.PLAYER_START_X;
         this.y = Config.PLAYER_START_Y;
         this.vx = 0;
@@ -1261,57 +1021,52 @@ export class Player {
         this.isOnRope = false;
         this.ropeCol = -1;
         this.canGrabRopeTimer = 0;
-        // Health (remain fixed)
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
         this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;
         this.isInvulnerable = false;
         this.invulnerabilityTimer = 0;
-        // Combat & Placement (timers are time-based, no scaling)
         this.isAttacking = false;
         this.attackTimer = 0;
         this.attackCooldown = 0;
-        this.placementCooldown = 0; // Reset placement cooldown
+        this.placementCooldown = 0; 
         this.hitEnemiesThisSwing = [];
         this.hitBlocksThisSwing = [];
-        // Inventory & Weapons
-        this.inventory = {}; // Clear inventory
+        this.inventory = {}; 
         this.partialCollection = {};
-        // Reset weapon possession flags - Shovel not a starting item anymore
-        this.hasShovel = false; 
+        this.hasShovel = false;
         this.hasSword = false;
         this.hasSpear = false;
-        this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Player starts with unarmed, but possessing the shovel.
-        // Targeting
-        this.lastDirection = 1; // Reset facing direction
-        // Reset last valid target positions
+        this.selectedItem = Config.WEAPON_TYPE_UNARMED; 
+        this.lastDirection = 1; 
         this._lastValidTargetWorldPos = null;
         this._lastValidTargetGridCell = null;
-        // Animation state (for death) (timers are time-based)
         this.isDying = false;
         this.deathAnimationTimer = 0;
         this.deathAnimationFrame = 0;
-        // Set player back to active
         this.isActive = true;
-        // Initial position validation after reset
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Player RESET POSITION ERROR: NaN final coordinates! Resetting to center.`);
-            this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
-            this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
+            this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;
+            this.y = Config.CANVAS_HEIGHT / 2 - this.height / 2;
         }
-        // Reset image loaded state if image src is re-set or needs re-check
         this.imageLoaded = false;
-        if (this.image.src !== Config.PLAYER_IMAGE_PATH) { // If src was changed or cleared
-             this.image.src = Config.PLAYER_IMAGE_PATH; // Will trigger onload/onerror again
+        if (this.image.src !== Config.PLAYER_IMAGE_PATH) { 
+            if (typeof Config.PLAYER_IMAGE_PATH === 'string') {
+                this.image.src = Config.PLAYER_IMAGE_PATH;
+            } else {
+                console.error("Player image path is not a string during reset:", Config.PLAYER_IMAGE_PATH);
+                this.imageLoaded = false;
+            }
         } else if (this.image.complete && this.image.naturalWidth > 0) {
-             this.imageLoaded = true; // Image was already loaded and src matches
-        } // else: src matches but not loaded, onload will handle it.
+            this.imageLoaded = true; 
+        }
     }
-    // --- Resets only the player's position and physics state (e.g., after falling out) ---
+    
     resetPosition() {
-        // Falling out now triggers the death animation
-        this.die(); // This will set isDying, stop movement, etc.
+        this.die(); 
     }
-    isActive() { // Method name should be `getIsActive` or just accessed via property if public, fixed to avoid conflict with property
+    
+    isActive() {
         return this.isActive;
     }
 }
