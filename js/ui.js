@@ -15,7 +15,7 @@ let timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl;
 let bottomUiOverlayEl;
 let itemSelectionAreaEl;
 let inventoryBoxesContainerEl, weaponSlotsContainerEl;
-// --- NEW Settings Menu References ---
+// --- Settings Menu References ---
 let settingsBtnToggleGrid = null;
 let settingsBtnMuteMusic = null;
 let settingsBtnMuteSfx = null;
@@ -29,7 +29,7 @@ let epochOverlayEl = null;
 let playerRef = null;
 let portalRef = null;
 const itemSlotDivs = {};
-const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
+const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SHOVEL, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SWORD];
 let isUIReady = false;
 export function initOverlay() {
     bootOverlayEl = document.getElementById('boot-overlay');
