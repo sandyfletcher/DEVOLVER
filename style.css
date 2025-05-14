@@ -28,20 +28,25 @@ body {
     margin: auto;
     position: relative;
     transition: filter 0.3s ease;
-    overflow: hidden;
+    overflow: hidden; /* Important for absolute positioning of children within padding */
 }
-#top-sidebar, #bottom-sidebar {
-    flex-shrink: 0;
-    width: 100%;
-    padding: 0.5rem 0.5rem;
+
+/* New Top UI Overlay (replaces top-sidebar) */
+#top-ui-overlay {
+    position: absolute;
+    top: 0.5rem; /* Align with app-container padding */
+    left: 0.5rem; /* Align with app-container padding */
+    right: 0.5rem; /* Align with app-container padding */
+    padding: 0.2rem;
+    background-color: black;
+    border: 0.2rem solid white; /* Keep consistent border */
     box-sizing: border-box;
-    border: 0.2rem solid white;
-    position: relative;
+    z-index: 51; /* Above game canvas/epoch, below menus */
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    gap: 5px;
+    gap: 0.3rem;
 }
+
 #top-info-row {
     display: flex;
     flex-direction: row;
@@ -68,7 +73,7 @@ body {
     z-index: 2;
     margin: 0;
     padding: 0;
-    font-size: 1em;
+    font-size: 1rem;
     color: white;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
     text-align: center;
@@ -77,10 +82,10 @@ body {
 }
 .health-bar-container {
     flex-grow: 1;
-    height: 25px;
-    background-color: rgb(80, 80, 80);
-    border: 1px solid #ccc;
-    border-radius: 3px;
+    height: 1.5rem;
+    background-color: #222;
+    border: 2px solid white;
+    border-radius: 0px;
     overflow: hidden;
     width: 100%;
     position: relative;
@@ -92,10 +97,10 @@ body {
     transition: width 0.2s ease-out;
 }
 #player-health-bar-fill {
-    background-color: rgb(220, 40, 40);
+    background-color: rgba(220, 40, 40, 0.7);
 }
 #portal-health-bar-fill {
-    background-color: rgb(100, 100, 255);
+    background-color: rgba(100, 100, 255, 0.7);
 }
 #timer-row {
     position: relative;
@@ -103,14 +108,14 @@ body {
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 1rem;
+    height: 1.5rem; /* Match player/portal bar height */
 }
 #timer-bar-container {
      width: 100%;
      height: 100%;
 }
 #timer-bar-fill {
-    background-color: rgb(80, 180, 80);
+    background-color: rgba(80, 180, 80, 0.7);
 }
 #timer-text-overlay {
     position: absolute;
@@ -124,11 +129,11 @@ body {
     pointer-events: none;
 }
 #game-wrapper {
-    flex-grow: 1;
-    flex-basis: 0;
-    width: 100%;
-    min-height: 0;
-    position: relative;
+    flex-grow: 1; /* Will fill space not taken by other flex items (none in this direction now) */
+    height: 100%; /* Ensure it tries to take full height of app-container */
+    width: 100%;  /* Ensure it tries to take full width of app-container */
+    min-height: 0; /* For flexbox */
+    position: relative; /* For epoch-overlay and canvas centering */
     border: 0.2rem solid white;
     box-sizing: border-box;
     display: flex;
@@ -155,31 +160,32 @@ body {
     font-size: 3em;
     color: white;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
-    z-index: 50;
+    z-index: 50; /* Below new UI overlays */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
     pointer-events: none;
 }
-#bottom-sidebar {
-    flex-shrink: 0;
-    width: 100%;
-    padding: 0.5rem 0.5rem;
+
+/* New Bottom UI Overlay (replaces bottom-sidebar) */
+#bottom-ui-overlay {
+    position: absolute;
+    bottom: 0.5rem; /* Align with app-container padding */
+    left: 0.5rem;   /* Align with app-container padding */
+    right: 0.5rem;  /* Align with app-container padding */
+    padding: 0.5rem;
+    background-color: black; /* Solid black background */
     box-sizing: border-box;
-    border: 0.2rem solid white;
-    position: relative;
+    z-index: 51; /* Above game canvas/epoch, below menus */
     display: flex;
     flex-direction: column;
-    min-height: 18%;
-    transition: min-height 0.3s ease-in-out;
-    overflow-y: auto;
+    overflow-y: auto; /* In case content becomes too tall */
+    /* border-radius: 6px; */ /* Removed rounded corners */
+    border: 0.2rem solid white; /* Added border to match top-ui-overlay and game-wrapper */
 }
-#bottom-sidebar h2 {
-    margin: 0;
-    text-align: center;
-    font-size: 1rem;
-    flex-shrink: 0;
-}
+
+/* No h2 in bottom-ui-overlay directly */
+
 #item-selection-area {
     display: flex;
     flex-direction: column;
@@ -226,6 +232,13 @@ body {
     cursor: default;
     box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
     border-color: #666;
+}
+.item-box.placeholder-slot { /* Styling for empty/placeholder slots */
+    background-color: #2a2a2a;
+    opacity: 0.3;
+    cursor: default;
+    border-color: #444;
+    box-shadow: inset 0 0 3px rgba(0,0,0,0.6);
 }
 .item-box.material-quadrant-box {
     position: relative;
@@ -519,21 +532,22 @@ body {
     background-color: #666;
 }
 
-
-#app-container.overlay-active > #top-sidebar,
+/* Updated filter for overlay active state */
+#app-container.overlay-active > #top-ui-overlay,
 #app-container.overlay-active > #game-wrapper,
-#app-container.overlay-active > #bottom-sidebar {
+#app-container.overlay-active > #bottom-ui-overlay {
     filter: blur(4px) brightness(0.6);
     pointer-events: none;
     transition: filter 0.3s ease;
 }
-#app-container > #top-sidebar,
+#app-container > #top-ui-overlay,
 #app-container > #game-wrapper,
-#app-container > #bottom-sidebar {
+#app-container > #bottom-ui-overlay {
     filter: none;
     pointer-events: auto;
     transition: filter 0.3s ease;
 }
+
 #landscape-warning {
     display: none;
     position: fixed;
@@ -551,12 +565,17 @@ body {
 noscript p {
     color: white; text-align: center; padding: 20px;
 }
-#top-sidebar::-webkit-scrollbar, #bottom-sidebar::-webkit-scrollbar {
+
+/* Scrollbar hiding for new UI overlays */
+#top-ui-overlay::-webkit-scrollbar, 
+#bottom-ui-overlay::-webkit-scrollbar {
     display: none;
 }
-#top-sidebar, #bottom-sidebar {
+#top-ui-overlay, 
+#bottom-ui-overlay {
     -ms-overflow-style: none; scrollbar-width: none;
 }
+
 #overlay-cutscene-content {
     position: relative;
     overflow: hidden;

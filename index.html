@@ -10,7 +10,8 @@
     </head>
     <body>
         <div id="app-container">
-            <aside id="top-sidebar">
+            <!-- Content from old top-sidebar, now in a new overlay div -->
+            <div id="top-ui-overlay">
                 <div id="top-info-row">
                     <div id="player-column" class="top-info-column">
                         <h2>PLAYER</h2>
@@ -31,20 +32,23 @@
                     </div>
                     <div id="timer-text-overlay">TIME REMAINING</div>
                 </div>
-            </aside>
+            </div>
+
             <main id="game-wrapper">
                 <canvas id="game-canvas" width="800" height="800">
                     Your browser does not support the HTML canvas.
                 </canvas>
                 <div id="epoch-overlay"></div>
             </main>
-            <aside id="bottom-sidebar"> 
+
+            <!-- Content from old bottom-sidebar, now in a new overlay div -->
+            <div id="bottom-ui-overlay">
                 <div id="item-selection-area">
                     <div id="inventory-boxes-container">Loading...</div>
-                    <h2>INVENTORY</h2>
                     <div id="weapon-slots-container">Loading...</div>
-                </div>                
-            </aside>
+                </div>
+            </div>
+            
             <!-- Opaque Overlay: Title Screen / Error Messages -->
             <div id="boot-overlay" class="show-title">
                 <div id="overlay-title-content" class="overlay-content">

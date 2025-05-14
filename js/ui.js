@@ -7,22 +7,17 @@ import * as WorldManager from './worldManager.js';
 
 // --- DOM Element References ---
 
-// Top Sidebar
-let topSidebarEl = null;
+// Top UI Overlay (replaces top-sidebar)
+let topUiOverlayEl = null;
 let playerColumnEl, portalColumnEl;
 let playerHealthBarContainerEl, playerHealthBarFillEl;
 let portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl;
 let timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl;
 
-// Bottom Sidebar
-let bottomSidebarEl;
+// Bottom UI Overlay (replaces bottom-sidebar)
+let bottomUiOverlayEl;
 let itemSelectionAreaEl;
 let inventoryBoxesContainerEl, weaponSlotsContainerEl;
-
-// --- REMOVED Action Buttons References ---
-// let actionButtonsAreaEl;
-// let toggleControlsButtonEl;
-// export let actionButtons = {}; // REMOVED
 
 // --- NEW Settings Menu References ---
 let settingsBtnToggleGrid = null;
@@ -40,9 +35,6 @@ let epochOverlayEl = null;
 let playerRef = null;
 let portalRef = null;
 const itemSlotDivs = {};
-// --- REMOVED Illumination Timer ---
-// let buttonIlluminationTimers = {};
-// const ILLUMINATION_DURATION = 150;
 
 const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL];
 let isUIReady = false;
@@ -61,8 +53,9 @@ export function initOverlay() {
 export function initGameUI() {
     let success = true;
 
-    // --- Find Top Sidebar Elements ---
-    topSidebarEl = document.getElementById('top-sidebar');
+    // --- Find Top UI Overlay Elements ---
+    topUiOverlayEl = document.getElementById('top-ui-overlay'); // New
+    // Elements within top-ui-overlay (their IDs remain the same)
     playerColumnEl = document.getElementById('player-column');
     portalColumnEl = document.getElementById('portal-column');
     playerHealthBarContainerEl = document.getElementById('player-health-bar-container');
@@ -75,17 +68,12 @@ export function initGameUI() {
     timerBarFillEl = document.getElementById('timer-bar-fill');
     timerTextOverlayEl = document.getElementById('timer-text-overlay');
 
-    // --- Find Bottom Sidebar Elements ---
-    bottomSidebarEl = document.getElementById('bottom-sidebar');
+    // --- Find Bottom UI Overlay Elements ---
+    bottomUiOverlayEl = document.getElementById('bottom-ui-overlay'); // New
+    // Elements within bottom-ui-overlay (their IDs remain the same)
     itemSelectionAreaEl = document.getElementById('item-selection-area');
     inventoryBoxesContainerEl = document.getElementById('inventory-boxes-container');
     weaponSlotsContainerEl = document.getElementById('weapon-slots-container');
-
-    // --- REMOVED Finding Action Button Elements ---
-    // actionButtonsAreaEl = document.getElementById('action-buttons-area');
-    // toggleControlsButtonEl = document.getElementById('toggle-controls-button');
-    // actionButtons.left = document.getElementById('btn-move-left');
-    // ... etc ...
 
     // --- NEW: Find Settings Menu Elements ---
     settingsBtnToggleGrid = document.getElementById('settings-btn-toggle-grid');
@@ -100,13 +88,13 @@ export function initGameUI() {
 
     // --- Verification ---
     const requiredElements = [
-        topSidebarEl, playerColumnEl, portalColumnEl,
+        topUiOverlayEl, // Check new parent
+        playerColumnEl, portalColumnEl,
         playerHealthBarContainerEl, playerHealthBarFillEl,
         portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl,
         timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl,
-        bottomSidebarEl, itemSelectionAreaEl, inventoryBoxesContainerEl, weaponSlotsContainerEl,
-        // REMOVED: actionButtonsAreaEl, toggleControlsButtonEl, actionButtons...
-        // NEW: Check settings elements
+        bottomUiOverlayEl, // Check new parent
+        itemSelectionAreaEl, inventoryBoxesContainerEl, weaponSlotsContainerEl,
         settingsBtnToggleGrid, settingsBtnMuteMusic, settingsBtnMuteSfx,
         settingsValueGrid, settingsValueMusic, settingsValueSfx,
         epochOverlayEl
@@ -115,12 +103,13 @@ export function initGameUI() {
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
         const elementNames = [
-            'topSidebarEl', 'playerColumnEl', 'portalColumnEl',
+            'topUiOverlayEl', 
+            'playerColumnEl', 'portalColumnEl',
             'playerHealthBarContainerEl', 'playerHealthBarFillEl',
             'portalColumnH2El', 'portalHealthBarContainerEl', 'portalHealthBarFillEl',
             'timerRowEl', 'timerBarContainerEl', 'timerBarFillEl', 'timerTextOverlayEl',
-            'bottomSidebarEl', 'itemSelectionAreaEl', 'inventoryBoxesContainerEl', 'weaponSlotsContainerEl',
-            // NEW: Check settings elements
+            'bottomUiOverlayEl', 
+            'itemSelectionAreaEl', 'inventoryBoxesContainerEl', 'weaponSlotsContainerEl',
             'settingsBtnToggleGrid', 'settingsBtnMuteMusic', 'settingsBtnMuteSfx',
             'settingsValueGrid', 'settingsValueMusic', 'settingsValueSfx',
             'epochOverlayEl'
@@ -138,28 +127,38 @@ export function initGameUI() {
     for (const key in itemSlotDivs) {
         delete itemSlotDivs[key];
     }
-    // REMOVED: Clear buttonIlluminationTimers
 
     // --- Create Item/Weapon Selection Boxes Dynamically ---
     if (inventoryBoxesContainerEl && weaponSlotsContainerEl) {
         inventoryBoxesContainerEl.innerHTML = '';
         weaponSlotsContainerEl.innerHTML = '';
 
-        for (const materialType of Config.INVENTORY_MATERIALS) {
-            createItemSlot(materialType, inventoryBoxesContainerEl, 'material');
+        // Create 15 Material Slots
+        for (let i = 0; i < 15; i++) {
+            if (i < Config.INVENTORY_MATERIALS.length) {
+                createItemSlot(Config.INVENTORY_MATERIALS[i], inventoryBoxesContainerEl, 'material');
+            } else {
+                // Create a placeholder slot
+                createItemSlot(`placeholder_material_${i - Config.INVENTORY_MATERIALS.length}`, inventoryBoxesContainerEl, 'material-placeholder');
+            }
         }
-        for (const weaponType of WEAPON_SLOTS_ORDER) {
-            createItemSlot(weaponType, weaponSlotsContainerEl, 'weapon');
+
+        // Create 15 Weapon Slots
+        for (let i = 0; i < 15; i++) {
+            if (i < WEAPON_SLOTS_ORDER.length) {
+                createItemSlot(WEAPON_SLOTS_ORDER[i], weaponSlotsContainerEl, 'weapon');
+            } else {
+                // Create a placeholder slot
+                createItemSlot(`placeholder_weapon_${i - WEAPON_SLOTS_ORDER.length}`, weaponSlotsContainerEl, 'weapon-placeholder');
+            }
         }
-    } else {
+
+    } else { 
         success = false;
     }
 
     // --- Set Initial States and Add Event Listeners ---
     if (success) {
-        // --- REMOVED: Toggle controls button listener ---
-        // if(toggleControlsButtonEl) { ... }
-
         // --- NEW: Add Event Listeners for Settings Buttons ---
         settingsBtnToggleGrid.addEventListener('click', () => {
             if (typeof window.toggleGridDisplay === 'function') {
@@ -188,8 +187,6 @@ export function initGameUI() {
         updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH);
         updateWaveTimer({ state: 'LOADING', timer: 0, maxTimer: 1, progressText: "Loading...", mainWaveNumber: 0 });
 
-        // Initial settings button states are set by main.js after AudioManager.init
-
         isUIReady = true;
     } else {
         isUIReady = false;
@@ -199,10 +196,8 @@ export function initGameUI() {
     return success;
 }
 
-// Helper to create and setup a single item/weapon slot div (no changes needed here)
+// Helper to create and setup a single item/weapon slot div
 function createItemSlot(itemType, container, category) {
-    // ... (keep existing implementation) ...
-     // Ensure container element exists before trying to append
      if (!container) {
         console.error(`UI createItemSlot: Container element is null for type "${itemType}".`);
         return;
@@ -210,101 +205,96 @@ function createItemSlot(itemType, container, category) {
 
     const slotDiv = document.createElement('div');
     slotDiv.classList.add('item-box');
-    slotDiv.dataset.item = itemType; // Store item type
-    slotDiv.dataset.category = category; // Store category (material/weapon)
-    slotDiv.classList.add('disabled'); // Start disabled by default, updatePlayerInfo will enable
+    slotDiv.dataset.item = itemType; 
+    slotDiv.dataset.category = category; 
+    slotDiv.classList.add('disabled'); 
 
     const itemConfig = Config.ITEM_CONFIG[itemType];
-    let titleText = itemType.toUpperCase(); // Base title for hover
+    let titleText = itemType.toUpperCase(); 
 
     if (category === 'material') {
-        slotDiv.style.backgroundColor = itemConfig?.color || '#444'; // Use config color or default
+        slotDiv.style.backgroundColor = itemConfig?.color || '#444'; 
 
-        const countSpan = document.createElement('span'); // Span for count overlay
+        const countSpan = document.createElement('span'); 
         countSpan.classList.add('item-count');
-        countSpan.textContent = ''; // Start empty text
-        slotDiv.appendChild(countSpan); // Add count span first for z-index behavior
+        countSpan.textContent = ''; 
+        slotDiv.appendChild(countSpan); 
 
-        titleText += ' (0)'; // Initial title for materials includes count
+        titleText += ' (0)'; 
 
-        // --- NEW: Add quadrants for dirt and vegetation ---
         if (itemType === 'dirt' || itemType === 'vegetation') {
-            slotDiv.classList.add('material-quadrant-box'); // Special class for styling parent
+            slotDiv.classList.add('material-quadrant-box'); 
             const quadrantContainer = document.createElement('div');
             quadrantContainer.classList.add('quadrant-container');
 
-            // Define specific classes for easier targeting if needed, though direct child selectors work
             const quadrantClasses = ['quadrant-tl', 'quadrant-tr', 'quadrant-bl', 'quadrant-br'];
             quadrantClasses.forEach(qClassSuffix => {
                 const quadrantDiv = document.createElement('div');
-                quadrantDiv.classList.add('quadrant', qClassSuffix); // e.g. quadrant quadrant-tl
+                quadrantDiv.classList.add('quadrant', qClassSuffix); 
                 quadrantContainer.appendChild(quadrantDiv);
             });
-            // Quadrant container will be visually behind the countSpan due to z-index in CSS
-            slotDiv.insertBefore(quadrantContainer, countSpan); // Insert before, effectively behind due to z-index
+            slotDiv.insertBefore(quadrantContainer, countSpan); 
         }
-        // --- END NEW ---
 
     } else if (category === 'weapon') {
-        // Add specific text content (icons) for weapons
         if (itemType === Config.WEAPON_TYPE_SWORD) slotDiv.textContent = '⚔️';
         else if (itemType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑';
         else if (itemType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️';
         else if (itemType === Config.WEAPON_TYPE_UNARMED) slotDiv.textContent = '👊';
-        else slotDiv.textContent = '?'; // Fallback icon
+        else slotDiv.textContent = '?'; 
 
-        titleText += ' (Not Found)'; // Placeholder, will be updated by updatePlayerInfo
+        titleText += ' (Unavailable)'; 
+    } else if (category.includes('-placeholder')) {
+        slotDiv.textContent = ''; 
+        slotDiv.style.backgroundColor = '#2a2a2a'; 
+        slotDiv.classList.add('placeholder-slot'); 
+        titleText = 'Empty Slot';
     }
 
-    slotDiv.title = titleText; // Set initial title attribute
+    slotDiv.title = titleText; 
 
-    slotDiv.addEventListener('click', () => {
-        handleItemSlotClick(itemType, category);
-    });
+    if (!category.includes('-placeholder')) {
+        slotDiv.addEventListener('click', () => {
+            handleItemSlotClick(itemType, category);
+        });
+    }
 
     container.appendChild(slotDiv);
     itemSlotDivs[itemType] = slotDiv;
 }
 
-// Helper function to handle clicks on item/weapon slots (no changes needed here)
+// Helper function to handle clicks on item/weapon slots
 function handleItemSlotClick(itemType, category) {
-    // ... (keep existing implementation) ...
-     // Ensure playerRef exists and UI is ready before allowing interaction
+    if (category.includes('-placeholder')) {
+        return;
+    }
+
      if (!playerRef || !isUIReady) {
-        // console.log("UI Item Click: Interaction ignored (playerRef null or UI not ready).");
-        // Optional: Add visual feedback (e.g., shake) to the element that was clicked even if action wasn't performed
         const slotDiv = itemSlotDivs[itemType];
         if(slotDiv && typeof slotDiv.animate === 'function') {
             slotDiv.animate([
                 { transform: 'scale(1)' }, { transform: 'scale(1.1)' }, { transform: 'scale(1)' }
             ], { duration: 100, easing: 'ease-in-out' });
         }
-        return; // Do nothing if player is not available or UI not ready
+        return; 
     }
 
-    let success = false; // Flag to indicate if the player action (select/craft) was successful
+    let success = false; 
 
-    // Delegate the action logic to the Player instance methods
     if (category === 'material') {
-        // Attempt to set the active inventory material
         success = playerRef.setActiveInventoryMaterial(itemType);
     } else if (category === 'weapon') {
-        // Attempt to set the active weapon (this method now handles equip/craft/unequip)
         success = playerRef.setActiveWeapon(itemType);
     }
 
-    // Optional: Add visual feedback for success/failure based on the player action result
     const slotDiv = itemSlotDivs[itemType];
     if(slotDiv && typeof slotDiv.animate === 'function') {
         if (!success) {
-            // Visual shake for failed interaction (e.g., cannot craft, cannot select empty material)
-            // This provides feedback even if the slot was visually enabled (e.g. 'Click to Craft' but then materials were used just before click)
             slotDiv.animate([
                 { transform: 'translateX(-3px)' }, { transform: 'translateX(3px)' },
                 { transform: 'translateX(-3px)' }, { transform: 'translateX(0px)' }
             ], { duration: 200, easing: 'ease-in-out' });
         } else {
-            // Visual feedback for successful interaction (e.g., pulse)
             slotDiv.animate([
                 { transform: 'scale(1)' }, { transform: 'scale(1.05)' }, { transform: 'scale(1)' }
             ], { duration: 150, easing: 'ease-out' });
@@ -312,16 +302,10 @@ function handleItemSlotClick(itemType, category) {
     }
 }
 
-// --- REMOVED toggleActionControls function ---
-// export function toggleActionControls() { ... }
-
-// Sets the reference to the player object (reset logic is fine)
+// Sets the reference to the player object
 export function setPlayerReference(playerObject) {
-    // ... (keep existing implementation) ...
     playerRef = playerObject;
-    // When player reference is set (on game start) or cleared (on game end), update UI
     if (playerRef) {
-        // Request an initial update for player UI elements using current player data
         requestAnimationFrame(() => {
             updatePlayerInfo(
                 playerRef.getCurrentHealth(), playerRef.getMaxHealth(),
@@ -330,69 +314,45 @@ export function setPlayerReference(playerObject) {
             );
         });
     } else {
-        // Clear UI if player is removed (restart or game over)
         if (playerHealthBarFillEl) playerHealthBarFillEl.style.width = '0%';
-        // Also reset inventory/weapon UI to initial disabled state
-        // Loop through all known item slots and reset their state
         for(const key in itemSlotDivs){
             const slotDiv = itemSlotDivs[key];
-            if(!slotDiv) continue; // Skip if element not found
-            slotDiv.classList.remove('active'); // Remove active state
-            slotDiv.classList.add('disabled'); // Re-disable all slots
-
-            // Reset material counts
+            if(!slotDiv) continue; 
+            slotDiv.classList.remove('active'); 
+            slotDiv.classList.add('disabled'); 
+            if(slotDiv.classList.contains('placeholder-slot')) { 
+                 slotDiv.title = 'Empty Slot';
+            }
             if (slotDiv.dataset.category === 'material') {
                 const countSpan = slotDiv.querySelector('.item-count');
-                if (countSpan) countSpan.textContent = ''; // Clear counts
-                slotDiv.title = `${key.toUpperCase()} (0)`; // Reset material title
+                if (countSpan) countSpan.textContent = ''; 
+                slotDiv.title = `${key.toUpperCase()} (0)`; 
             } else if (slotDiv.dataset.category === 'weapon') {
-                // Reset weapon titles to 'Not Found' or initial crafting requirement
-                // Need to determine the correct initial title based on craftability
-                const isCraftable = Config.CRAFTING_RECIPES[key] !== undefined;
-                if(isCraftable) {
-                    const recipe = Config.CRAFTING_RECIPES[key];
-                    let titleText = `${key.toUpperCase()} (Need: `;
-                    titleText += recipe.map(ing => `${ing.amount} ${ing.type}`).join(', ');
-                    titleText += ')';
-                    slotDiv.title = titleText;
-                } else {
-                    slotDiv.title = `${key.toUpperCase()} (Not Found)`;
-                }
+                slotDiv.title = `${key.toUpperCase()} (Unavailable)`;
             }
         }
     }
 }
 
-// Sets the reference to the portal object (no changes needed)
+// Sets the reference to the portal object
 export function setPortalReference(portalObject) {
-    // ... (keep existing implementation) ...
     portalRef = portalObject;
-    // When portal reference is set (on game start) or cleared (on game end), update UI
     if (portalRef) {
-        // Use rAF for initial update after portal is set
         requestAnimationFrame(() => {
             updatePortalInfo(portalRef.currentHealth, portalRef.maxHealth);
         });
     } else {
-        // Clear UI if portal is removed (game over)
         if (portalHealthBarFillEl) portalHealthBarFillEl.style.width = '0%';
-        if (portalColumnH2El) portalColumnH2El.style.color = 'white'; // Reset title color
-        // Text content remains "PORTAL" as defined in HTML
+        if (portalColumnH2El) portalColumnH2El.style.color = 'white'; 
     }
 }
 
-// --- REMOVED illuminateButton function ---
-// export function illuminateButton(actionName) { ... }
-
-// Updates the visual state (active/muted class) of settings buttons
-// *** MODIFIED to target new elements and update text spans ***
+// Updates the visual state of settings buttons
 export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMuted) {
-    // Ensure elements exist before modifying their classes/titles
     if (settingsBtnToggleGrid && settingsValueGrid) {
         settingsBtnToggleGrid.classList.toggle('active', isGridVisible);
         settingsBtnToggleGrid.title = isGridVisible ? 'Hide Grid Overlay' : 'Show Grid Overlay';
         settingsValueGrid.textContent = isGridVisible ? 'ON' : 'OFF';
-        // Optionally change text color based on state
         settingsValueGrid.style.color = isGridVisible ? 'lime' : '#ccc';
     }
     if (settingsBtnMuteMusic && settingsValueMusic) {
@@ -409,12 +369,10 @@ export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMut
     }
 }
 
-// --- Update Functions (Called by main.js game loop) ---
+// --- Update Functions ---
 
-// Updates player health bar and inventory/weapon slots (no significant changes needed here, logic was already correct)
+// Updates player health bar and inventory/weapon slots
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
-    // ... (keep existing implementation) ...
-     // Ensure essential UI elements exist before proceeding
      if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
         console.error("UI UpdatePlayerInfo: Missing essential elements.");
         if(playerHealthBarFillEl){
@@ -435,7 +393,9 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
 
     for (const materialType of Config.INVENTORY_MATERIALS) {
         const slotDiv = itemSlotDivs[materialType];
-        if (!slotDiv) continue;
+        if (!slotDiv || slotDiv.classList.contains('placeholder-slot')) { 
+            continue;
+        }
 
         const count = inventory[materialType] || 0;
         const countSpan = slotDiv.querySelector('.item-count');
@@ -450,12 +410,11 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             currentTitle = `${materialType.toUpperCase()} (${count} full, ${partialCount}/4 collected)`;
 
             const quadrants = slotDiv.querySelectorAll('.quadrant-container .quadrant');
-            // Assuming quadrants are ordered TL, TR, BL, BR in the DOM by createItemSlot
-            if (quadrants.length === 4) { // Ensure we have 4 quadrant elements
+            if (quadrants.length === 4) { 
                  quadrants[0].classList.toggle('filled', partialCount >= 1);
                  quadrants[1].classList.toggle('filled', partialCount >= 2);
                  quadrants[2].classList.toggle('filled', partialCount >= 3);
-                 quadrants[3].classList.toggle('filled', partialCount >= 4); // Should not happen as it resets to 0 + 1 full
+                 quadrants[3].classList.toggle('filled', partialCount >= 4); 
             }
         } else {
             isDisabled = (count === 0);
@@ -466,8 +425,6 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         slotDiv.title = currentTitle;
     }
 
-    // Update Weapon Boxes
-    // Use the passed boolean flags for weapon possession
     const playerPossession = {
         [Config.WEAPON_TYPE_SWORD]: hasSword,
         [Config.WEAPON_TYPE_SPEAR]: hasSpear,
@@ -476,131 +433,100 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
 
     for (const weaponType of WEAPON_SLOTS_ORDER) {
         const slotDiv = itemSlotDivs[weaponType];
-        // Ensure the corresponding slot div exists
-        if (!slotDiv) {
-            // console.warn(`UI updatePlayerInfo: Weapon slot div not found for type "${weaponType}".`);
-            continue; // Skip if the element wasn't created
+        if (!slotDiv || slotDiv.classList.contains('placeholder-slot')) { 
+            continue; 
         }
 
-        const possessed = playerPossession[weaponType]; // Check if player possesses this weapon
-        const recipe = Config.CRAFTING_RECIPES[weaponType]; // Get the crafting recipe (might be undefined)
-        const isCraftable = recipe !== undefined; // Is there a recipe defined for this weapon?
+        const possessed = playerPossession[weaponType]; 
+        const recipe = Config.CRAFTING_RECIPES[weaponType]; 
+        const isCraftable = recipe !== undefined; 
 
-        let canInteract = false; // Can this slot be interacted with (equipped or crafted)?
-        let titleText = weaponType.toUpperCase(); // Base title text
+        let canInteract = false; 
+        let titleText = weaponType.toUpperCase(); 
 
         if (possessed) {
-            // Player has the weapon. The slot is interactive (can be equipped or unequipped by clicking).
             canInteract = true;
-            titleText += ' (Owned)'; // Indicate it's owned
+            titleText += ' (Owned)'; 
         } else if (isCraftable) {
-            // Player does NOT have the weapon, but it's craftable.
-            // Check if they have *all* required materials needed to CRAFT it.
             let canAfford = true;
-            if (playerRef) { // Only check affordability if player exists (inventory access)
+            if (playerRef) { 
                 for (const ingredient of recipe) {
                     const requiredType = ingredient.type;
                     const requiredAmount = ingredient.amount;
-                    const possessedAmount = inventory[requiredType] || 0; // Get count from passed inventory
+                    const possessedAmount = inventory[requiredType] || 0; 
                     if (possessedAmount < requiredAmount) {
                         canAfford = false;
-                        break; // Stop checking if one ingredient is missing
+                        break; 
                     }
                 }
             } else {
-                canAfford = false; // Cannot afford if no player/inventory
+                canAfford = false; 
             }
 
             if (canAfford) {
-                // Player does NOT have the weapon but CAN craft it. The slot is interactive (click to craft).
                 canInteract = true;
-                titleText += ' (Click to Craft)'; // Indicate it's craftable
+                titleText += ' (Click to Craft)'; 
             } else {
-                // Player does NOT have the weapon and CANNOT craft it yet. The slot is NOT interactive.
                 canInteract = false;
-                titleText += ' (Need: '; // Show recipe needed
-                // Build recipe string: e.g., "Need: 5 Stone, 2 Wood"
-                titleText += recipe.map(ing => `${ing.amount} ${ing.type.charAt(0).toUpperCase() + ing.type.slice(1)}`).join(', '); // Capitalize material names
+                titleText += ' (Need: '; 
+                titleText += recipe.map(ing => `${ing.amount} ${ing.type.charAt(0).toUpperCase() + ing.type.slice(1)}`).join(', '); 
                 titleText += ')';
             }
         } else {
-            // Weapon is neither possessed nor craftable (e.g., Shovel if lost). The slot is NOT interactive.
             canInteract = false;
-            titleText += ' (Unavailable)'; // Indicate it's unavailable
+            titleText += ' (Unavailable)'; 
         }
-
-        // The 'disabled' class indicates whether the slot is *interactable*.
-        // It is disabled if the player CANNOT do anything with this slot.
         slotDiv.classList.toggle('disabled', !canInteract);
-
-        // The 'active' class indicates whether the item represented by this slot is the currently selected item.
-        // Only mark as active if playerRef exists (game is running) AND the player's selected item matches this slot's type.
         slotDiv.classList.toggle('active', playerRef && selectedItem === weaponType);
-
-        // Update the title attribute for the hover tooltip
         slotDiv.title = titleText;
     }
 }
 
-// Updates the portal health bar and its title color (no changes needed)
+// Updates the portal health bar and its title color
 export function updatePortalInfo(currentHealth, maxHealth) {
-    // ... (keep existing implementation) ...
-    // Ensure essential UI elements exist before proceeding
     if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) {
         console.error("UI UpdatePortalInfo: Missing essential elements.");
-        // Still try to update health bar if available
         if(portalHealthBarFillEl){
             const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
             const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
             portalHealthBarFillEl.style.width = `${healthPercent}%`;
         }
-        return; // Cannot update title if elements are missing
+        return; 
     }
 
-    // Update Health Bar
     const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
     const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
     portalHealthBarFillEl.style.width = `${healthPercent}%`;
 
-    // Update Portal title color based on health percentage (using clamped health ratio)
     const healthPercentRatio = (maxHealth > 0) ? (clampedHealth / maxHealth) : 0;
     if (portalColumnH2El.style) {
-        if (healthPercentRatio > 0.5) portalColumnH2El.style.color = '#aaffaa'; // Greenish (Healthy)
-        else if (healthPercentRatio > 0.2) portalColumnH2El.style.color = 'yellow'; // Yellowish (Damaged)
-        else portalColumnH2El.style.color = 'red'; // Reddish (Critical)
+        if (healthPercentRatio > 0.5) portalColumnH2El.style.color = '#aaffaa'; 
+        else if (healthPercentRatio > 0.2) portalColumnH2El.style.color = 'yellow'; 
+        else portalColumnH2El.style.color = 'red'; 
     }
 }
 
-// Updates the wave timer bar and text (no changes needed)
+// Updates the wave timer bar and text
 export function updateWaveTimer(waveInfo) {
-    // ... (keep existing implementation) ...
-    // Ensure essential UI elements exist
     if (!timerBarFillEl || !timerTextOverlayEl || !timerRowEl) {
         console.error("UI UpdateWaveTimer: Missing essential elements.");
         return;
     }
 
-    // Destructure relevant properties from the waveInfo object
     const { state, timer: currentTimer, maxTimer, mainWaveNumber } = waveInfo;
-
-    // Clamp currentTimer to be between 0 and maxTimer for robust display
     const clampedTimer = Math.max(0, Math.min(currentTimer, maxTimer));
-
-    // Calculate fill percentage for the timer bar (counts down)
-    // Handle maxTimer = 0 or 1 case to prevent division by zero and show full/empty bar correctly
     const timerPercent = (maxTimer > 1) ? (clampedTimer / maxTimer) * 100 : (clampedTimer > 0 ? 100 : 0);
     timerBarFillEl.style.width = `${timerPercent}%`;
 
-    // --- Update Timer Text Overlay based on WaveManager State ---
     let timerText = "";
-    let displayTimerValue = true; // Flag to control if we append the numerical timer
+    let displayTimerValue = true; 
 
     switch(state) {
         case 'PRE_WAVE':
             timerText = "FIRST WAVE IN";
             break;
         case 'WAVE_COUNTDOWN':
-            const livingEnemies = EnemyManager.getLivingEnemyCount(); // Get current living enemy count
+            const livingEnemies = EnemyManager.getLivingEnemyCount(); 
             if (livingEnemies > 0) {
                 timerText = `WAVE ${mainWaveNumber} (${livingEnemies} LEFT)`;
             } else {
@@ -614,13 +540,14 @@ export function updateWaveTimer(waveInfo) {
         case 'BUILDPHASE':
             timerText = `BUILD TIME (WAVE ${mainWaveNumber} NEXT)`;
             break;
-        case 'WARPPHASE': // Renamed from WARP_ANIMATING
+        case 'WARPPHASE': 
+        case 'WARP_ANIMATING': // Keep WARP_ANIMATING for compatibility if waveManager sends it
             let animStatus = "";
             if (WorldManager && typeof WorldManager.areAgingAnimationsComplete === 'function' && typeof WorldManager.areGravityAnimationsComplete === 'function' && (!WorldManager.areAgingAnimationsComplete() || !WorldManager.areGravityAnimationsComplete())) {
                  animStatus = " (MORPHING...)";
             }
             timerText = `WARPING TO WAVE ${mainWaveNumber}${animStatus}`;
-            displayTimerValue = true;
+            displayTimerValue = true; // Show timer as it's now a build phase countdown
             break;
         case 'GAME_OVER':
             timerText = "GAME OVER";
@@ -637,54 +564,45 @@ export function updateWaveTimer(waveInfo) {
             break;
     }
 
-    if (displayTimerValue) {
+    if (displayTimerValue && state !== 'WARP_ANIMATING' && state !== 'WARPPHASE') { // Don't show raw timer for warp animation, just text
         const minutes = Math.floor(clampedTimer / 60);
         const seconds = Math.floor(clampedTimer % 60);
         const formattedSeconds = seconds < 10 ? '0' + seconds : seconds;
         timerText = `${timerText}: ${minutes}:${formattedSeconds}`;
     }
 
+
     timerTextOverlayEl.textContent = timerText;
 }
 
-// Function to display the epoch text overlay (no changes needed)
+// Function to display the epoch text overlay
 export function showEpochText(epochMessage) {
-    // ... (keep existing implementation) ...
-     // Ensure the epoch overlay element exists
      if (!epochOverlayEl) {
         console.warn("UI showEpochText: Element not found.", epochOverlayEl);
         return;
     }
-    // Ensure epochMessage is a string, default to a placeholder if not
     const textToDisplay = (typeof epochMessage === 'string' && epochMessage.trim() !== "") ? epochMessage : 'Wave Starting';
-
-    // Set the text content
     epochOverlayEl.textContent = textToDisplay;
 
-    // Clear any previous hide timer to prevent overlaps if waves transition quickly
     if (epochOverlayEl._hideTimer) {
         clearTimeout(epochOverlayEl._hideTimer);
-        epochOverlayEl._hideTimer = null; // Clear the reference after clearing
+        epochOverlayEl._hideTimer = null; 
     }
 
-    // Show the element by making it visible and fading in (controlled by CSS transitions)
     epochOverlayEl.style.visibility = 'visible';
     epochOverlayEl.style.opacity = '1';
 
-    // Set a timer to start the fade-out after the display duration from Config
     const displayDurationMs = Config.EPOCH_DISPLAY_DURATION * 1000;
     epochOverlayEl._hideTimer = setTimeout(() => {
-        epochOverlayEl.style.opacity = '0'; // Start fade-out
+        epochOverlayEl.style.opacity = '0'; 
 
-        // Set another timer to hide the element completely after the fade-out transition finishes
-        // The transition duration is 0.5s in the CSS for opacity
-        const transitionDurationMs = 500; // Match the CSS transition duration
+        const transitionDurationMs = 500; 
         epochOverlayEl._hideTimer = setTimeout(() => {
             epochOverlayEl.style.visibility = 'hidden';
-            epochOverlayEl._hideTimer = null; // Clear the reference after hiding
+            epochOverlayEl._hideTimer = null; 
         }, transitionDurationMs);
 
-    }, displayDurationMs); // Delay before starting fade-out
+    }, displayDurationMs); 
 }
 
 // Add a getter to check if the main game UI initialization was successful

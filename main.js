@@ -41,9 +41,10 @@ let bootOverlayEl = null;
 let menuOverlayEl = null;
 let epochOverlayEl = null;
 
-let topSidebarEl = null;
+// Renamed sidebar elements to UI overlays
+let topUiOverlayEl = null; 
 let gameWrapperEl = null;
-let bottomSidebarEl = null;
+let bottomUiOverlayEl = null;
 
 // let cutsceneImages = []; // REMOVED: No longer an array of image elements
 let cutsceneImageDisplayEl = null; // NEW: Single image element for cutscene
@@ -196,7 +197,7 @@ async function performBackgroundWorldGeneration() {
 // =============================================================================
 
 function showOverlay(stateToShow) {
-    if (!bootOverlayEl || !menuOverlayEl || !appContainer || !topSidebarEl || !gameWrapperEl || !bottomSidebarEl) {
+    if (!bootOverlayEl || !menuOverlayEl || !appContainer || !topUiOverlayEl || !gameWrapperEl || !bottomUiOverlayEl) {
         console.error("ShowOverlay: Core overlay/app or game world container elements not found!");
         return;
     }
@@ -213,9 +214,9 @@ function showOverlay(stateToShow) {
     ];
     allContentDivs.forEach(div => { if (div) div.style.display = 'none'; });
 
-    topSidebarEl.style.display = '';
+    topUiOverlayEl.style.display = '';
     gameWrapperEl.style.display = '';
-    bottomSidebarEl.style.display = '';
+    bottomUiOverlayEl.style.display = '';
 
     // --- 2. Handle Cutscene Specific Cleanup (if not showing cutscene) ---
     if (stateToShow !== GameState.CUTSCENE) {
@@ -231,14 +232,14 @@ function showOverlay(stateToShow) {
     // --- 3. Configure Overlay Based on `stateToShow` ---
     switch (stateToShow) {
         case GameState.TITLE:
-            topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
+            topUiOverlayEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomUiOverlayEl.style.display = 'none';
             bootOverlayEl.classList.add('show-title');
             if (overlayTitleContentEl) overlayTitleContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
             break;
 
         case GameState.MAIN_MENU:
-            topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
+            topUiOverlayEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomUiOverlayEl.style.display = 'none';
             menuOverlayEl.classList.add('active', 'show-mainmenu', 'force-opaque');
             if (overlayMainMenuContentEl) overlayMainMenuContentEl.style.display = 'flex';
             AudioManager.stopGameMusic(); AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
@@ -249,10 +250,10 @@ function showOverlay(stateToShow) {
             menuOverlayEl.classList.add('active', 'show-settings');
             if (overlaySettingsContentEl) overlaySettingsContentEl.style.display = 'flex';
             if (settingsOpenedFrom === GameState.PAUSED) {
-                appContainer.classList.add('overlay-active');
+                appContainer.classList.add('overlay-active'); // This will blur topUiOverlay, gameWrapper, bottomUiOverlay
             } else { 
                 menuOverlayEl.classList.add('force-opaque');
-                topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
+                topUiOverlayEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomUiOverlayEl.style.display = 'none';
             }
             break;
 
@@ -299,7 +300,7 @@ function showOverlay(stateToShow) {
             break;
 
         case GameState.ERROR:
-            topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
+            topUiOverlayEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomUiOverlayEl.style.display = 'none';
             bootOverlayEl.classList.add('show-error');
             if (overlayErrorContentEl) overlayErrorContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
@@ -307,7 +308,7 @@ function showOverlay(stateToShow) {
 
         default:
             console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}. Defaulting to TITLE.`);
-            topSidebarEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomSidebarEl.style.display = 'none';
+            topUiOverlayEl.style.display = 'none'; gameWrapperEl.style.display = 'none'; bottomUiOverlayEl.style.display = 'none';
             bootOverlayEl.classList.add('show-title');
             if (overlayTitleContentEl) overlayTitleContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
@@ -329,9 +330,10 @@ function hideAllOverlays() {
     ];
     allContentDivs.forEach(div => { if (div) div.style.display = 'none'; });
 
-    topSidebarEl.style.display = '';
-    gameWrapperEl.style.display = '';
-    bottomSidebarEl.style.display = '';
+    // Ensure these are visible when no modal overlay is active
+    if(topUiOverlayEl) topUiOverlayEl.style.display = '';
+    if(gameWrapperEl) gameWrapperEl.style.display = '';
+    if(bottomUiOverlayEl) bottomUiOverlayEl.style.display = '';
 }
 
 // =============================================================================
@@ -413,25 +415,17 @@ function startCutscene() {
 function updateCutscene(dt) {
     if (currentGameState !== GameState.CUTSCENE) return;
     cutsceneTimer -= dt;
-
     if (cutsceneTimer <= 0) {
         if (cutsceneImageDisplayEl) cutsceneImageDisplayEl.classList.remove('active');
         if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.remove('visible');
         // If skip button is separate, hide it too: if (cutsceneSkipButton) cutsceneSkipButton.classList.remove('visible');
         // (Currently skip button visibility is tied to text container's logic or overall cutscene display)
-
         currentCutsceneImageIndex++;
-
-        // UPDATED: Check against CUTSCENE_SLIDES.length
         if (currentCutsceneImageIndex < Config.CUTSCENE_SLIDES.length) {
             cutsceneTimer = cutsceneDurationPerImage;
-
             setTimeout(() => {
                 if (currentGameState !== GameState.CUTSCENE) return;
-
-                // UPDATED: Access data from the next slide
                 const nextSlide = Config.CUTSCENE_SLIDES[currentCutsceneImageIndex];
-
                 if (!nextSlide || typeof nextSlide.imagePath !== 'string' || typeof nextSlide.text !== 'string') {
                     console.error("Cutscene Update: Invalid next slide data for index " + currentCutsceneImageIndex + ". Ending cutscene.");
                     if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
@@ -442,24 +436,18 @@ function updateCutscene(dt) {
                     initializeAndRunGame();
                     return;
                 }
-
                 if (cutsceneImageDisplayEl) {
                     cutsceneImageDisplayEl.src = nextSlide.imagePath;
                     cutsceneImageDisplayEl.alt = `Cutscene Image ${currentCutsceneImageIndex + 1}`;
                     cutsceneImageDisplayEl.classList.add('active');
                 }
-
                 if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = nextSlide.text || '';
-
                 if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.add('visible');
                 if (cutsceneSkipButton && cutsceneTextContainerEl && !cutsceneTextContainerEl.contains(cutsceneSkipButton)) {
                      cutsceneSkipButton.classList.add('visible');
                 }
-
             }, 1000); // Delay for image fade-out
-
-        } else {
-            // Cutscene finished
+        } else { // Cutscene finished
             if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
             if (cutsceneImageDisplayEl) {
                 cutsceneImageDisplayEl.src = '';
@@ -473,27 +461,22 @@ function updateCutscene(dt) {
 window.skipCutscene = skipCutscene;
 function skipCutscene() {
     if (currentGameState !== GameState.CUTSCENE) return;
-
     if (cutsceneImageDisplayEl) {
         cutsceneImageDisplayEl.classList.remove('active');
         cutsceneImageDisplayEl.src = ''; 
     }
     if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.remove('visible');
     if (cutsceneSkipButton) cutsceneSkipButton.classList.remove('visible'); 
-
     currentCutsceneImageIndex = 0; cutsceneTimer = 0; 
     if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
-
     initializeAndRunGame();
 }
 
 async function initializeAndRunGame() {
-    // console.log(`[Main] Attempting to initialize and run game from state: ${currentGameState}`);
     if (currentGameState === GameState.RUNNING) {
-        // console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
+        console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
         return;
     }
-
     try {
         if (!isWorldGenerated) {
             if (!worldGenerationPromise) {
@@ -512,10 +495,8 @@ async function initializeAndRunGame() {
                 return;
             }
         }
-
         UI.setPlayerReference(null);
         UI.setPortalReference(null);
-
         const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2;
         const portalSpawnY = (Config.MEAN_GROUND_LEVEL * Config.BLOCK_HEIGHT) - Config.PORTAL_HEIGHT - (Config.PORTAL_SPAWN_Y_OFFSET_BLOCKS * Config.BLOCK_HEIGHT);
         if (isNaN(portalSpawnY) || portalSpawnY < 0) {
@@ -524,10 +505,8 @@ async function initializeAndRunGame() {
         } else {
             portal = new Portal(portalSpawnX, portalSpawnY);
         }
-
         ItemManager.init();
         EnemyManager.init();
-
         try {
             const playerSpawnX = Config.PLAYER_START_X;
             const playerSpawnY = Config.PLAYER_START_Y;
@@ -548,7 +527,6 @@ async function initializeAndRunGame() {
             currentGameState = GameState.ERROR; showOverlay(GameState.ERROR);
             return;
         }
-
         WaveManager.reset(handleWaveStart, portal);
         calculateInitialCamera();
         isAutoPaused = false;
@@ -556,12 +534,10 @@ async function initializeAndRunGame() {
         AudioManager.setVolume('game', Config.AUDIO_DEFAULT_GAME_VOLUME);
         AudioManager.setVolume('sfx', Config.AUDIO_DEFAULT_SFX_VOLUME);
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
-
         currentGameState = GameState.RUNNING;
         hideAllOverlays(); 
         gameStartTime = performance.now();
-        // console.log(">>> [main.js] Game Started <<<");
-
+        console.log(">>> [main.js] Game Started <<<");
     } catch (error) {
         console.error("[main.js] FATAL Error during initializeAndRunGame:", error);
         if (errorOverlayMessageP) errorOverlayMessageP.textContent = `Error: ${error.message}`;
@@ -790,9 +766,11 @@ function init() {
         appContainer = document.getElementById('app-container');
         bootOverlayEl = document.getElementById('boot-overlay');
         menuOverlayEl = document.getElementById('menu-overlay');
-        topSidebarEl = document.getElementById('top-sidebar');
+        
+        // Updated to new UI overlay elements
+        topUiOverlayEl = document.getElementById('top-ui-overlay');
         gameWrapperEl = document.getElementById('game-wrapper');
-        bottomSidebarEl = document.getElementById('bottom-sidebar');
+        bottomUiOverlayEl = document.getElementById('bottom-ui-overlay');
 
         overlayTitleContentEl = document.getElementById('overlay-title-content');
         overlayErrorContentEl = document.getElementById('overlay-error-content');
@@ -828,7 +806,11 @@ function init() {
         epochOverlayEl = document.getElementById('epoch-overlay');
 
 
-        const requiredCoreElements = [appContainer, bootOverlayEl, menuOverlayEl, topSidebarEl, gameWrapperEl, bottomSidebarEl, epochOverlayEl];
+        const requiredCoreElements = [
+            appContainer, bootOverlayEl, menuOverlayEl, 
+            topUiOverlayEl, gameWrapperEl, bottomUiOverlayEl, // Updated
+            epochOverlayEl
+        ];
         const requiredContentElements = [
             overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl, overlaySettingsContentEl,
             overlayCutsceneContentEl, overlayPauseContentEl, overlayGameOverContentEl, overlayVictoryContentEl
@@ -838,7 +820,6 @@ function init() {
             resumeButton, restartButtonGameOver, restartButtonVictory, restartButtonPause, cutsceneSkipButton,
             btnToggleGrid, muteMusicButtonEl, muteSfxButtonEl
         ];
-        // Updated requiredTextElements to include the single cutscene image display
         const requiredTextElements = [gameOverStatsTextP, victoryStatsTextP, errorOverlayMessageP, cutsceneTextContentEl, cutsceneTextContainerEl, cutsceneImageDisplayEl];
 
         [...requiredCoreElements, ...requiredContentElements, ...requiredButtonElements, ...requiredTextElements].forEach(el => {

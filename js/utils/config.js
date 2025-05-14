@@ -29,7 +29,7 @@ export const ZOOM_SPEED_FACTOR = 0.001; // Sensitivity of mouse wheel zoom.
 
 // --- Cutscene Parameters ---
 
-export const CUTSCENE_IMAGE_DURATION = 2.0; // seconds image displayed
+export const CUTSCENE_IMAGE_DURATION = 3.0; // seconds image displayed
 export const CUTSCENE_SLIDES = [
     { imagePath: 'assets/cut1.png', text: "In the near future, dolphins master nuclear fusion and seize control of the planet." },
     { imagePath: 'assets/cut2.jpg', text: "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time." },
@@ -198,7 +198,6 @@ export const WATER_HORIZONTAL_DAMPING = 0.1; // Lower values mean stronger dampi
 export const WATER_VERTICAL_DAMPING = 0.05;
 export const WATER_MAX_SPEED_FACTOR = 0.6;
 export const WATER_ACCELERATION_FACTOR = 0.5;
-// Water movement speeds defined in block units, then scaled to pixels.
 export const WATER_SWIM_VELOCITY_BLOCKS_PER_SEC = 50; // Base upward speed from a swim 'stroke' in block heights/sec.
 export const WATER_SWIM_VELOCITY = WATER_SWIM_VELOCITY_BLOCKS_PER_SEC * BLOCK_HEIGHT; // Pixels per second.
 export const WATER_MAX_SWIM_UP_SPEED_BLOCKS_PER_SEC = 20; // Base max upward swim speed in block heights/sec.
