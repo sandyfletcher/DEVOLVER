@@ -19,41 +19,29 @@ import { Player } from './js/player.js';
 import { Portal } from './js/portal.js';
 import * as World from './js/utils/world.js';
 
-
-// =============================================================================
-// --- Global Variables ---
-// =============================================================================
-
 let gameStartTime = 0;
 let lastTime = 0;
 let gameLoopId = null;
 let isAutoPaused = false;
 let isGridVisible = false;
-
 let player = null;
 let portal = null;
 let cameraX = 0;
 let cameraY = 0;
 let cameraScale = 1.0;
-
 let appContainer = null;
 let bootOverlayEl = null;
 let menuOverlayEl = null;
 let epochOverlayEl = null;
-
-// Renamed sidebar elements to UI overlays
 let topUiOverlayEl = null; 
 let gameWrapperEl = null;
 let bottomUiOverlayEl = null;
-
-// let cutsceneImages = []; // REMOVED: No longer an array of image elements
-let cutsceneImageDisplayEl = null; // NEW: Single image element for cutscene
+let cutsceneImageDisplayEl = null;
 let currentCutsceneImageIndex = 0;
 let cutsceneTimer = 0;
 let cutsceneDurationPerImage = Config.CUTSCENE_IMAGE_DURATION;
 let cutsceneTextContentEl = null;
 let cutsceneTextContainerEl = null;
-
 let titleStartButton = null;
 let mainmenuStartGameButton = null;
 let mainmenuSettingsButton = null;
@@ -67,8 +55,6 @@ let btnToggleGrid = null;
 let muteMusicButtonEl = null;
 let muteSfxButtonEl = null;
 let settingsButtonPauseOverlay = null; 
-
-// Overlay content divs
 let overlayTitleContentEl = null;
 let overlayErrorContentEl = null;
 let overlayMainMenuContentEl = null;
@@ -77,11 +63,9 @@ let overlayCutsceneContentEl = null;
 let overlayPauseContentEl = null;
 let overlayGameOverContentEl = null;
 let overlayVictoryContentEl = null;
-
 let gameOverStatsTextP = null;
 let victoryStatsTextP = null;
 let errorOverlayMessageP = null;
-
 const GameState = Object.freeze({
     TITLE: 'TITLE',
     MAIN_MENU: 'MAIN_MENU',
@@ -95,15 +79,8 @@ const GameState = Object.freeze({
 });
 let currentGameState = GameState.TITLE;
 let settingsOpenedFrom = null; 
-
-
 let worldGenerationPromise = null;
 let isWorldGenerated = false;
-
-// =============================================================================
-// --- Helper Functions ---
-// =============================================================================
-
 function getWorldPixelWidth() { return Config.CANVAS_WIDTH; }
 function getWorldPixelHeight() { return Config.GRID_ROWS * Config.BLOCK_HEIGHT; }
 window.pauseGameCallback = pauseGame;
@@ -144,23 +121,18 @@ function handleWaveStart(waveNumber) {
 window.toggleGridDisplay = toggleGridDisplay;
 function toggleGridDisplay() {
     isGridVisible = !isGridVisible;
-    // console.log(`Main: Grid display is now ${isGridVisible ? 'ON' : 'OFF'}.`);
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 }
 window.toggleMusicMute = toggleMusicMute;
 function toggleMusicMute() {
     const newState = AudioManager.toggleMusicMute();
-    // console.log(`Main: Music is now ${newState ? 'muted' : 'unmuted'}.`);
     UI.updateSettingsButtonStates(isGridVisible, newState, AudioManager.getSfxMutedState());
 }
 window.toggleSfxMute = toggleSfxMute;
 function toggleSfxMute() {
     const newState = AudioManager.toggleSfxMute();
-    // console.log(`Main: SFX is now ${newState ? 'muted' : 'unmuted'}.`);
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
 }
-
-
 async function performBackgroundWorldGeneration() {
     if (worldGenerationPromise && isWorldGenerated) {
         return;
@@ -191,35 +163,24 @@ async function performBackgroundWorldGeneration() {
     })();
     return worldGenerationPromise;
 }
-
-// =============================================================================
-// --- Overlay Management ---
-// =============================================================================
-
 function showOverlay(stateToShow) {
-    if (!bootOverlayEl || !menuOverlayEl || !appContainer || !gameWrapperEl ) { // Removed top/bottomUiOverlayEl from this check
+    if (!bootOverlayEl || !menuOverlayEl || !appContainer || !gameWrapperEl ) {
         console.error("ShowOverlay: Core overlay/app or game world container elements not found!");
         return;
     }
-
     // --- 1. Resetting Classes and Visibility ---
     bootOverlayEl.className = '';
     menuOverlayEl.className = '';
     appContainer.classList.remove('overlay-active');
-
     const allContentDivs = [
         overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
         overlaySettingsContentEl, overlayCutsceneContentEl, overlayPauseContentEl,
         overlayGameOverContentEl, overlayVictoryContentEl
     ];
     allContentDivs.forEach(div => { if (div) div.style.display = 'none'; });
-
-    // Default to gameWrapper being visible unless specified otherwise
     gameWrapperEl.style.display = ''; // Or 'flex' if it's a flex container for canvas
-
     // --- 2. Handle Cutscene Specific Cleanup (if not showing cutscene) ---
     if (stateToShow !== GameState.CUTSCENE) {
-        // ... (cutscene cleanup remains the same) ...
         if (cutsceneImageDisplayEl) {
             cutsceneImageDisplayEl.classList.remove('active');
             cutsceneImageDisplayEl.src = "";
@@ -228,7 +189,6 @@ function showOverlay(stateToShow) {
         if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.remove('visible');
         if (cutsceneSkipButton) cutsceneSkipButton.classList.remove('visible');
     }
-
     // --- 3. Configure Overlay Based on `stateToShow` ---
     switch (stateToShow) {
         case GameState.TITLE:
@@ -237,7 +197,6 @@ function showOverlay(stateToShow) {
             if (overlayTitleContentEl) overlayTitleContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
             break;
-
         case GameState.MAIN_MENU:
             gameWrapperEl.style.display = 'none'; // Hide the entire game area
             menuOverlayEl.classList.add('active', 'show-mainmenu', 'force-opaque');
@@ -245,7 +204,6 @@ function showOverlay(stateToShow) {
             AudioManager.stopGameMusic(); AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
-
         case GameState.SETTINGS:
             menuOverlayEl.classList.add('active', 'show-settings');
             if (overlaySettingsContentEl) overlaySettingsContentEl.style.display = 'flex';
@@ -256,7 +214,6 @@ function showOverlay(stateToShow) {
                 gameWrapperEl.style.display = 'none'; // Hide game area if coming from main menu
             }
             break;
-
         case GameState.CUTSCENE:
             menuOverlayEl.classList.add('active', 'show-cutscene');
             if (overlayCutsceneContentEl) overlayCutsceneContentEl.style.display = 'flex';
@@ -268,18 +225,14 @@ function showOverlay(stateToShow) {
             }
             if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
             break;
-
         case GameState.PAUSED:
-            // gameWrapperEl remains visible, but blurred by appContainer.overlay-active
             menuOverlayEl.classList.add('active', 'show-pause');
             if (overlayPauseContentEl) overlayPauseContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
             AudioManager.pauseGameMusic(); AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
-
         case GameState.GAME_OVER:
-            // gameWrapperEl remains visible, but blurred
             menuOverlayEl.classList.add('active', 'show-gameover');
             if (overlayGameOverContentEl) overlayGameOverContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
@@ -289,9 +242,7 @@ function showOverlay(stateToShow) {
             if (Config.AUDIO_TRACKS.gameOver) AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver);
             else if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
-
         case GameState.VICTORY:
-            // gameWrapperEl remains visible, but blurred
             menuOverlayEl.classList.add('active', 'show-victory');
             if (overlayVictoryContentEl) overlayVictoryContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
@@ -301,15 +252,13 @@ function showOverlay(stateToShow) {
             if (Config.AUDIO_TRACKS.victory) AudioManager.playUIMusic(Config.AUDIO_TRACKS.victory);
             else if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
-
         case GameState.ERROR:
-            gameWrapperEl.style.display = 'none'; // Hide the entire game area
+            gameWrapperEl.style.display = 'none'; // hide entire game area
             bootOverlayEl.classList.add('show-error');
             if (overlayErrorContentEl) overlayErrorContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
             break;
-
-        default: // Should ideally not happen
+        default: // should ideally not happen
             console.warn(`ShowOverlay: Unknown state requested: ${stateToShow}. Defaulting to TITLE.`);
             gameWrapperEl.style.display = 'none';
             bootOverlayEl.classList.add('show-title');
@@ -318,46 +267,33 @@ function showOverlay(stateToShow) {
             break;
     }
 }
-
-
 function hideAllOverlays() {
-    if (!bootOverlayEl || !menuOverlayEl || !appContainer || !gameWrapperEl) return; // Ensure gameWrapperEl is checked
+    if (!bootOverlayEl || !menuOverlayEl || !appContainer || !gameWrapperEl) return;
     bootOverlayEl.className = '';
     menuOverlayEl.className = '';
     appContainer.classList.remove('overlay-active');
-
     const allContentDivs = [
         overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
         overlaySettingsContentEl, overlayCutsceneContentEl, overlayPauseContentEl,
         overlayGameOverContentEl, overlayVictoryContentEl
     ];
     allContentDivs.forEach(div => { if (div) div.style.display = 'none'; });
-
-    // Ensure gameWrapper is visible when no modal overlay is active
-    if (gameWrapperEl) gameWrapperEl.style.display = ''; // Or 'flex' if it needs to be
+    if (gameWrapperEl) gameWrapperEl.style.display = '';
 }
-
-// =============================================================================
-// --- Game State Control Functions ---
-// =============================================================================
-
 function handleTitleStart() {
     currentGameState = GameState.MAIN_MENU;
     showOverlay(GameState.MAIN_MENU);
 }
-
 function openSettingsFromMainMenu() {
     settingsOpenedFrom = GameState.MAIN_MENU;
     currentGameState = GameState.SETTINGS;
     showOverlay(GameState.SETTINGS);
 }
-
 function openSettingsFromPause() {
     settingsOpenedFrom = GameState.PAUSED;
     currentGameState = GameState.SETTINGS; 
     showOverlay(GameState.SETTINGS); 
 }
-
 function closeSettings() {
     if (settingsOpenedFrom === GameState.MAIN_MENU) {
         currentGameState = GameState.MAIN_MENU;
@@ -368,39 +304,29 @@ function closeSettings() {
     }
     settingsOpenedFrom = null;
 }
-
 function startCutscene() {
     currentGameState = GameState.CUTSCENE;
-    showOverlay(GameState.CUTSCENE); // This prepares the overlay and elements
-
+    showOverlay(GameState.CUTSCENE);
     currentCutsceneImageIndex = 0;
-    cutsceneTimer = cutsceneDurationPerImage; // Use the existing config for duration per image
-
-    // UPDATED: Check the new CUTSCENE_SLIDES array
+    cutsceneTimer = cutsceneDurationPerImage;
     if (!Config.CUTSCENE_SLIDES || Config.CUTSCENE_SLIDES.length === 0) {
         console.warn("Cutscene: No slides defined in Config.CUTSCENE_SLIDES. Skipping cutscene.");
         initializeAndRunGame();
         return;
     }
-
-    // UPDATED: Access data from the first slide
     if (currentCutsceneImageIndex < Config.CUTSCENE_SLIDES.length) {
         const currentSlide = Config.CUTSCENE_SLIDES[currentCutsceneImageIndex];
-
         if (!currentSlide || typeof currentSlide.imagePath !== 'string' || typeof currentSlide.text !== 'string') {
             console.error("Cutscene ERROR: Invalid slide data for index " + currentCutsceneImageIndex + ". Skipping.");
             initializeAndRunGame();
             return;
         }
-
         if (cutsceneImageDisplayEl) {
             cutsceneImageDisplayEl.src = currentSlide.imagePath;
             cutsceneImageDisplayEl.alt = `Cutscene Image ${currentCutsceneImageIndex + 1}`;
             cutsceneImageDisplayEl.classList.add('active');
         }
-
         if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = currentSlide.text || '';
-
         setTimeout(() => {
             if (currentGameState === GameState.CUTSCENE) {
                 if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.add('visible');
@@ -412,15 +338,12 @@ function startCutscene() {
         initializeAndRunGame();
     }
 }
-
 function updateCutscene(dt) {
     if (currentGameState !== GameState.CUTSCENE) return;
     cutsceneTimer -= dt;
     if (cutsceneTimer <= 0) {
         if (cutsceneImageDisplayEl) cutsceneImageDisplayEl.classList.remove('active');
         if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.remove('visible');
-        // If skip button is separate, hide it too: if (cutsceneSkipButton) cutsceneSkipButton.classList.remove('visible');
-        // (Currently skip button visibility is tied to text container's logic or overall cutscene display)
         currentCutsceneImageIndex++;
         if (currentCutsceneImageIndex < Config.CUTSCENE_SLIDES.length) {
             cutsceneTimer = cutsceneDurationPerImage;
@@ -447,8 +370,8 @@ function updateCutscene(dt) {
                 if (cutsceneSkipButton && cutsceneTextContainerEl && !cutsceneTextContainerEl.contains(cutsceneSkipButton)) {
                      cutsceneSkipButton.classList.add('visible');
                 }
-            }, 1000); // Delay for image fade-out
-        } else { // Cutscene finished
+            }, 1000); // delay for image fade-out
+        } else { // cutscene finished
             if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
             if (cutsceneImageDisplayEl) {
                 cutsceneImageDisplayEl.src = '';
@@ -458,7 +381,6 @@ function updateCutscene(dt) {
         }
     }
 }
-
 window.skipCutscene = skipCutscene;
 function skipCutscene() {
     if (currentGameState !== GameState.CUTSCENE) return;
@@ -472,7 +394,6 @@ function skipCutscene() {
     if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
     initializeAndRunGame();
 }
-
 async function initializeAndRunGame() {
     if (currentGameState === GameState.RUNNING) {
         console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
@@ -481,10 +402,9 @@ async function initializeAndRunGame() {
     try {
         if (!isWorldGenerated) {
             if (!worldGenerationPromise) {
-                // console.warn("[Main] World generation promise not found. Attempting to start generation now.");
+                console.warn("[Main] World generation promise not found. Attempting to start generation now.");
                 await performBackgroundWorldGeneration();
             } else {
-                // console.log("[Main] Waiting for background world generation to finish...");
                 await worldGenerationPromise;
             }
             if (!isWorldGenerated) {
@@ -546,17 +466,16 @@ async function initializeAndRunGame() {
         showOverlay(GameState.ERROR);
     }
 }
-
 function pauseGame() {
     if (currentGameState !== GameState.RUNNING) return;
-    // console.log(">>> [main.js] Pausing Game <<<");
+    console.log(">>> [main.js] Pausing Game <<<");
     currentGameState = GameState.PAUSED;
     settingsOpenedFrom = null; 
     showOverlay(GameState.PAUSED);
 }
 function resumeGame() {
     if (currentGameState !== GameState.PAUSED) return;
-    // console.log(">>> [main.js] Resuming Game <<<");
+    console.log(">>> [main.js] Resuming Game <<<");
     isAutoPaused = false;
     currentGameState = GameState.RUNNING;
     hideAllOverlays();
@@ -564,7 +483,7 @@ function resumeGame() {
 }
 function handleGameOver() {
     if (currentGameState === GameState.GAME_OVER) return;
-    // console.log(">>> [main.js] Handling Game Over <<<");
+    console.log(">>> [main.js] Handling Game Over <<<");
     currentGameState = GameState.GAME_OVER;
     WaveManager.setGameOver();
     EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
@@ -574,7 +493,7 @@ function handleGameOver() {
 }
 function handleVictory() {
     if (currentGameState === GameState.VICTORY) return;
-    // console.log(">>> [main.js] Handling Victory! <<<");
+    console.log(">>> [main.js] Handling Victory! <<<");
     currentGameState = GameState.VICTORY;
     WaveManager.setVictory();
     EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
@@ -583,7 +502,6 @@ function handleVictory() {
     isAutoPaused = false;
 }
 function restartGame() { 
-    // console.log(">>> [main.js] Restarting Game (Returning to Main Menu) <<<");
     player = null; portal = null;
     UI.setPlayerReference(null); UI.setPortalReference(null);
     EnemyManager.clearAllEnemies(); ItemManager.clearAllItems();
@@ -592,22 +510,19 @@ function restartGame() {
     isAutoPaused = false; isGridVisible = false;
     settingsOpenedFrom = null;
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
-    
     currentCutsceneImageIndex = 0; cutsceneTimer = 0;
-    if (cutsceneImageDisplayEl) { // Clear single image display
+    if (cutsceneImageDisplayEl) {
         cutsceneImageDisplayEl.src = '';
         cutsceneImageDisplayEl.classList.remove('active');
     }
     if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.remove('visible');
     if (cutsceneSkipButton) cutsceneSkipButton.classList.remove('visible');
-    
+
     worldGenerationPromise = null;
     isWorldGenerated = false;
-
     currentGameState = GameState.MAIN_MENU; 
     showOverlay(GameState.MAIN_MENU);       
 }
-
 function gameLoop(timestamp) {
     gameLoopId = requestAnimationFrame(gameLoop);
     try {
@@ -619,7 +534,6 @@ function gameLoop(timestamp) {
             (WaveManager.getWaveInfo().state === 'WARP_ANIMATING' && currentGameState !== GameState.PAUSED)) {
             dt = rawDt;
         }
-
         if (currentGameState === GameState.RUNNING) {
             WaveManager.update(dt, currentGameState);
             const updatedWaveInfo = WaveManager.getWaveInfo();
@@ -653,17 +567,13 @@ function gameLoop(timestamp) {
         } else if (currentGameState === GameState.CUTSCENE) {
             updateCutscene(dt);
         }
-
         if (dt > 0) WorldManager.update(dt);
-
         Renderer.clear();
         const mainCtx = Renderer.getContext();
         const isGameWorldVisible = currentGameState === GameState.RUNNING || currentGameState === GameState.PAUSED ||
                                  currentGameState === GameState.GAME_OVER || currentGameState === GameState.VICTORY ||
                                  (currentGameState === GameState.CUTSCENE && WaveManager.getWaveInfo().state !== 'PRE_WAVE') || 
                                  (WaveManager.getWaveInfo().state === 'WARP_ANIMATING');
-
-
         if (isGameWorldVisible && gameWrapperEl && gameWrapperEl.style.display !== 'none') {
             mainCtx.save();
             mainCtx.scale(cameraScale, cameraScale);
@@ -686,7 +596,6 @@ function gameLoop(timestamp) {
             }
             mainCtx.restore();
         }
-
         if (UI.isInitialized()) {
             const playerExists = !!player;
             UI.updatePlayerInfo(
@@ -717,7 +626,6 @@ function gameLoop(timestamp) {
         }
     }
 }
-
 function calculateInitialCamera() {
     if (player && player.isActive) {
         const viewWidth = Config.CANVAS_WIDTH; const viewHeight = Config.CANVAS_HEIGHT;
@@ -759,7 +667,6 @@ function calculateCameraPosition() {
     if (worldPixelWidthVal <= visibleWorldWidth) cameraX = (worldPixelWidthVal - visibleWorldWidth) / 2;
     if (worldPixelHeightVal <= visibleWorldHeight) cameraY = (worldPixelHeightVal - visibleWorldHeight) / 2;
 }
-
 function init() {
     currentGameState = GameState.TITLE;
     let success = true;

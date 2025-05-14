@@ -45,34 +45,26 @@ body {
     overflow: hidden;
     background-color: #111;
 }
+#game-canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
 #top-ui-overlay {
     position: absolute;
-    top: 0.1rem;
-    left: 0.1rem;
-    right: 0.1rem;
+    top: 0rem;
+    left: 0rem;
+    right: 0rem;
+    display: flex;
+    flex-direction: column;
     padding: 0.3rem;
     background-color: black;
-    border: 0.2rem solid white;
     box-sizing: border-box;
     z-index: 51;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-#bottom-ui-overlay {
-    position: absolute;
-    bottom: 0.1rem;
-    left: 0.1rem;
-    right: 0.1rem;
-    padding: 0.5rem;
-    background-color: black;
-    box-sizing: border-box;
-    z-index: 51;
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    border: 0.2rem solid white;
-    max-height: 30%;
+    gap: 0.4rem;
 }
 #top-info-row {
     display: flex;
@@ -155,14 +147,6 @@ body {
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     pointer-events: none;
 }
-#game-canvas {
-    display: block;
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-}
 #epoch-overlay {
     position: absolute;
     top: 20%;
@@ -179,10 +163,23 @@ body {
     transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
     pointer-events: none;
 }
+#bottom-ui-overlay {
+    position: absolute;
+    bottom: 0rem;
+    left: 0rem;
+    right: 0rem;
+    padding: 0.5rem;
+    background-color: black;
+    box-sizing: border-box;
+    z-index: 51;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
 #item-selection-area {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 0.5rem;
 }
 #inventory-boxes-container {
     display: flex;
@@ -311,6 +308,15 @@ body {
     pointer-events: auto;
     transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
+.overlay-content {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 80%;
+    max-width: 500px;
+    padding: 20px;
+    box-sizing: border-box;
+}
 #menu-overlay {
     background-color: rgba(0, 0, 0, 0.75);
     z-index: 100;
@@ -325,15 +331,7 @@ body {
     pointer-events: auto;
     transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
 }
-.overlay-content {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    width: 80%;
-    max-width: 500px;
-    padding: 20px;
-    box-sizing: border-box;
-}
+
 #menu-overlay.active.show-cutscene #overlay-cutscene-content {
     width: 100%;
     height: 100%;
@@ -517,7 +515,9 @@ body {
     font-size: 1.5em;
 }
 noscript p {
-    color: white; text-align: center; padding: 20px;
+    color: white;
+    text-align: center;
+    padding: 1rem;
 }
 #top-ui-overlay::-webkit-scrollbar,
 #bottom-ui-overlay::-webkit-scrollbar {
