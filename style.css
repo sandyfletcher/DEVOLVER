@@ -18,31 +18,62 @@ body {
     align-items: center;
 }
 #app-container {
-    display: flex;
-    flex-direction: column;
+    display: flex; /* MODIFIED: Keep as flex to center game-wrapper */
+    flex-direction: column; /* If you have other elements besides game-wrapper directly in app-container */
+    justify-content: center; /* To center game-wrapper if it's smaller */
+    align-items: center;   /* To center game-wrapper if it's smaller */
     width: 97vw;
     height: 94vh;
     box-shadow: 0 0 1rem rgba(255, 255, 255, 0.3);
-    padding: 0.5rem;
+    padding: 0.5rem; /* This padding will be outside game-wrapper */
     box-sizing: border-box;
-    margin: auto;
-    position: relative;
+    margin: auto; /* This, along with body flex, centers app-container */
+    position: relative; /* For boot-overlay, menu-overlay */
     transition: filter 0.3s ease;
-    overflow: hidden;
+    overflow: hidden; /* Keep overflow hidden */
 }
-#top-ui-overlay {
-    position: absolute;
-    top: 0.5rem;
-    left: 0.5rem; 
-    right: 0.5rem;
-    padding: 0.3rem;
-    background-color: black;
+#game-wrapper {
+    /* flex-grow: 1; Allow app-container to size this via its own flex settings if needed */
+    width: 100%; /* Take full width of app-container's content box */
+    height: 100%; /* Take full height of app-container's content box */
+    min-height: 0;
+    position: relative; /* CRUCIAL: Establishes positioning context for absolute children */
     border: 0.2rem solid white;
     box-sizing: border-box;
-    z-index: 51;
+    display: flex; /* To center canvas if it's smaller than wrapper */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Important for child overlays */
+    background-color: #111; /* Background of the game area */
+}
+#top-ui-overlay {
+    position: absolute; /* Positioned relative to game-wrapper */
+    top: 0.1rem;
+    left: 0.1rem;
+    right: 0.1rem;
+    padding: 0.3rem;
+    background-color: black; /* Or transparent if you want game to show through gaps */
+    border: 0.2rem solid white;
+    box-sizing: border-box;
+    z-index: 51; /* Ensures it's above canvas and epoch-overlay (if epoch is lower) */
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
+}
+#bottom-ui-overlay {
+    position: absolute; /* Positioned relative to game-wrapper */
+    bottom: 0.1rem;
+    left: 0.1rem;
+    right: 0.1rem;
+    padding: 0.5rem;
+    background-color: black; /* Or transparent */
+    box-sizing: border-box;
+    z-index: 51; /* Same as top-ui-overlay */
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    border: 0.2rem solid white;
+    max-height: 30%; /* Optional: constrain height if it grows too much */
 }
 #top-info-row {
     display: flex;
@@ -125,33 +156,24 @@ body {
     text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
     pointer-events: none;
 }
-#game-wrapper {
-    flex-grow: 1;
-    height: 100%;
-    width: 100%;
-    min-height: 0;
-    position: relative; /* This is important for absolute positioning of children like top/bottom UI */
-    border: 0.2rem solid white;
-    box-sizing: border-box;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    overflow: hidden;
-    background-color: #111;
-}
+
 #game-canvas {
     display: block;
+    /* Canvas will try to be as large as its container (#game-wrapper) allows,
+       respecting its aspect ratio due to object-fit: contain.
+       It doesn't need explicit z-index as absolutely positioned siblings with z-index
+       will naturally be on top. */
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
-    /* The canvas itself doesn't need a z-index here as its stacking order
-       will be naturally behind absolutely positioned children of game-wrapper */
 }
+
+/* Epoch overlay is also inside game-wrapper */
 #epoch-overlay {
     position: absolute;
-    top: 20%;
+    top: 20%; /* Example positioning */
     left: 0;
     width: 100%;
     text-align: center;
@@ -159,26 +181,13 @@ body {
     font-size: 3em;
     color: white;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
-    z-index: 50; /* Ensure it's above canvas, potentially below top/bottom UI if needed */
+    z-index: 50; /* Below UI overlays but above canvas */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
     pointer-events: none;
 }
-#bottom-ui-overlay {
-    position: absolute;
-    bottom: 0.5rem;
-    left: 0.5rem;
-    right: 0.5rem;
-    padding: 0.5rem;
-    background-color: black;
-    box-sizing: border-box;
-    z-index: 51; /* Same as top-ui-overlay */
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
-    border: 0.2rem solid white;
-}
+
 #item-selection-area {
     display: flex;
     flex-direction: column;
@@ -282,10 +291,12 @@ body {
     text-shadow: 1px 1px 1px black;
     pointer-events: none;
 }
+
+/* Boot and Menu overlays are positioned relative to app-container */
 #boot-overlay,
 #menu-overlay {
     position: absolute;
-    top: 0;
+    top: 0;  /* Covers app-container, not just game-wrapper */
     left: 0;
     width: 100%;
     height: 100%;
@@ -316,7 +327,7 @@ body {
     z-index: 100;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0s;
 }
-#menu-overlay.force-opaque {
+#menu-overlay.force-opaque { /* When settings opened from main menu */
     background-color: black;
 }
 #menu-overlay.active {
@@ -325,8 +336,9 @@ body {
     pointer-events: auto;
     transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
 }
+
 .overlay-content {
-    display: none;
+    display: none; /* Controlled by JS or more specific CSS rules */
     flex-direction: column;
     align-items: center;
     width: 80%;
@@ -334,12 +346,14 @@ body {
     padding: 20px;
     box-sizing: border-box;
 }
+
 #menu-overlay.active.show-cutscene #overlay-cutscene-content {
     width: 100%;
     height: 100%;
     max-width: none;
     position: relative;
 }
+
 #overlay-settings-content {
     flex-direction: column;
     align-items: center;
@@ -383,16 +397,18 @@ body {
     text-align: right;
 }
 #overlay-settings-content .settings-button.muted,
-#overlay-settings-content .settings-button.active {
+#overlay-settings-content .settings-button.active { /* .active for toggle grid */
     border-color: darkred;
     color: darkred;
     background-color: #fee;
 }
-#overlay-settings-content #settings-btn-toggle-grid.active {
+#overlay-settings-content #settings-btn-toggle-grid.active { /* Specific styling for active grid */
     background-color: #dfd;
     border-color: darkgreen;
     color: darkgreen;
 }
+
+
 #boot-overlay.show-error {
     background-color: rgba(0, 0, 0, 0.95);
     color: red;
@@ -424,6 +440,8 @@ body {
     font-size: 1em;
     color: #ffdddd;
 }
+
+
 #boot-overlay h1, #menu-overlay h1 {
     font-family: 'RubikIso', sans-serif;
     font-size: 3.5em;
@@ -470,6 +488,7 @@ body {
     border-color: #e0e0e0;
     transform: scale(0.97);
 }
+
 #restart-button-overlay,
 #restart-button-overlay-pause {
     background-color: darkred; color: white; border-color: #ffaaaa;
@@ -492,16 +511,21 @@ body {
 #settings-button-overlay-pause:hover {
     background-color: #666;
 }
+
+/* When a modal overlay (boot/menu) is active, blur #game-wrapper */
 #app-container.overlay-active > #game-wrapper {
     filter: blur(4px) brightness(0.6);
     pointer-events: none;
     transition: filter 0.3s ease;
 }
+/* Default state when no modal overlay is active */
 #app-container > #game-wrapper {
     filter: none;
     pointer-events: auto;
     transition: filter 0.3s ease;
 }
+
+
 #landscape-warning {
     display: none;
     position: fixed;
@@ -519,16 +543,18 @@ body {
 noscript p {
     color: white; text-align: center; padding: 20px;
 }
-#top-ui-overlay::-webkit-scrollbar, 
+
+#top-ui-overlay::-webkit-scrollbar,
 #bottom-ui-overlay::-webkit-scrollbar {
     display: none;
 }
-#top-ui-overlay, 
+#top-ui-overlay,
 #bottom-ui-overlay {
     -ms-overflow-style: none; scrollbar-width: none;
 }
+
 #overlay-cutscene-content {
-    position: relative;
+    position: relative; /* For absolute positioning of skip button and text box */
     overflow: hidden;
     flex-direction: column;
     justify-content: center;
@@ -556,9 +582,9 @@ noscript p {
     pointer-events: none;
 }
 #menu-overlay.active.show-cutscene #cutscene-text-box {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
+    display: flex; /* Use flex for alignment if needed */
+    align-items: center; /* Vertically center text in box */
+    justify-content: flex-start; /* Align text to the left */
     position: absolute;
     bottom: 5%;
     left: 50%;
@@ -569,21 +595,21 @@ noscript p {
     background-color: rgba(0, 0, 30, 0.8);
     border: 2px solid rgba(100, 100, 255, 0.7);
     border-radius: 10px;
-    padding: 15px 20px;
+    padding: 15px 20px; /* Adjust padding */
     box-sizing: border-box;
     z-index: 5;
     color: #e0e0ff;
-    font-family: 'Arial', sans-serif;
+    font-family: 'Arial', sans-serif; /* Example font */
     box-shadow: 0 2px 15px rgba(0,0,0,0.6);
 }
 #menu-overlay.active.show-cutscene #overlay-cutscene-content #cutscene-skip-button {
     position: absolute;
     bottom: 1rem;
     right: 1rem;
-    z-index: 10;
+    z-index: 10; /* Above text box */
     padding: 8px 15px;
     font-size: 1em;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent */
     color: white;
     border-color: rgba(255, 255, 255, 0.3);
 }
@@ -600,8 +626,8 @@ noscript p {
     line-height: 1.6;
     text-align: left;
     width: 100%;
-    max-height: 100px;
-    overflow-y: auto;
+    max-height: 100px; /* Example: Limit height if text is very long */
+    overflow-y: auto;  /* Add scroll if text exceeds max-height */
 }
 #overlay-cutscene-content #cutscene-skip-button:hover {
     background-color: rgba(0, 0, 0, 0.7);
@@ -611,6 +637,7 @@ noscript p {
     transform: scale(0.97);
     background-color: rgba(0, 0, 0, 0.9);
 }
+
 @media (orientation: portrait) {
     #app-container { display: none; }
     #landscape-warning { display: flex; }

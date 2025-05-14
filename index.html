@@ -11,6 +11,12 @@
     <body>
         <div id="app-container">
             <main id="game-wrapper">
+                <!-- Canvas is drawn first, will be at the bottom of the stacking context by default -->
+                <canvas id="game-canvas" width="800" height="800">
+                    Your browser does not support the HTML canvas.
+                </canvas>
+
+                <!-- Top UI Overlay - will be positioned absolutely on top of the canvas -->
                 <div id="top-ui-overlay">
                     <div id="top-info-row">
                         <div id="player-column" class="top-info-column">
@@ -33,10 +39,11 @@
                         <div id="timer-text-overlay">TIME REMAINING</div>
                     </div>
                 </div>
-                <canvas id="game-canvas" width="800" height="800">
-                    Your browser does not support the HTML canvas.
-                </canvas>
+
+                <!-- Epoch Overlay - also absolutely positioned -->
                 <div id="epoch-overlay"></div>
+
+                <!-- Bottom UI Overlay - will be positioned absolutely on top of the canvas -->
                 <div id="bottom-ui-overlay">
                     <div id="item-selection-area">
                         <div id="inventory-boxes-container">Loading...</div>
@@ -44,6 +51,8 @@
                     </div>
                 </div>
             </main>
+
+            <!-- These overlays cover the entire app-container, not just the game-wrapper -->
             <div id="boot-overlay" class="show-title">
                 <div id="overlay-title-content" class="overlay-content">
                     <h1>DEVOLVER</h1>
@@ -64,9 +73,9 @@
                 </div>
                 <div id="overlay-settings-content" class="overlay-content">
                     <h2>SETTINGS</h2>
-                    <div class="settings-row"> 
+                    <div class="settings-row">
                         <button id="settings-btn-toggle-grid" class="settings-button">Toggle Grid</button>
-                        <span id="settings-value-grid"></span> 
+                        <span id="settings-value-grid"></span>
                     </div>
                     <div class="settings-row">
                         <button id="settings-btn-mute-music" class="settings-button">Toggle Music</button>
