@@ -554,19 +554,12 @@ noscript p {
 #top-sidebar::-webkit-scrollbar, #bottom-sidebar::-webkit-scrollbar {
     display: none;
 }
-#top-sidebar, #bottom-sidebar { /* For Firefox scrollbar hiding */
+#top-sidebar, #bottom-sidebar {
     -ms-overflow-style: none; scrollbar-width: none;
 }
-
-/* Cutscene Specific Styles (within #menu-overlay #overlay-cutscene-content) */
-/* #overlay-cutscene-content itself inherits display:none from .overlay-content.
-   JS will set display:flex when it's active.
-   The #menu-overlay.active.show-cutscene #overlay-cutscene-content rule above handles layout.
-*/
 #overlay-cutscene-content {
     position: relative;
     overflow: hidden;
-    /* display: flex; is now handled by JS for .overlay-content */
     flex-direction: column;
     justify-content: center;
     align-items: center;
@@ -592,7 +585,7 @@ noscript p {
     transition: opacity 0.7s ease-in-out, visibility 0s linear 0.7s;
     pointer-events: none;
 }
-#menu-overlay.active.show-cutscene #cutscene-text-box { /* This rule makes the textbox appear when cutscene content is shown */
+#menu-overlay.active.show-cutscene #cutscene-text-box {
     display: flex;
     align-items: center;
     justify-content: flex-start;

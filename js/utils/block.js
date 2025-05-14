@@ -14,7 +14,8 @@ export function createBlock(type, isPlayerPlaced = false) { // creates standard 
         type: type,
         hp: currentHp,
         maxHp: baseHp,
-        isPlayerPlaced: isPlayerPlaced
+        isPlayerPlaced: isPlayerPlaced,
+        isLit: false
         // add other shared block properties here if needed, e.g.: lightEmitted: 0, lightPassThrough: 0.8, customData: null,
     };
 }

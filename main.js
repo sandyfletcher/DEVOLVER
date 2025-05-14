@@ -167,13 +167,13 @@ async function performBackgroundWorldGeneration() {
     if (worldGenerationPromise && !isWorldGenerated) {
         return worldGenerationPromise;
     }
-    // console.log("[Main] Starting background world generation...");
     isWorldGenerated = false;
     worldGenerationPromise = (async () => {
         try {
             WorldManager.executeInitialWorldGenerationSequence();
             const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
             for (let i = 0; i < initialAgingPasses; i++) {
+                WorldManager.applyLightingPass();
                 AgingManager.applyAging(null);
             }
             if (!Renderer.getGridCanvas()) {
@@ -182,7 +182,6 @@ async function performBackgroundWorldGeneration() {
             WorldManager.renderStaticWorldToGridCanvas();
             WorldManager.seedWaterUpdateQueue();
             isWorldGenerated = true;
-            // console.log("[Main] Background world generation COMPLETE.");
         } catch (error) {
             console.error("[Main] FATAL error during background world generation:", error);
             isWorldGenerated = false;

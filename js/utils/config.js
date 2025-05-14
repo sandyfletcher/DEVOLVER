@@ -67,7 +67,7 @@ export const AGING_NOISE_SCALE = 0.03;   // Scale for Perlin noise used in aging
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 0.45); // Threshold in rows for stoneification.
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT; // Threshold in pixels.
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
-export const AGING_INITIAL_PASSES = 25; // Number of aging passes on initial world generation.
+export const AGING_INITIAL_PASSES = 50; // Number of aging passes on initial world generation.
 export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default aging passes between waves.
 export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Probabilities (chance per eligible block per pass)
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
@@ -90,6 +90,10 @@ export const AGING_PROB_TREE_CANOPY_GROW = 0.1;  // Chance for a tree canopy blo
 export const TREE_MAX_CANOPY_RADIUS = 4;          // Maximum radius (in blocks) a tree canopy can reach
 export const AGING_PROB_TREE_TRUNK_DECAY = 0.005; // Chance for a tree WOOD block (part of a trunk) to decay into AIR
 export const AGING_PROB_TREE_CANOPY_DECAY = 0.01; // Chance for a tree VEGETATION block (part of canopy) to decay
+export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.02; // NEW: Chance for VEG surrounded by VEG to become WOOD
+export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.1; // NEW: Chance for WOOD to grow WOOD upwards (if supported and air above)
+export const TREE_MIN_HEIGHT_TO_FORM_ORGANIC = 4;   // NEW or Repurpose: Min trunk height for organic canopy formation
+export const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 15; // Keep this: Max height before trunk collapses
 
 // --- Aging Animation Parameters ---
 
@@ -399,7 +403,7 @@ export const ENEMY_STATS = { // Enemy Stats: Speeds/velocities/forces are base v
         swimSpeed_BLOCKS_PER_SEC: 12.5,
         health: 2, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
         canJump: true,
-        jumpVelocity_BLOCKS_PER_SEC: 37.5, // Formerly 150 (200*0.75)
+        jumpVelocity_BLOCKS_PER_SEC: 37.5,
         canSwim: false, canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC,
@@ -476,7 +480,7 @@ export const WAVES = [
 
 export const CUTSCENE_IMAGE_DURATION = 2.0; // Seconds each image is displayed.
 export const CUTSCENE_IMAGE_PATHS = [
-    'assets/cut1.jpg',
+    'assets/cut1.png',
     'assets/cut2.jpg',
     'assets/cut3.png',
     'assets/cut4.png',

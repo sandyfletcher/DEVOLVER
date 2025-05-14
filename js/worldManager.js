@@ -28,6 +28,12 @@ const MAX_FALLING_BLOCKS_AT_ONCE = 20; // Configurable: how many blocks fall vis
 const GRAVITY_ANIMATION_FALL_SPEED = 200; // Configurable: pixels per second for visual fall
 const NEW_GRAVITY_ANIM_DELAY = 0.02; // Configurable: delay between starting falling block visuals
 
+// --- NEW: Lighting System Constants ---
+const SUN_MOVEMENT_Y_ROW_OFFSET = -3; // Sun's conceptual center Y, in rows, *above* row 0. Negative means above.
+const SUN_RAYS_PER_POSITION = 36;    // Number of rays cast from each sun position.
+const SUN_MOVEMENT_STEP_COLUMNS = 5;   // Sun moves this many columns at a time.
+const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2); // Max length of a light ray in block units.
+
 // This function will take the output of `diffGrids` and try to identify falling blocks.
 function parseGravityDiffsIntoFallingBlocks(diffs) {
     const fallingBlocks = [];
@@ -375,6 +381,92 @@ function applyInitialFloodFill() {
     // console.log(`[WorldManager] Flood fill (Logical) complete. Filled ${processed} water blocks.`);
 }
 
+// --- NEW: Lighting Pass Function ---
+export function applyLightingPass() {
+    // console.log("[WorldManager] Applying lighting pass...");
+    let litBlockCount = 0; // <--- NEW: Initialize counter
+
+    // 1. Reset isLit for all non-air/non-water blocks in the worldGrid
+    const grid = World.getGrid();
+    if (!grid || grid.length === 0) {
+        console.error("[WorldManager] applyLightingPass: World grid not available.");
+        return;
+    }
+
+    for (let r = 0; r < Config.GRID_ROWS; r++) {
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+            const block = grid[r][c];
+            if (typeof block === 'object' && block !== null) {
+                block.isLit = false;
+            }
+        }
+    }
+
+    // 2. Simulate sun movement and cast rays
+    const sunCenterPixelY = (SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
+    const sunStartPixelX = Config.CANVAS_WIDTH + (Config.BLOCK_WIDTH * 10);
+    const sunEndPixelX = -(Config.BLOCK_WIDTH * 10);
+    const sunStepPixelX = SUN_MOVEMENT_STEP_COLUMNS * Config.BLOCK_WIDTH;
+
+    for (let currentSunPixelX = sunStartPixelX; currentSunPixelX >= sunEndPixelX; currentSunPixelX -= sunStepPixelX) {
+        const sunGridCol = Math.floor(currentSunPixelX / Config.BLOCK_WIDTH);
+        const sunGridRow = Math.floor(sunCenterPixelY / Config.BLOCK_HEIGHT);
+
+        for (let i = 0; i < SUN_RAYS_PER_POSITION; i++) {
+            const angle = (i / SUN_RAYS_PER_POSITION) * 2 * Math.PI;
+            let rayCurrentGridCol = sunGridCol;
+            let rayCurrentGridRow = sunGridRow;
+            const rayEndGridCol = Math.floor(sunGridCol + Math.cos(angle) * MAX_LIGHT_RAY_LENGTH_BLOCKS);
+            const rayEndGridRow = Math.floor(sunGridRow + Math.sin(angle) * MAX_LIGHT_RAY_LENGTH_BLOCKS);
+
+            let dx = Math.abs(rayEndGridCol - rayCurrentGridCol);
+            let dy = Math.abs(rayEndGridRow - rayCurrentGridRow);
+            let sx = (rayCurrentGridCol < rayEndGridCol) ? 1 : -1;
+            let sy = (rayCurrentGridRow < rayEndGridRow) ? 1 : -1;
+            let err = dx - dy;
+            let currentRayBlockLength = 0;
+
+            while (currentRayBlockLength < MAX_LIGHT_RAY_LENGTH_BLOCKS) {
+                if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
+                    rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
+                    
+                    const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow);
+                    const blockType = (typeof block === 'object' && block !== null) ? block.type : block;
+
+                    if (blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER && block !== null) {
+                        if (typeof block === 'object') {
+                            if (!block.isLit) { // Only count if it wasn't already lit in this pass by another ray
+                                litBlockCount++; // <--- NEW: Increment counter
+                            }
+                            block.isLit = true;
+                        }
+                        break; 
+                    }
+                } else if (rayCurrentGridRow >= Config.GRID_ROWS) {
+                    break;
+                }
+
+                if (rayCurrentGridCol === rayEndGridCol && rayCurrentGridRow === rayEndGridRow) {
+                    break;
+                }
+
+                let e2 = 2 * err;
+                if (e2 > -dy) {
+                    err -= dy;
+                    rayCurrentGridCol += sx;
+                }
+                if (e2 < dx) {
+                    err += dx;
+                    rayCurrentGridRow += sy;
+                }
+                currentRayBlockLength++;
+            }
+        }
+    }
+    console.log(`[WorldManager] Lighting pass complete. ${litBlockCount} blocks were newly lit.`); // <--- NEW: Log the count
+}
+
+
 // -----------------------------------------------------------------------------
 // --- Initialization ---
 // -----------------------------------------------------------------------------
@@ -382,12 +474,10 @@ function applyInitialFloodFill() {
 
 export function executeInitialWorldGenerationSequence() {
     console.log("[WorldManager] Executing initial world data generation sequence...");
-    // generateWorldFromGenerator calls World.initializeGrid(), generateLandmass(), and generateCavesConnected()
-    generateWorldFromGenerator();
-
+    generateWorldFromGenerator(); // World.initializeGrid(), generateLandmass(), and generateCavesConnected()
     applyGravitySettlement(null); // Pass null as no portal exists yet for protection
     applyInitialFloodFill();
-
+    applyLightingPass(); // Apply initial lighting pass after world structure is set
     // Initialize animation queues (these are module-level variables in WorldManager)
     agingAnimationQueue = [];
     activeAgingAnimations = [];
@@ -395,7 +485,6 @@ export function executeInitialWorldGenerationSequence() {
     gravityAnimationQueue = [];
     activeGravityAnimations = [];
     newGravityAnimationStartTimer = 0;
-
     console.log("[WorldManager] Initial world data generation sequence complete.");
 }
 

@@ -164,6 +164,7 @@ function triggerWarpCleanupAndCalculations() {
     if (gravityAnimationChanges.length > 0) {
         WorldManager.addProposedGravityChanges(gravityAnimationChanges);
     }
+
     // 3. Logical Aging Process
     console.log("[WaveMgr] Applying aging process (LOGICAL) post-settlement...");
     const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
@@ -173,12 +174,11 @@ function triggerWarpCleanupAndCalculations() {
     if (nextWaveData && typeof nextWaveData === 'object') {
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
         for (let i = 0; i < passes; i++) {
-            const changesInPass = AgingManager.applyAging(portalRef); // Returns {visualChanges: Array, gravityChanges: Array}
-            // Collect visual changes
+            WorldManager.applyLightingPass(); // <--- NEW: Run lighting pass
+            const changesInPass = AgingManager.applyAging(portalRef);
             if (changesInPass.visualChanges && Array.isArray(changesInPass.visualChanges)) {
                 allVisualAgingChangesFromAgingPasses.push(...changesInPass.visualChanges);
             }
-            // Collect gravity changes from aging (e.g., tree collapse)
             if (changesInPass.gravityChanges && Array.isArray(changesInPass.gravityChanges)) {
                 allGravityChangesFromAgingPasses.push(...changesInPass.gravityChanges);
             }
@@ -187,14 +187,13 @@ function triggerWarpCleanupAndCalculations() {
         if (allVisualAgingChangesFromAgingPasses.length > 0) {
             WorldManager.addProposedAgingChanges(allVisualAgingChangesFromAgingPasses);
         }
-        // Add gravity changes from aging to the WorldManager's gravity animation queue
         if (allGravityChangesFromAgingPasses.length > 0) {
             WorldManager.addProposedGravityChanges(allGravityChangesFromAgingPasses);
         }
         const epochName = nextWaveData.epochName ?? `Preparing Wave ${nextWaveData.mainWaveNumber ?? 'Next'}`;
-        UI.showEpochText(epochName); // show epoch text for upcoming wave
+        UI.showEpochText(epochName);
     } else {
-        UI.showEpochText("Final Preparations..."); // fallback if no next wave data
+        UI.showEpochText("Final Preparations...");
         console.warn("[WaveMgr] No next wave data found for aging process. This might be the last wave transition before victory.");
     }
 }
