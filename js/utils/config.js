@@ -2,7 +2,42 @@
 // root/js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
-// --- Game Grid Parameters ---
+// --- Audio Constants ---
+
+export const AUDIO_SFX_POOL_SIZE = 8;
+export const AUDIO_DEFAULT_GAME_VOLUME = 0.4;
+export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
+export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
+export const AUDIO_TRACKS = {
+    // title: 'assets/audio/title_music.mp3',
+    pause: 'assets/audio/music/Pause.mp3',
+    // gameOver: 'assets/audio/gameover_music.mp3',
+    victory: 'assets/audio/music/Victory.mp3',
+    // introMusic: 'assets/audio/music/Intro.mp3',
+    wave1: 'assets/audio/music/Wave1-350.mp3',
+    wave2: 'assets/audio/music/Wave2-300.mp3',
+    wave3: 'assets/audio/music/wave3.mp3',
+    // SFX placeholders
+    // player_hit: 'assets/audio/sfx/player_hit.wav',
+};
+
+// --- Camera / Viewport ---
+
+export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (e.g., 0.25 means zoomed out to 1/4 size).
+export const MAX_CAMERA_SCALE = 3.0;  // Max zoom level (e.g., 3.0 means zoomed in 3x).
+export const ZOOM_SPEED_FACTOR = 0.001; // Sensitivity of mouse wheel zoom.
+
+// --- Cutscene Parameters ---
+
+export const CUTSCENE_IMAGE_DURATION = 2.0; // seconds image displayed
+export const CUTSCENE_SLIDES = [
+    { imagePath: 'assets/cut1.png', text: "In the near future, dolphins master nuclear fusion and seize control of the planet." },
+    { imagePath: 'assets/cut2.jpg', text: "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time." },
+    { imagePath: 'assets/cut3.png', text: "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position." },
+    { imagePath: 'assets/cut4.png', text: "Only one thing has followed you back in time - a simple shovel.  Will that be enough?" }
+];
+
+// --- Game Grid ---
 
 export const BACKGROUND_COLOR = 'rgb(135, 206, 235)'; // TODO: develop background images with moving parts
 export const BASE_BLOCK_PIXEL_SIZE = 16; // size in pixels of one side of square block
@@ -12,6 +47,48 @@ export const GRID_COLS = 400; // # of columns in world grid
 export const GRID_ROWS = 200; // # of rows
 export const CANVAS_WIDTH = GRID_COLS * BLOCK_WIDTH; // internal canvas dimensions in pixels
 export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
+
+// --- Block Parameters ---
+
+export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
+export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70%
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // show X when HP <= 30%
+export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
+export const CAN_PLACE_IN_WATER = false;
+export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
+export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
+// Block Type IDs (numeric constants)
+export const BLOCK_AIR = 0; 
+export const BLOCK_WATER = 1;
+export const BLOCK_SAND = 2;
+export const BLOCK_DIRT = 3;
+export const BLOCK_VEGETATION = 4;
+export const BLOCK_STONE = 5;
+export const BLOCK_WOOD = 6;
+export const BLOCK_METAL = 7;
+export const BLOCK_BONE = 8;
+export const BLOCK_ROPE = 9;
+export const BLOCK_HP = {
+    [BLOCK_WATER]: Infinity, [BLOCK_SAND]: 30, [BLOCK_DIRT]: 50, [BLOCK_VEGETATION]: 25,
+    [BLOCK_STONE]: 300, [BLOCK_WOOD]: 100, [BLOCK_METAL]: 500, [BLOCK_BONE]: 120,
+};
+export const BLOCK_COLORS = {
+    [BLOCK_WATER]: 'rgb(50, 100, 200)', [BLOCK_SAND]: 'rgb(210, 180, 140)', [BLOCK_DIRT]: 'rgb(130, 82, 45)',
+    [BLOCK_VEGETATION]: 'rgb(80, 180, 80)', [BLOCK_STONE]: 'rgb(140, 140, 140)', [BLOCK_WOOD]: 'rgb(160, 110, 70)',
+    [BLOCK_METAL]: 'rgb(190, 190, 200)', [BLOCK_BONE]: 'rgb(200, 190, 170)',
+    [BLOCK_ROPE]: 30,
+};
+export const AGING_MATERIAL_CONVERSION_FACTORS = {
+    [BLOCK_DIRT]: 1.0, [BLOCK_VEGETATION]: 1.0, [BLOCK_STONE]: 1.0,
+    [BLOCK_BONE]: 1.0, [BLOCK_WOOD]: 1.0, [BLOCK_METAL]: 1.0,
+};
+export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal'];
+export const MATERIAL_TO_BLOCK_TYPE = {
+    'dirt': BLOCK_DIRT, 'stone': BLOCK_STONE, 'wood': BLOCK_WOOD,
+    'sand': BLOCK_SAND, 'metal': BLOCK_METAL, 'bone': BLOCK_BONE,
+    'vegetation': BLOCK_VEGETATION,
+};
 
 // --- Landmass Generation ---
 
@@ -27,9 +104,6 @@ export const MEAN_STONE_LEVEL = MEAN_GROUND_LEVEL + STONE_DEPTH_BELOW_GROUND; //
 export const WORLD_GROUND_VARIATION = 4; // Variation in rows for ground level noise
 export const WORLD_STONE_VARIATION = 2; // Variation in rows for stone level noise
 export const WORLD_NOISE_SCALE = 0.03; // Scale factor for Perlin noise used in terrain generation
-
-// --- Terrain Octave Parameters ---
-
 export const GROUND_NOISE_OCTAVES = 4;        // Number of octaves for ground surface noise
 export const GROUND_NOISE_PERSISTENCE = 0.5;  // Amplitude multiplier for each subsequent octave
 export const GROUND_NOISE_LACUNARITY = 2.0;   // Frequency multiplier for each subsequent octave
@@ -37,7 +111,7 @@ export const STONE_NOISE_OCTAVES = 3;         // Number of octaves for stone lay
 export const STONE_NOISE_PERSISTENCE = 0.45;
 export const STONE_NOISE_LACUNARITY = 2.2;
 
-// --- Cave Generation Parameters ---
+// --- Cave Generation ---
 
 export const ENABLE_CAVES = true;
 export const CAVE_NOISE_SCALE_X = 0.08; // Scale for 2D Perlin noise for caves (adjust for smaller/larger caves)
@@ -48,7 +122,7 @@ export const CAVE_MIN_ROWS_ABOVE_BOTTOM = 15; // Caves stop at least this many r
 export const CAVE_EDGE_ZONE_PERCENTAGE = 0.20; // Percentage of map width for edge zones (0.0 to 0.5)
 export const CAVE_EDGE_WATER_PROTECTION_DEPTH = 3; // How many blocks above/below water level to protect in edge zones
 
-// --- Beach Smoothing Parameters ---
+// --- Beach Smoothing ---
 
 export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WATER_LEVEL + 5; // Target row for ocean floor near the island
 export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // Target row for ocean stone near the island
@@ -80,9 +154,6 @@ export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
 export const AGING_PROB_VEGETATION_GROWTH_BASE = 0.1;         // Base probability if ANY side is exposed to air
 export const AGING_PROB_VEGETATION_GROWTH_PER_AIR_SIDE = 0.2; // Additional probability per air-exposed side
 export const AGING_MAX_AIR_SIDES_FOR_VEGETATION_BONUS = 3;    // Max number of air sides that contribute to bonus probability (e.g., 1-3 sides 
-
-// --- Tree Growth Parameters ---
-
 export const AGING_PROB_VEGETATION_GROW_UP = 0.05; // Chance for existing VEGETATION to grow upwards into AIR
 export const TREE_MIN_HEIGHT_TO_FORM = 5;         // Minimum contiguous VEGETATION blocks required to form a tree
 export const TREE_INITIAL_CANOPY_RADIUS = 2;      // Radius (in blocks) of the initial VEGETATION canopy when a tree forms (0=just top, 1=3x3, 2=5x5)
@@ -95,7 +166,7 @@ export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.1; // NEW: Chance for WOOD to gro
 export const TREE_MIN_HEIGHT_TO_FORM_ORGANIC = 4;   // NEW or Repurpose: Min trunk height for organic canopy formation
 export const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 15; // Keep this: Max height before trunk collapses
 
-// --- Aging Animation Parameters ---
+// --- Animation Parameters ---
 
 export const AGING_ANIMATION_BLOCKS_AT_ONCE = 5; // Max number of blocks animating simultaneously
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
@@ -105,7 +176,6 @@ export const AGING_ANIMATION_SWELL_SCALE = 1.8;   // Max scale factor during swe
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
 export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (bddriefly)
 export const WARPPHASE_DURATION = 8.0; // Fixed duration of WARP PHASE in seconds (time-based).
-
 export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // Total time in seconds for enemy death animation.
 export const ENEMY_SWELL_DURATION = 0.3;        // Time in seconds for the swell part of enemy death.
 export const ENEMY_SWELL_SCALE = 1.5;           // Max scale factor during enemy swell (e.g., 1.5x size).
@@ -113,47 +183,22 @@ export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time in seconds for
 export const PLAYER_SPIN_DURATION = 1.0;        // Time in seconds for the spin part of player death.
 export const PLAYER_SPIN_FRAMES = 6;            // Number of visual steps in the player spin animation.
 
-// --- Camera / Viewport ---
-
-export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (e.g., 0.25 means zoomed out to 1/4 size).
-export const MAX_CAMERA_SCALE = 3.0;  // Max zoom level (e.g., 3.0 means zoomed in 3x).
-export const ZOOM_SPEED_FACTOR = 0.001; // Sensitivity of mouse wheel zoom.
-
-// --- Block Parameters ---
-
-export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
-export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70%
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // show X when HP <= 30%
-export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
-export const CAN_PLACE_IN_WATER = false;
-export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
-export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
-
-// --- Delta-Time Based Physics - defined in "block units per second" and then converted to pixels/sec ---
+// --- Delta-Time Physics ---
 
 export const GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ = 100; // Base acceleration in block heights per second squared.
 export const GRAVITY_ACCELERATION = GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_HEIGHT; // Pixels per second squared.
 export const MAX_FALL_SPEED_BLOCKS_PER_SEC = 120; // Base max fall speed in block heights per second.
 export const MAX_FALL_SPEED = MAX_FALL_SPEED_BLOCKS_PER_SEC * BLOCK_HEIGHT; // Pixels per second.
 export const MAX_DELTA_TIME = 0.05; // Max time step in seconds to prevent physics glitches (~20fps min simulation).
-
-// Entity step-up allowance, defined as factors of entity height (already relative to scaled entity).
-
-export const ENTITY_STEP_TIER1_MAX_HEIGHT_FACTOR = 1/3;
+export const ENTITY_STEP_TIER1_MAX_HEIGHT_FACTOR = 1/3; // Entity step-up allowance, defined as factors of entity height (already relative to scaled entity).
 export const ENTITY_STEP_TIER2_MAX_HEIGHT_FACTOR = 1/2;
 export const ENTITY_STEP_TIER2_HORIZONTAL_FRICTION = 0.7; // Factor to multiply horizontal velocity by after a tier 2 step.
-
-// Water physics factors (unitless multipliers).
-
-export const WATER_GRAVITY_FACTOR = 0.4;
+export const WATER_GRAVITY_FACTOR = 0.4; // Water physics factors (unitless multipliers).
 export const WATER_HORIZONTAL_DAMPING = 0.1; // Lower values mean stronger damping.
 export const WATER_VERTICAL_DAMPING = 0.05;
 export const WATER_MAX_SPEED_FACTOR = 0.6;
 export const WATER_ACCELERATION_FACTOR = 0.5;
-
 // Water movement speeds defined in block units, then scaled to pixels.
-
 export const WATER_SWIM_VELOCITY_BLOCKS_PER_SEC = 50; // Base upward speed from a swim 'stroke' in block heights/sec.
 export const WATER_SWIM_VELOCITY = WATER_SWIM_VELOCITY_BLOCKS_PER_SEC * BLOCK_HEIGHT; // Pixels per second.
 export const WATER_MAX_SWIM_UP_SPEED_BLOCKS_PER_SEC = 20; // Base max upward swim speed in block heights/sec.
@@ -165,63 +210,6 @@ export const ENEMY_WATER_BUOYANCY_ACCEL = ENEMY_WATER_BUOYANCY_ACCEL_BLOCKS_PER_
 export const WATER_JUMP_COOLDOWN_DURATION = 0.2; // Time in seconds.
 export const WATER_PROPAGATION_DELAY = 0.05;    // Time in seconds between water simulation ticks.
 export const WATER_UPDATES_PER_FRAME = 500;   // Max number of water cells to process per simulation tick.
-
-// --- Audio Constants --- (Time/Volume based, no pixel scaling needed)
-
-export const AUDIO_SFX_POOL_SIZE = 8;
-export const AUDIO_DEFAULT_GAME_VOLUME = 0.4;
-export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
-export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
-export const AUDIO_TRACKS = {
-    // title: 'assets/audio/title_music.mp3',
-    pause: 'assets/audio/music/Pause.mp3',
-    // gameOver: 'assets/audio/gameover_music.mp3',
-    victory: 'assets/audio/music/Victory.mp3',
-    // introMusic: 'assets/audio/music/Intro.mp3',
-    wave1: 'assets/audio/music/Wave1-350.mp3',
-    wave2: 'assets/audio/music/Wave2-300.mp3',
-    wave3: 'assets/audio/music/wave3.mp3',
-    // SFX placeholders
-    // player_hit: 'assets/audio/sfx/player_hit.wav',
-};
-
-// --- Material Parameters ---
-
-export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal'];
-// Block Type IDs (numeric constants)
-export const BLOCK_AIR = 0;
-export const BLOCK_WATER = 1;
-export const BLOCK_SAND = 2;
-export const BLOCK_DIRT = 3;
-export const BLOCK_VEGETATION = 4;
-export const BLOCK_STONE = 5;
-export const BLOCK_WOOD = 6;
-export const BLOCK_METAL = 7;
-export const BLOCK_BONE = 8;
-export const BLOCK_ROPE = 9; // NEW ROPE BLOCK TYPE
-// Block HP
-export const BLOCK_HP = {
-    [BLOCK_WATER]: Infinity, [BLOCK_SAND]: 30, [BLOCK_DIRT]: 50, [BLOCK_VEGETATION]: 25,
-    [BLOCK_STONE]: 300, [BLOCK_WOOD]: 100, [BLOCK_METAL]: 500, [BLOCK_BONE]: 120,
-};
-// Block Colors
-export const BLOCK_COLORS = {
-    [BLOCK_WATER]: 'rgb(50, 100, 200)', [BLOCK_SAND]: 'rgb(210, 180, 140)', [BLOCK_DIRT]: 'rgb(130, 82, 45)',
-    [BLOCK_VEGETATION]: 'rgb(80, 180, 80)', [BLOCK_STONE]: 'rgb(140, 140, 140)', [BLOCK_WOOD]: 'rgb(160, 110, 70)',
-    [BLOCK_METAL]: 'rgb(190, 190, 200)', [BLOCK_BONE]: 'rgb(200, 190, 170)',
-    [BLOCK_ROPE]: 30, // NEW: Ropes have some HP??
-};
-// Material to Block Type mapping (fixed)
-export const MATERIAL_TO_BLOCK_TYPE = {
-    'dirt': BLOCK_DIRT, 'stone': BLOCK_STONE, 'wood': BLOCK_WOOD,
-    'sand': BLOCK_SAND, 'metal': BLOCK_METAL, 'bone': BLOCK_BONE,
-    'vegetation': BLOCK_VEGETATION,
-};
-// Sand Sedimentation: Factors for materials convertible by sand.
-export const AGING_MATERIAL_CONVERSION_FACTORS = {
-    [BLOCK_DIRT]: 1.0, [BLOCK_VEGETATION]: 1.0, [BLOCK_STONE]: 1.0,
-    [BLOCK_BONE]: 1.0, [BLOCK_WOOD]: 1.0, [BLOCK_METAL]: 1.0,
-};
 
 // --- Portal Parameters ---
 
@@ -268,8 +256,7 @@ export const PLAYER_ITEM_ATTRACT_RADIUS_SQ = PLAYER_ITEM_ATTRACT_RADIUS * PLAYER
 export const PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SEC = 60; // Base speed for attracted items in block widths/sec.
 export const PLAYER_ITEM_ATTRACT_SPEED = PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixels/sec.
 export const PLAYER_PLACEMENT_COOLDOWN = 0.01; // seconds between block placement
-// Player rope interaction (NEW or adjust if defaults existed)
-export const PLAYER_ROPE_CLIMB_SPEED_BLOCKS_PER_SEC = 30;
+export const PLAYER_ROPE_CLIMB_SPEED_BLOCKS_PER_SEC = 30; // Player rope interaction
 export const PLAYER_ROPE_CLIMB_SPEED = PLAYER_ROPE_CLIMB_SPEED_BLOCKS_PER_SEC * BLOCK_HEIGHT; // pixels/sec
 export const PLAYER_ROPE_SLIDE_SPEED_BLOCKS_PER_SEC = 45;
 export const PLAYER_ROPE_SLIDE_SPEED = PLAYER_ROPE_SLIDE_SPEED_BLOCKS_PER_SEC * BLOCK_HEIGHT; // pixels/sec
@@ -277,7 +264,6 @@ export const PLAYER_ROPE_HORIZONTAL_DAMPING = 0.001; // Very strong damping whil
 export const PLAYER_ROPE_DETACH_IMPULSE_X_BLOCKS_PER_SEC = 20;
 export const PLAYER_ROPE_DETACH_IMPULSE_X = PLAYER_ROPE_DETACH_IMPULSE_X_BLOCKS_PER_SEC * BLOCK_WIDTH; // pixels/sec
 export const PLAYER_ROPE_DETACH_JUMP_MULTIPLIER = 0.6; // e.g., 60% of normal jump velocity
-
 
 // --- Items & Weapons ---
 
@@ -485,27 +471,5 @@ export const WAVES = [
             { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
             { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
         ]
-    }
-];
-
-// --- Cutscene Parameters ---
-
-export const CUTSCENE_IMAGE_DURATION = 2.0; // Seconds each image is displayed.
-export const CUTSCENE_SLIDES = [
-    {
-        imagePath: 'assets/cut1.png',
-        text: "In the near future, dolphins master nuclear fusion and seize control of the planet."
-    },
-    {
-        imagePath: 'assets/cut2.jpg',
-        text: "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time."
-    },
-    {
-        imagePath: 'assets/cut3.png',
-        text: "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position."
-    },
-    {
-        imagePath: 'assets/cut4.png',
-        text: "Only one thing has followed you back in time - a simple shovel.  Will that be enough?"
     }
 ];
