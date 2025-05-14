@@ -16,7 +16,7 @@ export class Player {
         // Player dimensions are now scaled in config based on blocks
         this.width = Config.PLAYER_WIDTH;
         this.height = Config.PLAYER_HEIGHT;
-        this.color = color;
+        // this.color = color; // Color is now handled by hitbox or image
         // Physics state (velocity)
         this.vx = 0; // Velocity in pixels per second
         this.vy = 0; // Velocity in pixels per second
@@ -61,6 +61,24 @@ export class Player {
         // Initial position validation
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Player CONSTRUCTOR ERROR: NaN initial coordinates! Resetting to center.`);
+            this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
+            this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
+        }
+        // Player Image
+        this.image = new Image();
+        this.imageLoaded = false;
+        this.image.onload = () => {
+            this.imageLoaded = true;
+            console.log("Player image loaded.");
+        };
+        this.image.onerror = () => {
+            console.error("Player image failed to load from: " + Config.PLAYER_IMAGE_PATH);
+            this.imageLoaded = false; // Explicitly set to false on error
+        };
+        try {
+            this.image.src = Config.PLAYER_IMAGE_PATH;
+        } catch (e) {
+            console.error("Error setting player image src:", e);
             this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
             this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
         }
@@ -650,10 +668,13 @@ export class Player {
                     currentScale = 1.0; // If swellDuration is 0, just use base scale
                 }
                 rotationAngle = 0; // Reset rotation during swell for simplicity
-            } else {
-                ctx.restore(); // Restore context if saved
+            } else if (timeElapsed >= totalAnimationDuration) { // Animation finished
+                ctx.restore();
                 return; // Do not draw after animation duration
-            }
+            } else {
+                // Should not happen if timer logic is correct, but if it does, ensure scale and angle are reasonable
+                currentScale = 1.0; rotationAngle = 0;
+            } 
             // Apply transformations: translate to pivot, rotate, scale, translate back
             ctx.translate(pivotX, pivotY);
             ctx.rotate(rotationAngle);
@@ -662,9 +683,13 @@ export class Player {
             // Draw the player rectangle
             // Handle invulnerability flashing (draw player only on even intervals)
             // Don't flash while dying. Draw the dying animation regardless of invulnerability state.
-            ctx.fillStyle = this.color;
-            // Note: fillRect needs the original x, y, width, height. Transformations handle the rest.
-            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+            // Draw the player image instead of a solid rectangle
+            if (this.imageLoaded && this.image.complete && this.image.naturalWidth > 0) {
+                ctx.drawImage(this.image, Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+            } else { // Fallback if image not loaded for dying animation
+                ctx.fillStyle = Config.PLAYER_HITBOX_COLOR; // Use hitbox color as fallback
+                ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+            }
             ctx.restore(); // Restore context
             return; // Drawing handled, exit
         }
@@ -676,12 +701,16 @@ export class Player {
             // Simple flash effect: draw every other 100ms interval
             shouldDrawPlayer = Math.floor(performance.now() / 100) % 2 === 0;
         }
-        // Draw Player Body
-        // player.width and player.height are scaled in constructor
-        if (shouldDrawPlayer) {
-            ctx.fillStyle = this.color;
-            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-            // Draw Held Weapon Visual
+        // 1. Draw Hitbox (Translucent Rectangle)
+        ctx.fillStyle = Config.PLAYER_HITBOX_COLOR;
+        ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+
+        // 2. Draw Player Image on top (if not flashing off)
+        if (shouldDrawPlayer && this.imageLoaded && this.image.complete && this.image.naturalWidth > 0) {
+            ctx.drawImage(this.image, Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+        }
+
+        // Draw Held Weapon Visual (on top of image/hitbox)
             if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
                 ctx.save(); // Save context state before transformations
                 const playerCenterX = this.x + this.width / 2;
@@ -716,8 +745,7 @@ export class Player {
                 }
                 ctx.restore(); // Restore context state (removes translation/rotation)
             }
-        } // End if(shouldDrawPlayer)
-        // Draw Attack Hitbox Visual
+        // Draw Attack Hitbox Visual (separate from player body)
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             const hitbox = this.getAttackHitbox(); // Calculate current hitbox position/size (getAttackHitbox uses scaled values)
             if (hitbox) {
@@ -1155,7 +1183,7 @@ export class Player {
                 // Use the main equip logic
                 return this.equipItem(materialType);
             } else {
-                onsole.log(`Cannot select ${materialType}, count is 0.`);
+                // console.log(`Cannot select ${materialType}, count is 0.`); // Changed 'onsole' to 'console'
                 // Optionally switch to unarmed if trying to select an empty slot?
                 // this.equipItem(Config.WEAPON_TYPE_UNARMED);
             }
@@ -1270,13 +1298,20 @@ export class Player {
             this.x = Config.CANVAS_WIDTH / 2 - this.width/2;
             this.y = Config.CANVAS_HEIGHT / 2 - this.height/2;
         }
+        // Reset image loaded state if image src is re-set or needs re-check
+        this.imageLoaded = false;
+        if (this.image.src !== Config.PLAYER_IMAGE_PATH) { // If src was changed or cleared
+             this.image.src = Config.PLAYER_IMAGE_PATH; // Will trigger onload/onerror again
+        } else if (this.image.complete && this.image.naturalWidth > 0) {
+             this.imageLoaded = true; // Image was already loaded and src matches
+        } // else: src matches but not loaded, onload will handle it.
     }
     // --- Resets only the player's position and physics state (e.g., after falling out) ---
     resetPosition() {
         // Falling out now triggers the death animation
         this.die(); // This will set isDying, stop movement, etc.
     }
-    isActive() {
+    isActive() { // Method name should be `getIsActive` or just accessed via property if public, fixed to avoid conflict with property
         return this.isActive;
     }
 }

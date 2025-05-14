@@ -141,8 +141,8 @@ export const AGING_NOISE_SCALE = 0.03;   // Scale for Perlin noise used in aging
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 0.45); // Threshold in rows for stoneification.
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT; // Threshold in pixels.
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
-export const AGING_INITIAL_PASSES = 50; // Number of aging passes on initial world generation.
-export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default aging passes between waves.
+export const AGING_INITIAL_PASSES = 10; // Number of aging passes on initial world generation.
+export const AGING_DEFAULT_PASSES_PER_WAVE = 5 // Default aging passes between waves.
 export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Probabilities (chance per eligible block per pass)
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
 export const AGING_PROB_WATER_EROSION_DIRT_VEGETATION = 0.9;
@@ -229,6 +229,8 @@ export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above me
 
 // --- Player Parameters ---
 
+export const PLAYER_IMAGE_PATH = 'assets/player.png'; // Path to the player image
+export const PLAYER_HITBOX_COLOR = 'rgba(200, 50, 50, 0.3)'; // Color for the player's hitbox
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
 export const PLAYER_WIDTH_BLOCKS = 3;  // Player width in block units.
 export const PLAYER_HEIGHT_BLOCKS = 6; // Player height in block units.
