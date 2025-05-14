@@ -602,3 +602,13 @@ export function updateMyaEpochTransition(dt) {
 export function isInitialized() { // Add a getter to check if the main game UI initialization was successful
     return isUIReady;
 }
+export function getMyaTransitionInfo() {
+    if (isMyaTransitionActive) {
+        return {
+            timer: myaTransitionTimer,
+            duration: myaTransitionDuration,
+            isActive: true
+        };
+    }
+    return { timer: 0, duration: 0, isActive: false };
+}

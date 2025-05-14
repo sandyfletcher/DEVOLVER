@@ -38,6 +38,7 @@ export function setBlock(col, row, blockType, isPlayerPlaced = false) { // sets 
         return false; // out of bounds
     }
 }
+
 export function setBlockData(col, row, blockData) { // directly sets block data at given coordinates, primarily used by world generator for efficiency during initial creation
     if (row >= 0 && row < Config.GRID_ROWS && col >= 0 && col < Config.GRID_COLS) {
         if (!worldGrid[row]) {
@@ -57,4 +58,16 @@ export function setBlockData(col, row, blockData) { // directly sets block data 
 }
 export function getGrid() { // retrieves the entire world grid array, bypassing safety checks in setBlock/getBlock
     return worldGrid;
+}
+export function resetAllBlockLighting() {
+    if (!worldGrid || worldGrid.length === 0) return;
+    for (let r = 0; r < Config.GRID_ROWS; r++) {
+        for (let c = 0; c < Config.GRID_COLS; c++) {
+            const block = worldGrid[r]?.[c];
+            if (typeof block === 'object' && block !== null && block.type !== Config.BLOCK_AIR && block.type !== Config.BLOCK_WATER) {
+                block.isLit = false;
+            }
+        }
+    }
+    // console.log("[World] All block lighting states reset to false.");
 }

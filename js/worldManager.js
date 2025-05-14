@@ -24,26 +24,30 @@ let gravityAnimationQueue = []; // Stores { c, r_start, r_end, blockData }
 let activeGravityAnimations = []; // Stores { c, r_current_pixel_y, r_end_pixel_y, blockData, fallSpeed }
 let newGravityAnimationStartTimer = 0; // Timer for staggering gravity animations
 
-const MAX_FALLING_BLOCKS_AT_ONCE = 20; // Configurable: how many blocks fall visually at once
-const GRAVITY_ANIMATION_FALL_SPEED = 200; // Configurable: pixels per second for visual fall
-const NEW_GRAVITY_ANIM_DELAY = 0.02; // Configurable: delay between starting falling block visuals
+// --- NEW: Lighting Animation State ---
+let lightingAnimationQueue = []; // Stores { c, r, newLitState: true } for pending animations
+let activeLightingAnimations = []; // Stores { c, r, newLitState, timer }
+let newLightingAnimationStartTimer = 0; // Timer to delay starting new lighting animations
 
-// --- NEW: Lighting System Constants ---
-const SUN_MOVEMENT_Y_ROW_OFFSET = -3; // Sun's conceptual center Y, in rows, *above* row 0. Negative means above.
-const SUN_RAYS_PER_POSITION = 36;    // Number of rays cast from each sun position.
-const SUN_MOVEMENT_STEP_COLUMNS = 5;   // Sun moves this many columns at a time.
-const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2); // Max length of a light ray in block units.
+const MAX_FALLING_BLOCKS_AT_ONCE = 20; 
+const GRAVITY_ANIMATION_FALL_SPEED = 200; 
+const NEW_GRAVITY_ANIM_DELAY = 0.02; 
+
+const SUN_MOVEMENT_Y_ROW_OFFSET = -3; 
+const SUN_RAYS_PER_POSITION = 36;    
+const SUN_MOVEMENT_STEP_COLUMNS = 5;   
+const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2); 
 
 // This function will take the output of `diffGrids` and try to identify falling blocks.
 function parseGravityDiffsIntoFallingBlocks(diffs) {
     const fallingBlocks = [];
-    const disappeared = new Map(); // c -> Map(r_old -> blockType)
-    const appeared = new Map();    // c -> Map(r_new -> blockType_or_blockData)
+    const disappeared = new Map(); 
+    const appeared = new Map();    
 
     diffs.forEach(diff => {
         if (diff.oldBlockType !== Config.BLOCK_AIR && diff.oldBlockType !== Config.BLOCK_WATER && diff.newBlockType === Config.BLOCK_AIR) {
             if (!disappeared.has(diff.c)) disappeared.set(diff.c, new Map());
-            disappeared.get(diff.c).set(diff.r, diff.oldBlockType); // Store oldType for now
+            disappeared.get(diff.c).set(diff.r, diff.oldBlockType); 
         }
         else if (diff.oldBlockType === Config.BLOCK_AIR && diff.newBlockType !== Config.BLOCK_AIR && diff.newBlockType !== Config.BLOCK_WATER) {
             if (!appeared.has(diff.c)) appeared.set(diff.c, new Map());
@@ -60,7 +64,6 @@ function parseGravityDiffsIntoFallingBlocks(diffs) {
                 rowMapNew.forEach((blockDataNew, rNew) => {
                     if (rNew > rOld) {
                         if (bestMatchRNew === -1 || rNew < bestMatchRNew) {
-                             // Basic matching: if type matches, it's a candidate. Refine if needed.
                             if (blockDataNew.type === oldType) {
                                 bestMatchRNew = rNew;
                                 matchedBlockData = blockDataNew;
@@ -158,7 +161,6 @@ export function areGravityAnimationsComplete() {
 }
 
 export function finalizeAllGravityAnimations() {
-    // console.log(`[WorldManager] Finalizing ${gravityAnimationQueue.length} queued and ${activeGravityAnimations.length} active gravity animations...`);
     while (gravityAnimationQueue.length > 0) {
         const change = gravityAnimationQueue.shift();
         const end_row = Math.round((change.r_end_pixel_y !== undefined ? change.r_end_pixel_y : change.r_end * Config.BLOCK_HEIGHT) / Config.BLOCK_HEIGHT);
@@ -179,7 +181,6 @@ export function finalizeAllGravityAnimations() {
     }
     gravityAnimationQueue = [];
     activeGravityAnimations = [];
-    // console.log("[WorldManager] All gravity animations finalized.");
 }
 
 function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
@@ -257,7 +258,6 @@ export function applyGravitySettlement(portalRef) {
     let allMovedBlocksInSettlement = [];
     let iterations = 0;
     const MAX_ITERATIONS = Config.MAX_GRAVITY_SETTLEMENT_PASSES || Config.GRID_ROWS;
-    // console.log("[WorldManager] Starting Connected Component Gravity Settlement (Logical)...");
     let blocksMovedThisIteration = true;
     while (blocksMovedThisIteration && iterations < MAX_ITERATIONS) {
         iterations++;
@@ -329,13 +329,10 @@ export function applyGravitySettlement(portalRef) {
         }
         if (!blocksMovedThisIteration) break;
     }
-    // if (iterations >= MAX_ITERATIONS && blocksMovedThisIteration) { /* console.warn */ }
-    // console.log(`[WorldManager] Gravity Settlement (Logical) finished: ${iterations} iteration(s). ${allMovedBlocksInSettlement.length} blocks affected.`);
     return allMovedBlocksInSettlement;
 }
 
 function applyInitialFloodFill() {
-    // console.log(`[WorldManager] Applying initial flood up to row ${Config.WATER_LEVEL} (Logical)...`);
     const queue = [];
     const visited = new Set();
     for (let r = Config.WATER_LEVEL; r < Config.GRID_ROWS; r++) {
@@ -378,31 +375,23 @@ function applyInitialFloodFill() {
             }
         }
     }
-    // console.log(`[WorldManager] Flood fill (Logical) complete. Filled ${processed} water blocks.`);
 }
 
-// --- NEW: Lighting Pass Function ---
+// --- MODIFIED: applyLightingPass ---
+// This function will now identify blocks that *should* change their lit state
+// and return them as proposed changes, rather than directly modifying the grid.
 export function applyLightingPass() {
-    // console.log("[WorldManager] Applying lighting pass...");
-    let litBlockCount = 0; // <--- NEW: Initialize counter
+    // console.log("[WorldManager] Calculating proposed lighting changes...");
+    let proposedChanges = [];
+    const blocksToAnimateThisPass = new Set(); // To avoid duplicate animation proposals in one pass
 
-    // 1. Reset isLit for all non-air/non-water blocks in the worldGrid
     const grid = World.getGrid();
     if (!grid || grid.length === 0) {
-        console.error("[WorldManager] applyLightingPass: World grid not available.");
-        return;
+        console.error("[WorldManager] applyLightingPass: World grid not available for calculation.");
+        return proposedChanges; // Return empty array
     }
 
-    for (let r = 0; r < Config.GRID_ROWS; r++) {
-        for (let c = 0; c < Config.GRID_COLS; c++) {
-            const block = grid[r][c];
-            if (typeof block === 'object' && block !== null) {
-                block.isLit = false;
-            }
-        }
-    }
-
-    // 2. Simulate sun movement and cast rays
+    // 1. Raycasting logic (remains largely the same, but collects changes)
     const sunCenterPixelY = (SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
     const sunStartPixelX = Config.CANVAS_WIDTH + (Config.BLOCK_WIDTH * 10);
     const sunEndPixelX = -(Config.BLOCK_WIDTH * 10);
@@ -430,15 +419,16 @@ export function applyLightingPass() {
                 if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
                     rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
                     
-                    const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow);
+                    const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow); // Use World.getBlock
                     const blockType = (typeof block === 'object' && block !== null) ? block.type : block;
 
                     if (blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER && block !== null) {
-                        if (typeof block === 'object') {
-                            if (!block.isLit) { // Only count if it wasn't already lit in this pass by another ray
-                                litBlockCount++; // <--- NEW: Increment counter
+                        if (typeof block === 'object' && !block.isLit) { // Check if it's not already lit
+                            const changeKey = `${rayCurrentGridCol},${rayCurrentGridRow}`;
+                            if (!blocksToAnimateThisPass.has(changeKey)) {
+                                proposedChanges.push({ c: rayCurrentGridCol, r: rayCurrentGridRow, newLitState: true });
+                                blocksToAnimateThisPass.add(changeKey);
                             }
-                            block.isLit = true;
                         }
                         break; 
                     }
@@ -449,21 +439,15 @@ export function applyLightingPass() {
                 if (rayCurrentGridCol === rayEndGridCol && rayCurrentGridRow === rayEndGridRow) {
                     break;
                 }
-
                 let e2 = 2 * err;
-                if (e2 > -dy) {
-                    err -= dy;
-                    rayCurrentGridCol += sx;
-                }
-                if (e2 < dx) {
-                    err += dx;
-                    rayCurrentGridRow += sy;
-                }
+                if (e2 > -dy) { err -= dy; rayCurrentGridCol += sx; }
+                if (e2 < dx) { err += dx; rayCurrentGridRow += sy; }
                 currentRayBlockLength++;
             }
         }
     }
-    console.log(`[WorldManager] Lighting pass complete. ${litBlockCount} blocks were newly lit.`); // <--- NEW: Log the count
+    // console.log(`[WorldManager] Lighting pass calculation complete. Proposed ${proposedChanges.length} lighting changes.`);
+    return proposedChanges;
 }
 
 
@@ -471,20 +455,36 @@ export function applyLightingPass() {
 // --- Initialization ---
 // -----------------------------------------------------------------------------
  
-
 export function executeInitialWorldGenerationSequence() {
     console.log("[WorldManager] Executing initial world data generation sequence...");
-    generateWorldFromGenerator(); // World.initializeGrid(), generateLandmass(), and generateCavesConnected()
-    applyGravitySettlement(null); // Pass null as no portal exists yet for protection
+    generateWorldFromGenerator(); 
+    applyGravitySettlement(null); 
     applyInitialFloodFill();
-    applyLightingPass(); // Apply initial lighting pass after world structure is set
-    // Initialize animation queues (these are module-level variables in WorldManager)
+    
+    // --- MODIFIED for initial lighting ---
+    World.resetAllBlockLighting(); // Reset before calculation
+    const initialProposedLighting = applyLightingPass(); // Get proposed changes
+    initialProposedLighting.forEach(change => { // Directly apply for initial setup
+        const block = World.getBlock(change.c, change.r);
+        if (block && typeof block === 'object') {
+            block.isLit = change.newLitState;
+        }
+    });
+    console.log(`[WorldManager] Initial lighting calculated and applied directly: ${initialProposedLighting.length} blocks lit.`);
+    // --- END MODIFICATION ---
+
+    // Initialize animation queues
     agingAnimationQueue = [];
     activeAgingAnimations = [];
     newAnimationStartTimer = 0;
     gravityAnimationQueue = [];
     activeGravityAnimations = [];
     newGravityAnimationStartTimer = 0;
+    // NEW: Initialize lighting animation queues
+    lightingAnimationQueue = [];
+    activeLightingAnimations = [];
+    newLightingAnimationStartTimer = 0;
+
     console.log("[WorldManager] Initial world data generation sequence complete.");
 }
 
@@ -500,7 +500,7 @@ export function addWaterUpdateCandidate(col, row) {
             const blockType = World.getBlockType(col, row);
             if (blockType !== null &&
                 (blockType === Config.BLOCK_WATER ||
-                (blockType === Config.BLOCK_AIR && row >= Config.WATER_LEVEL))) { // Only add AIR if it's generally in water zone
+                (blockType === Config.BLOCK_AIR && row >= Config.WATER_LEVEL))) { 
                 waterUpdateQueue.set(key, {c: col, r: row});
                 return true;
             }
@@ -554,9 +554,7 @@ export function placePlayerBlock(col, row, blockType) {
     if (success) {
         updateStaticWorldAt(col, row);
         queueWaterCandidatesAroundChange(col, row);
-    } else {
-        // console.error(`WorldManager placePlayerBlock failed to set block at [${col}, ${row}]`);
-    }
+    } 
     return success;
 }
 
@@ -595,16 +593,12 @@ export function damageBlock(col, row, damageAmount) {
             const finalDropY = dropYBase + offsetY;
             if (!isNaN(finalDropX) && !isNaN(finalDropY)) {
                  ItemManager.spawnItem(finalDropX, finalDropY, dropType);
-            } else {
-                 // console.error(`ITEM SPAWN FAILED: Invalid drop coordinates for ${dropType}`);
             }
         }
         const success = World.setBlock(col, row, Config.BLOCK_AIR, false);
         if (success) {
             updateStaticWorldAt(col, row);
             queueWaterCandidatesAroundChange(col, row);
-        } else {
-            // console.error(`WorldManager damageBlock failed to set AIR at [${col}, ${row}] after destruction.`);
         }
     }
     return true;
@@ -616,7 +610,6 @@ export function damageBlock(col, row, damageAmount) {
 
 export function addProposedAgingChanges(changes) {
     changes.forEach(change => agingAnimationQueue.push(change));
-    // console.log(`[WorldManager] Added ${changes.length} proposed aging changes to animation queue. Total: ${agingAnimationQueue.length}`);
 }
 
 function updateAgingAnimations(dt) {
@@ -700,7 +693,6 @@ export function areAgingAnimationsComplete() {
 }
 
 export function finalizeAllAgingAnimations() {
-    // console.log(`[WorldManager] Finalizing ${agingAnimationQueue.length} queued and ${activeAgingAnimations.length} active aging animations...`);
     while(agingAnimationQueue.length > 0) {
         const change = agingAnimationQueue.shift();
         updateStaticWorldAt(change.c, change.r);
@@ -711,7 +703,107 @@ export function finalizeAllAgingAnimations() {
         updateStaticWorldAt(anim.c, anim.r);
         queueWaterCandidatesAroundChange(anim.c, anim.r);
     }
-    // console.log("[WorldManager] All aging animations finalized.");
+}
+
+// --- NEW: Lighting Animation Functions ---
+export function addProposedLightingChanges(changes) {
+    changes.forEach(change => {
+        const existingQueueIndex = lightingAnimationQueue.findIndex(q => q.c === change.c && q.r === change.r);
+        const existingActiveIndex = activeLightingAnimations.findIndex(a => a.c === change.c && a.r === change.r);
+        if (existingQueueIndex === -1 && existingActiveIndex === -1) {
+            lightingAnimationQueue.push(change);
+        }
+    });
+}
+
+function updateLightingAnimations(dt) {
+    if (dt <= 0) return;
+
+    newLightingAnimationStartTimer -= dt;
+    if (newLightingAnimationStartTimer <= 0 && lightingAnimationQueue.length > 0 && activeLightingAnimations.length < Config.LIGHTING_ANIMATION_BLOCKS_AT_ONCE) {
+        const change = lightingAnimationQueue.shift();
+        
+        const blockBeingAnimated = World.getBlock(change.c, change.r);
+        if (blockBeingAnimated && typeof blockBeingAnimated === 'object' && blockBeingAnimated.isLit) {
+            // Already lit, skip animation for this one
+        } else {
+            activeLightingAnimations.push({
+                c: change.c,
+                r: change.r,
+                newLitState: change.newLitState,
+                timer: Config.LIGHTING_ANIMATION_DURATION,
+            });
+            newLightingAnimationStartTimer = Config.LIGHTING_ANIMATION_NEW_BLOCK_DELAY;
+
+            const gridCtx = Renderer.getGridContext();
+            if (gridCtx) {
+                gridCtx.clearRect(
+                    Math.floor(change.c * Config.BLOCK_WIDTH),
+                    Math.floor(change.r * Config.BLOCK_HEIGHT),
+                    Math.ceil(Config.BLOCK_WIDTH),
+                    Math.ceil(Config.BLOCK_HEIGHT)
+                );
+            }
+        }
+    }
+
+    for (let i = activeLightingAnimations.length - 1; i >= 0; i--) {
+        const anim = activeLightingAnimations[i];
+        anim.timer -= dt;
+
+        if (anim.timer <= 0) {
+            const block = World.getBlock(anim.c, anim.r);
+            if (block && typeof block === 'object') {
+                block.isLit = anim.newLitState; 
+            }
+            updateStaticWorldAt(anim.c, anim.r); 
+            queueWaterCandidatesAroundChange(anim.c, anim.r); 
+            activeLightingAnimations.splice(i, 1);
+        }
+    }
+}
+
+function drawLightingAnimations(ctx) {
+    activeLightingAnimations.forEach(anim => {
+        const blockPixelX = anim.c * Config.BLOCK_WIDTH;
+        const blockPixelY = anim.r * Config.BLOCK_HEIGHT;
+        const blockWidth = Config.BLOCK_WIDTH;
+        const blockHeight = Config.BLOCK_HEIGHT;
+
+        const progress = 1.0 - (anim.timer / Config.LIGHTING_ANIMATION_DURATION); 
+        const alpha = Math.sin(progress * Math.PI) * Config.LIGHTING_ANIMATION_MAX_ALPHA; 
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.fillStyle = Config.LIGHTING_ANIMATION_COLOR;
+        ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
+        ctx.restore();
+    });
+}
+
+export function areLightingAnimationsComplete() {
+    return lightingAnimationQueue.length === 0 && activeLightingAnimations.length === 0;
+}
+
+export function finalizeAllLightingAnimations() {
+    while (lightingAnimationQueue.length > 0) {
+        const change = lightingAnimationQueue.shift();
+        const block = World.getBlock(change.c, change.r);
+        if (block && typeof block === 'object') {
+            block.isLit = change.newLitState;
+        }
+        updateStaticWorldAt(change.c, change.r);
+        queueWaterCandidatesAroundChange(change.c, change.r);
+    }
+    while (activeLightingAnimations.length > 0) {
+        const anim = activeLightingAnimations.shift();
+        const block = World.getBlock(anim.c, anim.r);
+        if (block && typeof block === 'object') {
+            block.isLit = anim.newLitState;
+        }
+        updateStaticWorldAt(anim.c, anim.r);
+        queueWaterCandidatesAroundChange(anim.c, anim.r);
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -721,7 +813,6 @@ export function finalizeAllAgingAnimations() {
 export function updateStaticWorldAt(col, row) {
     const gridCtx = Renderer.getGridContext();
     if (!gridCtx) {
-        // console.error(`WorldManager: Cannot update static world at [${col}, ${row}] - grid context missing!`);
         return;
     }
     const block = World.getBlock(col, row);
@@ -729,45 +820,58 @@ export function updateStaticWorldAt(col, row) {
     const blockY = row * Config.BLOCK_HEIGHT;
     const blockW = Math.ceil(Config.BLOCK_WIDTH);
     const blockH = Math.ceil(Config.BLOCK_HEIGHT);
+
     gridCtx.clearRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
+
     if (block !== Config.BLOCK_AIR && block !== null && block !== undefined) {
         const currentBlockType = typeof block === 'object' && block !== null ? block.type : block;
         if (currentBlockType === Config.BLOCK_AIR) return;
 
-        // --- NEW: Special drawing for ROPE ---
+        let baseColor = Config.BLOCK_COLORS[currentBlockType];
+        let finalColor = baseColor;
+
+        if (typeof block === 'object' && block !== null && block.isLit && baseColor) {
+            try {
+                if (baseColor.startsWith('rgb(')) {
+                    const parts = baseColor.substring(4, baseColor.length - 1).split(',').map(s => parseInt(s.trim(), 10));
+                    const r = Math.min(255, Math.floor(parts[0] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
+                    const g = Math.min(255, Math.floor(parts[1] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
+                    const b = Math.min(255, Math.floor(parts[2] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
+                    finalColor = `rgb(${r}, ${g}, ${b})`;
+                }
+            } catch (e) {
+                finalColor = baseColor; 
+            }
+        }
+        
         if (currentBlockType === Config.BLOCK_ROPE) {
-            gridCtx.fillStyle = Config.BLOCK_COLORS[Config.BLOCK_ROPE];
-            const ropeWidth = Math.max(1, Math.floor(blockW * 0.2)); // e.g., 20% of block width
+            gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE]; 
+            const ropeWidth = Math.max(1, Math.floor(blockW * 0.2)); 
             const ropeX = Math.floor(blockX + (blockW - ropeWidth) / 2);
             gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
-            // Player placed outline for ropes
             const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
             if (isPlayerPlaced) {
                 gridCtx.save();
-                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR; // Maybe a different color for rope outline?
-                gridCtx.lineWidth = 1; // Thinner outline for ropes
+                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR; 
+                gridCtx.lineWidth = 1; 
                 gridCtx.strokeRect(
                     ropeX, Math.floor(blockY),
                     ropeWidth, blockH
                 );
                 gridCtx.restore();
             }
-            // Damage indication for ropes
             if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
-                 // Simple damage: slightly transparent
                 gridCtx.save();
                 gridCtx.globalAlpha = 0.5 + 0.5 * (block.hp / block.maxHp);
-                gridCtx.fillStyle = Config.BLOCK_COLORS[Config.BLOCK_ROPE]; // Redraw with alpha
+                gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE]; 
                 gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
                 gridCtx.restore();
             }
 
-        } else { // --- STANDARD BLOCK DRAWING ---
-            const blockColor = Config.BLOCK_COLORS[currentBlockType];
-            if (blockColor) {
-                gridCtx.fillStyle = blockColor;
+        } else { 
+            if (finalColor) {
+                gridCtx.fillStyle = finalColor;
                 gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
-                // ... (existing player placed outline and damage indicator logic for standard blocks) ...
                 const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
                 if (isPlayerPlaced) {
                     gridCtx.save();
@@ -801,10 +905,8 @@ export function updateStaticWorldAt(col, row) {
                         gridCtx.restore();
                     }
                 }
-            } else {
-                // console.warn(`No color defined for block type ${currentBlockType} at [${col}, ${row}]`);
             }
-        } // --- END else for standard block drawing ---
+        } 
     }
 }
 
@@ -835,17 +937,16 @@ export function renderStaticWorldToGridCanvas() {
 
 export function draw(ctx) {
     if (!ctx) {
-        // console.error("WorldManager.draw: No drawing context provided!");
         return;
     }
-    const gridCanvas = Renderer.getGridCanvas();
-    if (gridCanvas) {
-        ctx.drawImage(gridCanvas, 0, 0);
-    } else {
-        // console.error("WorldManager.draw: Cannot draw world, grid canvas is not available!");
+    const gridCanvasToDraw = Renderer.getGridCanvas(); 
+    if (gridCanvasToDraw) { 
+        ctx.drawImage(gridCanvasToDraw, 0, 0);
     }
+    
     drawGravityAnimations(ctx);
     drawAgingAnimations(ctx);
+    drawLightingAnimations(ctx); // NEW: Draw lighting animations
 }
 
 // -----------------------------------------------------------------------------
@@ -916,4 +1017,5 @@ export function update(dt) {
     }
     updateGravityAnimations(dt);
     updateAgingAnimations(dt);
+    updateLightingAnimations(dt); // NEW: Update lighting animations
 }

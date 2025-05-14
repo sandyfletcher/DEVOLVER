@@ -62,24 +62,44 @@ export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
 export const BLOCK_HP = {
-[BLOCK_WATER]: Infinity, [BLOCK_SAND]: 30, [BLOCK_DIRT]: 50, [BLOCK_VEGETATION]: 25,
-[BLOCK_STONE]: 300, [BLOCK_WOOD]: 100, [BLOCK_METAL]: 500, [BLOCK_BONE]: 120,
+    [BLOCK_WATER]: Infinity,
+    [BLOCK_SAND]: 30,
+    [BLOCK_DIRT]: 50,
+    [BLOCK_VEGETATION]: 25,
+    [BLOCK_STONE]: 300,
+    [BLOCK_WOOD]: 100,
+    [BLOCK_METAL]: 500,
+    [BLOCK_BONE]: 120,
+    [BLOCK_ROPE]: 25,
 };
 export const BLOCK_COLORS = {
-[BLOCK_WATER]: 'rgb(50, 100, 200)', [BLOCK_SAND]: 'rgb(210, 180, 140)', [BLOCK_DIRT]: 'rgb(130, 82, 45)',
-[BLOCK_VEGETATION]: 'rgb(80, 180, 80)', [BLOCK_STONE]: 'rgb(140, 140, 140)', [BLOCK_WOOD]: 'rgb(160, 110, 70)',
-[BLOCK_METAL]: 'rgb(190, 190, 200)', [BLOCK_BONE]: 'rgb(200, 190, 170)',
-[BLOCK_ROPE]: 30,
+    [BLOCK_WATER]: 'rgb(50, 100, 200)',
+    [BLOCK_SAND]: 'rgb(210, 180, 140)',
+    [BLOCK_DIRT]: 'rgb(130, 82, 45)',
+    [BLOCK_VEGETATION]: 'rgb(80, 180, 80)',
+    [BLOCK_STONE]: 'rgb(140, 140, 140)',
+    [BLOCK_WOOD]: 'rgb(160, 110, 70)',
+    [BLOCK_METAL]: 'rgb(190, 190, 200)',
+    [BLOCK_BONE]: 'rgb(200, 190, 170)',
+    [BLOCK_ROPE]: 'rgb(80, 180, 80)',
 };
 export const AGING_MATERIAL_CONVERSION_FACTORS = {
-[BLOCK_DIRT]: 1.0, [BLOCK_VEGETATION]: 1.0, [BLOCK_STONE]: 1.0,
-[BLOCK_BONE]: 1.0, [BLOCK_WOOD]: 1.0, [BLOCK_METAL]: 1.0,
+    [BLOCK_DIRT]: 1.0,
+    [BLOCK_VEGETATION]: 1.0,
+    [BLOCK_STONE]: 1.0,
+    [BLOCK_BONE]: 1.0,
+    [BLOCK_WOOD]: 1.0,
+    [BLOCK_METAL]: 1.0,
 };
 export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal'];
 export const MATERIAL_TO_BLOCK_TYPE = {
-'dirt': BLOCK_DIRT, 'stone': BLOCK_STONE, 'wood': BLOCK_WOOD,
-'sand': BLOCK_SAND, 'metal': BLOCK_METAL, 'bone': BLOCK_BONE,
-'vegetation': BLOCK_VEGETATION,
+    'dirt': BLOCK_DIRT,
+    'stone': BLOCK_STONE,
+    'wood': BLOCK_WOOD,
+    'sand': BLOCK_SAND,
+    'metal': BLOCK_METAL,
+    'bone': BLOCK_BONE,
+    'vegetation': BLOCK_VEGETATION,
 };
 // --- Landmass Generation ---
 export const ISLAND_WIDTH_MIN = 0.75; // minimum width of island
@@ -162,6 +182,12 @@ export const ENEMY_SWELL_SCALE = 1.5; // Max scale factor during enemy swell (e.
 export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time in seconds for player death animation.
 export const PLAYER_SPIN_DURATION = 1.0; // Time in seconds for the spin part of player death.
 export const PLAYER_SPIN_FRAMES = 6; // Number of visual steps in the player spin animation.
+export const LIGHTING_ANIMATION_BLOCKS_AT_ONCE = 15; // Max number of blocks animating lighting simultaneously
+export const LIGHTING_ANIMATION_NEW_BLOCK_DELAY = 0.01; // Delay (seconds) before starting the next lighting animation
+export const LIGHTING_ANIMATION_DURATION = 0.4; // Duration (seconds) of the lighting flash/effect
+export const LIGHTING_ANIMATION_COLOR = 'rgba(255, 255, 150, 0.6)'; // Color for the lighting animation flash
+export const LIGHTING_ANIMATION_MAX_ALPHA = 0.7; // Max alpha for the flash (used if color has low alpha)
+export const LIT_BLOCK_BRIGHTNESS_FACTOR = 1.3; // How much brighter a lit block appears (multiplier for its base color)
 // --- Delta-Time Physics ---
 export const GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ = 100; // Base acceleration in block heights per second squared.
 export const GRAVITY_ACCELERATION = GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_HEIGHT; // Pixels per second squared.
