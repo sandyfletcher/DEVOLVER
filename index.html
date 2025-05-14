@@ -11,12 +11,9 @@
     <body>
         <div id="app-container">
             <main id="game-wrapper">
-                <!-- Canvas is drawn first, will be at the bottom of the stacking context by default -->
                 <canvas id="game-canvas" width="800" height="800">
                     Your browser does not support the HTML canvas.
                 </canvas>
-
-                <!-- Top UI Overlay - will be positioned absolutely on top of the canvas -->
                 <div id="top-ui-overlay">
                     <div id="top-info-row">
                         <div id="player-column" class="top-info-column">
@@ -39,11 +36,7 @@
                         <div id="timer-text-overlay">TIME REMAINING</div>
                     </div>
                 </div>
-
-                <!-- Epoch Overlay - also absolutely positioned -->
                 <div id="epoch-overlay"></div>
-
-                <!-- Bottom UI Overlay - will be positioned absolutely on top of the canvas -->
                 <div id="bottom-ui-overlay">
                     <div id="item-selection-area">
                         <div id="inventory-boxes-container">Loading...</div>
@@ -51,8 +44,6 @@
                     </div>
                 </div>
             </main>
-
-            <!-- These overlays cover the entire app-container, not just the game-wrapper -->
             <div id="boot-overlay" class="show-title">
                 <div id="overlay-title-content" class="overlay-content">
                     <h1>DEVOLVER</h1>
