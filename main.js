@@ -371,37 +371,41 @@ function startCutscene() {
     showOverlay(GameState.CUTSCENE); // This prepares the overlay and elements
 
     currentCutsceneImageIndex = 0;
-    cutsceneTimer = cutsceneDurationPerImage;
+    cutsceneTimer = cutsceneDurationPerImage; // Use the existing config for duration per image
 
-    if (Config.CUTSCENE_IMAGE_PATHS.length === 0 || Config.CUTSCENE_TEXTS.length === 0) {
-        console.warn("Cutscene: No images or texts defined. Skipping cutscene.");
+    // UPDATED: Check the new CUTSCENE_SLIDES array
+    if (!Config.CUTSCENE_SLIDES || Config.CUTSCENE_SLIDES.length === 0) {
+        console.warn("Cutscene: No slides defined in Config.CUTSCENE_SLIDES. Skipping cutscene.");
         initializeAndRunGame();
         return;
     }
 
-    if (currentCutsceneImageIndex < Config.CUTSCENE_IMAGE_PATHS.length) {
-        const imagePath = Config.CUTSCENE_IMAGE_PATHS[currentCutsceneImageIndex];
-        const text = Config.CUTSCENE_TEXTS[currentCutsceneImageIndex];
+    // UPDATED: Access data from the first slide
+    if (currentCutsceneImageIndex < Config.CUTSCENE_SLIDES.length) {
+        const currentSlide = Config.CUTSCENE_SLIDES[currentCutsceneImageIndex];
+
+        if (!currentSlide || typeof currentSlide.imagePath !== 'string' || typeof currentSlide.text !== 'string') {
+            console.error("Cutscene ERROR: Invalid slide data for index " + currentCutsceneImageIndex + ". Skipping.");
+            initializeAndRunGame();
+            return;
+        }
 
         if (cutsceneImageDisplayEl) {
-            cutsceneImageDisplayEl.src = imagePath;
+            cutsceneImageDisplayEl.src = currentSlide.imagePath;
             cutsceneImageDisplayEl.alt = `Cutscene Image ${currentCutsceneImageIndex + 1}`;
-            // Add active class to trigger fade-in. The CSS transition handles the fade.
             cutsceneImageDisplayEl.classList.add('active');
         }
 
-        if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = text || '';
+        if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = currentSlide.text || '';
 
-        // Make text box and skip button visible after a short delay
-        // This delay allows the image to start loading/fading before text appears.
         setTimeout(() => {
-            if (currentGameState === GameState.CUTSCENE) { // Re-check state in case it changed
+            if (currentGameState === GameState.CUTSCENE) {
                 if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.add('visible');
                 if (cutsceneSkipButton) cutsceneSkipButton.classList.add('visible');
             }
-        }, 100); // 100ms delay, adjust if needed
+        }, 100);
     } else {
-        console.error("Cutscene ERROR: Initial index out of bounds or no images/text. Skipping.");
+        console.error("Cutscene ERROR: Initial index out of bounds (should not happen if length > 0). Skipping.");
         initializeAndRunGame();
     }
 }
@@ -411,43 +415,48 @@ function updateCutscene(dt) {
     cutsceneTimer -= dt;
 
     if (cutsceneTimer <= 0) {
-        // Start fade-out of current image and text
         if (cutsceneImageDisplayEl) cutsceneImageDisplayEl.classList.remove('active');
         if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.remove('visible');
         // If skip button is separate, hide it too: if (cutsceneSkipButton) cutsceneSkipButton.classList.remove('visible');
-
+        // (Currently skip button visibility is tied to text container's logic or overall cutscene display)
 
         currentCutsceneImageIndex++;
 
-        if (currentCutsceneImageIndex < Config.CUTSCENE_IMAGE_PATHS.length) {
-            cutsceneTimer = cutsceneDurationPerImage; // Reset timer for the new image/text
+        // UPDATED: Check against CUTSCENE_SLIDES.length
+        if (currentCutsceneImageIndex < Config.CUTSCENE_SLIDES.length) {
+            cutsceneTimer = cutsceneDurationPerImage;
 
-            // After a delay (to allow fade-out animation to complete), show the next image/text
-            // The delay should roughly match the CSS transition duration for opacity.
-            // Cutscene image transition: 1s. Text/button: 0.7s. Use 1s for image.
             setTimeout(() => {
-                if (currentGameState !== GameState.CUTSCENE) return; // Check if cutscene was skipped during timeout
+                if (currentGameState !== GameState.CUTSCENE) return;
 
-                const imagePath = Config.CUTSCENE_IMAGE_PATHS[currentCutsceneImageIndex];
-                const text = Config.CUTSCENE_TEXTS[currentCutsceneImageIndex];
+                // UPDATED: Access data from the next slide
+                const nextSlide = Config.CUTSCENE_SLIDES[currentCutsceneImageIndex];
+
+                if (!nextSlide || typeof nextSlide.imagePath !== 'string' || typeof nextSlide.text !== 'string') {
+                    console.error("Cutscene Update: Invalid next slide data for index " + currentCutsceneImageIndex + ". Ending cutscene.");
+                    if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = '';
+                     if (cutsceneImageDisplayEl) {
+                         cutsceneImageDisplayEl.src = '';
+                         cutsceneImageDisplayEl.classList.remove('active');
+                     }
+                    initializeAndRunGame();
+                    return;
+                }
 
                 if (cutsceneImageDisplayEl) {
-                    cutsceneImageDisplayEl.src = imagePath; // Change image source
+                    cutsceneImageDisplayEl.src = nextSlide.imagePath;
                     cutsceneImageDisplayEl.alt = `Cutscene Image ${currentCutsceneImageIndex + 1}`;
-                    cutsceneImageDisplayEl.classList.add('active'); // Fade in new image
+                    cutsceneImageDisplayEl.classList.add('active');
                 }
 
-                if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = text || '';
+                if (cutsceneTextContentEl) cutsceneTextContentEl.textContent = nextSlide.text || '';
 
-                // Make text box and skip button visible for the new content
                 if (cutsceneTextContainerEl) cutsceneTextContainerEl.classList.add('visible');
                 if (cutsceneSkipButton && cutsceneTextContainerEl && !cutsceneTextContainerEl.contains(cutsceneSkipButton)) {
-                     // If skip button is not a child of text container, manage its visibility explicitly.
-                     // Assuming it's handled by showOverlay or textContainerEl's visibility for now.
-                     cutsceneSkipButton.classList.add('visible'); // Or simply ensure it's visible if it's always there.
+                     cutsceneSkipButton.classList.add('visible');
                 }
 
-            }, 1000); // 1000ms (1s) delay for image fade-out
+            }, 1000); // Delay for image fade-out
 
         } else {
             // Cutscene finished

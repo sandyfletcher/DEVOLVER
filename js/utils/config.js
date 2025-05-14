@@ -491,15 +491,21 @@ export const WAVES = [
 // --- Cutscene Parameters ---
 
 export const CUTSCENE_IMAGE_DURATION = 2.0; // Seconds each image is displayed.
-export const CUTSCENE_IMAGE_PATHS = [
-    'assets/cut1.png',
-    'assets/cut2.jpg',
-    'assets/cut3.png',
-    'assets/cut4.png',
-];
-export const CUTSCENE_TEXTS = [
-    "In the near future, dolphins master nuclear fusion and seize control of the planet.",
-    "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time.",
-    "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position.",
-    "Only one thing has followed you back in time - a simple shovel.  Will that be enough?"
+export const CUTSCENE_SLIDES = [
+    {
+        imagePath: 'assets/cut1.png',
+        text: "In the near future, dolphins master nuclear fusion and seize control of the planet."
+    },
+    {
+        imagePath: 'assets/cut2.jpg',
+        text: "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time."
+    },
+    {
+        imagePath: 'assets/cut3.png',
+        text: "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position."
+    },
+    {
+        imagePath: 'assets/cut4.png',
+        text: "Only one thing has followed you back in time - a simple shovel.  Will that be enough?"
+    }
 ];
