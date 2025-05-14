@@ -14,6 +14,7 @@ export const state = {
     right: false,
     jump: false,
     attack: false, // Remains true while key/mouse button held
+    downAction: false, // NEW
     internalMouseX: 0,
     internalMouseY: 0,
 };
@@ -21,9 +22,9 @@ const keyMap = {
     ArrowLeft: 'left', a: 'left', A: 'left',
     ArrowRight: 'right', d: 'right', D: 'right',
     ArrowUp: 'jump', w: 'jump', W: 'jump', ' ': 'jump',
+    ArrowDown: 'downAction', s: 'downAction', S: 'downAction', // NEW
     f: 'attack', F: 'attack',
     Escape: 'pause',
-    // REMOVED: Keybinds for Grid/Mute (G, M, N) if they were here, as they are now menu buttons.
 };
 
 // --- Keyboard Event Handlers ---

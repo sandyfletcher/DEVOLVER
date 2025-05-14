@@ -9,7 +9,14 @@ export function createBlock(type, isPlayerPlaced = false) { // creates standard 
         return Config.BLOCK_AIR;
     }
     const baseHp = Config.BLOCK_HP[type] ?? 0; // look up HP for block type, default to 0 if not found
-    const currentHp = (type === Config.BLOCK_WATER) ? Infinity : baseHp; // set HP - water is indestructible
+    // Water and Ropes have special HP considerations
+    let currentHp = baseHp;
+    if (type === Config.BLOCK_WATER) {
+        currentHp = Infinity;
+    }
+    // For BLOCK_VEGETATION (the item), its HP might be different if it were a placeable solid block.
+    // For BLOCK_ROPE, its HP is defined in BLOCK_HP.
+
     return { // construct and return block object
         type: type,
         hp: currentHp,

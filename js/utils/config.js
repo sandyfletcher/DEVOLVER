@@ -198,6 +198,7 @@ export const BLOCK_STONE = 5;
 export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
+export const BLOCK_ROPE = 9; // NEW ROPE BLOCK TYPE
 // Block HP
 export const BLOCK_HP = {
     [BLOCK_WATER]: Infinity, [BLOCK_SAND]: 30, [BLOCK_DIRT]: 50, [BLOCK_VEGETATION]: 25,
@@ -208,6 +209,7 @@ export const BLOCK_COLORS = {
     [BLOCK_WATER]: 'rgb(50, 100, 200)', [BLOCK_SAND]: 'rgb(210, 180, 140)', [BLOCK_DIRT]: 'rgb(130, 82, 45)',
     [BLOCK_VEGETATION]: 'rgb(80, 180, 80)', [BLOCK_STONE]: 'rgb(140, 140, 140)', [BLOCK_WOOD]: 'rgb(160, 110, 70)',
     [BLOCK_METAL]: 'rgb(190, 190, 200)', [BLOCK_BONE]: 'rgb(200, 190, 170)',
+    [BLOCK_ROPE]: 30, // NEW: Ropes have some HP??
 };
 // Material to Block Type mapping (fixed)
 export const MATERIAL_TO_BLOCK_TYPE = {
@@ -266,6 +268,16 @@ export const PLAYER_ITEM_ATTRACT_RADIUS_SQ = PLAYER_ITEM_ATTRACT_RADIUS * PLAYER
 export const PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SEC = 60; // Base speed for attracted items in block widths/sec.
 export const PLAYER_ITEM_ATTRACT_SPEED = PLAYER_ITEM_ATTRACT_SPEED_BLOCKS_PER_SEC * BLOCK_WIDTH; // Pixels/sec.
 export const PLAYER_PLACEMENT_COOLDOWN = 0.01; // seconds between block placement
+// Player rope interaction (NEW or adjust if defaults existed)
+export const PLAYER_ROPE_CLIMB_SPEED_BLOCKS_PER_SEC = 30;
+export const PLAYER_ROPE_CLIMB_SPEED = PLAYER_ROPE_CLIMB_SPEED_BLOCKS_PER_SEC * BLOCK_HEIGHT; // pixels/sec
+export const PLAYER_ROPE_SLIDE_SPEED_BLOCKS_PER_SEC = 45;
+export const PLAYER_ROPE_SLIDE_SPEED = PLAYER_ROPE_SLIDE_SPEED_BLOCKS_PER_SEC * BLOCK_HEIGHT; // pixels/sec
+export const PLAYER_ROPE_HORIZONTAL_DAMPING = 0.001; // Very strong damping while on rope
+export const PLAYER_ROPE_DETACH_IMPULSE_X_BLOCKS_PER_SEC = 20;
+export const PLAYER_ROPE_DETACH_IMPULSE_X = PLAYER_ROPE_DETACH_IMPULSE_X_BLOCKS_PER_SEC * BLOCK_WIDTH; // pixels/sec
+export const PLAYER_ROPE_DETACH_JUMP_MULTIPLIER = 0.6; // e.g., 60% of normal jump velocity
+
 
 // --- Items & Weapons ---
 

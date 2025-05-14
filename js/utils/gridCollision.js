@@ -24,20 +24,36 @@ export function isEntityInWater(entity) { // checks if entity is significantly s
 }
 
 export function isSolid(col, row) { // checks if block at given grid coordinates is solid
-    if (row < 0 || row >= Config.GRID_ROWS || col < 0 || col >= Config.GRID_COLS) { // check if row/col is outside valid grid range defined in Config
-        return false; // treat out of bounds as not solid
-    }
-    const block = World.getBlock(col, row);
-    if (block === null || block === Config.BLOCK_AIR) { // check if block data is null or air
+    if (row < 0 || row >= Config.GRID_ROWS || col < 0 || col >= Config.GRID_COLS) {
         return false;
     }
-    if (typeof block === 'object' && block.type === Config.BLOCK_WATER) {
-        return false; // water is not solid
+    const block = World.getBlock(col, row);
+    if (block === null || block === Config.BLOCK_AIR) {
+        return false;
     }
-    if (typeof block === 'object' && typeof block.type === 'number') { // any block object that exists and isn't air or water is solid
-        return true; // block object representing solid tile
+    if (typeof block === 'object') { // Check if it's a block object
+        if (block.type === Config.BLOCK_WATER || block.type === Config.BLOCK_ROPE) { // Water and Ropes are NOT solid for general physics
+            return false;
+        }
+        if (typeof block.type === 'number') { // Any other block object type is solid
+            return true;
+        }
+    }
+    // Fallback: if block is a number but not AIR (e.g. an old representation, though createBlock should prevent this)
+    // This part is less likely to be hit with current createBlock logic.
+    if (typeof block === 'number' && block !== Config.BLOCK_AIR) {
+        console.warn(`isSolid encountered numeric block type: ${block} at [${col},${row}]. Treating as solid.`);
+        return true;
     }
     return false; // fallback for unexpected data
+}
+
+// NEW helper function
+export function isRope(col, row) {
+    if (row < 0 || row >= Config.GRID_ROWS || col < 0 || col >= Config.GRID_COLS) {
+        return false;
+    }
+    return World.getBlockType(col, row) === Config.BLOCK_ROPE;
 }
 
 export function hasSolidNeighbor(col, row) { // checks if grid cell has adjacent solid block (needed for placement support)

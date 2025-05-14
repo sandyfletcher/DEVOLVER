@@ -23,6 +23,9 @@ export class Player {
         this.isOnGround = false;
         this.isInWater = false;
         this.waterJumpCooldown = 0; // Cooldown timer for water jumps/strokes (time-based)
+        this.isOnRope = false;
+        this.ropeCol = -1; // Column of the rope the player is currently on
+        this.canGrabRopeTimer = 0; // Cooldown after detaching before auto-grabbing again
         // --- Weapon & Inventory State ---
         this.hasShovel = false; // Default false, set true in reset
         this.hasSword = false;
@@ -170,6 +173,8 @@ export class Player {
     // --- Private Update Helper Methods ---
     /** Updates various timers for cooldowns and effects. */
     _updateTimers(dt) {
+        if (this.canGrabRopeTimer > 0) this.canGrabRopeTimer -= dt;
+        if (this.canGrabRopeTimer < 0) this.canGrabRopeTimer = 0;
         // Decrement cooldowns, ensure they don't go negative
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         if (this.attackCooldown < 0) this.attackCooldown = 0;
@@ -234,179 +239,261 @@ export class Player {
             }
         }
     }
-    _handleMovement(dt, inputState) { // Handles horizontal movement and jumping/water stroke
-        let targetVx = 0;
-        if (inputState.left) targetVx -= Config.PLAYER_MAX_SPEED_X; // Use scaled max speed
-        if (inputState.right) targetVx += Config.PLAYER_MAX_SPEED_X; // Use scaled max speed
-        // Apply acceleration and damping
-        if (targetVx !== 0) {
-            // Accelerate towards target speed
-            // PLAYER_MOVE_ACCELERATION and WATER_ACCELERATION_FACTOR are scaled/defined in config
-            const acceleration = this.isInWater ? Config.PLAYER_MOVE_ACCELERATION * Config.WATER_ACCELERATION_FACTOR : Config.PLAYER_MOVE_ACCELERATION;
-            this.vx += Math.sign(targetVx) * acceleration * dt;
-            // Clamp velocity to max speed (considering water speed factor if applicable)
-            const currentMaxSpeedX = this.isInWater ? Config.PLAYER_MAX_SPEED_X * Config.WATER_MAX_SPEED_FACTOR : Config.PLAYER_MAX_SPEED_X;
-            this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
-            if (Math.sign(this.vx) !== Math.sign(targetVx) && targetVx !== 0) {
-                // Braking friction when changing direction
-                const brakingFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : Math.pow(Config.PLAYER_FRICTION_BASE * 10, dt); // Stronger braking friction
-                this.vx *= brakingFactor;
+    _handleMovement(dt, inputState) {
+        if (this.isOnRope) {
+            // --- ROPE MOVEMENT ---
+            this.vx = 0; // Player horizontal movement is largely stopped on rope
+
+            if (inputState.jump) { // Climb Up or Jump Off
+                // If also pressing left/right, treat as jump-off intent
+                if (inputState.left || inputState.right) {
+                    this.isOnRope = false;
+                    this.canGrabRopeTimer = 0.3; // Short cooldown before re-grabbing
+                    this.vx = (inputState.left ? -1 : 1) * Config.PLAYER_ROPE_DETACH_IMPULSE_X;
+                    this.vy = -Config.PLAYER_JUMP_VELOCITY * Config.PLAYER_ROPE_DETACH_JUMP_MULTIPLIER; // Reduced jump height
+                    this.isOnGround = false;
+                } else { // Climb Up
+                    this.vy = -Config.PLAYER_ROPE_CLIMB_SPEED;
+                }
+            } else if (inputState.downAction) { // Climb Down
+                this.vy = Config.PLAYER_ROPE_SLIDE_SPEED;
+            } else if (inputState.left || inputState.right) { // Detach Horizontally
+                 this.isOnRope = false;
+                 this.canGrabRopeTimer = 0.3;
+                 this.vx = (inputState.left ? -1 : 1) * Config.PLAYER_ROPE_DETACH_IMPULSE_X;
+                 // Keep current vy or small downward push if not jumping
+                 this.vy = Math.max(this.vy, Config.PLAYER_ROPE_SLIDE_SPEED * 0.1); // Slight downward push if not already moving down
+                 this.isOnGround = false;
+            } else { // No vertical input on rope
+                this.vy = 0; // Hold position vertically
             }
+             // Horizontal position is snapped in _applyPhysics when isOnRope becomes true
         } else {
-            // Apply friction when no input is given (slowing down)
-            const frictionFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : Math.pow(Config.PLAYER_FRICTION_BASE, dt); // Water vs air friction
-            this.vx *= frictionFactor;
-            // Snap to zero if velocity is very small to prevent infinite sliding
-            if (Math.abs(this.vx) < GridCollision.E_EPSILON) {
-                this.vx = 0;
+            // --- STANDARD MOVEMENT (Ground/Air/Water) ---
+            let targetVx = 0;
+            if (inputState.left) targetVx -= Config.PLAYER_MAX_SPEED_X;
+            if (inputState.right) targetVx += Config.PLAYER_MAX_SPEED_X;
+
+            const acceleration = this.isInWater ? Config.PLAYER_MOVE_ACCELERATION * Config.WATER_ACCELERATION_FACTOR : Config.PLAYER_MOVE_ACCELERATION;
+            if (targetVx !== 0) {
+                this.vx += Math.sign(targetVx) * acceleration * dt;
+                const currentMaxSpeedX = this.isInWater ? Config.PLAYER_MAX_SPEED_X * Config.WATER_MAX_SPEED_FACTOR : Config.PLAYER_MAX_SPEED_X;
+                this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
+                if (Math.sign(this.vx) !== Math.sign(targetVx) && targetVx !== 0) {
+                    const brakingFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : Math.pow(Config.PLAYER_FRICTION_BASE * 10, dt);
+                    this.vx *= brakingFactor;
+                }
+            } else {
+                const frictionFactor = this.isInWater ? Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt) : Math.pow(Config.PLAYER_FRICTION_BASE, dt);
+                this.vx *= frictionFactor;
+                if (Math.abs(this.vx) < GridCollision.E_EPSILON) {
+                    this.vx = 0;
+                }
             }
-        }
-        // Jump / Water Stroke
-        // Only allow jump/stroke if jump input is true AND cooldown is ready (water jump cooldown is time-based)
-        // Water stroke is a separate check from isOnGround because it doesn't require being on ground.
-        if (inputState.jump && this.waterJumpCooldown <= 0) {
-            if (this.isInWater) { // Perform water stroke if in water
-                this.vy = -Config.WATER_SWIM_VELOCITY; // Apply upward velocity (scaled)
-                this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION; // Start cooldown (time-based)
-                this.isOnGround = false; // Ensure not marked as on ground during water stroke
-            } else if (this.isOnGround) { // Perform ground jump if on ground and not in water
-                this.vy = -Config.PLAYER_JUMP_VELOCITY; // Apply upward velocity (scaled)
-                this.isOnGround = false; // Player is now airborne
-                // Ground jumps don't use waterJumpCooldown, they just require isOnGround
+
+            if (inputState.jump && this.waterJumpCooldown <= 0) {
+                if (this.isInWater) {
+                    this.vy = -Config.WATER_SWIM_VELOCITY;
+                    this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION;
+                    this.isOnGround = false;
+                } else if (this.isOnGround) {
+                    this.vy = -Config.PLAYER_JUMP_VELOCITY;
+                    this.isOnGround = false;
+                }
             }
-            // If inputState.jump is true but neither in water nor on ground, nothing happens (no double jump etc.)
         }
     }
     /**
         * Handles continuous block placement when the 'attack' input is held AND a material is selected.
         * Attempts to place a block if the placement cooldown is ready.
         */
-    _handlePlacementHold() {
-        // This method is called when inputState.attack is true and a material is selected.
-        // The placementCooldown is decremented in _updateTimers (time-based).
-        // Check if cooldown is ready for another placement attempt
-        if (this.placementCooldown <= 0) {
-            const materialType = this.selectedItem; // Get the selected material (already confirmed isMaterialSelected in _handleInput)
-            // Check if player has the material in inventory
-            if ((this.inventory[materialType] || 0) > 0) {
-                // Check if the target location is within interaction range (using scaled range from config)
-                const targetForPlacement = this.targetWorldPos || this._lastValidTargetWorldPos;
-                if (!targetForPlacement || !this._isTargetWithinRange(targetForPlacement)) { // _isTargetWithinRange uses scaled Config.PLAYER_INTERACTION_RANGE_SQ
-                    // console.log("Placement failed: Target out of range.");
-                    return; // Out of range
+        _handlePlacementHold() {
+        if (this.placementCooldown > 0) return;
+
+        const selectedMaterialType = this.selectedItem;
+        if ((this.inventory[selectedMaterialType] || 0) <= 0) return;
+
+        const targetForPlacement = this.targetWorldPos || this._lastValidTargetWorldPos;
+        if (!targetForPlacement || !this._isTargetWithinRange(targetForPlacement)) return;
+
+        const targetCellForPlacement = this.targetGridCell || this._lastValidTargetGridCell;
+        if (!targetCellForPlacement || typeof targetCellForPlacement.col !== 'number' || typeof targetCellForPlacement.row !== 'number' || isNaN(targetCellForPlacement.col) || isNaN(targetCellForPlacement.row)) return;
+        
+        const targetCol = targetCellForPlacement.col;
+        const targetRow = targetCellForPlacement.row;
+
+        const targetBlockType = World.getBlockType(targetCol, targetRow);
+        if (targetBlockType === null) return; // Out of bounds
+
+        const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
+        if (!canPlaceInTargetCell) return;
+        if (this.checkPlacementOverlap(targetCol, targetRow)) return;
+
+        // --- VEGETATION ROPE PLACEMENT LOGIC ---
+        if (selectedMaterialType === 'vegetation') {
+            const blockAboveType = World.getBlockType(targetCol, targetRow - 1);
+            const blockAboveData = World.getBlock(targetCol, targetRow - 1); // Get full data for isSolid check
+
+            // Condition 1: Attach to a solid block (that isn't already a rope)
+            // GridCollision.isSolid will correctly return false for AIR, WATER, ROPE
+            const canAttachToSolid = blockAboveData !== null && GridCollision.isSolid(targetCol, targetRow - 1);
+            
+            // Condition 2: Extend an existing rope
+            const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
+
+            if (canAttachToSolid || canExtendRope) {
+                if (WorldManager.placePlayerBlock(targetCol, targetRow, Config.BLOCK_ROPE)) {
+                    this.decrementInventory(selectedMaterialType);
+                    this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
+                    // Play sound for placing rope?
                 }
-                // Check if the target grid cell is valid for placement
-                // Use the stored lastValidTargetGridCell if targetGridCell is bad
-                const targetCellForPlacement = this.targetGridCell || this._lastValidTargetGridCell;
-                if (!targetCellForPlacement || typeof targetCellForPlacement.col !== 'number' || typeof targetCellForPlacement.row !== 'number' || isNaN(targetCellForPlacement.col) || isNaN(targetCellForPlacement.row)) {
-                    console.warn("Placement failed: Invalid target grid cell.");
-                    return; // Invalid target cell
+            }
+        } else { // --- STANDARD BLOCK PLACEMENT LOGIC ---
+            if (GridCollision.hasSolidNeighbor(targetCol, targetRow)) {
+                const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[selectedMaterialType];
+                if (blockTypeToPlace !== undefined) {
+                    if (WorldManager.placePlayerBlock(targetCol, targetRow, blockTypeToPlace)) {
+                        this.decrementInventory(selectedMaterialType);
+                        this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
+                    }
+                } else {
+                    console.warn(`Placement failed: Material type "${selectedMaterialType}" has no block type mapping.`);
                 }
-                const targetCol = targetCellForPlacement.col;
-                const targetRow = targetCellForPlacement.row;
-                // World.getBlockType handles bounds and returns null if out of bounds
-                const targetBlockType = World.getBlockType(targetCol, targetRow);
-                // Cannot place out of bounds (targetBlockType will be null)
-                if (targetBlockType === null) {
-                    // console.log("Placement failed: Target out of bounds.");
-                    return; // Out of bounds
-                }
-                // Can place in Air, or in Water if config allows
-                const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
-                if (canPlaceHere) {
-                    // Check if placing the block would overlap the player (checkPlacementOverlap uses pixel dimensions which scale)
-                    if (!this.checkPlacementOverlap(targetCol, targetRow)) {
-                        // Check if the target cell has an adjacent solid block for support (GridCollision.hasSolidNeighbor uses grid coordinates, not pixel scaled)
-                        if (GridCollision.hasSolidNeighbor(targetCol, targetRow)) { // Use imported GridCollision helper
-                            // ALL CHECKS PASSED - PLACE THE BLOCK!
-                            const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType]; // Material mapping is fixed
-                            if (blockTypeToPlace !== undefined) { // Ensure material maps to a block type
-                                // Attempt to place the block using WorldManager's player-specific method
-                                // WorldManager.placePlayerBlock handles grid bounds internally and visual/water updates.
-                                if (WorldManager.placePlayerBlock(targetCol, targetRow, blockTypeToPlace)) {
-                                    this.decrementInventory(materialType); // Reduce inventory count
-                                    // Placement successful, reset cooldown (time-based)
-                                    this.placementCooldown = Config.PLAYER_PLACEMENT_COOLDOWN;
-                                    // console.log(`Placed ${materialType} at [${targetCol}, ${targetRow}]`);
-                                }
-                            } else {
-                                console.warn(`Placement failed: Material type "${materialType}" has no block type mapping.`);
-                            }
-                        }
-                    } 
-                }
-            } // else: Not enough material handled by UI visibility/disabled state.
-            // If checks fail, the cooldown is NOT reset, allowing the player to continue holding
-            // and attempt placement again once conditions are met (e.g., move into range, collect material, cooldown ready).
+            }
         }
-        // If placementCooldown > 0, the check `if (this.placementCooldown <= 0)` fails, and this block does nothing.
     }
     /** Applies gravity, damping, and resolves collisions with the grid. */
     _applyPhysics(dt) {
-        const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
-        // Damping factors approach 0 as dt increases, causing velocity reduction. Factor of 1 means no damping.
-        const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
-        if (!this.isOnGround) { // Only apply gravity if not on ground from previous step
-            this.vy += currentGravity * dt; // Add gravity acceleration
-        } else {
-            // If player is on ground but has slight downward velocity (e.e.g., from previous frame), reset it
-            // Use a small threshold to avoid micro-adjustments
-            if (this.vy > 0.1) this.vy = 0;
-        }
-        // --- Apply Vertical Damping & Clamp Speed in Water ---
-        if (this.isInWater) {
-            this.vy *= verticalDampingFactor; // Apply vertical drag
-            // Clamp vertical speed while swimming/sinking (using scaled speeds from config)
-            this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED); // Limit upward speed
-            this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);   // Limit downward speed (sinking)
-        } else {
-            // Clamp maximum falling speed in air (using scaled speed from config)
-            if (this.vy > Config.MAX_FALL_SPEED) {
-                this.vy = Config.MAX_FALL_SPEED;
-            }
-        }
-        // --- Calculate Potential Movement based on current velocities ---
-        const potentialMoveX = this.vx * dt;
-        const potentialMoveY = this.vy * dt;
-        // --- Grid Collision Detection and Resolution ---
-        // Use the utility function to handle collisions with the world grid
-        // collideAndResolve handles entity dimensions, move amounts, and block dimensions (all in pixels)
-        const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
-        // Update ground status based on collision result
-        this.isOnGround = collisionResult.isOnGround;
-        // Zero out velocity component if a collision occurred on that axis, UNLESS stepped up horizontally
-        if (collisionResult.collidedX && !collisionResult.didStepUp) {
-            this.vx = 0;
-            // entity.x is already snapped by collideAndResolve
-        }
-        // Only zero vy if a Y collision occurred and velocity was significant, prevents micro-bouncing
-        // Use a small threshold (could be E_EPSILON or a slightly larger value like 0.1)
-        if (collisionResult.collidedY && Math.abs(this.vy) > 0.1) {
-            this.vy = 0;
-            // entity.y is already snapped by collideAndResolve
-        }
-        // If player stepped up, adjust vertical position slightly if they ended up *just* above ground
-        // This is a final check to ensure they land cleanly if the step-up put them slightly off the ground surface.
-        // The check distance is in pixels.
-        if (collisionResult.didStepUp && !this.isOnGround) {
-            const checkDist = 2.0; // Check a few pixels below
-            const yBelow = this.y + this.height + checkDist;
-            const rowBelow = Math.floor(yBelow / Config.BLOCK_HEIGHT);
-            const colCheck = Math.floor((this.x + this.width/2) / Config.BLOCK_WIDTH); // Check center column
-            // Check for solid ground right below the stepped-up position
-            if (GridCollision.isSolid(colCheck, rowBelow)) { // isSolid uses grid coordinates
-                const groundSurfaceY = rowBelow * Config.BLOCK_HEIGHT; // Get the pixel Y of the ground surface
-                // If player bottom is within checkDist of the potential ground surface
-                if ((this.y + this.height) < groundSurfaceY + checkDist) {
-                    this.y = groundSurfaceY - this.height; // Snap down
-                    this.isOnGround = true;
-                    this.vy = 0; // Stop vertical movement after snapping
-                    // console.log("Player snapped to ground after step-up.");
+        // --- Check for Rope Interaction BEFORE standard physics ---
+        if (!this.isOnRope && this.canGrabRopeTimer <= 0) { // Only check to grab if not already on rope and not in cooldown
+            const playerRect = this.getRect();
+            const minCheckCol = Math.max(0, Math.floor(playerRect.x / Config.BLOCK_WIDTH));
+            const maxCheckCol = Math.min(Config.GRID_COLS - 1, Math.floor((playerRect.x + playerRect.width - GridCollision.E_EPSILON) / Config.BLOCK_WIDTH));
+            const minCheckRow = Math.max(0, Math.floor(playerRect.y / Config.BLOCK_HEIGHT));
+            const maxCheckRow = Math.min(Config.GRID_ROWS - 1, Math.floor((playerRect.y + playerRect.height - GridCollision.E_EPSILON) / Config.BLOCK_HEIGHT));
+
+            let foundRope = false;
+            for (let r = minCheckRow; r <= maxCheckRow; r++) {
+                for (let c = minCheckCol; c <= maxCheckCol; c++) {
+                    if (GridCollision.isRope(c, r)) {
+                        this.isOnRope = true;
+                        this.ropeCol = c;
+                        this.x = this.ropeCol * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2) - (this.width / 2); // Center on rope
+                        this.vx = 0; // Stop horizontal momentum when grabbing
+                        // vy can be kept to allow falling onto a rope, or reset:
+                        // this.vy = 0; // Optionally reset vertical momentum
+                        this.isOnGround = false; // Can't be on ground and rope simultaneously
+                        foundRope = true;
+                        break;
+                    }
                 }
+                if (foundRope) break;
+            }
+        } else if (this.isOnRope) {
+            // If on rope, ensure X is still centered (in case of external forces, though unlikely)
+            this.x = this.ropeCol * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2) - (this.width / 2);
+            this.vx = 0; // Keep horizontal velocity zeroed
+            // Check if still on a rope segment. If not (e.g. rope ended), detach.
+            const playerCenterY = this.y + this.height / 2;
+            const playerRowAtCenter = Math.floor(playerCenterY / Config.BLOCK_HEIGHT);
+            if (!GridCollision.isRope(this.ropeCol, playerRowAtCenter) && 
+                !GridCollision.isRope(this.ropeCol, playerRowAtCenter + 1) && // check below too
+                !GridCollision.isRope(this.ropeCol, playerRowAtCenter -1 )) { // check above too (less likely needed)
+                this.isOnRope = false;
+                this.canGrabRopeTimer = 0.1; // Small delay before regrabbing immediately
             }
         }
 
+
+        // --- Standard Physics (modified by isOnRope) ---
+        if (this.isOnRope) {
+            // Vertical movement is handled by input (_handleMovement sets vy)
+            // Apply rope vertical movement
+            this.y += this.vy * dt;
+
+            // Rope boundary checks (prevent climbing/sliding past rope ends if they hit solids)
+            const headCheckY = this.y;
+            const feetCheckY = this.y + this.height;
+            const headRow = Math.floor(headCheckY / Config.BLOCK_HEIGHT);
+            const feetRow = Math.floor(feetCheckY / Config.BLOCK_HEIGHT);
+
+            // Climbing up into a solid
+            if (this.vy < 0 && GridCollision.isSolid(this.ropeCol, headRow)) {
+                this.y = (headRow + 1) * Config.BLOCK_HEIGHT; // Snap below solid
+                this.vy = 0;
+            }
+            // Sliding down into a solid
+            if (this.vy > 0 && GridCollision.isSolid(this.ropeCol, feetRow)) {
+                this.y = feetRow * Config.BLOCK_HEIGHT - this.height; // Snap above solid
+                this.vy = 0;
+                this.isOnGround = true; // Landed on ground from rope
+                this.isOnRope = false; // No longer on rope
+            }
+             // Check if sliding off the bottom of a rope into air
+            const rowBelowFeet = Math.floor((this.y + this.height + GridCollision.E_EPSILON) / Config.BLOCK_HEIGHT);
+            if (this.vy > 0 && !GridCollision.isRope(this.ropeCol, feetRow) && !GridCollision.isSolid(this.ropeCol, feetRow)) {
+                 // If the current block isn't a rope and isn't solid, we've slid off
+                 // Or more simply: if the segment player is centered on is no longer a rope
+                 if (!GridCollision.isRope(this.ropeCol, Math.floor((this.y + this.height/2)/Config.BLOCK_HEIGHT) )) {
+                    this.isOnRope = false;
+                    // vy continues from sliding speed
+                 }
+            }
+
+
+        } else { // --- Not on Rope: Apply normal physics ---
+            const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
+            const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
+
+            if (!this.isOnGround) {
+                this.vy += currentGravity * dt;
+            } else {
+                if (this.vy > 0.1) this.vy = 0;
+            }
+
+            if (this.isInWater) {
+                this.vy *= verticalDampingFactor;
+                this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
+                this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);
+            } else {
+                if (this.vy > Config.MAX_FALL_SPEED) {
+                    this.vy = Config.MAX_FALL_SPEED;
+                }
+            }
+
+            const potentialMoveX = this.vx * dt;
+            const potentialMoveY = this.vy * dt;
+            const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+            
+            this.isOnGround = collisionResult.isOnGround;
+            if (collisionResult.collidedX && !collisionResult.didStepUp) {
+                this.vx = 0;
+            }
+            if (collisionResult.collidedY && Math.abs(this.vy) > 0.1) {
+                this.vy = 0;
+            }
+
+            if (collisionResult.didStepUp && !this.isOnGround) {
+                const checkDist = 2.0;
+                const yBelow = this.y + this.height + checkDist;
+                const rowBelow = Math.floor(yBelow / Config.BLOCK_HEIGHT);
+                const colCheck = Math.floor((this.x + this.width/2) / Config.BLOCK_WIDTH);
+                if (GridCollision.isSolid(colCheck, rowBelow)) {
+                    const groundSurfaceY = rowBelow * Config.BLOCK_HEIGHT;
+                    if ((this.y + this.height) < groundSurfaceY + checkDist) {
+                        this.y = groundSurfaceY - this.height;
+                        this.isOnGround = true;
+                        this.vy = 0;
+                    }
+                }
+            }
+        } // --- End if/else isOnRope for physics ---
+
+        // _checkBoundaries remains the same
+        this._checkBoundaries();
+        this.currentHealth = Math.max(0, this.currentHealth);
     }
+    
     /** Checks and enforces screen boundaries and falling out of world. */
     _checkBoundaries() {
         // Prevent moving outside the horizontal bounds of the world
@@ -479,36 +566,46 @@ export class Player {
         * @returns {object | null} Object { col, row, color } or null if placement is invalid.
         */
     getGhostBlockInfo() {
-        // Can only show ghost if a material is selected
         if (!this.isMaterialSelected()) return null;
-        // Need valid target grid cell data (fall back to last valid if current is bad)
+        
         const targetCell = this.targetGridCell || this._lastValidTargetGridCell;
         if (!targetCell || typeof targetCell.col !== 'number' || typeof targetCell.row !== 'number' || isNaN(targetCell.col) || isNaN(targetCell.row)) return null;
         const { col, row } = targetCell;
-        // Perform the same checks as actual placement:
-        // Use the stored lastValidTargetWorldPos if targetWorldPos is bad
+
         const targetWorldPosForCheck = this.targetWorldPos || this._lastValidTargetWorldPos;
-        // _isTargetWithinRange uses scaled Config.PLAYER_INTERACTION_RANGE_SQ
-        if (!targetWorldPosForCheck || !this._isTargetWithinRange(targetWorldPosForCheck)) return null; // Must be in range
-        // Get the block type at the target cell, handling out of bounds
+        if (!targetWorldPosForCheck || !this._isTargetWithinRange(targetWorldPosForCheck)) return null;
+        
         const targetBlockType = World.getBlockType(col, row);
-        // Cannot place out of bounds (targetBlockType will be null)
         if (targetBlockType === null) return null;
-        // Can place in Air, or in Water if config allows
-        const canPlaceHere = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
-        if (!canPlaceHere) return null; // Target must be empty (or water if allowed)
-        // checkPlacementOverlap uses pixel dimensions (which scale)
-        if (this.checkPlacementOverlap(col, row)) return null; // Cannot place overlapping player
-        // Must have adjacent solid support (GridCollision.hasSolidNeighbor uses grid coords)
-        if (!GridCollision.hasSolidNeighbor(col, row)) return null; // Use imported GridCollision helper
-        // If all checks pass, determine the block type and color
-        const materialType = this.selectedItem; // This is the material string
-        const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[materialType]; // Map string to block constant
-        if (blockTypeToPlace === undefined) return null; // Invalid material mapping
-        const blockColor = Config.BLOCK_COLORS[blockTypeToPlace]; // Get color from block constant (fixed)
-        if (!blockColor) return null; // No color defined for this block type
-        // Return information needed for drawing
-        return { col: col, row: row, color: blockColor };
+
+        const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
+        if (!canPlaceInTargetCell) return null;
+        if (this.checkPlacementOverlap(col, row)) return null;
+
+        const selectedMaterialType = this.selectedItem;
+
+        if (selectedMaterialType === 'vegetation') {
+            const blockAboveType = World.getBlockType(col, row - 1);
+            const blockAboveData = World.getBlock(col, row - 1);
+            
+            const canAttachToSolid = blockAboveData !== null && GridCollision.isSolid(col, row - 1);
+            const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
+
+            if (canAttachToSolid || canExtendRope) {
+                return { col: col, row: row, color: Config.BLOCK_COLORS[Config.BLOCK_ROPE] };
+            }
+            return null; // Invalid rope placement
+        } else { // Standard block ghost
+            if (!GridCollision.hasSolidNeighbor(col, row)) return null;
+            
+            const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[selectedMaterialType];
+            if (blockTypeToPlace === undefined) return null;
+            
+            const blockColor = Config.BLOCK_COLORS[blockTypeToPlace];
+            if (!blockColor) return null;
+            
+            return { col: col, row: row, color: blockColor };
+        }
     }
     /**
         * Draws the player character, held weapon visual, and attack hitbox/ghost block if applicable.
@@ -1133,6 +1230,9 @@ export class Player {
         this.isOnGround = false;
         this.isInWater = false;
         this.waterJumpCooldown = 0;
+        this.isOnRope = false;
+        this.ropeCol = -1;
+        this.canGrabRopeTimer = 0;
         // Health (remain fixed)
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
         this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;

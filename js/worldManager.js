@@ -733,46 +733,78 @@ export function updateStaticWorldAt(col, row) {
     if (block !== Config.BLOCK_AIR && block !== null && block !== undefined) {
         const currentBlockType = typeof block === 'object' && block !== null ? block.type : block;
         if (currentBlockType === Config.BLOCK_AIR) return;
-        const blockColor = Config.BLOCK_COLORS[currentBlockType];
-        if (blockColor) {
-            gridCtx.fillStyle = blockColor;
-            gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
+
+        // --- NEW: Special drawing for ROPE ---
+        if (currentBlockType === Config.BLOCK_ROPE) {
+            gridCtx.fillStyle = Config.BLOCK_COLORS[Config.BLOCK_ROPE];
+            const ropeWidth = Math.max(1, Math.floor(blockW * 0.2)); // e.g., 20% of block width
+            const ropeX = Math.floor(blockX + (blockW - ropeWidth) / 2);
+            gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
+            // Player placed outline for ropes
             const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
             if (isPlayerPlaced) {
                 gridCtx.save();
-                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
-                gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
-                const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
+                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR; // Maybe a different color for rope outline?
+                gridCtx.lineWidth = 1; // Thinner outline for ropes
                 gridCtx.strokeRect(
-                    Math.floor(blockX) + outlineInset, Math.floor(blockY) + outlineInset,
-                    blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+                    ropeX, Math.floor(blockY),
+                    ropeWidth, blockH
                 );
                 gridCtx.restore();
             }
+            // Damage indication for ropes
             if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
-                const hpRatio = block.hp / block.maxHp;
-                if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
+                 // Simple damage: slightly transparent
+                gridCtx.save();
+                gridCtx.globalAlpha = 0.5 + 0.5 * (block.hp / block.maxHp);
+                gridCtx.fillStyle = Config.BLOCK_COLORS[Config.BLOCK_ROPE]; // Redraw with alpha
+                gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
+                gridCtx.restore();
+            }
+
+        } else { // --- STANDARD BLOCK DRAWING ---
+            const blockColor = Config.BLOCK_COLORS[currentBlockType];
+            if (blockColor) {
+                gridCtx.fillStyle = blockColor;
+                gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
+                // ... (existing player placed outline and damage indicator logic for standard blocks) ...
+                const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
+                if (isPlayerPlaced) {
                     gridCtx.save();
-                    gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
-                    gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-                    gridCtx.lineCap = 'square';
-                    const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-                    gridCtx.beginPath();
-                    gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset);
-                    gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
-                    gridCtx.stroke();
-                    if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
-                        gridCtx.beginPath();
-                        gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset);
-                        gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset);
-                        gridCtx.stroke();
-                    }
+                    gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
+                    gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
+                    const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
+                    gridCtx.strokeRect(
+                        Math.floor(blockX) + outlineInset, Math.floor(blockY) + outlineInset,
+                        blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+                    );
                     gridCtx.restore();
                 }
+                if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
+                    const hpRatio = block.hp / block.maxHp;
+                    if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
+                        gridCtx.save();
+                        gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
+                        gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                        gridCtx.lineCap = 'square';
+                        const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset);
+                        gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
+                        gridCtx.stroke();
+                        if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
+                            gridCtx.beginPath();
+                            gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset);
+                            gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset);
+                            gridCtx.stroke();
+                        }
+                        gridCtx.restore();
+                    }
+                }
+            } else {
+                // console.warn(`No color defined for block type ${currentBlockType} at [${col}, ${row}]`);
             }
-        } else {
-            // console.warn(`No color defined for block type ${currentBlockType} at [${col}, ${row}]`);
-        }
+        } // --- END else for standard block drawing ---
     }
 }
 
