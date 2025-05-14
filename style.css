@@ -47,8 +47,10 @@ body {
 }
 #game-canvas {
     display: block;
-    max-width: 100%;
-    max-height: 100%;
+    width: 100%;
+    height: 100%;
+    max-width: 100%; /* Kept for safety, but width/height 100% should dominate */
+    max-height: 100%; /* Kept for safety */
     object-fit: contain;
     image-rendering: pixelated;
     image-rendering: crisp-edges;
@@ -166,15 +168,19 @@ body {
 #bottom-ui-overlay {
     position: absolute;
     bottom: 0rem;
-    left: 0rem;
-    right: 0rem;
+    /* left: 0rem; REMOVED */
+    /* right: 0rem; REMOVED */
+    width: fit-content; /* ADDED: Makes the overlay only as wide as its content */
+    left: 50%;          /* ADDED: For horizontal centering */
+    transform: translateX(-50%); /* ADDED: For precise horizontal centering */
     padding: 0.5rem;
-    background-color: black;
+    background-color: black; /* CHANGED: Back to opaque */
     box-sizing: border-box;
     z-index: 51;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    overflow-y: auto; /* Keep for vertical scrolling if content is tall */
+    border-radius: 8px 8px 0 0; /* Optional: Rounded top corners */
 }
 #item-selection-area {
     display: flex;
@@ -184,21 +190,23 @@ body {
 #inventory-boxes-container {
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
-    gap: 5px;
+    flex-wrap: nowrap;
+    min-width: 41.875rem; /* CHANGED from 670px */
+    gap: 0.3125rem;       /* CHANGED from 5px */
     justify-content: center;
 }
 #weapon-slots-container {
     display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
-    gap: 5px;
+    flex-wrap: nowrap;
+    min-width: 41.875rem; /* CHANGED from 670px */
+    gap: 0.3125rem;       /* CHANGED from 5px */
     justify-content: center;
 }
 .item-box {
-    width: 40px;
-    height: 40px;
-    border: 1px solid white;
+    width: 2.5rem;  /* CHANGED from 40px */
+    height: 2.5rem; /* CHANGED from 40px */
+    border: 0.0625rem solid white; /* CHANGED from 1px */
     border-radius: 4px;
     position: relative;
     background-color: #333;
@@ -242,14 +250,14 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
-    gap: 1px;
-    padding: 2px;
+    gap: 0.0625rem;  /* CHANGED from 1px */
+    padding: 0.125rem; /* CHANGED from 2px */
     box-sizing: border-box;
     z-index: 1;
 }
 .quadrant {
     background-color: rgba(0, 0, 0, 0.35);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 0.0625rem solid rgba(255, 255, 255, 0.05); /* CHANGED from 1px */
     box-sizing: border-box;
     transition: background-color 0.15s ease-in-out;
 }
@@ -271,8 +279,8 @@ body {
 }
 .item-box .item-count {
     position: absolute;
-    bottom: 1px;
-    right: 2px;
+    bottom: 0.0625rem; /* CHANGED from 1px */
+    right: 0.125rem;  /* CHANGED from 2px */
     font-size: 0.8em;
     font-weight: bold;
     color: white;
