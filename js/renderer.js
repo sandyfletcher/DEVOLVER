@@ -168,15 +168,29 @@ export function restoreCameraTransforms(renderCtx) {
 }
 
 // --- Mouse Coordinate Conversion ---
+/**
+ * Converts mouse coordinates from the internal canvas space to world space.
+ * This function accounts for camera translation (cameraX, cameraY) and scale.
+ * @param {object} inputMousePos - Mouse position {x, y} relative to the internal canvas resolution.
+ * @returns {object} Mouse position {x, y} in world coordinates.
+ */
 export function getMouseWorldCoords(inputMousePos) {
+    // Fallback if inputMousePos is invalid: return the world coordinates of the center of the viewport.
     if (!inputMousePos || typeof inputMousePos.x !== 'number' || typeof inputMousePos.y !== 'number' || isNaN(inputMousePos.x) || isNaN(inputMousePos.y)) {
+        console.warn("getMouseWorldCoords: Invalid inputMousePos, returning viewport center.", inputMousePos);
         return {
             x: cameraX + (Config.CANVAS_WIDTH / 2) / cameraScale,
             y: cameraY + (Config.CANVAS_HEIGHT / 2) / cameraScale
         };
     }
-    const worldX = cameraX + (inputMousePos.x / cameraScale);
-    const worldY = cameraY + (inputMousePos.y / cameraScale);
+
+    // To convert from canvas coordinates to world coordinates:
+    // 1. Un-scale: Divide the canvas mouse coordinates by the cameraScale. This gives the mouse position
+    //    in world units, relative to the camera's top-left corner (if camera was at 0,0).
+    // 2. Un-translate: Add the camera's world coordinates (cameraX, cameraY) to the result from step 1.
+    const worldX = (inputMousePos.x / cameraScale) + cameraX;
+    const worldY = (inputMousePos.y / cameraScale) + cameraY;
+
     return { x: worldX, y: worldY };
 }
 
