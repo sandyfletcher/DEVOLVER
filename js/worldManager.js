@@ -29,25 +29,25 @@ let lightingAnimationQueue = []; // Stores { c, r, newLitState: true } for pendi
 let activeLightingAnimations = []; // Stores { c, r, newLitState, timer }
 let newLightingAnimationStartTimer = 0; // Timer to delay starting new lighting animations
 
-const MAX_FALLING_BLOCKS_AT_ONCE = 20; 
-const GRAVITY_ANIMATION_FALL_SPEED = 200; 
-const NEW_GRAVITY_ANIM_DELAY = 0.02; 
+const MAX_FALLING_BLOCKS_AT_ONCE = 20;
+const GRAVITY_ANIMATION_FALL_SPEED = 200;
+const NEW_GRAVITY_ANIM_DELAY = 0.02;
 
-const SUN_MOVEMENT_Y_ROW_OFFSET = -3; 
-const SUN_RAYS_PER_POSITION = 36;    
-const SUN_MOVEMENT_STEP_COLUMNS = 5;   
-const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2); 
+const SUN_MOVEMENT_Y_ROW_OFFSET = -3;
+const SUN_RAYS_PER_POSITION = 36;
+const SUN_MOVEMENT_STEP_COLUMNS = 5;
+const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2);
 
 // This function will take the output of `diffGrids` and try to identify falling blocks.
 function parseGravityDiffsIntoFallingBlocks(diffs) {
     const fallingBlocks = [];
-    const disappeared = new Map(); 
-    const appeared = new Map();    
+    const disappeared = new Map();
+    const appeared = new Map();
 
     diffs.forEach(diff => {
         if (diff.oldBlockType !== Config.BLOCK_AIR && diff.oldBlockType !== Config.BLOCK_WATER && diff.newBlockType === Config.BLOCK_AIR) {
             if (!disappeared.has(diff.c)) disappeared.set(diff.c, new Map());
-            disappeared.get(diff.c).set(diff.r, diff.oldBlockType); 
+            disappeared.get(diff.c).set(diff.r, diff.oldBlockType);
         }
         else if (diff.oldBlockType === Config.BLOCK_AIR && diff.newBlockType !== Config.BLOCK_AIR && diff.newBlockType !== Config.BLOCK_WATER) {
             if (!appeared.has(diff.c)) appeared.set(diff.c, new Map());
@@ -378,20 +378,28 @@ function applyInitialFloodFill() {
 }
 
 // --- MODIFIED: applyLightingPass ---
-// This function will now identify blocks that *should* change their lit state
-// and return them as proposed changes, rather than directly modifying the grid.
-export function applyLightingPass() {
+export function applyLightingPass(DEBUG_DRAW_LIGHTING = true) {
     // console.log("[WorldManager] Calculating proposed lighting changes...");
     let proposedChanges = [];
-    const blocksToAnimateThisPass = new Set(); // To avoid duplicate animation proposals in one pass
+    const blocksToAnimateThisPass = new Set();
 
     const grid = World.getGrid();
     if (!grid || grid.length === 0) {
         console.error("[WorldManager] applyLightingPass: World grid not available for calculation.");
-        return proposedChanges; // Return empty array
+        return proposedChanges;
     }
 
-    // 1. Raycasting logic (remains largely the same, but collects changes)
+    // --- DEBUG DRAWING SETUP ---
+    let mainCtx;
+    if (DEBUG_DRAW_LIGHTING) {
+        mainCtx = Renderer.getContext();
+        if (!mainCtx) {
+            console.error("Debug Lighting: Main context not available!");
+            DEBUG_DRAW_LIGHTING = false;
+        }
+    }
+    // --- END DEBUG DRAWING SETUP ---
+
     const sunCenterPixelY = (SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
     const sunStartPixelX = Config.CANVAS_WIDTH + (Config.BLOCK_WIDTH * 10);
     const sunEndPixelX = -(Config.BLOCK_WIDTH * 10);
@@ -401,12 +409,33 @@ export function applyLightingPass() {
         const sunGridCol = Math.floor(currentSunPixelX / Config.BLOCK_WIDTH);
         const sunGridRow = Math.floor(sunCenterPixelY / Config.BLOCK_HEIGHT);
 
+        // --- DEBUG DRAW SUN POSITION ---
+        if (DEBUG_DRAW_LIGHTING && mainCtx) {
+            mainCtx.save();
+            Renderer.applyCameraTransforms(mainCtx);
+            mainCtx.fillStyle = "yellow";
+            mainCtx.beginPath();
+            mainCtx.arc(currentSunPixelX, sunCenterPixelY, Config.BLOCK_WIDTH * 2, 0, Math.PI * 2);
+            mainCtx.fill();
+            mainCtx.strokeStyle = "orange";
+            mainCtx.lineWidth = 2;
+            mainCtx.stroke();
+            Renderer.restoreCameraTransforms(mainCtx);
+            mainCtx.restore();
+        }
+        // --- END DEBUG DRAW SUN ---
+
         for (let i = 0; i < SUN_RAYS_PER_POSITION; i++) {
             const angle = (i / SUN_RAYS_PER_POSITION) * 2 * Math.PI;
             let rayCurrentGridCol = sunGridCol;
             let rayCurrentGridRow = sunGridRow;
             const rayEndGridCol = Math.floor(sunGridCol + Math.cos(angle) * MAX_LIGHT_RAY_LENGTH_BLOCKS);
             const rayEndGridRow = Math.floor(sunGridRow + Math.sin(angle) * MAX_LIGHT_RAY_LENGTH_BLOCKS);
+
+            let rayPixelStartX = currentSunPixelX;
+            let rayPixelStartY = sunCenterPixelY;
+            let rayPixelEndX = rayPixelStartX;
+            let rayPixelEndY = rayPixelStartY;
 
             let dx = Math.abs(rayEndGridCol - rayCurrentGridCol);
             let dy = Math.abs(rayEndGridRow - rayCurrentGridRow);
@@ -416,23 +445,29 @@ export function applyLightingPass() {
             let currentRayBlockLength = 0;
 
             while (currentRayBlockLength < MAX_LIGHT_RAY_LENGTH_BLOCKS) {
+                rayPixelEndX = (rayCurrentGridCol * Config.BLOCK_WIDTH) + (Config.BLOCK_WIDTH / 2);
+                rayPixelEndY = (rayCurrentGridRow * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
+
                 if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
                     rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
-                    
-                    const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow); // Use World.getBlock
+
+                    const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow);
                     const blockType = (typeof block === 'object' && block !== null) ? block.type : block;
 
                     if (blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER && block !== null) {
-                        if (typeof block === 'object' && !block.isLit) { // Check if it's not already lit
+                        if (typeof block === 'object' && !block.isLit) {
                             const changeKey = `${rayCurrentGridCol},${rayCurrentGridRow}`;
                             if (!blocksToAnimateThisPass.has(changeKey)) {
                                 proposedChanges.push({ c: rayCurrentGridCol, r: rayCurrentGridRow, newLitState: true });
                                 blocksToAnimateThisPass.add(changeKey);
                             }
                         }
-                        break; 
+                        break;
                     }
                 } else if (rayCurrentGridRow >= Config.GRID_ROWS) {
+                    break;
+                }
+                else if (rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) {
                     break;
                 }
 
@@ -444,9 +479,21 @@ export function applyLightingPass() {
                 if (e2 < dx) { err += dx; rayCurrentGridRow += sy; }
                 currentRayBlockLength++;
             }
+
+            if (DEBUG_DRAW_LIGHTING && mainCtx) {
+                mainCtx.save();
+                Renderer.applyCameraTransforms(mainCtx);
+                mainCtx.strokeStyle = "rgba(255, 255, 0, 0.3)";
+                mainCtx.lineWidth = 1;
+                mainCtx.beginPath();
+                mainCtx.moveTo(rayPixelStartX, rayPixelStartY);
+                mainCtx.lineTo(rayPixelEndX, rayPixelEndY);
+                mainCtx.stroke();
+                Renderer.restoreCameraTransforms(mainCtx);
+                mainCtx.restore();
+            }
         }
     }
-    // console.log(`[WorldManager] Lighting pass calculation complete. Proposed ${proposedChanges.length} lighting changes.`);
     return proposedChanges;
 }
 
@@ -454,33 +501,31 @@ export function applyLightingPass() {
 // -----------------------------------------------------------------------------
 // --- Initialization ---
 // -----------------------------------------------------------------------------
- 
+
 export function executeInitialWorldGenerationSequence() {
     console.log("[WorldManager] Executing initial world data generation sequence...");
-    generateWorldFromGenerator(); 
-    applyGravitySettlement(null); 
+    generateWorldFromGenerator();
+    applyGravitySettlement(null);
     applyInitialFloodFill();
-    
-    // --- MODIFIED for initial lighting ---
-    World.resetAllBlockLighting(); // Reset before calculation
-    const initialProposedLighting = applyLightingPass(); // Get proposed changes
-    initialProposedLighting.forEach(change => { // Directly apply for initial setup
+
+    World.resetAllBlockLighting();
+    const initialProposedLighting = applyLightingPass(false); // Pass false for normal operation
+    // const initialProposedLighting = applyLightingPass(true); // Use true to debug draw lighting pass on init
+
+    initialProposedLighting.forEach(change => {
         const block = World.getBlock(change.c, change.r);
         if (block && typeof block === 'object') {
             block.isLit = change.newLitState;
         }
     });
     console.log(`[WorldManager] Initial lighting calculated and applied directly: ${initialProposedLighting.length} blocks lit.`);
-    // --- END MODIFICATION ---
 
-    // Initialize animation queues
     agingAnimationQueue = [];
     activeAgingAnimations = [];
     newAnimationStartTimer = 0;
     gravityAnimationQueue = [];
     activeGravityAnimations = [];
     newGravityAnimationStartTimer = 0;
-    // NEW: Initialize lighting animation queues
     lightingAnimationQueue = [];
     activeLightingAnimations = [];
     newLightingAnimationStartTimer = 0;
@@ -500,7 +545,7 @@ export function addWaterUpdateCandidate(col, row) {
             const blockType = World.getBlockType(col, row);
             if (blockType !== null &&
                 (blockType === Config.BLOCK_WATER ||
-                (blockType === Config.BLOCK_AIR && row >= Config.WATER_LEVEL))) { 
+                (blockType === Config.BLOCK_AIR && row >= Config.WATER_LEVEL))) {
                 waterUpdateQueue.set(key, {c: col, r: row});
                 return true;
             }
@@ -554,7 +599,7 @@ export function placePlayerBlock(col, row, blockType) {
     if (success) {
         updateStaticWorldAt(col, row);
         queueWaterCandidatesAroundChange(col, row);
-    } 
+    }
     return success;
 }
 
@@ -722,7 +767,7 @@ function updateLightingAnimations(dt) {
     newLightingAnimationStartTimer -= dt;
     if (newLightingAnimationStartTimer <= 0 && lightingAnimationQueue.length > 0 && activeLightingAnimations.length < Config.LIGHTING_ANIMATION_BLOCKS_AT_ONCE) {
         const change = lightingAnimationQueue.shift();
-        
+
         const blockBeingAnimated = World.getBlock(change.c, change.r);
         if (blockBeingAnimated && typeof blockBeingAnimated === 'object' && blockBeingAnimated.isLit) {
             // Already lit, skip animation for this one
@@ -754,10 +799,10 @@ function updateLightingAnimations(dt) {
         if (anim.timer <= 0) {
             const block = World.getBlock(anim.c, anim.r);
             if (block && typeof block === 'object') {
-                block.isLit = anim.newLitState; 
+                block.isLit = anim.newLitState;
             }
-            updateStaticWorldAt(anim.c, anim.r); 
-            queueWaterCandidatesAroundChange(anim.c, anim.r); 
+            updateStaticWorldAt(anim.c, anim.r);
+            queueWaterCandidatesAroundChange(anim.c, anim.r);
             activeLightingAnimations.splice(i, 1);
         }
     }
@@ -770,8 +815,8 @@ function drawLightingAnimations(ctx) {
         const blockWidth = Config.BLOCK_WIDTH;
         const blockHeight = Config.BLOCK_HEIGHT;
 
-        const progress = 1.0 - (anim.timer / Config.LIGHTING_ANIMATION_DURATION); 
-        const alpha = Math.sin(progress * Math.PI) * Config.LIGHTING_ANIMATION_MAX_ALPHA; 
+        const progress = 1.0 - (anim.timer / Config.LIGHTING_ANIMATION_DURATION);
+        const alpha = Math.sin(progress * Math.PI) * Config.LIGHTING_ANIMATION_MAX_ALPHA;
 
         ctx.save();
         ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
@@ -834,26 +879,26 @@ export function updateStaticWorldAt(col, row) {
             try {
                 if (baseColor.startsWith('rgb(')) {
                     const parts = baseColor.substring(4, baseColor.length - 1).split(',').map(s => parseInt(s.trim(), 10));
-                    const r = Math.min(255, Math.floor(parts[0] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                    const g = Math.min(255, Math.floor(parts[1] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                    const b = Math.min(255, Math.floor(parts[2] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                    finalColor = `rgb(${r}, ${g}, ${b})`;
+                    const r_val = Math.min(255, Math.floor(parts[0] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
+                    const g_val = Math.min(255, Math.floor(parts[1] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
+                    const b_val = Math.min(255, Math.floor(parts[2] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
+                    finalColor = `rgb(${r_val}, ${g_val}, ${b_val})`;
                 }
             } catch (e) {
-                finalColor = baseColor; 
+                finalColor = baseColor;
             }
         }
-        
+
         if (currentBlockType === Config.BLOCK_ROPE) {
-            gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE]; 
-            const ropeWidth = Math.max(1, Math.floor(blockW * 0.2)); 
+            gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE];
+            const ropeWidth = Math.max(1, Math.floor(blockW * 0.2));
             const ropeX = Math.floor(blockX + (blockW - ropeWidth) / 2);
             gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
             const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
             if (isPlayerPlaced) {
                 gridCtx.save();
-                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR; 
-                gridCtx.lineWidth = 1; 
+                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
+                gridCtx.lineWidth = 1;
                 gridCtx.strokeRect(
                     ropeX, Math.floor(blockY),
                     ropeWidth, blockH
@@ -863,12 +908,12 @@ export function updateStaticWorldAt(col, row) {
             if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
                 gridCtx.save();
                 gridCtx.globalAlpha = 0.5 + 0.5 * (block.hp / block.maxHp);
-                gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE]; 
+                gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE];
                 gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
                 gridCtx.restore();
             }
 
-        } else { 
+        } else {
             if (finalColor) {
                 gridCtx.fillStyle = finalColor;
                 gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
@@ -906,7 +951,7 @@ export function updateStaticWorldAt(col, row) {
                     }
                 }
             }
-        } 
+        }
     }
 }
 
@@ -939,14 +984,14 @@ export function draw(ctx) {
     if (!ctx) {
         return;
     }
-    const gridCanvasToDraw = Renderer.getGridCanvas(); 
-    if (gridCanvasToDraw) { 
+    const gridCanvasToDraw = Renderer.getGridCanvas();
+    if (gridCanvasToDraw) {
         ctx.drawImage(gridCanvasToDraw, 0, 0);
     }
-    
+
     drawGravityAnimations(ctx);
     drawAgingAnimations(ctx);
-    drawLightingAnimations(ctx); // NEW: Draw lighting animations
+    drawLightingAnimations(ctx);
 }
 
 // -----------------------------------------------------------------------------
@@ -1017,5 +1062,5 @@ export function update(dt) {
     }
     updateGravityAnimations(dt);
     updateAgingAnimations(dt);
-    updateLightingAnimations(dt); // NEW: Update lighting animations
+    updateLightingAnimations(dt);
 }

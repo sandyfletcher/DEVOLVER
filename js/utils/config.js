@@ -188,6 +188,14 @@ export const LIGHTING_ANIMATION_DURATION = 0.4; // Duration (seconds) of the lig
 export const LIGHTING_ANIMATION_COLOR = 'rgba(255, 255, 150, 0.6)'; // Color for the lighting animation flash
 export const LIGHTING_ANIMATION_MAX_ALPHA = 0.7; // Max alpha for the flash (used if color has low alpha)
 export const LIT_BLOCK_BRIGHTNESS_FACTOR = 1.3; // How much brighter a lit block appears (multiplier for its base color)
+// --- Sun Animation (Visual Only for Warp Phase) ---
+export const SUN_ANIMATION_ENABLED = true; // To easily toggle this new effect
+export const SUN_ANIMATION_COLOR = "yellow";
+export const SUN_ANIMATION_RADIUS_BLOCKS = 3; // Visual radius of the sun
+export const SUN_ANIMATION_RAY_COLOR = "rgba(255, 255, 100, 0.25)"; // Softer yellow for rays
+export const SUN_ANIMATION_RAY_LINE_WIDTH = 1;
+export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 20; // How far off-screen (right) it starts
+export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 20;   // How far off-screen (left) it ends
 // --- Delta-Time Physics ---
 export const GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ = 100; // Base acceleration in block heights per second squared.
 export const GRAVITY_ACCELERATION = GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_HEIGHT; // Pixels per second squared.

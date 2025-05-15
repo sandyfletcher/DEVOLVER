@@ -118,10 +118,10 @@ function startNextWave() {
     }
     return true;
 }
-function endWave() { 
+function endWave() {
     const waveData = getCurrentWaveData();
     if (!waveData) {
-        state = 'GAME_OVER'; 
+        state = 'GAME_OVER';
         currentMaxTimer = 0;
         console.warn("[WaveManager] endWave called but no current wave data. Setting GAME_OVER.");
         return;
@@ -130,17 +130,17 @@ function endWave() {
         state = 'BUILDPHASE';
         buildPhaseTimer = waveData.intermissionDuration ?? (Config.AGING_DEFAULT_PASSES_PER_WAVE * 0.5 + 10.0);
         currentMaxTimer = buildPhaseTimer;
-        AudioManager.stopGameMusic(); 
+        AudioManager.stopGameMusic();
     } else {
         state = 'VICTORY';
         currentMaxTimer = 0;
-        AudioManager.stopGameMusic(); 
+        AudioManager.stopGameMusic();
     }
     currentSubWaveIndex = 0;
     currentGroupIndex = 0;
     enemiesSpawnedThisGroup = 0;
     groupSpawnTimer = 0;
-    groupStartDelayTimer = 0; 
+    groupStartDelayTimer = 0;
 }
 function triggerWarpCleanupAndCalculations() {
     console.log("[WaveMgr] End of BUILDPHASE. Triggering entity cleanup, calculations, and animation queuing...");
@@ -155,7 +155,7 @@ function triggerWarpCleanupAndCalculations() {
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     console.log("[WaveMgr] Entity cleanup and portal radius update complete.");
-    
+
     // 2. Logical Gravity Settlement
     console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
     let gravityAnimationChanges = WorldManager.applyGravitySettlement(portalRef);
@@ -164,24 +164,36 @@ function triggerWarpCleanupAndCalculations() {
         WorldManager.addProposedGravityChanges(gravityAnimationChanges);
     }
 
-    // --- NEW: Single Lighting Pass Calculation ---
+    // --- Lighting Pass Calculation & Application ---
     console.log("[WaveMgr] Resetting all block lighting for new pass...");
-    World.resetAllBlockLighting(); // Call the new reset function from world.js
+    World.resetAllBlockLighting();
     console.log("[WaveMgr] Calculating lighting pass (LOGICAL)...");
-    const proposedLightingChanges = WorldManager.applyLightingPass(); // This now returns proposed changes
+    
+    // MODIFIED: Set to true to visualize sun/rays during this phase
+    const proposedLightingChanges = WorldManager.applyLightingPass(true); 
+    
+    // Apply lighting state logically BEFORE aging, regardless of debug drawing
     if (proposedLightingChanges.length > 0) {
-        WorldManager.addProposedLightingChanges(proposedLightingChanges); // Queue them for animation
+        console.log(`[WaveMgr] Directly applying ${proposedLightingChanges.length} lighting states before aging.`);
+        proposedLightingChanges.forEach(change => {
+            const block = World.getBlock(change.c, change.r);
+            if (block && typeof block === 'object') {
+                block.isLit = change.newLitState; // Directly set isLit
+            }
+        });
+        // Still queue them for animation if you want the visual flash effect
+        WorldManager.addProposedLightingChanges(proposedLightingChanges);
     }
-    console.log(`[WaveMgr] Lighting pass (LOGICAL) complete. ${proposedLightingChanges.length} lighting changes proposed.`);
-    // --- END NEW Lighting Pass ---
+    console.log(`[WaveMgr] Lighting pass (LOGICAL) complete. ${proposedLightingChanges.length} lighting changes proposed and applied.`);
+    // --- END Lighting Pass ---
 
     // 3. Logical Aging Process
-    console.log("[WaveMgr] Applying aging process (LOGICAL) post-settlement...");
+    console.log("[WaveMgr] Applying aging process (LOGICAL) post-settlement and lighting application...");
     const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
     const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
-    let allVisualAgingChangesFromAgingPasses = []; 
-    let allGravityChangesFromAgingPasses = [];   
-    
+    let allVisualAgingChangesFromAgingPasses = [];
+    let allGravityChangesFromAgingPasses = [];
+
     const currentWaveData = getCurrentWaveData();
     const currentMya = currentWaveData ? currentWaveData.mya : undefined;
     const nextMya = nextWaveData ? nextWaveData.mya : undefined;
@@ -194,14 +206,13 @@ function triggerWarpCleanupAndCalculations() {
             else if (nextWaveData.customEpochText) UI.showEpochText(nextWaveData.customEpochText);
             else UI.showEpochText(`Preparing Wave ${nextWaveData.mainWaveNumber || 'Next'}`);
         } else {
-            UI.showEpochText("Final Preparations..."); 
+            UI.showEpochText("Final Preparations...");
         }
     }
 
     if (nextWaveData && typeof nextWaveData === 'object') {
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
         for (let i = 0; i < passes; i++) {
-            // WorldManager.applyLightingPass(); // REMOVED: Lighting is now calculated once above
             const changesInPass = AgingManager.applyAging(portalRef);
             if (changesInPass.visualChanges && Array.isArray(changesInPass.visualChanges)) {
                 allVisualAgingChangesFromAgingPasses.push(...changesInPass.visualChanges);
@@ -248,10 +259,10 @@ export function update(dt, gameState) {
     if (dt <= 0) return;
     switch (state) {
         case 'PRE_WAVE':
-            if (gameState === 'RUNNING') { 
+            if (gameState === 'RUNNING') {
                 preWaveTimer -= dt;
                 if (preWaveTimer <= 0) {
-                    startNextWave(); 
+                    startNextWave();
                 }
             }
             break;
@@ -260,8 +271,8 @@ export function update(dt, gameState) {
                 mainWaveTimer -= dt;
                 if (mainWaveTimer <= 0) {
                     mainWaveTimer = 0;
-                    endWave(); 
-                    break; 
+                    endWave();
+                    break;
                 }
                 const subWaveData = getCurrentSubWaveData();
                 const groupData = getCurrentGroupData();
@@ -277,10 +288,10 @@ export function update(dt, gameState) {
                                     enemiesSpawnedThisGroup++;
                                     groupSpawnTimer = groupData.delayBetween > 0 ? groupData.delayBetween : 0.1;
                                     if (groupData.delayBetween <= 0 && enemiesSpawnedThisGroup < groupData.count) {
-                                        groupSpawnTimer = 0; 
+                                        groupSpawnTimer = 0;
                                     }
                                 } else {
-                                    groupSpawnTimer = 0.2; 
+                                    groupSpawnTimer = 0.2;
                                 }
                             }
                         } else {
@@ -294,20 +305,24 @@ export function update(dt, gameState) {
             buildPhaseTimer -= dt;
             if (buildPhaseTimer <= 0) {
                 buildPhaseTimer = 0;
-                triggerWarpCleanupAndCalculations();
+                triggerWarpCleanupAndCalculations(); // This now calls applyLightingPass(true)
                 state = 'WARP_ANIMATING';
                 console.log("[WaveMgr] Transitioned from BUILDPHASE to WARP_ANIMATING. Waiting for animations.");
-                currentMaxTimer = Config.MYA_TRANSITION_ANIMATION_DURATION; 
+                currentMaxTimer = Config.MYA_TRANSITION_ANIMATION_DURATION;
             }
             break;
         case 'WARP_ANIMATING':
-            if (WorldManager.areGravityAnimationsComplete() && 
+            // The applyLightingPass(true) call in triggerWarpCleanupAndCalculations
+            // will do its drawing. This state primarily waits for other animations
+            // (gravity, aging, and the *queued* lighting animations) to finish.
+            // The visual sun/ray drawing is a one-shot thing during triggerWarpCleanupAndCalculations.
+            if (WorldManager.areGravityAnimationsComplete() &&
                 WorldManager.areAgingAnimationsComplete() &&
-                WorldManager.areLightingAnimationsComplete()) { // NEW CHECK
+                WorldManager.areLightingAnimationsComplete()) {
                 console.log("[WaveMgr] All world animations complete (Gravity, Aging, Lighting) during WARP_ANIMATING. Finalizing warp.");
-                WorldManager.renderStaticWorldToGridCanvas(); 
-                WorldManager.seedWaterUpdateQueue();        
-                startNextWave(); 
+                WorldManager.renderStaticWorldToGridCanvas();
+                WorldManager.seedWaterUpdateQueue();
+                startNextWave();
             }
             break;
         case 'VICTORY':
@@ -323,7 +338,7 @@ export function setGameOver() {
         state = 'GAME_OVER';
         preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0;
         groupSpawnTimer = 0; groupStartDelayTimer = 0;
-        currentMaxTimer = 0; 
+        currentMaxTimer = 0;
     }
 }
 export function setVictory() {
@@ -331,25 +346,25 @@ export function setVictory() {
         state = 'VICTORY';
         preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0;
         groupSpawnTimer = 0; groupStartDelayTimer = 0;
-        currentMaxTimer = 0; 
+        currentMaxTimer = 0;
     }
 }
-export function isGameOver() { 
+export function isGameOver() {
     return state === 'GAME_OVER';
 }
 export function getCurrentWaveNumber() {
     if (state === 'GAME_OVER' || state === 'VICTORY') {
-        return Math.max(0, currentMainWaveIndex + 1); 
+        return Math.max(0, currentMainWaveIndex + 1);
     }
     if (state === 'BUILDPHASE' || state === 'WARP_ANIMATING') {
-        return currentMainWaveIndex + 2; 
+        return currentMainWaveIndex + 2;
     }
-    return (currentMainWaveIndex < 0) ? 1 : currentMainWaveIndex + 1; 
+    return (currentMainWaveIndex < 0) ? 1 : currentMainWaveIndex + 1;
 }
 export function getWaveInfo() {
     let timer = 0;
-    let currentWaveNumber = getCurrentWaveNumber(); 
-    let maxTimerToUse = currentMaxTimer; 
+    let currentWaveNumber = getCurrentWaveNumber();
+    let maxTimerToUse = currentMaxTimer;
 
     switch (state) {
         case 'PRE_WAVE':
@@ -363,29 +378,31 @@ export function getWaveInfo() {
             timer = buildPhaseTimer;
             break;
         case 'WARP_ANIMATING':
-            let warpProgress = 0; // Default if no MYA
+            // During WARP_ANIMATING, the main timer shown to the player could be
+            // related to the MYA transition, or just a generic "Warping..." indicator.
+            // The actual progression to the next wave depends on animations finishing.
+            // We can use the MYA transition timer from UI if available.
             if (Config.MYA_TRANSITION_ANIMATION_DURATION > 0) {
-                const ui = (typeof UI.getMyaTransitionInfo === 'function') ? UI.getMyaTransitionInfo() : {timer: Config.MYA_TRANSITION_ANIMATION_DURATION, duration: Config.MYA_TRANSITION_ANIMATION_DURATION, isActive: true};
-                timer = ui.timer; // Remaining time of MYA transition
+                const uiMyaInfo = (typeof UI.getMyaTransitionInfo === 'function') ? UI.getMyaTransitionInfo() : {timer: Config.MYA_TRANSITION_ANIMATION_DURATION, duration: Config.MYA_TRANSITION_ANIMATION_DURATION, isActive: true};
+                timer = uiMyaInfo.timer; // Remaining time of MYA transition
             } else {
-                 // Fallback if no MYA transition or UI function not available.
-                 // Check if all animations are done to show 0 time, otherwise show a default time.
+                // Fallback if no MYA transition: show 1 until animations are done.
                 if (WorldManager.areGravityAnimationsComplete() &&
                     WorldManager.areAgingAnimationsComplete() &&
                     WorldManager.areLightingAnimationsComplete()) {
                     timer = 0;
                 } else {
-                    timer = 1; // Indicate ongoing animations with a small positive value
+                    timer = 1; // Indicate ongoing animations
                 }
             }
             maxTimerToUse = Config.MYA_TRANSITION_ANIMATION_DURATION;
             break;
         case 'GAME_OVER':
         case 'VICTORY':
-            timer = 0; maxTimerToUse = 1; 
+            timer = 0; maxTimerToUse = 1;
             break;
         default:
-            timer = 0; maxTimerToUse = 1; 
+            timer = 0; maxTimerToUse = 1;
             break;
     }
 

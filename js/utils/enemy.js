@@ -502,6 +502,9 @@ export class Enemy {
 
         ctx.fillStyle = drawColor;
         ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+        ctx.strokeStyle = 'white'; // Bright color
+        ctx.lineWidth = 1;
+        ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
 
         // Optional: Add a visual indicator for isFlopAttacking state for debugging
         // if (this.isFlopAttacking) {
