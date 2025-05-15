@@ -91,13 +91,8 @@ function startNextWave() {
         return false;
     }
 
-    if (typeof waveData.mya === 'number') {
-        UI.showEpochText(waveData.mya);
-    } else if (waveData.customEpochText) {
-        UI.showEpochText(waveData.customEpochText);
-    } else {
-        UI.showEpochText(`Starting Wave ${waveData.mainWaveNumber}`);
-    }
+    // The UI.showEpochText call that was here for the *second* display is REMOVED.
+    // The animated/warp-time display is handled by UI.startMyaEpochTransition in triggerWarpCleanupAndCalculations.
 
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration;
@@ -457,4 +452,39 @@ export function getAnimatedSunPosition() {
     const animatedSunY = (Config.SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
     
     return { x: currentAnimatedSunX, y: animatedSunY };
+}
+
+// Helper to format MYA for pause menu - kept brief
+function formatMyaForPauseMenu(myaValue) {
+    if (typeof myaValue !== 'number' || isNaN(myaValue)) return "Epoch Unknown";
+    if (myaValue === 0) return "Present Day";
+    return `${Math.round(myaValue)} MYA`;
+}
+
+export function getCurrentEpochInfo() {
+    let waveData;
+    if (state === 'PRE_WAVE' || (currentMainWaveIndex === -1 && state !== 'WARP_ANIMATING' && state !== 'BUILDPHASE')) {
+        return null;
+    }
+
+    if (state === 'BUILDPHASE' || state === 'WARP_ANIMATING') {
+        const nextWaveIdx = currentMainWaveIndex + 1;
+        if (nextWaveIdx < Config.WAVES.length) {
+            waveData = Config.WAVES[nextWaveIdx];
+        } else {
+            return "Final Preparations"; // Or null if victory screen handles it
+        }
+    } else {
+        waveData = getCurrentWaveData();
+    }
+
+    if (!waveData) return null;
+
+    if (typeof waveData.mya === 'number') {
+        return formatMyaForPauseMenu(waveData.mya);
+    } else if (waveData.customEpochText) {
+        return waveData.customEpochText;
+    }
+    // Fallback if no MYA or custom text, but wave exists
+    return `Wave ${waveData.mainWaveNumber}`;
 }

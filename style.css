@@ -517,6 +517,16 @@ body {
     background-color: #666;
 }
 
+/* Pause Menu Epoch Text Style */
+#overlay-pause-content .pause-epoch-info {
+    font-size: 1.1em;
+    color: #cccccc;
+    margin-top: -1rem; /* Adjust spacing relative to PAUSED title */
+    margin-bottom: 1.5rem;
+    font-style: italic;
+}
+
+
 /* REPLACED/REMOVED filter-based dimming, new ::before handles it */
 #app-container.overlay-active > #game-wrapper::before {
     opacity: 1;

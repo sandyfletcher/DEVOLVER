@@ -4,8 +4,8 @@
 
 import * as Config from './utils/config.js';
 import * as AudioManager from './audioManager.js';
-import * as WaveManager from './waveManager.js'; // For stats text
-import * as UI from './ui.js'; // For epoch text
+import * as WaveManager from './waveManager.js'; // For stats text & epoch info
+import * as UI from './ui.js'; // For epoch text & pause menu epoch text
 
 export const GameState = Object.freeze({
     TITLE: 'TITLE',
@@ -140,6 +140,10 @@ function showOverlayInternal(stateToShow) {
             if (gameWrapperEl) gameWrapperEl.style.display = 'flex'; // Ensure visible
             AudioManager.pauseGameMusic(); AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
+
+            // Update epoch text in pause menu
+            const epochInfo = WaveManager.getCurrentEpochInfo();
+            UI.updatePauseMenuEpochText(epochInfo);
             break;
         case GameState.GAME_OVER:
             menuOverlayEl.classList.add('active', 'show-gameover');

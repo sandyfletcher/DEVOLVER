@@ -26,6 +26,8 @@ let settingsValueSfx = null;
 let bootOverlayEl = null;
 let epochOverlayEl = null;
 let epochHideTimer = null; // Stores the timer ID for showEpochText's fade-out
+// --- Pause Menu Epoch Text ---
+let pauseMenuEpochTextEl = null;
 // --- Internal State ---
 let playerRef = null;
 let portalRef = null;
@@ -81,6 +83,8 @@ export function initGameUI() {
     settingsValueSfx = document.getElementById('settings-value-sfx');
     // Find Epoch Overlay Element
     epochOverlayEl = document.getElementById('epoch-overlay');
+    // --- Find Pause Menu Epoch Text Element ---
+    pauseMenuEpochTextEl = document.getElementById('pause-menu-epoch-text');
     // --- Verification ---
     const requiredElements = [
         topUiOverlayEl, // Check new parent
@@ -92,7 +96,8 @@ export function initGameUI() {
         itemSelectionAreaEl, inventoryBoxesContainerEl, weaponSlotsContainerEl,
         settingsBtnToggleGrid, settingsBtnMuteMusic, settingsBtnMuteSfx,
         settingsValueGrid, settingsValueMusic, settingsValueSfx,
-        epochOverlayEl
+        epochOverlayEl,
+        pauseMenuEpochTextEl // Added pause menu epoch text element
     ];
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
@@ -106,7 +111,8 @@ export function initGameUI() {
             'itemSelectionAreaEl', 'inventoryBoxesContainerEl', 'weaponSlotsContainerEl',
             'settingsBtnToggleGrid', 'settingsBtnMuteMusic', 'settingsBtnMuteSfx',
             'settingsValueGrid', 'settingsValueMusic', 'settingsValueSfx',
-            'epochOverlayEl'
+            'epochOverlayEl',
+            'pauseMenuEpochTextEl'
         ];
         requiredElements.forEach((el, index) => {
             if (!el) console.error(`Missing UI element: ${elementNames[index]}`);
@@ -168,6 +174,7 @@ export function initGameUI() {
         updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // Initial states
         updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH);
         updateWaveTimer({ state: 'LOADING', timer: 0, maxTimer: 1, progressText: "Loading...", mainWaveNumber: 0 });
+        updatePauseMenuEpochText(""); // Initialize pause menu epoch text as empty
         isUIReady = true;
     } else {
         isUIReady = false;
@@ -599,6 +606,21 @@ export function updateMyaEpochTransition(dt) {
         epochOverlayEl.textContent = formatMya(myaTransitionCurrentDisplayValue);
     }
 }
+
+export function updatePauseMenuEpochText(epochText) {
+    if (!pauseMenuEpochTextEl) {
+        console.warn("UI updatePauseMenuEpochText: Element not found.");
+        return;
+    }
+    if (epochText && typeof epochText === 'string' && epochText.trim() !== "") {
+        pauseMenuEpochTextEl.textContent = epochText;
+        pauseMenuEpochTextEl.style.display = 'block';
+    } else {
+        pauseMenuEpochTextEl.textContent = '';
+        pauseMenuEpochTextEl.style.display = 'none';
+    }
+}
+
 export function isInitialized() { // Add a getter to check if the main game UI initialization was successful
     return isUIReady;
 }

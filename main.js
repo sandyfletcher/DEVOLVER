@@ -2,7 +2,7 @@
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
 import * as UI from './js/ui.js';
-import * as Input from './js/utils/input.js';
+import * as Input from './js/input.js';
 import * as Config from './js/utils/config.js';
 import * as Renderer from './js/renderer.js';
 import * as WaveManager from './js/waveManager.js';
@@ -16,7 +16,6 @@ import * as CollisionManager from './js/collisionManager.js';
 import * as FlowManager from './js/flowManager.js';
 import { Player } from './js/player.js';
 import { Portal } from './js/portal.js';
-// World and GridCollision are used by Renderer now for coordinate conversion too
 let gameStartTime = 0;
 let lastTime = 0;
 let gameLoopId = null;
