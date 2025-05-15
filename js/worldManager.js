@@ -34,10 +34,12 @@ const MAX_FALLING_BLOCKS_AT_ONCE = 20;
 const GRAVITY_ANIMATION_FALL_SPEED = 200;
 const NEW_GRAVITY_ANIM_DELAY = 0.02;
 
-const SUN_MOVEMENT_Y_ROW_OFFSET = -3;
-const SUN_RAYS_PER_POSITION = 36;
-const SUN_MOVEMENT_STEP_COLUMNS = 5;
-const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2);
+// Constants for lighting pass (re-used for visual sun rays)
+const SUN_MOVEMENT_Y_ROW_OFFSET = -3; 
+// const SUN_RAYS_PER_POSITION = 36; // From config.js for visual sun
+// const SUN_MOVEMENT_STEP_COLUMNS = 5; // From config.js for lighting logic, not directly used by visual sun pass
+// const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2); // From config.js for visual sun
+
 
 // This function will take the output of `diffGrids` and try to identify falling blocks.
 function parseGravityDiffsIntoFallingBlocks(diffs) {
@@ -403,7 +405,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
     const sunCenterPixelY = (SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
     const sunStartPixelX = Config.CANVAS_WIDTH + (Config.BLOCK_WIDTH * 10);
     const sunEndPixelX = -(Config.BLOCK_WIDTH * 10);
-    const sunStepPixelX = SUN_MOVEMENT_STEP_COLUMNS * Config.BLOCK_WIDTH;
+    const sunStepPixelX = Config.SUN_MOVEMENT_STEP_COLUMNS * Config.BLOCK_WIDTH;
 
     for (let currentSunPixelX = sunStartPixelX; currentSunPixelX >= sunEndPixelX; currentSunPixelX -= sunStepPixelX) {
         const sunGridCol = Math.floor(currentSunPixelX / Config.BLOCK_WIDTH);
@@ -425,12 +427,12 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
         }
         // --- END DEBUG DRAW SUN ---
 
-        for (let i = 0; i < SUN_RAYS_PER_POSITION; i++) {
-            const angle = (i / SUN_RAYS_PER_POSITION) * 2 * Math.PI;
+        for (let i = 0; i < Config.SUN_RAYS_PER_POSITION; i++) {
+            const angle = (i / Config.SUN_RAYS_PER_POSITION) * 2 * Math.PI;
             let rayCurrentGridCol = sunGridCol;
             let rayCurrentGridRow = sunGridRow;
-            const rayEndGridCol = Math.floor(sunGridCol + Math.cos(angle) * MAX_LIGHT_RAY_LENGTH_BLOCKS);
-            const rayEndGridRow = Math.floor(sunGridRow + Math.sin(angle) * MAX_LIGHT_RAY_LENGTH_BLOCKS);
+            const rayEndGridCol = Math.floor(sunGridCol + Math.cos(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
+            const rayEndGridRow = Math.floor(sunGridRow + Math.sin(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
 
             let rayPixelStartX = currentSunPixelX;
             let rayPixelStartY = sunCenterPixelY;
@@ -444,7 +446,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
             let err = dx - dy;
             let currentRayBlockLength = 0;
 
-            while (currentRayBlockLength < MAX_LIGHT_RAY_LENGTH_BLOCKS) {
+            while (currentRayBlockLength < Config.MAX_LIGHT_RAY_LENGTH_BLOCKS) {
                 rayPixelEndX = (rayCurrentGridCol * Config.BLOCK_WIDTH) + (Config.BLOCK_WIDTH / 2);
                 rayPixelEndY = (rayCurrentGridRow * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
 

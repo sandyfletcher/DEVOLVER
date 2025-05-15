@@ -1,6 +1,4 @@
-// -----------------------------------------------------------------------------
-// root/js/waveManager.js - Manages waves of enemies and timing (TIME-BASED)
-// -----------------------------------------------------------------------------
+// root/js/waveManager.js
 
 import * as UI from './ui.js';
 import * as Config from './utils/config.js';
@@ -239,7 +237,7 @@ function triggerWarpCleanupAndCalculations() {
     if (Config.SUN_ANIMATION_ENABLED) {
         isSunAnimationActive = true;
         // Tie sun animation duration to MYA transition if available, otherwise a fallback.
-        sunAnimationDuration = Config.MYA_TRANSITION_ANIMATION_DURATION > 0 ? Config.MYA_TRANSITION_ANIMATION_DURATION : 5.0;
+        sunAnimationDuration = Config.MYA_TRANSITION_ANIMATION_DURATION > 0 ? Config.MYA_TRANSITION_ANIMATION_DURATION : Config.FIXED_SUN_ANIMATION_DURATION;
         sunAnimationTimer = sunAnimationDuration;
         console.log(`[WaveMgr] Started visual sun animation for ${sunAnimationDuration}s.`);
     }
@@ -342,16 +340,9 @@ export function update(dt, gameState) {
         case 'WARP_ANIMATING':
             if (WorldManager.areGravityAnimationsComplete() &&
                 WorldManager.areAgingAnimationsComplete() &&
-                WorldManager.areLightingAnimationsComplete()) {
-                
+                WorldManager.areLightingAnimationsComplete() &&
+                !isSunAnimationActive) { // Also wait for sun animation to naturally complete its timer                
                 console.log("[WaveMgr] All world block animations complete (Gravity, Aging, Lighting Flashes) during WARP_ANIMATING.");
-                
-                if (isSunAnimationActive) {
-                     console.log("[WaveMgr] Forcing visual sun animation to conclude as block animations are done.");
-                     isSunAnimationActive = false;
-                     sunAnimationTimer = 0;
-                }
-
                 WorldManager.renderStaticWorldToGridCanvas();
                 WorldManager.seedWaterUpdateQueue();
                 startNextWave();

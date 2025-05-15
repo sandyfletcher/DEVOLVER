@@ -188,14 +188,21 @@ export const LIGHTING_ANIMATION_DURATION = 0.4; // Duration (seconds) of the lig
 export const LIGHTING_ANIMATION_COLOR = 'rgba(255, 255, 150, 0.6)'; // Color for the lighting animation flash
 export const LIGHTING_ANIMATION_MAX_ALPHA = 0.7; // Max alpha for the flash (used if color has low alpha)
 export const LIT_BLOCK_BRIGHTNESS_FACTOR = 1.3; // How much brighter a lit block appears (multiplier for its base color)
+
 // --- Sun Animation (Visual Only for Warp Phase) ---
 export const SUN_ANIMATION_ENABLED = true; // To easily toggle this new effect
 export const SUN_ANIMATION_COLOR = "yellow";
-export const SUN_ANIMATION_RADIUS_BLOCKS = 3; // Visual radius of the sun
+export const SUN_ANIMATION_RADIUS_BLOCKS = 6; // Visual radius of the sun
 export const SUN_ANIMATION_RAY_COLOR = "rgba(255, 255, 100, 0.25)"; // Softer yellow for rays
 export const SUN_ANIMATION_RAY_LINE_WIDTH = 1;
 export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 20; // How far off-screen (right) it starts
 export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 20;   // How far off-screen (left) it ends
+export const FIXED_SUN_ANIMATION_DURATION = 3.0; // NEW: Fixed duration for the sun pass animation
+export const SUN_MOVEMENT_Y_ROW_OFFSET = 0; // Row offset for sun's vertical position.
+export const SUN_MOVEMENT_STEP_COLUMNS = 5;  // How many columns the sun moves between lighting passes.
+export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2); // Max length of a light ray in blocks.
+export const SUN_RAYS_PER_POSITION = 36; // Number of rays cast from each sun position.
+
 // --- Delta-Time Physics ---
 export const GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ = 100; // Base acceleration in block heights per second squared.
 export const GRAVITY_ACCELERATION = GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_HEIGHT; // Pixels per second squared.
@@ -419,7 +426,6 @@ dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const MYA_TRANSITION_ANIMATION_DURATION = 2.5; // seconds for the MYA number to animate
-export const FIXED_SUN_ANIMATION_DURATION = 3.0; // NEW: Fixed duration for the sun pass animation
 export const WAVES = [
 {
 mainWaveNumber: 1,
