@@ -17,6 +17,7 @@ import * as CollisionManager from './js/collisionManager.js';
 import * as FlowManager from './js/flowManager.js';
 import { Player } from './js/player.js';
 import { Portal } from './js/portal.js';
+import * as World from './js/utils/world.js';
 
 let gameStartTime = 0;
 let lastTime = 0;
@@ -72,12 +73,33 @@ if (worldGenerationPromise && !isWorldGenerated) return worldGenerationPromise;
 isWorldGenerated = false;
 worldGenerationPromise = (async () => {
     try {
-        WorldManager.executeInitialWorldGenerationSequence();
+        WorldManager.executeInitialWorldGenerationSequence(); // This applies its own lighting pass initially
+
         const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
         for (let i = 0; i < initialAgingPasses; i++) {
-            WorldManager.applyLightingPass();
+            // 1. Calculate lighting changes for this pass
+            const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // false to skip debug drawing
+
+            // 2. Apply these lighting changes directly to the world data
+            if (proposedLightingChangesThisPass.length > 0) {
+                proposedLightingChangesThisPass.forEach(change => {
+                    const block = World.getBlock(change.c, change.r);
+                    if (block && typeof block === 'object') {
+                        block.isLit = change.newLitState;
+                    }
+                });
+                // Optionally, if lighting animations are desired even during this phase, queue them.
+                // For initial generation, direct application is often sufficient,
+                // but for consistency with other parts:
+                // WorldManager.addProposedLightingChanges(proposedLightingChangesThisPass);
+                // However, since this is background, and animations are usually finalized,
+                // direct application is the most critical part. Let's stick to that for now.
+            }
+            
+            // 3. Apply aging using the now updated lighting state
             AgingManager.applyAging(null);
         }
+
         if (!Renderer.getGridCanvas()) Renderer.createGridCanvas();
         WorldManager.renderStaticWorldToGridCanvas();
         WorldManager.seedWaterUpdateQueue();
