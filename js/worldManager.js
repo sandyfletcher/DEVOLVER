@@ -9,6 +9,7 @@ import * as ItemManager from './itemManager.js';
 import { generateInitialWorld as generateWorldFromGenerator } from './utils/worldGenerator.js'; // Import the generator
 import * as GridCollision from './utils/gridCollision.js';
 import { createBlock } from './utils/block.js';
+import * as WaveManager from './waveManager.js'; // Add this import
 
 // --- Module State ---
 let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
@@ -377,8 +378,7 @@ function applyInitialFloodFill() {
     }
 }
 
-// --- MODIFIED: applyLightingPass ---
-export function applyLightingPass(DEBUG_DRAW_LIGHTING = true) {
+export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
     // console.log("[WorldManager] Calculating proposed lighting changes...");
     let proposedChanges = [];
     const blocksToAnimateThisPass = new Set();
@@ -390,12 +390,12 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = true) {
     }
 
     // --- DEBUG DRAWING SETUP ---
-    let mainCtx;
+    let mainCtxForDebug; 
     if (DEBUG_DRAW_LIGHTING) {
-        mainCtx = Renderer.getContext();
-        if (!mainCtx) {
+        mainCtxForDebug = Renderer.getContext();
+        if (!mainCtxForDebug) {
             console.error("Debug Lighting: Main context not available!");
-            DEBUG_DRAW_LIGHTING = false;
+            DEBUG_DRAW_LIGHTING = false; 
         }
     }
     // --- END DEBUG DRAWING SETUP ---
@@ -410,18 +410,18 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = true) {
         const sunGridRow = Math.floor(sunCenterPixelY / Config.BLOCK_HEIGHT);
 
         // --- DEBUG DRAW SUN POSITION ---
-        if (DEBUG_DRAW_LIGHTING && mainCtx) {
-            mainCtx.save();
-            Renderer.applyCameraTransforms(mainCtx);
-            mainCtx.fillStyle = "yellow";
-            mainCtx.beginPath();
-            mainCtx.arc(currentSunPixelX, sunCenterPixelY, Config.BLOCK_WIDTH * 2, 0, Math.PI * 2);
-            mainCtx.fill();
-            mainCtx.strokeStyle = "orange";
-            mainCtx.lineWidth = 2;
-            mainCtx.stroke();
-            Renderer.restoreCameraTransforms(mainCtx);
-            mainCtx.restore();
+        if (DEBUG_DRAW_LIGHTING && mainCtxForDebug) {
+            mainCtxForDebug.save();
+            Renderer.applyCameraTransforms(mainCtxForDebug);
+            mainCtxForDebug.fillStyle = "yellow";
+            mainCtxForDebug.beginPath();
+            mainCtxForDebug.arc(currentSunPixelX, sunCenterPixelY, Config.BLOCK_WIDTH * 2, 0, Math.PI * 2);
+            mainCtxForDebug.fill();
+            mainCtxForDebug.strokeStyle = "orange";
+            mainCtxForDebug.lineWidth = 2;
+            mainCtxForDebug.stroke();
+            Renderer.restoreCameraTransforms(mainCtxForDebug);
+            mainCtxForDebug.restore();
         }
         // --- END DEBUG DRAW SUN ---
 
@@ -480,17 +480,17 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = true) {
                 currentRayBlockLength++;
             }
 
-            if (DEBUG_DRAW_LIGHTING && mainCtx) {
-                mainCtx.save();
-                Renderer.applyCameraTransforms(mainCtx);
-                mainCtx.strokeStyle = "rgba(255, 255, 0, 0.3)";
-                mainCtx.lineWidth = 1;
-                mainCtx.beginPath();
-                mainCtx.moveTo(rayPixelStartX, rayPixelStartY);
-                mainCtx.lineTo(rayPixelEndX, rayPixelEndY);
-                mainCtx.stroke();
-                Renderer.restoreCameraTransforms(mainCtx);
-                mainCtx.restore();
+            if (DEBUG_DRAW_LIGHTING && mainCtxForDebug) {
+                mainCtxForDebug.save();
+                Renderer.applyCameraTransforms(mainCtxForDebug);
+                mainCtxForDebug.strokeStyle = "rgba(255, 255, 0, 0.3)";
+                mainCtxForDebug.lineWidth = 1;
+                mainCtxForDebug.beginPath();
+                mainCtxForDebug.moveTo(rayPixelStartX, rayPixelStartY);
+                mainCtxForDebug.lineTo(rayPixelEndX, rayPixelEndY);
+                mainCtxForDebug.stroke();
+                Renderer.restoreCameraTransforms(mainCtxForDebug);
+                mainCtxForDebug.restore();
             }
         }
     }
@@ -509,8 +509,7 @@ export function executeInitialWorldGenerationSequence() {
     applyInitialFloodFill();
 
     World.resetAllBlockLighting();
-    const initialProposedLighting = applyLightingPass(false); // Pass false for normal operation
-    // const initialProposedLighting = applyLightingPass(true); // Use true to debug draw lighting pass on init
+    const initialProposedLighting = applyLightingPass(false); 
 
     initialProposedLighting.forEach(change => {
         const block = World.getBlock(change.c, change.r);
@@ -855,6 +854,76 @@ export function finalizeAllLightingAnimations() {
 // --- Rendering ---
 // -----------------------------------------------------------------------------
 
+// --- NEW: Function to draw the animated sun and its rays (visual only) ---
+function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
+    if (!ctx || !Config.SUN_ANIMATION_ENABLED) return;
+
+    // 1. Draw the Sun
+    const sunRadius = Config.SUN_ANIMATION_RADIUS_BLOCKS * Config.BLOCK_WIDTH;
+    ctx.fillStyle = Config.SUN_ANIMATION_COLOR;
+    ctx.beginPath();
+    ctx.arc(sunWorldX, sunWorldY, sunRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Cast and Draw Rays (similar to applyLightingPass ray logic, but for drawing only)
+    const sunGridCol = Math.floor(sunWorldX / Config.BLOCK_WIDTH);
+    const sunGridRow = Math.floor(sunWorldY / Config.BLOCK_HEIGHT);
+
+    ctx.strokeStyle = Config.SUN_ANIMATION_RAY_COLOR;
+    ctx.lineWidth = Config.SUN_ANIMATION_RAY_LINE_WIDTH;
+
+    for (let i = 0; i < Config.SUN_RAYS_PER_POSITION; i++) {
+        const angle = (i / Config.SUN_RAYS_PER_POSITION) * 2 * Math.PI;
+        
+        let rayCurrentGridCol = sunGridCol;
+        let rayCurrentGridRow = sunGridRow;
+        
+        const rayEndGridColTarget = Math.floor(sunGridCol + Math.cos(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
+        const rayEndGridRowTarget = Math.floor(sunGridRow + Math.sin(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
+
+        let rayPixelEndX = sunWorldX; 
+        let rayPixelEndY = sunWorldY;
+
+        let dx_ray = Math.abs(rayEndGridColTarget - rayCurrentGridCol);
+        let dy_ray = Math.abs(rayEndGridRowTarget - rayCurrentGridRow);
+        let sx_ray = (rayCurrentGridCol < rayEndGridColTarget) ? 1 : -1;
+        let sy_ray = (rayCurrentGridRow < rayEndGridRowTarget) ? 1 : -1;
+        let err_ray = dx_ray - dy_ray;
+        let currentRayBlockLength = 0;
+
+        while (currentRayBlockLength < Config.MAX_LIGHT_RAY_LENGTH_BLOCKS) {
+            rayPixelEndX = (rayCurrentGridCol * Config.BLOCK_WIDTH) + (Config.BLOCK_WIDTH / 2);
+            rayPixelEndY = (rayCurrentGridRow * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
+
+            if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
+                rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
+                
+                const blockType = World.getBlockType(rayCurrentGridCol, rayCurrentGridRow);
+                if (blockType !== null && blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER) {
+                    break; 
+                }
+            } else if (rayCurrentGridRow >= Config.GRID_ROWS || rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) {
+                break; 
+            }
+
+            if (rayCurrentGridCol === rayEndGridColTarget && rayCurrentGridRow === rayEndGridRowTarget) {
+                break; 
+            }
+
+            let e2_ray = 2 * err_ray;
+            if (e2_ray > -dy_ray) { err_ray -= dy_ray; rayCurrentGridCol += sx_ray; }
+            if (e2_ray <  dx_ray) { err_ray += dx_ray; rayCurrentGridRow += sy_ray; }
+            currentRayBlockLength++;
+        }
+        
+        ctx.beginPath();
+        ctx.moveTo(sunWorldX, sunWorldY);
+        ctx.lineTo(rayPixelEndX, rayPixelEndY);
+        ctx.stroke();
+    }
+}
+
+
 export function updateStaticWorldAt(col, row) {
     const gridCtx = Renderer.getGridContext();
     if (!gridCtx) {
@@ -988,6 +1057,13 @@ export function draw(ctx) {
     if (gridCanvasToDraw) {
         ctx.drawImage(gridCanvasToDraw, 0, 0);
     }
+
+    // --- NEW: Draw animated sun effect ---
+    const animatedSunPos = WaveManager.getAnimatedSunPosition();
+    if (animatedSunPos) {
+        drawAnimatedSunEffect(ctx, animatedSunPos.x, animatedSunPos.y);
+    }
+    // --- END NEW ---
 
     drawGravityAnimations(ctx);
     drawAgingAnimations(ctx);

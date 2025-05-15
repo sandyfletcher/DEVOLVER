@@ -419,6 +419,7 @@ dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const MYA_TRANSITION_ANIMATION_DURATION = 2.5; // seconds for the MYA number to animate
+export const FIXED_SUN_ANIMATION_DURATION = 3.0; // NEW: Fixed duration for the sun pass animation
 export const WAVES = [
 {
 mainWaveNumber: 1,

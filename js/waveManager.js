@@ -25,6 +25,12 @@ let currentMaxTimer = 0;
 let waveStartCallback = null;
 let portalRef = null;
 
+// --- Sun Animation State ---
+let isSunAnimationActive = false;
+let sunAnimationTimer = 0;
+let sunAnimationDuration = 0;
+
+
 // --- Internal Helper Functions ---
 
 function getCurrentWaveData() {
@@ -169,10 +175,8 @@ function triggerWarpCleanupAndCalculations() {
     World.resetAllBlockLighting();
     console.log("[WaveMgr] Calculating lighting pass (LOGICAL)...");
     
-    // MODIFIED: Set to true to visualize sun/rays during this phase
-    const proposedLightingChanges = WorldManager.applyLightingPass(true); 
+    const proposedLightingChanges = WorldManager.applyLightingPass(false); // Call with false to only do logic
     
-    // Apply lighting state logically BEFORE aging, regardless of debug drawing
     if (proposedLightingChanges.length > 0) {
         console.log(`[WaveMgr] Directly applying ${proposedLightingChanges.length} lighting states before aging.`);
         proposedLightingChanges.forEach(change => {
@@ -181,7 +185,6 @@ function triggerWarpCleanupAndCalculations() {
                 block.isLit = change.newLitState; // Directly set isLit
             }
         });
-        // Still queue them for animation if you want the visual flash effect
         WorldManager.addProposedLightingChanges(proposedLightingChanges);
     }
     console.log(`[WaveMgr] Lighting pass (LOGICAL) complete. ${proposedLightingChanges.length} lighting changes proposed and applied.`);
@@ -231,6 +234,16 @@ function triggerWarpCleanupAndCalculations() {
     } else {
         console.warn("[WaveMgr] No next wave data found for aging process. This might be the last wave transition before victory.");
     }
+
+    // --- START Sun Animation ---
+    if (Config.SUN_ANIMATION_ENABLED) {
+        isSunAnimationActive = true;
+        // Tie sun animation duration to MYA transition if available, otherwise a fallback.
+        sunAnimationDuration = Config.MYA_TRANSITION_ANIMATION_DURATION > 0 ? Config.MYA_TRANSITION_ANIMATION_DURATION : 5.0;
+        sunAnimationTimer = sunAnimationDuration;
+        console.log(`[WaveMgr] Started visual sun animation for ${sunAnimationDuration}s.`);
+    }
+    // --- END Sun Animation ---
 }
 
 // --- Exported Functions ---
@@ -249,6 +262,9 @@ export function init(callback = null, portalObject = null) {
     buildPhaseTimer = 0;
     waveStartCallback = callback;
     portalRef = portalObject;
+    isSunAnimationActive = false; // Reset sun animation state
+    sunAnimationTimer = 0;
+    sunAnimationDuration = 0;
     console.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s.`);
 }
 export function reset(callback = null, portalObject = null) {
@@ -257,6 +273,18 @@ export function reset(callback = null, portalObject = null) {
 }
 export function update(dt, gameState) {
     if (dt <= 0) return;
+
+    // --- Sun Animation Update (during WARP_ANIMATING) ---
+    if (isSunAnimationActive && state === 'WARP_ANIMATING') {
+        sunAnimationTimer -= dt;
+        if (sunAnimationTimer <= 0) {
+            isSunAnimationActive = false;
+            sunAnimationTimer = 0;
+            console.log("[WaveMgr] Visual sun animation finished.");
+        }
+    }
+    // --- End Sun Animation Update ---
+
     switch (state) {
         case 'PRE_WAVE':
             if (gameState === 'RUNNING') {
@@ -305,21 +333,25 @@ export function update(dt, gameState) {
             buildPhaseTimer -= dt;
             if (buildPhaseTimer <= 0) {
                 buildPhaseTimer = 0;
-                triggerWarpCleanupAndCalculations(); // This now calls applyLightingPass(true)
+                triggerWarpCleanupAndCalculations(); 
                 state = 'WARP_ANIMATING';
                 console.log("[WaveMgr] Transitioned from BUILDPHASE to WARP_ANIMATING. Waiting for animations.");
-                currentMaxTimer = Config.MYA_TRANSITION_ANIMATION_DURATION;
+                currentMaxTimer = sunAnimationDuration; // Use sun animation duration for the timer display
             }
             break;
         case 'WARP_ANIMATING':
-            // The applyLightingPass(true) call in triggerWarpCleanupAndCalculations
-            // will do its drawing. This state primarily waits for other animations
-            // (gravity, aging, and the *queued* lighting animations) to finish.
-            // The visual sun/ray drawing is a one-shot thing during triggerWarpCleanupAndCalculations.
             if (WorldManager.areGravityAnimationsComplete() &&
                 WorldManager.areAgingAnimationsComplete() &&
                 WorldManager.areLightingAnimationsComplete()) {
-                console.log("[WaveMgr] All world animations complete (Gravity, Aging, Lighting) during WARP_ANIMATING. Finalizing warp.");
+                
+                console.log("[WaveMgr] All world block animations complete (Gravity, Aging, Lighting Flashes) during WARP_ANIMATING.");
+                
+                if (isSunAnimationActive) {
+                     console.log("[WaveMgr] Forcing visual sun animation to conclude as block animations are done.");
+                     isSunAnimationActive = false;
+                     sunAnimationTimer = 0;
+                }
+
                 WorldManager.renderStaticWorldToGridCanvas();
                 WorldManager.seedWaterUpdateQueue();
                 startNextWave();
@@ -339,6 +371,7 @@ export function setGameOver() {
         preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0;
         groupSpawnTimer = 0; groupStartDelayTimer = 0;
         currentMaxTimer = 0;
+        isSunAnimationActive = false; sunAnimationTimer = 0; // Stop sun animation
     }
 }
 export function setVictory() {
@@ -347,6 +380,7 @@ export function setVictory() {
         preWaveTimer = 0; mainWaveTimer = 0; buildPhaseTimer = 0;
         groupSpawnTimer = 0; groupStartDelayTimer = 0;
         currentMaxTimer = 0;
+        isSunAnimationActive = false; sunAnimationTimer = 0; // Stop sun animation
     }
 }
 export function isGameOver() {
@@ -378,24 +412,23 @@ export function getWaveInfo() {
             timer = buildPhaseTimer;
             break;
         case 'WARP_ANIMATING':
-            // During WARP_ANIMATING, the main timer shown to the player could be
-            // related to the MYA transition, or just a generic "Warping..." indicator.
-            // The actual progression to the next wave depends on animations finishing.
-            // We can use the MYA transition timer from UI if available.
-            if (Config.MYA_TRANSITION_ANIMATION_DURATION > 0) {
+            if (isSunAnimationActive) { // Prefer sun animation timer if active
+                timer = sunAnimationTimer;
+                maxTimerToUse = sunAnimationDuration;
+            } else if (Config.MYA_TRANSITION_ANIMATION_DURATION > 0) {
                 const uiMyaInfo = (typeof UI.getMyaTransitionInfo === 'function') ? UI.getMyaTransitionInfo() : {timer: Config.MYA_TRANSITION_ANIMATION_DURATION, duration: Config.MYA_TRANSITION_ANIMATION_DURATION, isActive: true};
-                timer = uiMyaInfo.timer; // Remaining time of MYA transition
+                timer = uiMyaInfo.timer; 
+                maxTimerToUse = uiMyaInfo.duration;
             } else {
-                // Fallback if no MYA transition: show 1 until animations are done.
                 if (WorldManager.areGravityAnimationsComplete() &&
                     WorldManager.areAgingAnimationsComplete() &&
                     WorldManager.areLightingAnimationsComplete()) {
                     timer = 0;
                 } else {
-                    timer = 1; // Indicate ongoing animations
+                    timer = 1; 
                 }
+                maxTimerToUse = 1;
             }
-            maxTimerToUse = Config.MYA_TRANSITION_ANIMATION_DURATION;
             break;
         case 'GAME_OVER':
         case 'VICTORY':
@@ -414,4 +447,23 @@ export function getWaveInfo() {
         isGameOver: state === 'GAME_OVER',
         allWavesCleared: state === 'VICTORY'
     };
+}
+
+export function getAnimatedSunPosition() {
+    if (!isSunAnimationActive || sunAnimationDuration <= 0) {
+        return null;
+    }
+
+    const progress = Math.max(0, Math.min(1, 1 - (sunAnimationTimer / sunAnimationDuration)));
+    
+    const startXOffset = Config.SUN_ANIMATION_START_X_OFFSET_BLOCKS * Config.BLOCK_WIDTH;
+    const endXOffset = Config.SUN_ANIMATION_END_X_OFFSET_BLOCKS * Config.BLOCK_WIDTH;
+
+    const sunVisualStartX = Config.CANVAS_WIDTH + startXOffset;
+    const sunVisualEndX = -endXOffset; // Negative because it goes off-screen left
+    
+    const currentAnimatedSunX = sunVisualStartX + (sunVisualEndX - sunVisualStartX) * progress;
+    const animatedSunY = (Config.SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
+    
+    return { x: currentAnimatedSunX, y: animatedSunY };
 }
