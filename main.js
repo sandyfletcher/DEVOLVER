@@ -1,6 +1,7 @@
 // -----------------------------------------------------------------------------
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
+
 import * as UI from './js/ui.js';
 import * as Input from './js/input.js';
 import * as Config from './js/utils/config.js';
@@ -16,6 +17,7 @@ import * as CollisionManager from './js/collisionManager.js';
 import * as FlowManager from './js/flowManager.js';
 import { Player } from './js/player.js';
 import { Portal } from './js/portal.js';
+
 let gameStartTime = 0;
 let lastTime = 0;
 let gameLoopId = null;
@@ -182,6 +184,9 @@ const currentGameState = FlowManager.getCurrentState();
     }
 
     if (currentGameState === GameState.RUNNING) {
+        // Update camera position first. It will use the player's position from the end of the last frame/start of this one.
+        Renderer.calculateCameraPosition(player, currentGameState === GameState.RUNNING);
+
         WaveManager.update(dt, currentGameState); // Pass currentGameState for conditional updates
         // const updatedWaveInfo = WaveManager.getWaveInfo(); // No need to refetch, waveInfo is from start of frame
 
@@ -192,8 +197,6 @@ const currentGameState = FlowManager.getCurrentState();
             const targetGridCell = Renderer.getMouseGridCoords(internalMousePos);
             player.update(dt, inputState, targetWorldPos, targetGridCell);
         }
-
-        Renderer.calculateCameraPosition(player, currentGameState === GameState.RUNNING);
 
         const playerPosForEnemies = (player && player.isActive && !player.isDying) ? player.getPosition() : null;
         EnemyManager.update(dt, playerPosForEnemies);
