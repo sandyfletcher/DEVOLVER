@@ -50,6 +50,7 @@ export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
 export const CAN_PLACE_IN_WATER = false;
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
+export const VEGETATION_PIXEL_DENSITY = 0.6;
 // Block Type IDs (numeric constants)
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
@@ -170,8 +171,8 @@ export const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 15; // Keep this: Max he
 // --- Animation Parameters ---
 export const AGING_ANIMATION_BLOCKS_AT_ONCE = 5; // Max number of blocks animating simultaneously
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
-export const AGING_ANIMATION_SWELL_DURATION = 0.25; // Duration (seconds) of the "swell" part
-export const AGING_ANIMATION_POP_DURATION = 0.1; // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
+export const AGING_ANIMATION_SWELL_DURATION = 0.12; // Duration (seconds) of the "swell" part
+export const AGING_ANIMATION_POP_DURATION = 0.06; // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
 export const AGING_ANIMATION_SWELL_SCALE = 1.8; // Max scale factor during swell (e.g., 1.5x size)
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
 export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (bddriefly)
@@ -197,7 +198,7 @@ export const SUN_ANIMATION_RAY_COLOR = "rgba(255, 255, 100, 0.25)"; // Softer ye
 export const SUN_ANIMATION_RAY_LINE_WIDTH = 1;
 export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 20; // How far off-screen (right) it starts
 export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 20;   // How far off-screen (left) it ends
-export const FIXED_SUN_ANIMATION_DURATION = 3.0; // NEW: Fixed duration for the sun pass animation
+export const FIXED_SUN_ANIMATION_DURATION = 6.0; // NEW: Fixed duration for the sun pass animation
 export const SUN_MOVEMENT_Y_ROW_OFFSET = 0; // Row offset for sun's vertical position.
 export const SUN_MOVEMENT_STEP_COLUMNS = 5;  // How many columns the sun moves between lighting passes.
 export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2); // Max length of a light ray in blocks.
@@ -425,12 +426,11 @@ dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
 // --- Wave Scripting ---
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
-export const MYA_TRANSITION_ANIMATION_DURATION = 2.5; // seconds for the MYA number to animate
+export const MYA_TRANSITION_ANIMATION_DURATION = 6.0; // seconds for the MYA number to animate
 export const WAVES = [
 {
 mainWaveNumber: 1,
-// epochName: "350 Million Years Ago", // REMOVED
-mya: 350, // ADDED
+mya: 350,
 duration: 117,
 intermissionDuration: 15.0,
 audioTrack: AUDIO_TRACKS.wave1,
@@ -453,8 +453,7 @@ subWaves: [
 },
 {
 mainWaveNumber: 2,
-// epochName: "300 Million Years Ago", // REMOVED
-mya: 300, // ADDED
+mya: 300,
 duration: 137,
 intermissionDuration: 15.0,
 audioTrack: AUDIO_TRACKS.wave2,
@@ -477,8 +476,7 @@ subWaves: [
 },
 {
 mainWaveNumber: 3,
-// epochName: "250 Million Years Ago", // REMOVED
-mya: 250, // ADDED
+mya: 250,
 duration: 90,
 intermissionDuration: 15.0,
 audioTrack: AUDIO_TRACKS.wave3,

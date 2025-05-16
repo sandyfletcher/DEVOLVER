@@ -965,26 +965,78 @@ export function updateStaticWorldAt(col, row) {
             const ropeWidth = Math.max(1, Math.floor(blockW * 0.2));
             const ropeX = Math.floor(blockX + (blockW - ropeWidth) / 2);
             gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
-            const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
-            if (isPlayerPlaced) {
+            const isPlayerPlacedRope = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
+            if (isPlayerPlacedRope) { // Renamed variable to avoid conflict
                 gridCtx.save();
                 gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
-                gridCtx.lineWidth = 1;
+                gridCtx.lineWidth = 1; // Ropes have a thinner outline for clarity
                 gridCtx.strokeRect(
                     ropeX, Math.floor(blockY),
                     ropeWidth, blockH
                 );
                 gridCtx.restore();
             }
+            // Rope HP/damage indicator (if applicable, usually ropes are simple)
             if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
                 gridCtx.save();
-                gridCtx.globalAlpha = 0.5 + 0.5 * (block.hp / block.maxHp);
+                gridCtx.globalAlpha = 0.5 + 0.5 * (block.hp / block.maxHp); // Visual feedback for HP
                 gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE];
                 gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
                 gridCtx.restore();
             }
 
-        } else {
+        } else if (currentBlockType === Config.BLOCK_VEGETATION) { // <<< MODIFIED PART STARTS HERE
+            if (finalColor) {
+                gridCtx.fillStyle = finalColor;
+                // Iterate for each pixel in the block's area
+                for (let py = 0; py < blockH; py++) {
+                    for (let px = 0; px < blockW; px++) {
+                        // Randomly decide whether to draw this pixel based on density
+                        if (Math.random() < Config.VEGETATION_PIXEL_DENSITY) {
+                            gridCtx.fillRect(Math.floor(blockX + px), Math.floor(blockY + py), 1, 1);
+                        }
+                    }
+                }
+
+                // Player-placed outline and damage indicators for vegetation:
+                // These will draw over the 16x16 area. It might look a bit detached
+                // from the sparse pixels but is functionally correct.
+                const isPlayerPlacedVeg = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
+                if (isPlayerPlacedVeg) {
+                    gridCtx.save();
+                    gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
+                    gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
+                    const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
+                    gridCtx.strokeRect(
+                        Math.floor(blockX) + outlineInset, Math.floor(blockY) + outlineInset,
+                        blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+                    );
+                    gridCtx.restore();
+                }
+
+                if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
+                    const hpRatio = block.hp / block.maxHp;
+                    if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
+                        gridCtx.save();
+                        gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
+                        gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                        gridCtx.lineCap = 'square';
+                        const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset);
+                        gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
+                        gridCtx.stroke();
+                        if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
+                            gridCtx.beginPath();
+                            gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset);
+                            gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset);
+                            gridCtx.stroke();
+                        }
+                        gridCtx.restore();
+                    }
+                }
+            } // <<< MODIFIED PART ENDS HERE
+        } else { // For all other solid block types
             if (finalColor) {
                 gridCtx.fillStyle = finalColor;
                 gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
