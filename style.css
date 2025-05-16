@@ -59,8 +59,7 @@ body {
     background-position: center center; /* Center the image */
     background-size: cover;             /* Adjust as needed: 'contain', '100% 100%', etc. */
     opacity: 0.7; /* 70% opacity for the image */
-    z-index: -1;  /* Places this pseudo-element behind the direct content (e.g., canvas) of #game-wrapper */
-                  /* but above the #game-wrapper's own background-color. */
+    z-index: 0;  /* CHANGED FROM -1: Places this above parent's bg, below canvas */
 }
 
 /* The existing ::before pseudo-element for dimming (unrelated to this background image) */

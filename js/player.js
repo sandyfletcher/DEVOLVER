@@ -740,35 +740,62 @@ export class Player {
         const dx = targetX - playerCenterX;
         const dy = targetY - playerCenterY;
         const dist = Math.sqrt(dx * dx + dy * dy); 
-        let hitboxWidth, hitboxHeight, reachX, reachY;
+        let hitboxWidth, hitboxHeight, reachX, reachY_config; // Renamed reachY to reachY_config to avoid confusion
+        
+        // Temporary variables for hitbox center calculation within the switch
+        let tempHitboxCenterX, tempHitboxCenterY;
+
         switch (this.selectedItem) {
             case Config.WEAPON_TYPE_SWORD:
                 hitboxWidth = Config.PLAYER_SWORD_ATTACK_WIDTH; hitboxHeight = Config.PLAYER_SWORD_ATTACK_HEIGHT;
-                reachX = Config.PLAYER_SWORD_ATTACK_REACH_X; reachY = Config.PLAYER_SWORD_ATTACK_REACH_Y;
+                reachX = Config.PLAYER_SWORD_ATTACK_REACH_X; reachY_config = Config.PLAYER_SWORD_ATTACK_REACH_Y;
+                if (dist > GridCollision.E_EPSILON) {
+                    const normX = dx / dist;
+                    // const normY = dy / dist; // normY not used for sword's vertical placement
+                    tempHitboxCenterX = playerCenterX + normX * reachX;
+                    tempHitboxCenterY = playerCenterY + reachY_config; // Sword swings at a fixed vertical offset
+                } else {
+                    tempHitboxCenterX = playerCenterX + this.lastDirection * reachX;
+                    tempHitboxCenterY = playerCenterY + reachY_config;
+                }
                 break;
             case Config.WEAPON_TYPE_SPEAR:
-                hitboxWidth = Config.PLAYER_SPEAR_ATTACK_WIDTH; hitboxHeight = Config.PLAYER_SPEAR_ATTACK_HEIGHT;
-                reachX = Config.PLAYER_SPEAR_ATTACK_REACH_X; reachY = Config.PLAYER_SPEAR_ATTACK_REACH_Y;
+                hitboxWidth = Config.PLAYER_SPEAR_ATTACK_WIDTH; 
+                hitboxHeight = Config.PLAYER_SPEAR_ATTACK_HEIGHT;
+                const spearReachDistance = Config.PLAYER_SPEAR_ATTACK_REACH_X; // Primary reach distance for spear
+
+                if (dist > GridCollision.E_EPSILON) {
+                    const normX = dx / dist;
+                    const normY = dy / dist;
+                    // Spear thrusts along the aim vector
+                    tempHitboxCenterX = playerCenterX + normX * spearReachDistance;
+                    tempHitboxCenterY = playerCenterY + normY * spearReachDistance; // Use normY for thrust
+                } else {
+                    // If aiming at self, thrust horizontally based on last direction
+                    tempHitboxCenterX = playerCenterX + this.lastDirection * spearReachDistance;
+                    tempHitboxCenterY = playerCenterY; // Keep it level
+                }
                 break;
             case Config.WEAPON_TYPE_SHOVEL:
                 hitboxWidth = Config.PLAYER_SHOVEL_ATTACK_WIDTH; hitboxHeight = Config.PLAYER_SHOVEL_ATTACK_HEIGHT;
-                reachX = Config.PLAYER_SHOVEL_ATTACK_REACH_X; reachY = Config.PLAYER_SHOVEL_ATTACK_REACH_Y;
+                reachX = Config.PLAYER_SHOVEL_ATTACK_REACH_X; reachY_config = Config.PLAYER_SHOVEL_ATTACK_REACH_Y;
+                 if (dist > GridCollision.E_EPSILON) {
+                    const normX = dx / dist;
+                    // const normY = dy / dist; // normY not used for shovel's vertical placement
+                    tempHitboxCenterX = playerCenterX + normX * reachX;
+                    tempHitboxCenterY = playerCenterY + reachY_config; // Shovel swings at a fixed vertical offset
+                } else {
+                    tempHitboxCenterX = playerCenterX + this.lastDirection * reachX;
+                    tempHitboxCenterY = playerCenterY + reachY_config;
+                }
                 break;
             default: return null; 
         }
-        let hitboxCenterX, hitboxCenterY;
-        const E_EPSILON = 1e-6; 
-        if (dist > E_EPSILON) {
-            const normX = dx / dist; 
-            const normY = dy / dist; 
-            hitboxCenterX = playerCenterX + normX * reachX;
-            hitboxCenterY = playerCenterY + reachY; 
-        } else {
-            hitboxCenterX = playerCenterX + this.lastDirection * reachX;
-            hitboxCenterY = playerCenterY + reachY;
-        }
-        const hitboxX = hitboxCenterX - hitboxWidth / 2;
-        const hitboxY = hitboxCenterY - hitboxHeight / 2;
+
+        // Calculate final hitbox top-left from its center, width, and height
+        const hitboxX = tempHitboxCenterX - hitboxWidth / 2;
+        const hitboxY = tempHitboxCenterY - hitboxHeight / 2;
+
         if (typeof hitboxX !== 'number' || typeof hitboxY !== 'number' ||
             typeof hitboxWidth !== 'number' || typeof hitboxHeight !== 'number' ||
             isNaN(hitboxX) || isNaN(hitboxY) || isNaN(hitboxWidth) || isNaN(hitboxHeight)) {

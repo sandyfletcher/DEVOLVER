@@ -55,9 +55,7 @@ export function clear() {
         console.error("Renderer: Cannot clear - not initialized.");
         return;
     }
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = Config.BACKGROUND_COLOR;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // Only clear to transparent
 }
 
 export function clearRect(x, y, width, height) {
