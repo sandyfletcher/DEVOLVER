@@ -169,7 +169,7 @@ export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.1; // NEW: Chance for WOOD to gro
 export const TREE_MIN_HEIGHT_TO_FORM_ORGANIC = 4; // NEW or Repurpose: Min trunk height for organic canopy formation
 export const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 15; // Keep this: Max height before trunk collapses
 // --- Animation Parameters ---
-export const AGING_ANIMATION_BLOCKS_AT_ONCE = 5; // Max number of blocks animating simultaneously
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 10; // Max number of blocks animating simultaneously
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
 export const AGING_ANIMATION_SWELL_DURATION = 0.12; // Duration (seconds) of the "swell" part
 export const AGING_ANIMATION_POP_DURATION = 0.06; // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
@@ -196,11 +196,11 @@ export const SUN_ANIMATION_COLOR = "yellow";
 export const SUN_ANIMATION_RADIUS_BLOCKS = 6; // Visual radius of the sun
 export const SUN_ANIMATION_RAY_COLOR = "rgba(255, 255, 100, 0.25)"; // Softer yellow for rays
 export const SUN_ANIMATION_RAY_LINE_WIDTH = 1;
-export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 20; // How far off-screen (right) it starts
-export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 20;   // How far off-screen (left) it ends
-export const FIXED_SUN_ANIMATION_DURATION = 6.0; // NEW: Fixed duration for the sun pass animation
-export const SUN_MOVEMENT_Y_ROW_OFFSET = 0; // Row offset for sun's vertical position.
-export const SUN_MOVEMENT_STEP_COLUMNS = 5;  // How many columns the sun moves between lighting passes.
+export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 10; // How far off-screen (right) it starts
+export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 10;   // How far off-screen (left) it ends
+export const FIXED_SUN_ANIMATION_DURATION = 8.0; // NEW: Fixed duration for the sun pass animation
+export const SUN_MOVEMENT_Y_ROW_OFFSET = 20; // Row offset for sun's vertical position.
+export const SUN_MOVEMENT_STEP_COLUMNS = 0;  // How many columns the sun moves between lighting passes.  changed to 0 because i don't understand it
 export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2); // Max length of a light ray in blocks.
 export const SUN_RAYS_PER_POSITION = 36; // Number of rays cast from each sun position.
 

@@ -411,7 +411,6 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
         const sunGridCol = Math.floor(currentSunPixelX / Config.BLOCK_WIDTH);
         const sunGridRow = Math.floor(sunCenterPixelY / Config.BLOCK_HEIGHT);
 
-        // --- DEBUG DRAW SUN POSITION ---
         if (DEBUG_DRAW_LIGHTING && mainCtxForDebug) {
             mainCtxForDebug.save();
             Renderer.applyCameraTransforms(mainCtxForDebug);
@@ -425,10 +424,28 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
             Renderer.restoreCameraTransforms(mainCtxForDebug);
             mainCtxForDebug.restore();
         }
-        // --- END DEBUG DRAW SUN ---
+ 
+       // MODIFICATION START: Calculate rays only for the downward 180-degree arc
+       const numDownwardRays = Math.ceil(Config.SUN_RAYS_PER_POSITION / 2);
+       if (numDownwardRays <= 0) {
+           // This case should ideally not happen if Config.SUN_RAYS_PER_POSITION is positive.
+           // console.warn("[WorldManager] applyLightingPass: numDownwardRays is zero or negative. Skipping ray casting for this sun position.");
+           continue; // Skip to the next sun position
+       }
+ 
+       for (let i = 0; i < numDownwardRays; i++) {
+           let angle;
+           if (numDownwardRays === 1) {
+               // If only one ray is effectively configured for the 180-degree arc,
+               // point it straight down for maximum coverage
+               angle = Math.PI / 2; // 90 degrees
+           } else {
+               // Distribute rays over the 0 to PI radian range (0 to 180 degrees).
+               // (i / (numDownwardRays - 1)) will go from 0 to 1 as i goes from 0 to numDownwardRays-1.
+               angle = (i / (numDownwardRays - 1)) * Math.PI;
+           }
+        
 
-        for (let i = 0; i < Config.SUN_RAYS_PER_POSITION; i++) {
-            const angle = (i / Config.SUN_RAYS_PER_POSITION) * 2 * Math.PI;
             let rayCurrentGridCol = sunGridCol;
             let rayCurrentGridRow = sunGridRow;
             const rayEndGridCol = Math.floor(sunGridCol + Math.cos(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
@@ -498,7 +515,6 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
     }
     return proposedChanges;
 }
-
 
 // -----------------------------------------------------------------------------
 // --- Initialization ---
@@ -985,7 +1001,7 @@ export function updateStaticWorldAt(col, row) {
                 gridCtx.restore();
             }
 
-        } else if (currentBlockType === Config.BLOCK_VEGETATION) { // <<< MODIFIED PART STARTS HERE
+        } else if (currentBlockType === Config.BLOCK_VEGETATION) {
             if (finalColor) {
                 gridCtx.fillStyle = finalColor;
                 // Iterate for each pixel in the block's area
@@ -997,45 +1013,43 @@ export function updateStaticWorldAt(col, row) {
                         }
                     }
                 }
+            } // Closing brace for 'if (finalColor)' for VEGETATION FILL
 
-                // Player-placed outline and damage indicators for vegetation:
-                // These will draw over the 16x16 area. It might look a bit detached
-                // from the sparse pixels but is functionally correct.
-                const isPlayerPlacedVeg = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
-                if (isPlayerPlacedVeg) {
+            // Player-placed outline and damage indicators for vegetation are drawn regardless of finalColor for fill.
+            const isPlayerPlacedVeg = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
+            if (isPlayerPlacedVeg) {
+                gridCtx.save();
+                gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
+                gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
+                const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
+                gridCtx.strokeRect(
+                    Math.floor(blockX) + outlineInset, Math.floor(blockY) + outlineInset,
+                    blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
+                );
+                gridCtx.restore();
+            }
+
+            if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
+                const hpRatio = block.hp / block.maxHp;
+                if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
                     gridCtx.save();
-                    gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
-                    gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
-                    const outlineInset = Config.PLAYER_BLOCK_OUTLINE_THICKNESS / 2;
-                    gridCtx.strokeRect(
-                        Math.floor(blockX) + outlineInset, Math.floor(blockY) + outlineInset,
-                        blockW - Config.PLAYER_BLOCK_OUTLINE_THICKNESS, blockH - Config.PLAYER_BLOCK_OUTLINE_THICKNESS
-                    );
+                    gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
+                    gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                    gridCtx.lineCap = 'square';
+                    const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                    gridCtx.beginPath();
+                    gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset);
+                    gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
+                    gridCtx.stroke();
+                    if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset);
+                        gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset);
+                        gridCtx.stroke();
+                    }
                     gridCtx.restore();
                 }
-
-                if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
-                    const hpRatio = block.hp / block.maxHp;
-                    if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
-                        gridCtx.save();
-                        gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
-                        gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-                        gridCtx.lineCap = 'square';
-                        const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-                        gridCtx.beginPath();
-                        gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset);
-                        gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
-                        gridCtx.stroke();
-                        if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_X) {
-                            gridCtx.beginPath();
-                            gridCtx.moveTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY) + pathInset);
-                            gridCtx.lineTo(Math.floor(blockX) + pathInset, Math.floor(blockY + blockH) - pathInset);
-                            gridCtx.stroke();
-                        }
-                        gridCtx.restore();
-                    }
-                }
-            } // <<< MODIFIED PART ENDS HERE
+            }
         } else { // For all other solid block types
             if (finalColor) {
                 gridCtx.fillStyle = finalColor;
