@@ -92,6 +92,18 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_WOOD]: 1.0,
     [BLOCK_METAL]: 1.0,
 };
+export const BLOCK_TRANSLUCENCY = {
+    [BLOCK_AIR]: 1.0,         // Air lets all light through
+    [BLOCK_WATER]: 0.8,       // Water lets 90% of light through
+    [BLOCK_SAND]: 0.0,        // Sand is opaque
+    [BLOCK_DIRT]: 0.0,        // Dirt is opaque
+    [BLOCK_VEGETATION]: 0.4,  // Vegetation lets 60% of light through
+    [BLOCK_STONE]: 0.0,       // Stone is opaque
+    [BLOCK_WOOD]: 0.0,        // Wood is opaque
+    [BLOCK_METAL]: 0.0,       // Metal is opaque
+    [BLOCK_BONE]: 0.0,        // Bone is opaque
+    [BLOCK_ROPE]: 0.9,        // Rope is mostly transparent to light
+};
 export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal'];
 export const MATERIAL_TO_BLOCK_TYPE = {
     'dirt': BLOCK_DIRT,
@@ -197,17 +209,22 @@ export const LIT_BLOCK_BRIGHTNESS_FACTOR = 1.3; // How much brighter a lit block
 
 // --- Sun Animation (Visual Only for Warp Phase) ---
 export const SUN_ANIMATION_ENABLED = true; // To easily toggle this new effect
-export const SUN_ANIMATION_COLOR = "yellow";
+export const SUN_ANIMATION_COLOR = "rgba(255, 200, 100, 0.9)"; // Light orange fill, slightly transparent
+export const SUN_ANIMATION_OUTLINE_COLOR = "rgba(255, 255, 0, 0.7)"; // Yellow for outline
+export const SUN_ANIMATION_OUTLINE_WIDTH = 5; // Thickness of the outline
+export const SUN_ANIMATION_OUTLINE_BLUR = 15; // Blur radius for the outline glow
 export const SUN_ANIMATION_RADIUS_BLOCKS = 6; // Visual radius of the sun
-export const SUN_ANIMATION_RAY_COLOR = "rgba(255, 255, 100, 0.25)"; // Softer yellow for rays
-export const SUN_ANIMATION_RAY_LINE_WIDTH = 1;
-export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 10; // How far off-screen (right) it starts
-export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 10;   // How far off-screen (left) it ends
-export const FIXED_SUN_ANIMATION_DURATION = 8.0; // NEW: Fixed duration for the sun pass animation
-export const SUN_MOVEMENT_Y_ROW_OFFSET = 20; // Row offset for sun's vertical position.
-export const SUN_MOVEMENT_STEP_COLUMNS = 2;  // How many columns the sun moves between lighting passes
-export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2); // Max length of a light ray in blocks.
-export const SUN_RAYS_PER_POSITION = 36; // Number of rays cast from each sun position.
+export const SUN_ANIMATION_RAY_COLOR_INNER = "rgba(255, 255, 180, 0.35)"; // Pale yellow, more opaque core
+export const SUN_ANIMATION_RAY_COLOR_OUTER = "rgba(255, 220, 150, 0.15)"; // Light orange, more transparent halo
+export const SUN_ANIMATION_RAY_LINE_WIDTH = 2; // Base thickness for the inner ray
+export const SUN_ANIMATION_RAY_OUTER_WIDTH_FACTOR = 2.0; // Outer ray will be this factor * base line width
+export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 10;
+export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 10;
+export const FIXED_SUN_ANIMATION_DURATION = 8.0;
+export const SUN_MOVEMENT_Y_ROW_OFFSET = 20;
+export const SUN_MOVEMENT_STEP_COLUMNS = 2;
+export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2);
+export const SUN_RAYS_PER_POSITION = 72; // Increased from 36 for more plentiful rays
 
 // --- Delta-Time Physics ---
 export const GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ = 100; // Base acceleration in block heights per second squared.

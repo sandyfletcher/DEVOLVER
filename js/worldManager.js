@@ -9,7 +9,7 @@ import * as ItemManager from './itemManager.js';
 import { generateInitialWorld as generateWorldFromGenerator } from './utils/worldGenerator.js'; // Import the generator
 import * as GridCollision from './utils/gridCollision.js';
 import { createBlock } from './utils/block.js';
-import * as WaveManager from './waveManager.js'; // Add this import
+import * as WaveManager from './waveManager.js';
 
 // --- Module State ---
 let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
@@ -35,11 +35,7 @@ const GRAVITY_ANIMATION_FALL_SPEED = 200;
 const NEW_GRAVITY_ANIM_DELAY = 0.02;
 
 // Constants for lighting pass (re-used for visual sun rays)
-const SUN_MOVEMENT_Y_ROW_OFFSET = -3;
-// const SUN_RAYS_PER_POSITION = 36; // From config.js for visual sun
-// const SUN_MOVEMENT_STEP_COLUMNS = 5; // From config.js for lighting logic, not directly used by visual sun pass
-// const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2); // From config.js for visual sun
-
+const SUN_MOVEMENT_Y_ROW_OFFSET = -3; // This is now in config.js, but kept here for direct use if not referencing Config for it.
 
 // This function will take the output of `diffGrids` and try to identify falling blocks.
 function parseGravityDiffsIntoFallingBlocks(diffs) {
@@ -383,7 +379,7 @@ function applyInitialFloodFill() {
 export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
     // console.log("[WorldManager] Calculating proposed lighting changes...");
     let proposedChanges = [];
-    const blocksToAnimateThisPass = new Set();
+    const blocksToAnimateThisPass = new Set(); // Prevents duplicate animation queueing for the same block
 
     const grid = World.getGrid();
     if (!grid || grid.length === 0) {
@@ -402,7 +398,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
     }
     // --- END DEBUG DRAWING SETUP ---
 
-    const sunCenterPixelY = (SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
+    const sunCenterPixelY = (Config.SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2); // Use Config value
     const sunStartPixelX = Config.CANVAS_WIDTH + (Config.BLOCK_WIDTH * 10);
     const sunEndPixelX = -(Config.BLOCK_WIDTH * 10);
     const sunStepPixelX = Config.SUN_MOVEMENT_STEP_COLUMNS * Config.BLOCK_WIDTH;
@@ -425,26 +421,18 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
             mainCtxForDebug.restore();
         }
 
-       // MODIFICATION START: Calculate rays only for the downward 180-degree arc
        const numDownwardRays = Math.ceil(Config.SUN_RAYS_PER_POSITION / 2);
        if (numDownwardRays <= 0) {
-           // This case should ideally not happen if Config.SUN_RAYS_PER_POSITION is positive.
-           // console.warn("[WorldManager] applyLightingPass: numDownwardRays is zero or negative. Skipping ray casting for this sun position.");
-           continue; // Skip to the next sun position
+           continue;
        }
 
        for (let i = 0; i < numDownwardRays; i++) {
            let angle;
            if (numDownwardRays === 1) {
-               // If only one ray is effectively configured for the 180-degree arc,
-               // point it straight down for maximum coverage
-               angle = Math.PI / 2; // 90 degrees
+               angle = Math.PI / 2;
            } else {
-               // Distribute rays over the 0 to PI radian range (0 to 180 degrees).
-               // (i / (numDownwardRays - 1)) will go from 0 to 1 as i goes from 0 to numDownwardRays-1.
                angle = (i / (numDownwardRays - 1)) * Math.PI;
            }
-
 
             let rayCurrentGridCol = sunGridCol;
             let rayCurrentGridRow = sunGridRow;
@@ -470,23 +458,32 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
                 if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
                     rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
 
-                    const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow);
-                    const blockType = (typeof block === 'object' && block !== null) ? block.type : block;
+                    const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow); // Get full block data
 
-                    if (blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER && block !== null) {
-                        if (typeof block === 'object' && !block.isLit) {
+                    if (block === Config.BLOCK_AIR) {
+                        // Ray passes through air freely
+                    } else if (typeof block === 'object' && block !== null) {
+                        // It's a block object (not air). It can be lit.
+                        if (!block.isLit) { // Check if block object is already lit
                             const changeKey = `${rayCurrentGridCol},${rayCurrentGridRow}`;
                             if (!blocksToAnimateThisPass.has(changeKey)) {
                                 proposedChanges.push({ c: rayCurrentGridCol, r: rayCurrentGridRow, newLitState: true });
                                 blocksToAnimateThisPass.add(changeKey);
                             }
                         }
-                        break;
+                        // Check its translucency
+                        if (block.translucency === 0.0) { // 0.0 means opaque
+                            break; // Ray stops
+                        }
+                        // If translucency > 0.0, the ray continues through this block
+                    } else {
+                        // This case handles block === null (out of bounds)
+                        // or any other unexpected block data. Treat as opaque.
+                        break; // Ray stops
                     }
-                } else if (rayCurrentGridRow >= Config.GRID_ROWS) {
+                } else if (rayCurrentGridRow >= Config.GRID_ROWS) { // Ray went below world
                     break;
-                }
-                else if (rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) {
+                } else if (rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) { // Ray went sideways out of world
                     break;
                 }
 
@@ -516,6 +513,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
     return proposedChanges;
 }
 
+
 // -----------------------------------------------------------------------------
 // --- Initialization ---
 // -----------------------------------------------------------------------------
@@ -527,8 +525,9 @@ export function executeInitialWorldGenerationSequence() {
     applyInitialFloodFill();
 
     World.resetAllBlockLighting();
-    const initialProposedLighting = applyLightingPass(false);
+    const initialProposedLighting = applyLightingPass(false); // false = no debug drawing
 
+    // Apply initial lighting directly to the world data
     initialProposedLighting.forEach(change => {
         const block = World.getBlock(change.c, change.r);
         if (block && typeof block === 'object') {
@@ -562,7 +561,7 @@ export function addWaterUpdateCandidate(col, row) {
             const blockType = World.getBlockType(col, row);
             if (blockType !== null &&
                 (blockType === Config.BLOCK_WATER ||
-                (blockType === Config.BLOCK_AIR && row >= Config.WATER_LEVEL))) {
+                (blockType === Config.BLOCK_AIR && row >= Config.WATER_LEVEL))) { // Only add AIR blocks at/below water level as candidates
                 waterUpdateQueue.set(key, {c: col, r: row});
                 return true;
             }
@@ -582,6 +581,11 @@ export function queueWaterCandidatesAroundChange(c, r) {
     candidateAdded = addWaterUpdateCandidate(c, r + 1) || candidateAdded;
     candidateAdded = addWaterUpdateCandidate(c - 1, r) || candidateAdded;
     candidateAdded = addWaterUpdateCandidate(c + 1, r) || candidateAdded;
+    // Diagonal checks might be useful for smoother water spread, but more computationally expensive.
+    // candidateAdded = addWaterUpdateCandidate(c - 1, r - 1) || candidateAdded;
+    // candidateAdded = addWaterUpdateCandidate(c + 1, r - 1) || candidateAdded;
+    // candidateAdded = addWaterUpdateCandidate(c - 1, r + 1) || candidateAdded;
+    // candidateAdded = addWaterUpdateCandidate(c + 1, r + 1) || candidateAdded;
 
     if (candidateAdded) {
         resetWaterPropagationTimer();
@@ -590,20 +594,21 @@ export function queueWaterCandidatesAroundChange(c, r) {
 
 export function seedWaterUpdateQueue() {
     console.log("WorldManager: Seeding water update queue...");
-    waterUpdateQueue.clear();
+    waterUpdateQueue.clear(); // Clear any existing candidates
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             const blockType = World.getBlockType(c, r);
             if (blockType === Config.BLOCK_WATER || blockType === Config.BLOCK_AIR) {
                 addWaterUpdateCandidate(c, r);
             }
+            // Also check neighbors of water and solid blocks near water level to kickstart flow
             if (blockType === Config.BLOCK_WATER || (GridCollision.isSolid(c, r) && r >= Config.WATER_LEVEL - 2)) {
                  queueWaterCandidatesAroundChange(c,r);
             }
         }
     }
     console.log(`WorldManager: Seeded Water Update Queue with ${waterUpdateQueue.size} candidates.`);
-    waterPropagationTimer = 0;
+    waterPropagationTimer = 0; // Ensure water can propagate immediately if needed
 }
 
 
@@ -615,55 +620,69 @@ export function placePlayerBlock(col, row, blockType) {
     const success = World.setBlock(col, row, blockType, true);
     if (success) {
         updateStaticWorldAt(col, row);
-        queueWaterCandidatesAroundChange(col, row);
+        queueWaterCandidatesAroundChange(col, row); // Re-evaluate water flow around the new block
     }
     return success;
 }
 
 export function damageBlock(col, row, damageAmount) {
-    if (damageAmount <= 0) return false;
-    const block = World.getBlock(col, row);
+    if (damageAmount <= 0) return false; // No damage to apply
+
+    const block = World.getBlock(col, row); // Get the block data
+
+    // Check if the block is valid and damageable
     if (!block || typeof block !== 'object' || block.type === Config.BLOCK_AIR || block.type === Config.BLOCK_WATER || !block.hasOwnProperty('hp') || block.maxHp <= 0 || block.hp <= 0 || block.hp === Infinity) {
-        return false;
+        return false; // Not damageable (air, water, already destroyed, or indestructible)
     }
-    if (typeof block.hp !== 'number' || isNaN(block.hp)) {
-        block.hp = block.maxHp;
-        return false;
+    if (typeof block.hp !== 'number' || isNaN(block.hp)) { // Sanity check for HP
+        // console.warn(`Block at [${col}, ${row}] has invalid HP. Resetting to maxHp.`, block);
+        block.hp = block.maxHp; // Reset HP if invalid
+        return false; // Don't apply damage this frame if HP was invalid
     }
+
     block.hp -= damageAmount;
-    updateStaticWorldAt(col, row);
+    updateStaticWorldAt(col, row); // Update visual on grid canvas for damage indicator
+
     let wasDestroyed = false;
     if (block.hp <= 0) {
         wasDestroyed = true;
-        block.hp = 0;
+        block.hp = 0; // Ensure HP doesn't go negative
+
+        // --- Determine Item Drop ---
         let dropType = null;
         switch (block.type) {
             case Config.BLOCK_VEGETATION: dropType = 'vegetation'; break;
             case Config.BLOCK_DIRT:  dropType = 'dirt'; break;
             case Config.BLOCK_STONE: dropType = 'stone'; break;
             case Config.BLOCK_SAND:  dropType = 'sand'; break;
-            case Config.BLOCK_WOOD: dropType = 'wood'; break;
+            case Config.BLOCK_WOOD: dropType = 'wood'; break; // Assumes both player and natural wood drop 'wood'
             case Config.BLOCK_BONE: dropType = 'bone'; break;
             case Config.BLOCK_METAL: dropType = 'metal'; break;
+            // Ropes typically don't drop items, or might drop 'vegetation' if desired
+            // case Config.BLOCK_ROPE: dropType = 'vegetation'; break;
         }
+
         if (dropType) {
             const dropXBase = col * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2);
             const dropYBase = row * Config.BLOCK_HEIGHT + (Config.BLOCK_HEIGHT / 2);
-            const offsetX = (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.4;
-            const offsetY = (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.4;
+            const offsetX = (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.4; // Scatter within 40% of block width
+            const offsetY = (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.4; // Scatter within 40% of block height
             const finalDropX = dropXBase + offsetX;
             const finalDropY = dropYBase + offsetY;
-            if (!isNaN(finalDropX) && !isNaN(finalDropY)) {
+
+            if (!isNaN(finalDropX) && !isNaN(finalDropY)) { // Ensure coordinates are valid numbers
                  ItemManager.spawnItem(finalDropX, finalDropY, dropType);
             }
         }
-        const success = World.setBlock(col, row, Config.BLOCK_AIR, false);
+
+        // Set block to AIR
+        const success = World.setBlock(col, row, Config.BLOCK_AIR, false); // Destroyed blocks become non-player-placed air
         if (success) {
-            updateStaticWorldAt(col, row);
-            queueWaterCandidatesAroundChange(col, row);
+            updateStaticWorldAt(col, row); // Update visual for the new air block
+            queueWaterCandidatesAroundChange(col, row); // Re-evaluate water
         }
     }
-    return true;
+    return true; // Damage was applied (even if not destroyed)
 }
 
 // -----------------------------------------------------------------------------
@@ -676,9 +695,12 @@ export function addProposedAgingChanges(changes) {
 
 function updateAgingAnimations(dt) {
     if (dt <= 0) return;
+
     newAnimationStartTimer -= dt;
     if (newAnimationStartTimer <= 0 && agingAnimationQueue.length > 0 && activeAgingAnimations.length < Config.AGING_ANIMATION_BLOCKS_AT_ONCE) {
         const change = agingAnimationQueue.shift();
+
+        // Check if an animation for this block is already active
         const existingAnimIndex = activeAgingAnimations.findIndex(anim => anim.c === change.c && anim.r === change.r);
         if (existingAnimIndex !== -1) {
             // console.warn(`[WorldManager] Trying to start new animation for [${change.c},${change.r}] while one is active. Skipping.`);
@@ -688,6 +710,8 @@ function updateAgingAnimations(dt) {
                 timer: Config.AGING_ANIMATION_SWELL_DURATION, phase: 'swell', currentScale: 1.0,
             });
             newAnimationStartTimer = Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
+
+            // Clear the static grid canvas cell for this animating block
             const gridCtx = Renderer.getGridContext();
             if (gridCtx) {
                 gridCtx.clearRect(
@@ -697,9 +721,11 @@ function updateAgingAnimations(dt) {
             }
         }
     }
+
     for (let i = activeAgingAnimations.length - 1; i >= 0; i--) {
         const anim = activeAgingAnimations[i];
         anim.timer -= dt;
+
         if (anim.phase === 'swell') {
             const timeElapsed = Config.AGING_ANIMATION_SWELL_DURATION - anim.timer;
             const progress = Math.min(1.0, Math.max(0, timeElapsed / Config.AGING_ANIMATION_SWELL_DURATION));
@@ -707,10 +733,11 @@ function updateAgingAnimations(dt) {
             if (anim.timer <= 0) {
                 anim.phase = 'pop';
                 anim.timer = Config.AGING_ANIMATION_POP_DURATION;
-                anim.currentScale = 1.0;
+                anim.currentScale = 1.0; // Reset scale for pop phase (or use a different scale if desired)
             }
         } else if (anim.phase === 'pop') {
             if (anim.timer <= 0) {
+                // Animation finished, update the static world representation
                 updateStaticWorldAt(anim.c, anim.r);
                 queueWaterCandidatesAroundChange(anim.c, anim.r);
                 activeAgingAnimations.splice(i, 1);
@@ -725,25 +752,28 @@ function drawAgingAnimations(ctx) {
         const blockPixelY = anim.r * Config.BLOCK_HEIGHT;
         const blockWidth = Config.BLOCK_WIDTH;
         const blockHeight = Config.BLOCK_HEIGHT;
+
         ctx.save();
         if (anim.phase === 'swell') {
             ctx.translate(blockPixelX + blockWidth / 2, blockPixelY + blockHeight / 2);
             ctx.scale(anim.currentScale, anim.currentScale);
             ctx.translate(-(blockPixelX + blockWidth / 2), -(blockPixelY + blockHeight / 2));
+
             const oldColor = Config.BLOCK_COLORS[anim.oldBlockType];
-            if (oldColor && anim.oldBlockType !== Config.BLOCK_AIR) {
-                ctx.fillStyle = Config.AGING_ANIMATION_OLD_BLOCK_COLOR;
+            if (oldColor && anim.oldBlockType !== Config.BLOCK_AIR) { // Only draw if it's not air
+                ctx.fillStyle = Config.AGING_ANIMATION_OLD_BLOCK_COLOR; // Use a generic animation color
                 ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
             }
         } else if (anim.phase === 'pop') {
             const newColor = Config.BLOCK_COLORS[anim.newBlockType];
-            if (newColor && anim.newBlockType !== Config.BLOCK_AIR) {
+            if (newColor && anim.newBlockType !== Config.BLOCK_AIR) { // Only draw if it's not air
+                // Calculate alpha for a brief flash effect during pop
                 const popProgress = Math.max(0, 1.0 - (anim.timer / Config.AGING_ANIMATION_POP_DURATION));
-                const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI);
+                const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI); // Simple sine wave for flash
                 ctx.globalAlpha = alpha;
-                ctx.fillStyle = Config.AGING_ANIMATION_NEW_BLOCK_COLOR;
+                ctx.fillStyle = Config.AGING_ANIMATION_NEW_BLOCK_COLOR; // Use a generic animation color
                 ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
-                ctx.globalAlpha = 1.0;
+                ctx.globalAlpha = 1.0; // Reset alpha
             }
         }
         ctx.restore();
@@ -755,11 +785,15 @@ export function areAgingAnimationsComplete() {
 }
 
 export function finalizeAllAgingAnimations() {
+    // Process any remaining queued changes
     while(agingAnimationQueue.length > 0) {
         const change = agingAnimationQueue.shift();
+        // World.setBlock has already been called for these changes by AgingManager
+        // We just need to update the static grid canvas.
         updateStaticWorldAt(change.c, change.r);
         queueWaterCandidatesAroundChange(change.c, change.r);
     }
+    // Process any active animations
     while(activeAgingAnimations.length > 0) {
         const anim = activeAgingAnimations.shift();
         updateStaticWorldAt(anim.c, anim.r);
@@ -770,8 +804,10 @@ export function finalizeAllAgingAnimations() {
 // --- NEW: Lighting Animation Functions ---
 export function addProposedLightingChanges(changes) {
     changes.forEach(change => {
+        // Avoid queueing an animation if one is already queued or active for this block
         const existingQueueIndex = lightingAnimationQueue.findIndex(q => q.c === change.c && q.r === change.r);
         const existingActiveIndex = activeLightingAnimations.findIndex(a => a.c === change.c && a.r === change.r);
+
         if (existingQueueIndex === -1 && existingActiveIndex === -1) {
             lightingAnimationQueue.push(change);
         }
@@ -785,6 +821,7 @@ function updateLightingAnimations(dt) {
     if (newLightingAnimationStartTimer <= 0 && lightingAnimationQueue.length > 0 && activeLightingAnimations.length < Config.LIGHTING_ANIMATION_BLOCKS_AT_ONCE) {
         const change = lightingAnimationQueue.shift();
 
+        // Check if the block is *already* lit in the world data. If so, skip animating it again.
         const blockBeingAnimated = World.getBlock(change.c, change.r);
         if (blockBeingAnimated && typeof blockBeingAnimated === 'object' && blockBeingAnimated.isLit) {
             // Already lit, skip animation for this one
@@ -792,11 +829,12 @@ function updateLightingAnimations(dt) {
             activeLightingAnimations.push({
                 c: change.c,
                 r: change.r,
-                newLitState: change.newLitState,
+                newLitState: change.newLitState, // Store the intended final state
                 timer: Config.LIGHTING_ANIMATION_DURATION,
             });
             newLightingAnimationStartTimer = Config.LIGHTING_ANIMATION_NEW_BLOCK_DELAY;
 
+            // Clear the static grid cell for this animating block
             const gridCtx = Renderer.getGridContext();
             if (gridCtx) {
                 gridCtx.clearRect(
@@ -814,11 +852,12 @@ function updateLightingAnimations(dt) {
         anim.timer -= dt;
 
         if (anim.timer <= 0) {
+            // Animation finished, apply the lighting state to the world data
             const block = World.getBlock(anim.c, anim.r);
             if (block && typeof block === 'object') {
-                block.isLit = anim.newLitState;
+                block.isLit = anim.newLitState; // Set final lit state
             }
-            updateStaticWorldAt(anim.c, anim.r);
+            updateStaticWorldAt(anim.c, anim.r); // Redraw on static canvas with final lit state
             queueWaterCandidatesAroundChange(anim.c, anim.r);
             activeLightingAnimations.splice(i, 1);
         }
@@ -832,11 +871,12 @@ function drawLightingAnimations(ctx) {
         const blockWidth = Config.BLOCK_WIDTH;
         const blockHeight = Config.BLOCK_HEIGHT;
 
-        const progress = 1.0 - (anim.timer / Config.LIGHTING_ANIMATION_DURATION);
-        const alpha = Math.sin(progress * Math.PI) * Config.LIGHTING_ANIMATION_MAX_ALPHA;
+        // Animate alpha for a flash effect
+        const progress = 1.0 - (anim.timer / Config.LIGHTING_ANIMATION_DURATION); // 0 (start) to 1 (end)
+        const alpha = Math.sin(progress * Math.PI) * Config.LIGHTING_ANIMATION_MAX_ALPHA; // Sine wave for smooth flash
 
         ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha)); // Clamp alpha
         ctx.fillStyle = Config.LIGHTING_ANIMATION_COLOR;
         ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
         ctx.restore();
@@ -878,17 +918,31 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
 
     // 1. Draw the Sun
     const sunRadius = Config.SUN_ANIMATION_RADIUS_BLOCKS * Config.BLOCK_WIDTH;
+
+    // Draw blurred outline/glow first
+    ctx.save();
+    ctx.shadowColor = Config.SUN_ANIMATION_OUTLINE_COLOR;
+    ctx.shadowBlur = Config.SUN_ANIMATION_OUTLINE_BLUR;
+    ctx.strokeStyle = Config.SUN_ANIMATION_OUTLINE_COLOR;
+    ctx.lineWidth = Config.SUN_ANIMATION_OUTLINE_WIDTH;
+    ctx.beginPath();
+    ctx.arc(sunWorldX, sunWorldY, sunRadius, 0, Math.PI * 2);
+    ctx.stroke(); // Draw the blurred stroke
+    ctx.restore(); // Restore to remove shadow effect for fill
+
+    // Draw the main sun fill
     ctx.fillStyle = Config.SUN_ANIMATION_COLOR;
     ctx.beginPath();
     ctx.arc(sunWorldX, sunWorldY, sunRadius, 0, Math.PI * 2);
     ctx.fill();
 
+
     // 2. Cast and Draw Rays (similar to applyLightingPass ray logic, but for drawing only)
     const sunGridCol = Math.floor(sunWorldX / Config.BLOCK_WIDTH);
     const sunGridRow = Math.floor(sunWorldY / Config.BLOCK_HEIGHT);
 
-    ctx.strokeStyle = Config.SUN_ANIMATION_RAY_COLOR;
-    ctx.lineWidth = Config.SUN_ANIMATION_RAY_LINE_WIDTH;
+    // Outer ray (thicker, more transparent)
+    const outerRayWidth = Config.SUN_ANIMATION_RAY_LINE_WIDTH * Config.SUN_ANIMATION_RAY_OUTER_WIDTH_FACTOR;
 
     for (let i = 0; i < Config.SUN_RAYS_PER_POSITION; i++) {
         const angle = (i / Config.SUN_RAYS_PER_POSITION) * 2 * Math.PI;
@@ -896,6 +950,7 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
         let rayCurrentGridCol = sunGridCol;
         let rayCurrentGridRow = sunGridRow;
 
+        // Use MAX_LIGHT_RAY_LENGTH_BLOCKS from Config for ray length consistency
         const rayEndGridColTarget = Math.floor(sunGridCol + Math.cos(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
         const rayEndGridRowTarget = Math.floor(sunGridRow + Math.sin(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
 
@@ -916,12 +971,12 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
             if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
                 rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
 
-                const blockType = World.getBlockType(rayCurrentGridCol, rayCurrentGridRow);
-                if (blockType !== null && blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER) {
-                    break;
+                const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow);
+                if (block !== Config.BLOCK_AIR && typeof block === 'object' && block.translucency === 0.0) {
+                    break; // Stop ray if it hits an opaque block
                 }
             } else if (rayCurrentGridRow >= Config.GRID_ROWS || rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) {
-                break;
+                break; // Ray went out of bounds
             }
 
             if (rayCurrentGridCol === rayEndGridColTarget && rayCurrentGridRow === rayEndGridRowTarget) {
@@ -934,6 +989,17 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
             currentRayBlockLength++;
         }
 
+        // Draw Outer Ray (thicker halo)
+        ctx.strokeStyle = Config.SUN_ANIMATION_RAY_COLOR_OUTER;
+        ctx.lineWidth = outerRayWidth;
+        ctx.beginPath();
+        ctx.moveTo(sunWorldX, sunWorldY);
+        ctx.lineTo(rayPixelEndX, rayPixelEndY);
+        ctx.stroke();
+
+        // Draw Inner Ray (thinner core)
+        ctx.strokeStyle = Config.SUN_ANIMATION_RAY_COLOR_INNER;
+        ctx.lineWidth = Config.SUN_ANIMATION_RAY_LINE_WIDTH;
         ctx.beginPath();
         ctx.moveTo(sunWorldX, sunWorldY);
         ctx.lineTo(rayPixelEndX, rayPixelEndY);
@@ -941,48 +1007,58 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
     }
 }
 
-
 export function updateStaticWorldAt(col, row) {
     const gridCtx = Renderer.getGridContext();
     if (!gridCtx) {
+        // console.warn("updateStaticWorldAt: Grid context not available.");
         return;
     }
-    const block = World.getBlock(col, row);
+
+    const block = World.getBlock(col, row); // Get the block object or BLOCK_AIR
     const blockX = col * Config.BLOCK_WIDTH;
     const blockY = row * Config.BLOCK_HEIGHT;
-    const blockW = Math.ceil(Config.BLOCK_WIDTH);
+    const blockW = Math.ceil(Config.BLOCK_WIDTH); // Use ceil to avoid 1px gaps due to flooring
     const blockH = Math.ceil(Config.BLOCK_HEIGHT);
 
+    // Clear the cell on the off-screen canvas
     gridCtx.clearRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
 
+    // Only draw if it's not an AIR block
     if (block !== Config.BLOCK_AIR && block !== null && block !== undefined) {
         const currentBlockType = typeof block === 'object' && block !== null ? block.type : block;
+
+        // If somehow currentBlockType is AIR after all, exit (shouldn't happen if block !== Config.BLOCK_AIR)
         if (currentBlockType === Config.BLOCK_AIR) return;
 
         let baseColor = Config.BLOCK_COLORS[currentBlockType];
         let finalColor = baseColor;
 
+        // Apply brightness if the block is lit (and it's an object with isLit property)
         if (typeof block === 'object' && block !== null && block.isLit && baseColor) {
             try {
-                if (baseColor.startsWith('rgb(')) {
+                if (baseColor.startsWith('rgb(')) { // Ensure it's a simple rgb color string
                     const parts = baseColor.substring(4, baseColor.length - 1).split(',').map(s => parseInt(s.trim(), 10));
                     const r_val = Math.min(255, Math.floor(parts[0] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
                     const g_val = Math.min(255, Math.floor(parts[1] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
                     const b_val = Math.min(255, Math.floor(parts[2] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
                     finalColor = `rgb(${r_val}, ${g_val}, ${b_val})`;
                 }
+                // Note: Could add similar logic for 'rgba(' if needed, or hex.
             } catch (e) {
-                finalColor = baseColor;
+                // console.error(`Error parsing color for lighting: ${baseColor}`, e);
+                finalColor = baseColor; // Fallback to base color on error
             }
         }
 
+        // --- Specific drawing logic for ROPE ---
         if (currentBlockType === Config.BLOCK_ROPE) {
-            gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE];
-            const ropeWidth = Math.max(1, Math.floor(blockW * 0.2));
+            gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE]; // Fallback to default rope color
+            const ropeWidth = Math.max(1, Math.floor(blockW * 0.2)); // Rope is thin
             const ropeX = Math.floor(blockX + (blockW - ropeWidth) / 2);
             gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
+
             const isPlayerPlacedRope = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
-            if (isPlayerPlacedRope) { // Renamed variable to avoid conflict
+            if (isPlayerPlacedRope) {
                 gridCtx.save();
                 gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
                 gridCtx.lineWidth = 1; // Ropes have a thinner outline for clarity
@@ -1002,7 +1078,8 @@ export function updateStaticWorldAt(col, row) {
             }
 
         } else if (currentBlockType === Config.BLOCK_VEGETATION) {
-            if (finalColor) {
+            // Vegetation Drawing
+            if (finalColor) { // Ensure there's a color to draw with
                 gridCtx.fillStyle = finalColor;
                 // Iterate for each pixel in the block's area
                 for (let py = 0; py < blockH; py++) {
@@ -1029,14 +1106,15 @@ export function updateStaticWorldAt(col, row) {
                 gridCtx.restore();
             }
 
+            // Damage indicators for VEGETATION
             if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
                 const hpRatio = block.hp / block.maxHp;
                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
                     gridCtx.save();
                     gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
                     gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-                    gridCtx.lineCap = 'square';
-                    const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
+                    gridCtx.lineCap = 'square'; // Or 'round'
+                    const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH; // Inset path to be within block bounds
                     gridCtx.beginPath();
                     gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset);
                     gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
@@ -1076,6 +1154,8 @@ export function updateStaticWorldAt(col, row) {
                 }
                 // END NEW
 
+
+                // Draw player-placed outline if applicable
                 const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
                 if (isPlayerPlaced) { // This will draw player outline ON TOP of natural wood outline if both apply (which is fine)
                     gridCtx.save();
@@ -1088,6 +1168,8 @@ export function updateStaticWorldAt(col, row) {
                     );
                     gridCtx.restore();
                 }
+
+                // Draw damage indicators
                 if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
                     const hpRatio = block.hp / block.maxHp;
                     if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
@@ -1118,22 +1200,27 @@ export function renderStaticWorldToGridCanvas() {
     console.log("WorldManager: Rendering static world to grid canvas...");
     const gridCtx = Renderer.getGridContext();
     const gridCanvas = Renderer.getGridCanvas();
+
     if (!gridCtx || !gridCanvas) {
         console.error("WorldManager: Cannot render static world - grid canvas/context missing!");
         return;
     }
-    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
-    const worldGrid = World.getGrid();
+
+    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height); // Clear entire grid canvas
+
+    const worldGrid = World.getGrid(); // Get the full grid data
     if (!worldGrid || !Array.isArray(worldGrid)) {
         console.error("WorldManager: Cannot render, worldGrid is invalid.");
         return;
     }
+
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         if (!Array.isArray(worldGrid[r])) {
+            // console.warn(`WorldManager: Row ${r} is not an array in worldGrid.`);
             continue;
         }
         for (let c = 0; c < Config.GRID_COLS; c++) {
-            updateStaticWorldAt(c, r);
+            updateStaticWorldAt(c, r); // Redraw each cell
         }
     }
     console.log("WorldManager: Static world render complete.");
@@ -1141,8 +1228,11 @@ export function renderStaticWorldToGridCanvas() {
 
 export function draw(ctx) {
     if (!ctx) {
+        // console.error("WorldManager.draw: Main context not provided.");
         return;
     }
+
+    // Draw the pre-rendered static world from the off-screen canvas
     const gridCanvasToDraw = Renderer.getGridCanvas();
     if (gridCanvasToDraw) {
         ctx.drawImage(gridCanvasToDraw, 0, 0);
@@ -1155,9 +1245,11 @@ export function draw(ctx) {
     }
     // --- END NEW ---
 
+
+    // Draw dynamic elements on top
     drawGravityAnimations(ctx);
     drawAgingAnimations(ctx);
-    drawLightingAnimations(ctx);
+    drawLightingAnimations(ctx); // Draw lighting flashes
 }
 
 // -----------------------------------------------------------------------------
@@ -1165,24 +1257,35 @@ export function draw(ctx) {
 // -----------------------------------------------------------------------------
 
 export function update(dt) {
+    // Water simulation update
     waterPropagationTimer = Math.max(0, waterPropagationTimer - dt);
     if (waterPropagationTimer <= 0 && waterUpdateQueue.size > 0) {
-        waterPropagationTimer = Config.WATER_PROPAGATION_DELAY;
+        waterPropagationTimer = Config.WATER_PROPAGATION_DELAY; // Reset timer
+
+        // Prioritize processing candidates from bottom-up to encourage downward flow first
         const candidatesArray = Array.from(waterUpdateQueue.values());
-        candidatesArray.sort((a, b) => b.r - a.r);
+        candidatesArray.sort((a, b) => b.r - a.r); // Sort by row descending
+
         const candidatesToProcess = candidatesArray.slice(0, Config.WATER_UPDATES_PER_FRAME);
+
+        // Remove processed candidates from the main queue
         candidatesToProcess.forEach(({c, r}) => {
             const key = `${c},${r}`;
             waterUpdateQueue.delete(key);
         });
+
         candidatesToProcess.forEach(({c, r}) => {
-            if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return;
+            if (r < 0 || r >= Config.GRID_ROWS || c < 0 || c >= Config.GRID_COLS) return; // Bounds check
+
             const currentBlockType = World.getBlockType(c, r);
+
             if (currentBlockType === Config.BLOCK_AIR) {
+                // If this AIR block is at or below water level and adjacent to WATER, it becomes WATER
                 if (r >= Config.WATER_LEVEL) {
                     let adjacentToWater = false;
                     const immediateNeighbors = [
                         {dc:0, dr:1}, {dc:0, dr:-1}, {dc:1, dr:0}, {dc:-1, dr:0}
+                        // Optional: Diagonals for faster fill: {dc:1, dr:1}, {dc:-1, dr:1}, {dc:1, dr:-1}, {dc:-1, dr:-1}
                     ];
                     for (const neighbor of immediateNeighbors) {
                         const nc = c + neighbor.dc;
@@ -1196,36 +1299,48 @@ export function update(dt) {
                         const success = World.setBlock(c, r, Config.BLOCK_WATER, false);
                         if (success) {
                             updateStaticWorldAt(c, r);
-                            queueWaterCandidatesAroundChange(c, r);
+                            queueWaterCandidatesAroundChange(c, r); // Re-queue neighbors
                         }
                     }
                 }
             } else if (currentBlockType === Config.BLOCK_WATER) {
+                // Check if water can flow down
                 const blockBelowType = World.getBlockType(c, r + 1);
-                if (blockBelowType === Config.BLOCK_AIR) {
-                    addWaterUpdateCandidate(c, r + 1);
+                if (blockBelowType === Config.BLOCK_AIR) { // Can flow directly down
+                    addWaterUpdateCandidate(c, r + 1); // Queue the block below
+                    // Optional: If water moves down, the current block becomes AIR and its neighbors need re-evaluation
+                    // World.setBlock(c, r, Config.BLOCK_AIR, false);
+                    // updateStaticWorldAt(c, r);
+                    // queueWaterCandidatesAroundChange(c, r); // But this can cause rapid oscillation
                 } else {
-                     const blockBelow = World.getBlock(c, r + 1);
-                     const blockBelowResolvedType = blockBelow?.type ?? Config.BLOCK_AIR;
-                     const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR);
-                    if (isBelowSolidOrWater) {
+                    // If blocked below, try to spread sideways
+                    const blockBelow = World.getBlock(c, r + 1); // Get full data for robust check
+                    const blockBelowResolvedType = blockBelow?.type ?? Config.BLOCK_AIR; // Default to AIR if null/invalid
+                    const isBelowSolidOrWater = blockBelow !== null && (blockBelowResolvedType !== Config.BLOCK_AIR); // True if solid or already water
+
+                    if (isBelowSolidOrWater) { // Only spread if actually blocked below
                         let spreadOccurred = false;
+                        // Try to spread left
                         if (World.getBlockType(c - 1, r) === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
                             addWaterUpdateCandidate(c - 1, r);
                             spreadOccurred = true;
                         }
+                        // Try to spread right
                         if (World.getBlockType(c + 1, r) === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
                             addWaterUpdateCandidate(c + 1, r);
                             spreadOccurred = true;
                         }
+                        // If spread, this water block might still be a candidate for future flow
                         if(spreadOccurred) {
-                            addWaterUpdateCandidate(c,r);
+                            addWaterUpdateCandidate(c,r); // Re-queue itself if it caused spread
                         }
                     }
                 }
             }
         });
     }
+
+    // Update animations
     updateGravityAnimations(dt);
     updateAgingAnimations(dt);
     updateLightingAnimations(dt);

@@ -365,7 +365,7 @@ const blockBeforeChange = World.getBlock(c, r);
                     if (Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
                         tinyTreeFormedThisCell = true;
 
-                        const pattern = [
+                       const pattern = [
                             { dr: -1, dc: -1, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: +1, type: Config.BLOCK_VEGETATION },
                             { dr:  0, dc: -1, type: Config.BLOCK_AIR },       { dr:  0, dc: 0, type: Config.BLOCK_WOOD },        { dr:  0, dc: +1, type: Config.BLOCK_AIR },
                             { dr: +1, dc: -1, type: Config.BLOCK_AIR },       { dr: +1, dc: 0, type: Config.BLOCK_WOOD },        { dr: +1, dc: +1, type: Config.BLOCK_AIR },
@@ -388,12 +388,15 @@ const blockBeforeChange = World.getBlock(c, r);
                                 const success = World.setBlock(targetC, targetR, cell.type, false);
                                 if (success) {
                                     const blockAfterChange = World.getBlock(targetC, targetR);
-                                    changedCellsAndTypes.push({
-                                        c: targetC, r: targetR,
-                                        oldBlockType: oldBlockAtTargetType,
-                                        newBlockType: cell.type,
-                                        finalBlockData: blockAfterChange
-                                    });
+                                    // Only add to visual changes if the block type actually changed
+                                    if (oldBlockAtTargetType !== cell.type) {
+                                        changedCellsAndTypes.push({
+                                            c: targetC, r: targetR,
+                                            oldBlockType: oldBlockAtTargetType,
+                                            newBlockType: cell.type,
+                                            finalBlockData: blockAfterChange
+                                        });
+                                    }
                                 }
                             }
                         }
