@@ -141,7 +141,7 @@ export class Player {
             this._lastValidTargetGridCell = { ...this.targetGridCell }; 
         } else {
             this.targetGridCell = targetGridCell;
-            this._lastValidTargetGridCell = { ...targetGridCell }; 
+            this._lastValidTargetGridCell = { ...this.targetGridCell }; 
         }
         
         const playerCenterX = this.x + this.width / 2;
@@ -519,7 +519,8 @@ export class Player {
             const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
 
             if (canAttachToSolid || canExtendRope) {
-                return { col: col, row: row, color: Config.BLOCK_COLORS[Config.BLOCK_ROPE] };
+                const ropeProps = Config.BLOCK_PROPERTIES[Config.BLOCK_ROPE];
+                return { col: col, row: row, color: ropeProps?.color || Config.PLAYER_HITBOX_COLOR };
             }
             return null; 
         } else { 
@@ -528,7 +529,8 @@ export class Player {
             const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[selectedMaterialType];
             if (blockTypeToPlace === undefined) return null;
             
-            const blockColor = Config.BLOCK_COLORS[blockTypeToPlace];
+            const blockProps = Config.BLOCK_PROPERTIES[blockTypeToPlace];
+            const blockColor = blockProps?.color;
             if (!blockColor) return null;
             
             return { col: col, row: row, color: blockColor };
@@ -598,15 +600,15 @@ export class Player {
             ctx.save(); 
             const playerCenterX = this.x + this.width / 2;
             const playerCenterY = this.y + this.height / 2;
-            let weaponConfig = Config.ITEM_CONFIG[this.selectedItem]; 
+            let weaponStats = Config.WEAPON_STATS[this.selectedItem];
             let visualOffsetX = 0; 
             if (this.selectedItem === Config.WEAPON_TYPE_SWORD) visualOffsetX = this.width * 0.6; 
             else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) visualOffsetX = this.width * 0.7; 
             else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) visualOffsetX = this.width * 0.5; 
-            if (weaponConfig) {
-                const weaponWidth = weaponConfig.width * 0.8; 
-                const weaponHeight = weaponConfig.height * 0.8; 
-                const weaponColor = weaponConfig.color; 
+            if (weaponStats) {
+                const weaponWidth = weaponStats.width * 0.8;
+                const weaponHeight = weaponStats.height * 0.8;
+                const weaponColor = weaponStats.color;
                 const targetForDrawing = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; 
                 const targetDeltaX = targetForDrawing.x - playerCenterX;
                 const targetDeltaY = targetForDrawing.y - playerCenterY;
@@ -900,7 +902,7 @@ export class Player {
         for (const ingredient of recipe) {
             const requiredType = ingredient.type;
             const requiredAmount = ingredient.amount;
-            const possessedAmount = this.inventory[requiredType] || 0;
+            const possessedAmount = this.inventory[requiredType] || 0; 
             if (possessedAmount < requiredAmount) {
                 hasMaterials = false;
                 break; 

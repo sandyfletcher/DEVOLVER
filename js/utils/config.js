@@ -62,28 +62,156 @@ export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
-export const BLOCK_HP = {
-    [BLOCK_WATER]: Infinity,
-    [BLOCK_SAND]: 30,
-    [BLOCK_DIRT]: 50,
-    [BLOCK_VEGETATION]: 25,
-    [BLOCK_STONE]: 300,
-    [BLOCK_WOOD]: 100,
-    [BLOCK_METAL]: 500,
-    [BLOCK_BONE]: 120,
-    [BLOCK_ROPE]: 25,
+
+// --- NEW: Centralized Block Properties ---
+export const BLOCK_PROPERTIES = {
+    [BLOCK_AIR]: {
+        name: 'AIR',
+        hp: Infinity,
+        color: null,
+        translucency: 1.0,
+        isSolidForPhysics: false,
+        isSolidForPlacementSupport: false,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: null,
+        droppedItemConfig: null,
+        isPlayerPlaceableAsMaterial: false,
+    },
+    [BLOCK_WATER]: {
+        name: 'WATER',
+        hp: Infinity,
+        color: 'rgb(38, 77, 154)',
+        translucency: 0.8,
+        isSolidForPhysics: false,
+        isSolidForPlacementSupport: false,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: null,
+        droppedItemConfig: null,
+        isPlayerPlaceableAsMaterial: false,
+    },
+    [BLOCK_SAND]: {
+        name: 'SAND',
+        hp: 30,
+        color: 'rgb(210, 180, 140)',
+        translucency: 0.0,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'sand',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(210, 180, 140)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
+    [BLOCK_DIRT]: {
+        name: 'DIRT',
+        hp: 50,
+        color: 'rgb(130, 82, 45)',
+        translucency: 0.0,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'dirt',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(130, 82, 45)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
+    [BLOCK_VEGETATION]: {
+        name: 'VEGETATION',
+        hp: 25,
+        color: 'rgb(80, 180, 80)',
+        translucency: 0.4,
+        isSolidForPhysics: false, // Vegetation is not solid for physics
+        isSolidForPlacementSupport: false, // Vegetation does not support other blocks
+        isRope: false,
+        isVegetation: true,
+        isWood: false,
+        droppedItemType: 'vegetation',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' },
+        isPlayerPlaceableAsMaterial: true, // Player can place vegetation blocks if they have the material
+    },
+    [BLOCK_STONE]: {
+        name: 'STONE',
+        hp: 300,
+        color: 'rgb(140, 140, 140)',
+        translucency: 0.0,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'stone',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(140, 140, 140)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
+    [BLOCK_WOOD]: {
+        name: 'WOOD',
+        hp: 100,
+        color: 'rgb(160, 110, 70)',
+        translucency: 0.0,
+        isSolidForPhysicsConfig: { base: true, naturalOverride: false }, // Player-placed wood is solid, natural wood is not
+        isSolidForPlacementSupport: true, // All wood can support other blocks
+        isRope: false,
+        isVegetation: false,
+        isWood: true,
+        droppedItemType: 'wood',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(160, 110, 70)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
+    [BLOCK_METAL]: {
+        name: 'METAL',
+        hp: 500,
+        color: 'rgb(190, 190, 200)',
+        translucency: 0.0,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'metal',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(190, 190, 200)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
+    [BLOCK_BONE]: {
+        name: 'BONE',
+        hp: 120,
+        color: 'rgb(200, 190, 170)',
+        translucency: 0.0,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'bone',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(200, 190, 170)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
+    [BLOCK_ROPE]: {
+        name: 'ROPE',
+        hp: 25,
+        color: 'rgb(80, 180, 80)', // Visually similar to vegetation
+        translucency: 0.9,
+        isSolidForPhysics: false,
+        isSolidForPlacementSupport: false,
+        isRope: true,
+        isVegetation: false, // Not vegetation itself, though placed using vegetation material
+        isWood: false,
+        droppedItemType: 'vegetation', // Drops vegetation material when destroyed
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' }, // Dropped item looks like vegetation
+        isPlayerPlaceableAsMaterial: false, // Player uses 'vegetation' material to place ropes
+    },
 };
-export const BLOCK_COLORS = {
-    [BLOCK_WATER]: 'rgb(38, 77, 154)', // New darker base color for water (UNLIT)
-    [BLOCK_SAND]: 'rgb(210, 180, 140)',
-    [BLOCK_DIRT]: 'rgb(130, 82, 45)',
-    [BLOCK_VEGETATION]: 'rgb(80, 180, 80)',
-    [BLOCK_STONE]: 'rgb(140, 140, 140)',
-    [BLOCK_WOOD]: 'rgb(160, 110, 70)',
-    [BLOCK_METAL]: 'rgb(190, 190, 200)',
-    [BLOCK_BONE]: 'rgb(200, 190, 170)',
-    [BLOCK_ROPE]: 'rgb(80, 180, 80)',
-};
+
+// --- REMOVED OLD SEPARATE BLOCK PROPERTY OBJECTS ---
+// export const BLOCK_HP = { ... };
+// export const BLOCK_COLORS = { ... };
+// export const BLOCK_TRANSLUCENCY = { ... };
+
 export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_DIRT]: 1.0,
     [BLOCK_VEGETATION]: 1.0,
@@ -91,18 +219,6 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_BONE]: 1.0,
     [BLOCK_WOOD]: 1.0,
     [BLOCK_METAL]: 1.0,
-};
-export const BLOCK_TRANSLUCENCY = {
-    [BLOCK_AIR]: 1.0,         // Air lets all light through
-    [BLOCK_WATER]: 0.8,       // Water lets 80% of light through
-    [BLOCK_SAND]: 0.0,        // Sand is opaque
-    [BLOCK_DIRT]: 0.0,        // Dirt is opaque
-    [BLOCK_VEGETATION]: 0.4,  // Vegetation lets 40% of light through
-    [BLOCK_STONE]: 0.0,       // Stone is opaque
-    [BLOCK_WOOD]: 0.0,        // Wood is opaque
-    [BLOCK_METAL]: 0.0,       // Metal is opaque
-    [BLOCK_BONE]: 0.0,        // Bone is opaqued
-    [BLOCK_ROPE]: 0.9,        // Rope is mostly transparent to light
 };
 export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal'];
 export const MATERIAL_TO_BLOCK_TYPE = {
@@ -112,7 +228,7 @@ export const MATERIAL_TO_BLOCK_TYPE = {
     'sand': BLOCK_SAND,
     'metal': BLOCK_METAL,
     'bone': BLOCK_BONE,
-    'vegetation': BLOCK_VEGETATION,
+    'vegetation': BLOCK_VEGETATION, // Note: Placing 'vegetation' material could result in either VEGETATION block or ROPE block based on context
 };
 // --- Landmass Generation ---
 export const ISLAND_WIDTH_MIN = 0.75; // minimum width of island
@@ -355,18 +471,15 @@ export const PLAYER_SPEAR_ATTACK_HEIGHT = BLOCK_HEIGHT * 1.5;
 export const PLAYER_SPEAR_ATTACK_DURATION = 0.3;
 export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5;
 export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)';
-export const ITEM_CONFIG = { // Item configuration (pixel dimensions are derived from block-unit constants above).
-[WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
-[WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
-[WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
-'dirt': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_DIRT] },
-'vegetation': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_VEGETATION] },
-'sand': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_SAND] },
-'wood': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_WOOD] },
-'stone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_STONE] },
-'metal': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_METAL] },
-'bone': { width: 1 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: BLOCK_COLORS[BLOCK_BONE] },
+
+// --- RENAMED ITEM_CONFIG to WEAPON_STATS and removed material definitions ---
+export const WEAPON_STATS = {
+    [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
+    [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
+    [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
+    // Material item visuals are now in BLOCK_PROPERTIES.droppedItemConfig
 };
+
 export const CRAFTING_RECIPES = { // Crafting recipes (fixed material types and amounts)
 [WEAPON_TYPE_SWORD]: [{ type: 'stone', amount: 5 }],
 [WEAPON_TYPE_SPEAR]: [{ type: 'wood', amount: 2 }, { type: 'stone', amount: 1 }],

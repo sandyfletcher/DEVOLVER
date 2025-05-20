@@ -24,21 +24,14 @@ export function init() {
     console.log("ItemManager initialized. Shovel spawned.");
 }
 export function spawnItem(x, y, type) {
-    const itemConfig = Config.ITEM_CONFIG[type];
-    if (!itemConfig) {
-        console.warn(`ItemManager: Attempted to spawn item type "${type}" with no config.`);
-        const newItem = new Item(x, y, type, null); // create with default fallback
-        if (newItem) items.push(newItem);
-        else console.error(`Failed to create new Item instance for unknown type "${type}".`);
-        return;
-    }
+    // Item constructor now handles looking up its own config from WEAPON_STATS or BLOCK_PROPERTIES
     const spawnX = typeof x === 'number' && !isNaN(x) ? x : Config.CANVAS_WIDTH / 2;
     const spawnY = typeof y === 'number' && !isNaN(y) ? y : 50; // use fallback if x or y are invalid numbers
-    const newItem = new Item(spawnX, spawnY, type, itemConfig);
-    if (newItem) {
+    const newItem = new Item(spawnX, spawnY, type, null); // Pass null for config, Item constructor will look it up
+    if (newItem && newItem.width > 0 && newItem.height > 0) { // Basic validation after creation
         items.push(newItem);
     } else {
-        console.error(`Failed to create new Item instance for type "${type}".`);
+        console.error(`Failed to create or validate new Item instance for type "${type}". Item details:`, newItem);
     }
 }
 export function update(dt, player) {
@@ -61,7 +54,7 @@ export function draw(ctx) {
 
             item.draw(ctx);
         } else if (item) {
-            console.log(`ItemManager.draw: Skipping inactive item of type ${item.type}`);
+            // console.log(`ItemManager.draw: Skipping inactive item of type ${item.type}`);
         }
     });
 }
@@ -91,5 +84,5 @@ export function clearItemsOutsideRadius(centerX, centerY, radius) {
         return distSq <= radiusSq; // keep item only if its center is inside or on radius boundary
     });
     const removedCount = initialCount - items.length;
-    console.log(`ItemManager: Cleared ${removedCount} items outside radius ${radius}.`);
+    // console.log(`ItemManager: Cleared ${removedCount} items outside radius ${radius}.`);
 }

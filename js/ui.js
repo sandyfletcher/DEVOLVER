@@ -192,10 +192,13 @@ function createItemSlot(itemType, container, category) { // Helper to create and
     slotDiv.dataset.item = itemType; 
     slotDiv.dataset.category = category; 
     slotDiv.classList.add('disabled'); 
-    const itemConfig = Config.ITEM_CONFIG[itemType];
+
     let titleText = itemType.toUpperCase(); 
     if (category === 'material') {
-        slotDiv.style.backgroundColor = itemConfig?.color || '#444'; 
+        const blockTypeForMaterial = Config.MATERIAL_TO_BLOCK_TYPE[itemType];
+        const blockProps = Config.BLOCK_PROPERTIES[blockTypeForMaterial];
+        slotDiv.style.backgroundColor = blockProps?.color || '#444';
+
         const countSpan = document.createElement('span'); 
         countSpan.classList.add('item-count');
         countSpan.textContent = ''; 

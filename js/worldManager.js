@@ -129,7 +129,9 @@ function drawGravityAnimations(ctx) {
     activeGravityAnimations.forEach(anim => {
         const blockPixelX = anim.c * Config.BLOCK_WIDTH;
         const blockPixelY = anim.r_current_pixel_y;
-        const blockColor = Config.BLOCK_COLORS[anim.blockData.type];
+        const blockProps = Config.BLOCK_PROPERTIES[anim.blockData.type];
+        const blockColor = blockProps?.color;
+
         if (blockColor) {
             ctx.fillStyle = blockColor;
             ctx.fillRect(
@@ -462,10 +464,12 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
                     rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
 
                     const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow); // Get full block data
+                    const blockProps = Config.BLOCK_PROPERTIES[block?.type ?? Config.BLOCK_AIR];
 
-                    if (block === Config.BLOCK_AIR) {
-                        // Ray passes through air freely
-                    } else if (typeof block === 'object' && block !== null) {
+
+                    if (block === Config.BLOCK_AIR || (blockProps && blockProps.translucency === 1.0)) {
+                        // Ray passes through air or fully transparent block freely
+                    } else if (typeof block === 'object' && block !== null && blockProps) {
                         // It's a block object (not air). It can be lit.
                         if (!block.isLit) { // Check if block object is already lit
                             const changeKey = `${rayCurrentGridCol},${rayCurrentGridRow}`;
@@ -475,7 +479,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
                             }
                         }
                         // Check its translucency
-                        if (block.translucency === 0.0) { // 0.0 means opaque
+                        if (blockProps.translucency === 0.0) { // 0.0 means opaque
                             break; // Ray stops
                         }
                         // If translucency > 0.0, the ray continues through this block
@@ -632,14 +636,16 @@ export function damageBlock(col, row, damageAmount) {
     if (damageAmount <= 0) return false; // No damage to apply
 
     const block = World.getBlock(col, row); // Get the block data
+    const blockProps = Config.BLOCK_PROPERTIES[block?.type ?? Config.BLOCK_AIR];
+
 
     // Check if the block is valid and damageable
-    if (!block || typeof block !== 'object' || block.type === Config.BLOCK_AIR || block.type === Config.BLOCK_WATER || !block.hasOwnProperty('hp') || block.maxHp <= 0 || block.hp <= 0 || block.hp === Infinity) {
+    if (!block || typeof block !== 'object' || !blockProps || block.type === Config.BLOCK_AIR || block.type === Config.BLOCK_WATER || blockProps.hp <= 0 || blockProps.hp === Infinity || block.hp <= 0) {
         return false; // Not damageable (air, water, already destroyed, or indestructible)
     }
     if (typeof block.hp !== 'number' || isNaN(block.hp)) { // Sanity check for HP
         // console.warn(`Block at [${col}, ${row}] has invalid HP. Resetting to maxHp.`, block);
-        block.hp = block.maxHp; // Reset HP if invalid
+        block.hp = blockProps.hp; // Reset HP if invalid (using maxHp from BLOCK_PROPERTIES)
         return false; // Don't apply damage this frame if HP was invalid
     }
 
@@ -651,29 +657,17 @@ export function damageBlock(col, row, damageAmount) {
         wasDestroyed = true;
         block.hp = 0; // Ensure HP doesn't go negative
 
-        // --- Determine Item Drop ---
-        let dropType = null;
-        switch (block.type) {
-            case Config.BLOCK_VEGETATION: dropType = 'vegetation'; break;
-            case Config.BLOCK_DIRT:  dropType = 'dirt'; break;
-            case Config.BLOCK_STONE: dropType = 'stone'; break;
-            case Config.BLOCK_SAND:  dropType = 'sand'; break;
-            case Config.BLOCK_WOOD: dropType = 'wood'; break; // Assumes both player and natural wood drop 'wood'
-            case Config.BLOCK_BONE: dropType = 'bone'; break;
-            case Config.BLOCK_METAL: dropType = 'metal'; break;
-            // Ropes typically don't drop items, or might drop 'vegetation' if desired
-            // case Config.BLOCK_ROPE: dropType = 'vegetation'; break;
-        }
-
-        if (dropType) {
+        if (blockProps.droppedItemType && blockProps.droppedItemConfig) {
+            const dropType = blockProps.droppedItemType;
+            // For now, assume 1 drop. Min/max amount can be added to droppedItemConfig later if needed.
             const dropXBase = col * Config.BLOCK_WIDTH + (Config.BLOCK_WIDTH / 2);
             const dropYBase = row * Config.BLOCK_HEIGHT + (Config.BLOCK_HEIGHT / 2);
-            const offsetX = (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.4; // Scatter within 40% of block width
-            const offsetY = (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.4; // Scatter within 40% of block height
+            const offsetX = (Math.random() - 0.5) * Config.BLOCK_WIDTH * 0.4;
+            const offsetY = (Math.random() - 0.5) * Config.BLOCK_HEIGHT * 0.4;
             const finalDropX = dropXBase + offsetX;
             const finalDropY = dropYBase + offsetY;
 
-            if (!isNaN(finalDropX) && !isNaN(finalDropY)) { // Ensure coordinates are valid numbers
+            if (!isNaN(finalDropX) && !isNaN(finalDropY)) {
                  ItemManager.spawnItem(finalDropX, finalDropY, dropType);
             }
         }
@@ -762,21 +756,19 @@ function drawAgingAnimations(ctx) {
             ctx.scale(anim.currentScale, anim.currentScale);
             ctx.translate(-(blockPixelX + blockWidth / 2), -(blockPixelY + blockHeight / 2));
 
-            const oldColor = Config.BLOCK_COLORS[anim.oldBlockType];
-            if (oldColor && anim.oldBlockType !== Config.BLOCK_AIR) { // Only draw if it's not air
-                ctx.fillStyle = Config.AGING_ANIMATION_OLD_BLOCK_COLOR; // Use a generic animation color
+            // Using generic animation color instead of specific old block color
+            if (anim.oldBlockType !== Config.BLOCK_AIR) {
+                ctx.fillStyle = Config.AGING_ANIMATION_OLD_BLOCK_COLOR;
                 ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
             }
         } else if (anim.phase === 'pop') {
-            const newColor = Config.BLOCK_COLORS[anim.newBlockType];
-            if (newColor && anim.newBlockType !== Config.BLOCK_AIR) { // Only draw if it's not air
-                // Calculate alpha for a brief flash effect during pop
+             if (anim.newBlockType !== Config.BLOCK_AIR) {
                 const popProgress = Math.max(0, 1.0 - (anim.timer / Config.AGING_ANIMATION_POP_DURATION));
-                const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI); // Simple sine wave for flash
+                const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI);
                 ctx.globalAlpha = alpha;
-                ctx.fillStyle = Config.AGING_ANIMATION_NEW_BLOCK_COLOR; // Use a generic animation color
+                ctx.fillStyle = Config.AGING_ANIMATION_NEW_BLOCK_COLOR;
                 ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
-                ctx.globalAlpha = 1.0; // Reset alpha
+                ctx.globalAlpha = 1.0;
             }
         }
         ctx.restore();
@@ -975,7 +967,8 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
                 rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
 
                 const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow);
-                if (block !== Config.BLOCK_AIR && typeof block === 'object' && block.translucency === 0.0) {
+                const blockProps = Config.BLOCK_PROPERTIES[block?.type ?? Config.BLOCK_AIR];
+                if (block !== Config.BLOCK_AIR && blockProps && blockProps.translucency === 0.0) {
                     break; // Stop ray if it hits an opaque block
                 }
             } else if (rayCurrentGridRow >= Config.GRID_ROWS || rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) {
@@ -1029,11 +1022,12 @@ export function updateStaticWorldAt(col, row) {
     // Only draw if it's not an AIR block
     if (block !== Config.BLOCK_AIR && block !== null && block !== undefined) {
         const currentBlockType = typeof block === 'object' && block !== null ? block.type : block;
+        const blockProps = Config.BLOCK_PROPERTIES[currentBlockType];
 
-        // If somehow currentBlockType is AIR after all, exit (shouldn't happen if block !== Config.BLOCK_AIR)
-        if (currentBlockType === Config.BLOCK_AIR) return;
+        // If somehow currentBlockType is AIR after all, or no properties, exit
+        if (currentBlockType === Config.BLOCK_AIR || !blockProps || !blockProps.color) return; // Also check if color is defined
 
-        let baseColor = Config.BLOCK_COLORS[currentBlockType];
+        let baseColor = blockProps.color;
         let finalColor = baseColor;
 
         // Apply brightness if the block is lit (and it's an object with isLit property)
@@ -1054,8 +1048,8 @@ export function updateStaticWorldAt(col, row) {
         }
 
         // --- Specific drawing logic for ROPE ---
-        if (currentBlockType === Config.BLOCK_ROPE) {
-            gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE]; // Fallback to default rope color
+        if (blockProps.isRope) {
+            gridCtx.fillStyle = finalColor || Config.BLOCK_PROPERTIES[Config.BLOCK_ROPE].color;
             const ropeWidth = Math.max(1, Math.floor(blockW * 0.2)); // Rope is thin
             const ropeX = Math.floor(blockX + (blockW - ropeWidth) / 2);
             gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
@@ -1071,16 +1065,16 @@ export function updateStaticWorldAt(col, row) {
                 );
                 gridCtx.restore();
             }
-            // Rope HP/damage indicator (if applicable, usually ropes are simple)
-            if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
+            // Rope HP/damage indicator
+            if (typeof block === 'object' && block !== null && blockProps.hp > 0 && block.hp < blockProps.hp && typeof block.hp === 'number' && !isNaN(block.hp)) {
                 gridCtx.save();
-                gridCtx.globalAlpha = 0.5 + 0.5 * (block.hp / block.maxHp); // Visual feedback for HP
-                gridCtx.fillStyle = finalColor || Config.BLOCK_COLORS[Config.BLOCK_ROPE];
+                gridCtx.globalAlpha = 0.5 + 0.5 * (block.hp / blockProps.hp);
+                gridCtx.fillStyle = finalColor || Config.BLOCK_PROPERTIES[Config.BLOCK_ROPE].color;
                 gridCtx.fillRect(ropeX, Math.floor(blockY), ropeWidth, blockH);
                 gridCtx.restore();
             }
 
-        } else if (currentBlockType === Config.BLOCK_VEGETATION) {
+        } else if (blockProps.isVegetation) {
             // Vegetation Drawing
             if (finalColor) { // Ensure there's a color to draw with
                 gridCtx.fillStyle = finalColor;
@@ -1095,7 +1089,6 @@ export function updateStaticWorldAt(col, row) {
                 }
             } // Closing brace for 'if (finalColor)' for VEGETATION FILL
 
-            // Player-placed outline and damage indicators for vegetation are drawn regardless of finalColor for fill.
             const isPlayerPlacedVeg = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
             if (isPlayerPlacedVeg) {
                 gridCtx.save();
@@ -1110,14 +1103,14 @@ export function updateStaticWorldAt(col, row) {
             }
 
             // Damage indicators for VEGETATION
-            if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
-                const hpRatio = block.hp / block.maxHp;
+            if (typeof block === 'object' && block !== null && blockProps.hp > 0 && block.hp < blockProps.hp && typeof block.hp === 'number' && !isNaN(block.hp)) {
+                const hpRatio = block.hp / blockProps.hp;
                 if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
                     gridCtx.save();
                     gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
                     gridCtx.lineWidth = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH;
-                    gridCtx.lineCap = 'square'; // Or 'round'
-                    const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH; // Inset path to be within block bounds
+                    gridCtx.lineCap = 'square'; 
+                    const pathInset = Config.BLOCK_DAMAGE_INDICATOR_LINE_WIDTH; 
                     gridCtx.beginPath();
                     gridCtx.moveTo(Math.floor(blockX) + pathInset, Math.floor(blockY) + pathInset);
                     gridCtx.lineTo(Math.floor(blockX + blockW) - pathInset, Math.floor(blockY + blockH) - pathInset);
@@ -1137,7 +1130,7 @@ export function updateStaticWorldAt(col, row) {
                 gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
 
                 // NEW: Draw natural wood outline
-                if (currentBlockType === Config.BLOCK_WOOD && typeof block === 'object' && block !== null && !block.isPlayerPlaced) {
+                if (blockProps.isWood && typeof block === 'object' && block !== null && !block.isPlayerPlaced) {
                     gridCtx.save();
                     gridCtx.strokeStyle = 'rgba(60, 40, 20, 0.7)'; // Darker brown, semi-transparent
                     gridCtx.lineWidth = 1; // Thin outline
@@ -1160,7 +1153,7 @@ export function updateStaticWorldAt(col, row) {
 
                 // Draw player-placed outline if applicable
                 const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
-                if (isPlayerPlaced) { // This will draw player outline ON TOP of natural wood outline if both apply (which is fine)
+                if (isPlayerPlaced) { 
                     gridCtx.save();
                     gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
                     gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;
@@ -1173,8 +1166,8 @@ export function updateStaticWorldAt(col, row) {
                 }
 
                 // Draw damage indicators
-                if (typeof block === 'object' && block !== null && block.maxHp > 0 && block.hp < block.maxHp && typeof block.hp === 'number' && !isNaN(block.hp)) {
-                    const hpRatio = block.hp / block.maxHp;
+                if (typeof block === 'object' && block !== null && blockProps.hp > 0 && block.hp < blockProps.hp && typeof block.hp === 'number' && !isNaN(block.hp)) {
+                    const hpRatio = block.hp / blockProps.hp;
                     if (hpRatio <= Config.BLOCK_DAMAGE_THRESHOLD_SLASH) {
                         gridCtx.save();
                         gridCtx.strokeStyle = Config.BLOCK_DAMAGE_INDICATOR_COLOR;
@@ -1348,3 +1341,4 @@ export function update(dt) {
     updateAgingAnimations(dt);
     updateLightingAnimations(dt);
 }
+

@@ -548,21 +548,21 @@ const blockBeforeChange = World.getBlock(c, r);
      }
 
      // Rule 6: Underwater AIR/WATER Sedimentation -> SAND
-     if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
-         let firstSolidRowBelow = -1;
-         for (let checkR_sed = r + 1; checkR_sed < Config.GRID_ROWS; checkR_sed++) {
-             if (GridCollision.isSolid(c, checkR_sed)) {
-                 firstSolidRowBelow = checkR_sed;
-                 break;
-             }
-         }
-         const hasSolidBelowOrIsBottom = (firstSolidRowBelow !== -1) || (r === Config.GRID_ROWS - 1);
-         if (hasSolidBelowOrIsBottom) {
-             if (Math.random() < Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER) {
-                 newType = Config.BLOCK_SAND;
-             }
-         }
-     }
+     // if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_AIR && r >= Config.WATER_LEVEL) {
+     //     let firstSolidRowBelow = -1;
+     //     for (let checkR_sed = r + 1; checkR_sed < Config.GRID_ROWS; checkR_sed++) {
+     //         if (GridCollision.isSolid(c, checkR_sed)) {
+     //             firstSolidRowBelow = checkR_sed;
+     //             break;
+     //         }
+     //     }
+     //     const hasSolidBelowOrIsBottom = (firstSolidRowBelow !== -1) || (r === Config.GRID_ROWS - 1);
+     //     if (hasSolidBelowOrIsBottom) {
+     //         if (Math.random() < Config.AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER) {
+     //             newType = Config.BLOCK_SAND;
+     //         }
+     //     }
+     // }
 
      // ==============================================================
      // --- END OF AGING RULES ---

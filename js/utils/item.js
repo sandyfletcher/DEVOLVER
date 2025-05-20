@@ -5,13 +5,44 @@ export class Item {
     constructor(x, y, type, config) { // pass config in
         this.x = x;
         this.y = y;
-        this.type = type;
-        const itemConfig = Config.ITEM_CONFIG[this.type] || {};
-        this.width = itemConfig.width ?? Math.floor(Config.BLOCK_WIDTH);
-        this.height = itemConfig.height ?? Math.floor(Config.BLOCK_HEIGHT);
-        this.color = itemConfig.color ?? 'magenta';
-        this.bobbleAmount = itemConfig.bobbleAmount ?? Config.ITEM_BOBBLE_AMOUNT;
-        this.bobbleSpeed = itemConfig.bobbleSpeed ?? Config.ITEM_BOBBLE_SPEED;
+        this.type = type; // e.g., 'shovel', 'dirt', 'stone'
+
+        let itemDefinition = null;
+        // Is it a weapon?
+        if (Config.WEAPON_STATS[type]) {
+            itemDefinition = Config.WEAPON_STATS[type];
+        } else {
+            // Is it a dropped block material?
+            // Loop through BLOCK_PROPERTIES to find which block drops this 'type'
+            for (const blockTypeIdKey in Config.BLOCK_PROPERTIES) {
+                // blockTypeIdKey is a string, convert to number if necessary for strict comparison with numeric IDs
+                // However, since we are comparing `blockProps.droppedItemType` (string) with `type` (string), direct compare is fine.
+                const blockProps = Config.BLOCK_PROPERTIES[blockTypeIdKey]; // Access using string key
+                if (blockProps.droppedItemType === type && blockProps.droppedItemConfig) {
+                    itemDefinition = blockProps.droppedItemConfig;
+                    break;
+                }
+            }
+        }
+
+        if (!itemDefinition) {
+            // console.warn(`Item constructor: No definition found for type "${type}". Using fallback visual properties.`);
+            itemDefinition = {
+                width: Config.BLOCK_WIDTH, // Fallback to generic block size
+                height: Config.BLOCK_HEIGHT,
+                color: 'magenta' // Fallback color
+            };
+        }
+
+        this.width = itemDefinition.width;
+        this.height = itemDefinition.height;
+        this.color = itemDefinition.color;
+
+        // Bobble properties could also be part of itemDefinition if they vary per item type.
+        // For now, using global config values if not specified in itemDefinition.
+        this.bobbleAmount = itemDefinition.bobbleAmount ?? Config.ITEM_BOBBLE_AMOUNT;
+        this.bobbleSpeed = itemDefinition.bobbleSpeed ?? Config.ITEM_BOBBLE_SPEED;
+
         this.vx = 0;
         this.vy = 0;
         this.isOnGround = false;

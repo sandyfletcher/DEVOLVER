@@ -25,53 +25,35 @@ export function isSolid(col, row) { // checks if block at given grid coordinates
     if (row < 0 || row >= Config.GRID_ROWS || col < 0 || col >= Config.GRID_COLS) {
         return false; // Out of bounds is not solid
     }
-    const block = World.getBlock(col, row); // block can be {type, isPlayerPlaced, hp, ...} or BLOCK_AIR
+    const block = World.getBlock(col, row);
     if (block === null || block === Config.BLOCK_AIR) {
         return false;
     }
+
     if (typeof block === 'object') { // It's a block data object
-        // These types are never solid for movement/physics
-        if (block.type === Config.BLOCK_WATER ||
-            block.type === Config.BLOCK_ROPE ||
-            block.type === Config.BLOCK_VEGETATION) { // MODIFIED: VEGETATION is not solid
+        const properties = Config.BLOCK_PROPERTIES[block.type];
+        if (!properties) {
+            // console.warn(`isSolid: Properties not found for block type ${block.type} at [${col},${row}]. Assuming not solid.`);
             return false;
         }
-        // For WOOD, check if it's player-placed
-        if (block.type === Config.BLOCK_WOOD) {
-            if (block.isPlayerPlaced === true) {
-                return true; // Player-placed wood IS solid
-            } else {
-                return false; // MODIFIED: Natural wood (trees) is NOT solid for physics
-            }
+
+        if (properties.isSolidForPhysicsConfig) { // Specific config for wood-like blocks
+            return block.isPlayerPlaced ? properties.isSolidForPhysicsConfig.base : properties.isSolidForPhysicsConfig.naturalOverride;
         }
-        // If it's any other known block type object (DIRT, STONE, METAL, BONE), it's solid.
-        // This assumes all other block types in Config.BLOCK_HP etc. are meant to be solid if not listed above.
-        // We check `typeof block.type === 'number'` because all valid block types (even AIR which is 0) are numbers.
-        if (typeof block.type === 'number') {
-             // We've already handled AIR, WATER, ROPE, VEGETATION, and conditional WOOD.
-             // Any other numeric type remaining (e.g., DIRT, STONE, METAL, BONE) is considered solid.
-            return true;
-        }
+        return properties.isSolidForPhysics;
     }
-    // Fallback for any unexpected data or old numeric representations (should be rare with createBlock)
-    if (typeof block === 'number' && block !== Config.BLOCK_AIR) {
-        // This case implies block is a number like BLOCK_DIRT (3) directly, not an object.
-        // And it's not BLOCK_AIR (0).
-        // Based on the logic above, if it were VEGETATION (4) or WOOD (6) as numbers,
-        // they wouldn't be caught by the object checks.
-        // So, we need to explicitly make numeric VEGETATION and WOOD non-solid here too for consistency if such data existed.
-        // However, with createBlock, numeric blocks other than AIR shouldn't really exist.
-        // For safety, let's ensure numeric VEGETATION/WOOD are also non-solid if they somehow appear.
-        if (block === Config.BLOCK_VEGETATION || block === Config.BLOCK_WOOD) {
-            // This path is less likely due to createBlock, but handles old data representations.
-            // For WOOD, this would make ALL wood non-solid if it's just a number.
-            // The isPlayerPlaced check is only possible if it's an object.
-            // To be safe and simple, if WOOD is just a number, assume it's natural/pass-through.
-            return false;
+    // Fallback for old numeric representations (should be rare)
+    if (typeof block === 'number') {
+        // console.warn(`isSolid encountered raw numeric block type: ${block} at [${col},${row}]. Checking BLOCK_PROPERTIES.`);
+        const properties = Config.BLOCK_PROPERTIES[block];
+        if (properties) {
+            if (properties.isSolidForPhysicsConfig) {
+                 // Cannot check isPlayerPlaced for raw number, assume natural if it's wood
+                return block === Config.BLOCK_WOOD ? properties.isSolidForPhysicsConfig.naturalOverride : properties.isSolidForPhysicsConfig.base;
+            }
+            return properties.isSolidForPhysics;
         }
-        // If it's a number, not AIR, and not numeric VEGETATION/WOOD, treat as solid (e.g. numeric DIRT/STONE).
-        // console.warn(`isSolid encountered unhandled numeric block type: ${block} at [${col},${row}]. Treating as solid if not VEG/WOOD.`);
-        return true;
+        return false; // Unknown numeric type, assume not solid
     }
     return false; // Default to not solid if type is unknown or doesn't fit rules
 }
@@ -79,7 +61,10 @@ export function isRope(col, row) {
     if (row < 0 || row >= Config.GRID_ROWS || col < 0 || col >= Config.GRID_COLS) {
         return false;
     }
-    return World.getBlockType(col, row) === Config.BLOCK_ROPE;
+    const blockType = World.getBlockType(col, row);
+    if (blockType === null) return false;
+    const properties = Config.BLOCK_PROPERTIES[blockType];
+    return properties ? properties.isRope : false;
 }
 export function hasSolidNeighbor(col, row) { // checks if grid cell has adjacent solid block (needed for placement support)
     if (typeof col !== 'number' || typeof row !== 'number' || isNaN(col) || isNaN(row)) { // ensure col and row are valid numbers
@@ -93,8 +78,24 @@ export function hasSolidNeighbor(col, row) { // checks if grid cell has adjacent
         { c: col + 1, r: row }  // right
     ];
     for (const n of neighbors) {
-        if (isSolid(n.c, n.r)) { // use GridCollision.isSolid which handles boundary checks and block type checks
-            return true; // found solid neighbour
+        const block = World.getBlock(n.c, n.r);
+        if (block === null) continue;
+
+        const blockType = (typeof block === 'object') ? block.type : block;
+        const properties = Config.BLOCK_PROPERTIES[blockType];
+
+        if (properties) {
+            let isNeighborSolid;
+            if (properties.isSolidForPlacementSupport !== undefined) {
+                isNeighborSolid = properties.isSolidForPlacementSupport;
+            } else { // Fallback to physics solidity if placement support not explicitly defined
+                if (properties.isSolidForPhysicsConfig) {
+                     isNeighborSolid = (typeof block === 'object' && block.isPlayerPlaced) ? properties.isSolidForPhysicsConfig.base : properties.isSolidForPhysicsConfig.naturalOverride;
+                } else {
+                    isNeighborSolid = properties.isSolidForPhysics;
+                }
+            }
+            if (isNeighborSolid) return true;
         }
     }
     return false; // no solid neighbours found

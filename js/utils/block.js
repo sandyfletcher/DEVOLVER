@@ -5,22 +5,26 @@
 import * as Config from './config.js';
 
 export function createBlock(type, isPlayerPlaced = false) {
-    if (type === Config.BLOCK_AIR) { // "AIR" is effectively null (right??)
+    if (type === Config.BLOCK_AIR) {
         return Config.BLOCK_AIR;
     }
-    const baseHp = Config.BLOCK_HP[type] ?? 0; // look up HP for block type, default to 0 if not found
-    let currentHp = baseHp;
-    if (type === Config.BLOCK_WATER) {
-        currentHp = Infinity;
+
+    const properties = Config.BLOCK_PROPERTIES[type];
+    if (!properties) {
+        console.error(`createBlock: Unknown block type ${type}. Defaulting to AIR.`);
+        return Config.BLOCK_AIR;
     }
-    const translucency = Config.BLOCK_TRANSLUCENCY[type] ?? 0.0; // get translucency (or default to opaque)
-    return { // construct and return block object
+
+    let currentHp = properties.hp;
+    // Water has Infinity HP, no special handling needed here if Infinity is set in BLOCK_PROPERTIES
+
+    return {
         type: type,
         hp: currentHp,
-        maxHp: baseHp,
-        translucency: translucency,
+        maxHp: properties.hp, // maxHp is the same as initial hp from properties
+        translucency: properties.translucency,
         isPlayerPlaced: isPlayerPlaced,
         isLit: false,
-        isBurnt: false
+        isBurnt: false // Future use
     };
 }
