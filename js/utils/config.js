@@ -158,16 +158,20 @@ export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
 export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_DIRT = 0.60; // Chance for AIR above lit DIRT to become VEGETATION
 export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_VEGETATION = 0.50; // Chance for AIR above lit VEGETATION to become VEGETATION
-export const TREE_MIN_HEIGHT_TO_FORM = 5; // Minimum contiguous VEGETATION blocks required to form a tree
-export const TREE_INITIAL_CANOPY_RADIUS = 2; // Radius (in blocks) of the initial VEGETATION canopy when a tree forms (0=just top, 1=3x3, 2=5x5)
-export const AGING_PROB_TREE_CANOPY_GROW = 0.1; // Chance for a tree canopy block to expand into adjacent AIR
+
+// --- Tree Generation & Aging ---
+export const TREE_MIN_HEIGHT_TO_FORM = 5; // Minimum contiguous VEGETATION blocks required to form a tree (Old rule, might be obsolete if tiny tree is main form)
+export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // Chance for VEG surrounded by VEG to become a "tiny tree"
+export const MIN_TREE_SPACING_RADIUS = 8; // Minimum distance (in blocks) between tree trunks for tiny tree formation
+export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.3;
+export const TREE_MIN_HEIGHT_TO_FORM_ORGANIC = 4; // Min trunk height for organic canopy formation (from wood growth)
+export const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 15;
+export const TREE_INITIAL_CANOPY_RADIUS = 2; // Radius (in blocks) of the initial VEGETATION canopy
+export const AGING_PROB_TREE_CANOPY_GROW = 0.1;
 export const TREE_MAX_CANOPY_RADIUS = 4; // Maximum radius (in blocks) a tree canopy can reach
-export const AGING_PROB_TREE_TRUNK_DECAY = 0.005; // Chance for a tree WOOD block (part of a trunk) to decay into AIR
-export const AGING_PROB_TREE_CANOPY_DECAY = 0.01; // Chance for a tree VEGETATION block (part of canopy) to decay
-export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.1; // NEW: Chance for VEG surrounded by VEG to become WOOD
-export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.1; // NEW: Chance for WOOD to grow WOOD upwards (if supported and air above)
-export const TREE_MIN_HEIGHT_TO_FORM_ORGANIC = 4; // NEW or Repurpose: Min trunk height for organic canopy formation
-export const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 15; // Keep this: Max height before trunk collapses
+export const AGING_PROB_TREE_TRUNK_DECAY = 0.005;
+export const AGING_PROB_TREE_CANOPY_DECAY = 0.01;
+
 // --- Animation Parameters ---
 export const AGING_ANIMATION_BLOCKS_AT_ONCE = 10; // Max number of blocks animating simultaneously
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
@@ -175,7 +179,7 @@ export const AGING_ANIMATION_SWELL_DURATION = 0.12; // Duration (seconds) of the
 export const AGING_ANIMATION_POP_DURATION = 0.06; // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
 export const AGING_ANIMATION_SWELL_SCALE = 1.8; // Max scale factor during swell (e.g., 1.5x size)
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
-export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (bddriefly)
+export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (briefly)
 export const WARPPHASE_DURATION = 8.0; // Fixed duration of WARP PHASE in seconds (time-based).
 export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // Total time in seconds for enemy death animation.
 export const ENEMY_SWELL_DURATION = 0.3; // Time in seconds for the swell part of enemy death.
@@ -200,7 +204,7 @@ export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 10; // How far off-screen (ri
 export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 10;   // How far off-screen (left) it ends
 export const FIXED_SUN_ANIMATION_DURATION = 8.0; // NEW: Fixed duration for the sun pass animation
 export const SUN_MOVEMENT_Y_ROW_OFFSET = 20; // Row offset for sun's vertical position.
-export const SUN_MOVEMENT_STEP_COLUMNS = 0;  // How many columns the sun moves between lighting passes.  changed to 0 because i don't understand it
+export const SUN_MOVEMENT_STEP_COLUMNS = 2;  // How many columns the sun moves between lighting passes
 export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2); // Max length of a light ray in blocks.
 export const SUN_RAYS_PER_POSITION = 36; // Number of rays cast from each sun position.
 

@@ -287,38 +287,105 @@ const blockBeforeChange = World.getBlock(c, r);
              (neighborTypes.belowRight === Config.BLOCK_VEGETATION);
 
          if (allEightNeighborsAreVeg) {
-             if (Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
-                 tinyTreeFormedThisCell = true; // Mark that we are handling this cell's transformation
+            // Check for solid support below the central vegetation block (which becomes the trunk base)
+            // The block at (c, r) is the central VEG. The pattern forms WOOD at (c,r) and (c,r+1).
+            // So support is needed at (c, r+2) *relative to the central VEG block* if the trunk is 2 blocks high.
+            // However, the pattern's (dr: +1, dc: 0) is WOOD. This is at grid cell (c, r+1).
+            // So we need solid support under (c, r+1), which means checking (c, r+2).
+            // Let's re-evaluate. The pattern places WOOD at (c,r) and (c,r+1) based on the *original* (c,r) being VEG.
+            // So the lowest wood is at (c,r+1). Support is needed at (c,r+2).
+            // No, the pattern is: (c,r) becomes WOOD, (c,r+1) becomes WOOD.
+            // So, for (c,r) to be the top of the 2-block trunk, it's (c,r) and (c,r-1) that form the trunk.
+            // Let's look at the pattern again:
+            //   { dr:  0, dc: 0, type: Config.BLOCK_WOOD }, // at (c,r)
+            //   { dr: +1, dc: 0, type: Config.BLOCK_WOOD }, // at (c,r+1)
+            // This means the trunk base is at (c, r+1). It needs support at (c, r+2).
+            // The current GridCollision.isSolid(c, r+1) checks if the block *at the level of the lower trunk part* is solid.
+            // This is not quite right. If (c,r) is the original VEG, and it forms WOOD at (c,r) and (c,r+1),
+            // then support should be at (c, (r+1) + 1) = (c, r+2).
+            // Let's assume (c,r) is the central vegetation block *that will become the top part of the trunk base*.
+            // The pattern then replaces (c,r) with WOOD, and (c,r+1) with WOOD.
+            // The lowest WOOD block is at (c,r+1). It needs support below it, at (c,r+2).
+            // The current GridCollision.isSolid(c, r+1) is checking if the block where the *lower wood part will be* is solid.
+            // This is not a support check, this is an overlap check.
+            // The central vegetation block (c,r) is where one part of the trunk will form.
+            // The rule is: if (c,r) is surrounded, then (c,r) becomes WOOD, and (c,r+1) becomes WOOD.
+            // So, the block *below the original central vegetation block (c,r)*, which is (c,r+1), must be suitable to become WOOD.
+            // And the block *below that*, (c,r+2), must be solid.
 
-                 const pattern = [
-                     // dr, dc, newBlockType
-                     // Top row (r-1)
-                     { dr: -1, dc: -1, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: +1, type: Config.BLOCK_VEGETATION },
-                     // Mid row (r)
-                     { dr:  0, dc: -1, type: Config.BLOCK_AIR },       { dr:  0, dc: 0, type: Config.BLOCK_WOOD },        { dr:  0, dc: +1, type: Config.BLOCK_AIR },
-                     // Bot row (r+1)
-                     { dr: +1, dc: -1, type: Config.BLOCK_AIR },       { dr: +1, dc: 0, type: Config.BLOCK_WOOD },        { dr: +1, dc: +1, type: Config.BLOCK_AIR },
-                 ];
+            // Let's simplify: the lowest part of the *newly formed* trunk is at `r+1` (relative to the *triggering* VEG block at `r`).
+            // So, support must exist at `r+2`.
+            const hasTrunkSupport = GridCollision.isSolid(c, r + 2); // Check below the lowest wood part of the new tree pattern
 
-                 for (const cell of pattern) {
-                     const targetC = c + cell.dc;
-                     const targetR = r + cell.dr;
+            if (hasTrunkSupport) {
+                let tooCloseToAnotherTree = false;
+                const spacingRadius = Config.MIN_TREE_SPACING_RADIUS ?? 8;
+                // Scan around the base of the *potential new trunk* (which starts at (c,r) and (c,r+1))
+                for (let dr_spacing = -spacingRadius; dr_spacing <= spacingRadius; dr_spacing++) {
+                    for (let dc_spacing = -spacingRadius; dc_spacing <= spacingRadius; dc_spacing++) {
+                        // We are checking around the central point (c,r) which is where the top of the 2-block trunk will be.
+                        const check_c = c + dc_spacing;
+                        const check_r = r + dr_spacing;
 
-                     if (targetR >= 0 && targetR < Config.GRID_ROWS && targetC >= 0 && targetC < Config.GRID_COLS) {
-                         const oldBlockAtTarget = (targetC === c && targetR === r) ? originalType : Config.BLOCK_VEGETATION;
-                         const success = World.setBlock(targetC, targetR, cell.type, false); // New tree parts are not player-placed
-                         if (success) {
-                             const blockAfterChange = World.getBlock(targetC, targetR);
-                             changedCellsAndTypes.push({
-                                 c: targetC, r: targetR,
-                                 oldBlockType: oldBlockAtTarget,
-                                 newBlockType: cell.type,
-                                 finalBlockData: blockAfterChange
-                             });
-                         }
-                     }
-                 }
-             }
+                        if (check_r < 0 || check_r >= Config.GRID_ROWS || check_c < 0 || check_c >= Config.GRID_COLS) {
+                            continue;
+                        }
+                        // Avoid checking the exact cells that *will become* the new trunk if we are at the origin of spacing check
+                        if (dr_spacing >= 0 && dr_spacing <= 1 && dc_spacing === 0 && (check_c === c && (check_r === r || check_r === r+1))) {
+                            continue;
+                        }
+
+
+                        const blockAtSpacingCheck = World.getBlock(check_c, check_r);
+                        if (blockAtSpacingCheck && typeof blockAtSpacingCheck === 'object' && blockAtSpacingCheck.type === Config.BLOCK_WOOD) {
+                            if (isLikelyTreeTrunk(check_c, check_r)) {
+                                tooCloseToAnotherTree = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (tooCloseToAnotherTree) break;
+                }
+
+                if (!tooCloseToAnotherTree) {
+                    if (Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
+                        tinyTreeFormedThisCell = true;
+
+                        const pattern = [
+                            { dr: -1, dc: -1, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: +1, type: Config.BLOCK_VEGETATION },
+                            { dr:  0, dc: -1, type: Config.BLOCK_AIR },       { dr:  0, dc: 0, type: Config.BLOCK_WOOD },        { dr:  0, dc: +1, type: Config.BLOCK_AIR },
+                            { dr: +1, dc: -1, type: Config.BLOCK_AIR },       { dr: +1, dc: 0, type: Config.BLOCK_WOOD },        { dr: +1, dc: +1, type: Config.BLOCK_AIR },
+                        ];
+
+                        for (const cell of pattern) {
+                            const targetC = c + cell.dc;
+                            const targetR = r + cell.dr;
+
+                            if (targetR >= 0 && targetR < Config.GRID_ROWS && targetC >= 0 && targetC < Config.GRID_COLS) {
+                                // Determine old block type at target for accurate logging
+                                let oldBlockAtTargetType;
+                                const oldBlockDataAtTarget = World.getBlock(targetC, targetR);
+                                if (typeof oldBlockDataAtTarget === 'object' && oldBlockDataAtTarget !== null) {
+                                    oldBlockAtTargetType = oldBlockDataAtTarget.type;
+                                } else {
+                                    oldBlockAtTargetType = oldBlockDataAtTarget; // Should be BLOCK_AIR (0) or null
+                                }
+                                
+                                const success = World.setBlock(targetC, targetR, cell.type, false);
+                                if (success) {
+                                    const blockAfterChange = World.getBlock(targetC, targetR);
+                                    changedCellsAndTypes.push({
+                                        c: targetC, r: targetR,
+                                        oldBlockType: oldBlockAtTargetType,
+                                        newBlockType: cell.type,
+                                        finalBlockData: blockAfterChange
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
          }
      }
 
