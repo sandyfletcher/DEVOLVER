@@ -550,7 +550,6 @@ body {
 }
 
 
-/* REPLACED/REMOVED filter-based dimming, new ::before handles it */
 #app-container.overlay-active > #game-wrapper::before {
     opacity: 1;
     visibility: visible;

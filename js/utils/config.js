@@ -20,19 +20,25 @@ export const AUDIO_TRACKS = {
     // SFX placeholders
     // player_hit: 'assets/audio/sfx/player_hit.wav',
 };
+
 // --- Camera / Viewport ---
+
 export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (e.g., 0.25 means zoomed out to 1/4 size).
 export const MAX_CAMERA_SCALE = 3.0; // Max zoom level (e.g., 3.0 means zoomed in 3x).
 export const ZOOM_SPEED_FACTOR = 0.001; // Sensitivity of mouse wheel zoom.
+
 // --- Cutscene Parameters ---
+
 export const CUTSCENE_IMAGE_DURATION = 3.0; // seconds image displayed
 export const CUTSCENE_SLIDES = [
-{ imagePath: 'assets/cut1.png', text: "In the near future, dolphins master nuclear fusion and seize control of the planet." },
-{ imagePath: 'assets/cut2.jpg', text: "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time." },
-{ imagePath: 'assets/cut3.png', text: "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position." },
-{ imagePath: 'assets/cut4.png', text: "Only one thing has followed you back in time - a simple shovel. Will that be enough?" }
+    { imagePath: 'assets/cut1.png', text: "In the near future, dolphins master nuclear fusion and seize control of the planet." },
+    { imagePath: 'assets/cut2.jpg', text: "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time." },
+    { imagePath: 'assets/cut3.png', text: "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position." },
+    { imagePath: 'assets/cut4.png', text: "Only one thing has followed you back in time - a simple shovel. Will that be enough?" }
 ];
+
 // --- Game Grid ---
+
 export const BACKGROUND_COLOR = 'rgb(135, 206, 235)'; // TODO: develop background images with moving parts
 export const BASE_BLOCK_PIXEL_SIZE = 16; // size in pixels of one side of square block
 export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE;
@@ -41,7 +47,9 @@ export const GRID_COLS = 400; // # of columns in world grid
 export const GRID_ROWS = 200; // # of rows
 export const CANVAS_WIDTH = GRID_COLS * BLOCK_WIDTH; // internal canvas dimensions in pixels
 export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
+
 // --- Block Parameters ---
+
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
 export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
 export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70%
@@ -51,7 +59,9 @@ export const CAN_PLACE_IN_WATER = false;
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
 export const VEGETATION_PIXEL_DENSITY = 0.6;
+
 // Block Type IDs (numeric constants)
+
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
 export const BLOCK_SAND = 2;
@@ -63,7 +73,8 @@ export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
 
-// --- NEW: Centralized Block Properties ---
+// --- Centralized Block Properties ---
+
 export const BLOCK_PROPERTIES = {
     [BLOCK_AIR]: {
         name: 'AIR',
@@ -206,12 +217,6 @@ export const BLOCK_PROPERTIES = {
         isPlayerPlaceableAsMaterial: false, // Player uses 'vegetation' material to place ropes
     },
 };
-
-// --- REMOVED OLD SEPARATE BLOCK PROPERTY OBJECTS ---
-// export const BLOCK_HP = { ... };
-// export const BLOCK_COLORS = { ... };
-// export const BLOCK_TRANSLUCENCY = { ... };
-
 export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_DIRT]: 1.0,
     [BLOCK_VEGETATION]: 1.0,
@@ -230,7 +235,9 @@ export const MATERIAL_TO_BLOCK_TYPE = {
     'bone': BLOCK_BONE,
     'vegetation': BLOCK_VEGETATION, // Note: Placing 'vegetation' material could result in either VEGETATION block or ROPE block based on context
 };
+
 // --- Landmass Generation ---
+
 export const ISLAND_WIDTH_MIN = 0.75; // minimum width of island
 export const ISLAND_WIDTH_MAX = 0.85; // as percentage of GRID_COLS
 export const WATER_LEVEL_FRACTION = 0.25; // % of bottom GRID_ROWS water covers
@@ -249,7 +256,9 @@ export const GROUND_NOISE_LACUNARITY = 2.0; // Frequency multiplier for each sub
 export const STONE_NOISE_OCTAVES = 3; // Number of octaves for stone layer noise
 export const STONE_NOISE_PERSISTENCE = 0.45;
 export const STONE_NOISE_LACUNARITY = 2.2;
+
 // --- Cave Generation ---
+
 export const ENABLE_CAVES = true;
 export const CAVE_NOISE_SCALE_X = 0.08; // Scale for 2D Perlin noise for caves (adjust for smaller/larger caves)
 export const CAVE_NOISE_SCALE_Y = 0.07; // Can be different for X and Y to stretch caves
@@ -258,7 +267,9 @@ export const CAVE_MIN_ROWS_BELOW_SURFACE = 0; // Caves start at least this many 
 export const CAVE_MIN_ROWS_ABOVE_BOTTOM = 15; // Caves stop at least this many rows above the grid bottom
 export const CAVE_EDGE_ZONE_PERCENTAGE = 0.20; // Percentage of map width for edge zones (0.0 to 0.5)
 export const CAVE_EDGE_WATER_PROTECTION_DEPTH = 3; // How many blocks above/below water level to protect in edge zones
+
 // --- Beach Smoothing ---
+
 export const OCEAN_FLOOR_ROW_NEAR_ISLAND = WATER_LEVEL + 5; // Target row for ocean floor near the island
 export const OCEAN_STONE_ROW_NEAR_ISLAND = OCEAN_FLOOR_ROW_NEAR_ISLAND + 8; // Target row for ocean stone near the island
 export const DEEP_OCEAN_BASE_ROW_OFFSET = Math.floor(GRID_ROWS * 0.1); // Offset in rows for deep ocean from water level
@@ -269,7 +280,9 @@ export const EDGE_TAPER_WIDTH_FACTOR = 0.15; // Percentage of GRID_COLS for edge
 export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 15; // Target stone level offset (in rows) at the absolute world edge
 export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 20; // Target floor level offset (in rows) at the absolute world edge
 export const ISLAND_CENTER_TAPER_WIDTH_COLS = 80; // Width in columns for tapering from island edge inward
+
 // --- Aging Parameters ---
+
 export const AGING_NOISE_SCALE = 0.03; // Scale for Perlin noise used in aging.
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 0.45); // Threshold in rows for stoneification.
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT; // Threshold in pixels.
@@ -289,6 +302,7 @@ export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_VEGETATION = 0.50; // Chance
 export const AGING_PROB_UNLIT_VEGETATION_DECAY = 0.80; // Chance for unlit VEGETATION to decay to AIR
 
 // --- Tree Generation & Aging ---
+
 export const TREE_MIN_HEIGHT_TO_FORM = 5; // Minimum contiguous VEGETATION blocks required to form a tree (Old rule, might be obsolete if tiny tree is main form)
 export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // Chance for VEG surrounded by VEG to become a "tiny tree"
 export const MIN_TREE_SPACING_RADIUS = 8; // Minimum distance (in blocks) between tree trunks for tiny tree formation
@@ -302,6 +316,7 @@ export const AGING_PROB_TREE_TRUNK_DECAY = 0.005;
 export const AGING_PROB_TREE_CANOPY_DECAY = 0.01;
 
 // --- Animation Parameters ---
+
 export const AGING_ANIMATION_BLOCKS_AT_ONCE = 10; // Max number of blocks animating simultaneously
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
 export const AGING_ANIMATION_SWELL_DURATION = 0.12; // Duration (seconds) of the "swell" part
@@ -324,6 +339,7 @@ export const LIGHTING_ANIMATION_MAX_ALPHA = 0.7; // Max alpha for the flash (use
 export const LIT_BLOCK_BRIGHTNESS_FACTOR = 1.3; // How much brighter a lit block appears (multiplier for its base color)
 
 // --- Sun Animation (Visual Only for Warp Phase) ---
+
 export const SUN_ANIMATION_ENABLED = true; // To easily toggle this new effect
 export const SUN_ANIMATION_COLOR = "rgba(255, 200, 100, 0.9)"; // Light orange fill, slightly transparent
 export const SUN_ANIMATION_OUTLINE_COLOR = "rgba(255, 255, 0, 0.7)"; // Yellow for outline
@@ -343,6 +359,7 @@ export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2);
 export const SUN_RAYS_PER_POSITION = 72; // Increased from 36 for more plentiful rays
 
 // --- Delta-Time Physics ---
+
 export const GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ = 100; // Base acceleration in block heights per second squared.
 export const GRAVITY_ACCELERATION = GRAVITY_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_HEIGHT; // Pixels per second squared.
 export const MAX_FALL_SPEED_BLOCKS_PER_SEC = 120; // Base max fall speed in block heights per second.
@@ -367,7 +384,9 @@ export const ENEMY_WATER_BUOYANCY_ACCEL = ENEMY_WATER_BUOYANCY_ACCEL_BLOCKS_PER_
 export const WATER_JUMP_COOLDOWN_DURATION = 0.2; // Time in seconds.
 export const WATER_PROPAGATION_DELAY = 0.05; // Time in seconds between water simulation ticks.
 export const WATER_UPDATES_PER_FRAME = 500; // Max number of water cells to process per simulation tick.
+
 // --- Portal Parameters ---
+
 export const PORTAL_COLOR = 'rgb(100, 100, 255)';
 export const PORTAL_WIDTH_BLOCKS = 6; // Portal width in block units.
 export const PORTAL_HEIGHT_BLOCKS = 8; // Portal height in block units
@@ -382,7 +401,9 @@ export const PORTAL_SAFETY_RADIUS = PORTAL_SAFETY_RADIUS_BLOCKS * BASE_BLOCK_PIX
 export const PORTAL_RADIUS_GROWTH_PER_WAVE_BLOCKS = 5; // Radius growth in block units per intermission.
 export const PORTAL_RADIUS_GROWTH_PER_WAVE = PORTAL_RADIUS_GROWTH_PER_WAVE_BLOCKS * BASE_BLOCK_PIXEL_SIZE; // Pixel growth.
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above mean ground for portal top.
+
 // --- Player Parameters ---
+
 export const PLAYER_IMAGE_PATH = 'assets/player.png'; // Path to the player image
 export const PLAYER_HITBOX_COLOR = 'rgba(200, 50, 50, 0.3)'; // Color for the player's hitbox
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
@@ -421,7 +442,9 @@ export const PLAYER_ROPE_DETACH_IMPULSE_X = PLAYER_ROPE_DETACH_IMPULSE_X_BLOCKS_
 export const PLAYER_ROPE_DETACH_JUMP_MULTIPLIER = 0.9; // e.g., 60% of normal jump velocity
 export const PLAYER_PLACEMENT_RANGE_COLOR = 'rgba(255, 255, 0, 0.3)'; // Semi-transparent yellow
 export const PLAYER_PLACEMENT_RANGE_LINE_WIDTH = 2; // Line thickness in pixels
+
 // --- Items & Weapons ---
+
 export const ITEM_BOBBLE_AMOUNT = 0.15; // Factor relative to item height.
 export const ITEM_BOBBLE_SPEED = 2.0; // Radians per second for bobbing cycle (time-based).
 export const WEAPON_TYPE_UNARMED = 'unarmed'; // Weapon types (string constants)
@@ -472,7 +495,6 @@ export const PLAYER_SPEAR_ATTACK_DURATION = 0.3;
 export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5;
 export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)';
 
-// --- RENAMED ITEM_CONFIG to WEAPON_STATS and removed material definitions ---
 export const WEAPON_STATS = {
     [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
     [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
@@ -484,7 +506,9 @@ export const CRAFTING_RECIPES = { // Crafting recipes (fixed material types and 
 [WEAPON_TYPE_SWORD]: [{ type: 'stone', amount: 5 }],
 [WEAPON_TYPE_SPEAR]: [{ type: 'wood', amount: 2 }, { type: 'stone', amount: 1 }],
 };
+
 // --- Enemy Parameters ---
+
 export const MAX_ENEMIES = 150; // TODO: determine if necessary or if being restrictive for future spawning logic
 export const ENEMY_SPAWN_EDGE_MARGIN_BLOCKS = 10; // Distance from screen edge in block units.
 export const ENEMY_SPAWN_EDGE_MARGIN = ENEMY_SPAWN_EDGE_MARGIN_BLOCKS * BLOCK_WIDTH; // Pixel margin.
@@ -553,7 +577,9 @@ separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_
 dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
 },
 };
+
 // --- Wave Scripting ---
+
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const MYA_TRANSITION_ANIMATION_DURATION = 6.0; // seconds for the MYA number to animate

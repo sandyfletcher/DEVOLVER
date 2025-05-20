@@ -11,36 +11,30 @@ import { ChasePlayerAI } from './ai/chasePlayerAI.js';
 import { FlopAI } from './ai/flopAI.js';
 import * as AudioManager from '../audioManager.js'; // Import AudioManager
 
-// Map AI type strings from config to the actual AI Strategy classes
-const aiStrategyMap = {
+const aiStrategyMap = { // Map AI type strings from config to the actual AI Strategy classes
     'seekCenter': SeekCenterAI,
     'chasePlayer': ChasePlayerAI,
     'flopAI': FlopAI, // Ensure FlopAI is mapped
     // 'flyPatrol': FlyerAI, // Add mappings for new AI types here
     // 'standAndShoot': ShooterAI,
 };
-
 export class Enemy {
     constructor(x, y, enemyType) {
         this.type = enemyType; // Store the type key
-
-        // --- Get and Scale Stats from Config ---
-        const stats = Config.ENEMY_STATS[this.type];
+        const stats = Config.ENEMY_STATS[this.type]; // --- Get and Scale Stats from Config ---
         let rawStats; // Store the original stats for reference if needed
-
         if (!stats) {
             console.error(`>>> Enemy CONSTRUCTOR: Unknown enemy type "${enemyType}". Using fallback stats.`);
-            // Define minimal fallback stats or default to center_seeker if type is unknown
-            const fallbackStats = Config.ENEMY_STATS[Config.ENEMY_TYPE_CENTER_SEEKER] || {};
+            const fallbackStats = Config.ENEMY_STATS[Config.ENEMY_TYPE_CENTER_SEEKER] || {}; // Define minimal fallback stats or default to center_seeker if type is unknown
             rawStats = { // Use a basic fallback if center_seeker is also missing (unlikely)
                  displayName: "Unknown (Fallback)",
                  aiType: 'seekCenter',
                  color: 'purple',
                  width: Config.DEFAULT_ENEMY_WIDTH_BLOCKS, // Use block dimensions for fallback
                  height: Config.DEFAULT_ENEMY_HEIGHT_BLOCKS,
-                 maxSpeedX: 30, // Relative to BASE_BLOCK_PIXEL_SIZE
-                 maxSpeedY: 50, // Relative to BASE_BLOCK_PIXEL_SIZE
-                 swimSpeed: 50, // Relative to BASE_BLOCK_PIXEL_SIZE
+                 maxSpeedX: 30, 
+                 maxSpeedY: 50,
+                 swimSpeed: 50,
                  health: 1,
                  contactDamage: 1,
                  applyGravity: true,
@@ -50,7 +44,7 @@ export class Enemy {
                  canSwim: false,
                  canFly: false,
                  separationFactor: Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
-                 separationStrength: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH_PIXELS_PER_SEC, // Relative to BASE_BLOCK_PIXEL_SIZE
+                 separationStrength: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH_PIXELS_PER_SEC, 
                  landHopHorizontalVelocity: 0, // Default for non-tetrapods
                  dropTable: [],
                  ...fallbackStats // Merge fallback stats if available
@@ -58,42 +52,27 @@ export class Enemy {
         } else {
              rawStats = { ...stats }; // Copy stats from config
         }
-
         this.stats = rawStats; // Keep a copy of the raw stats (relative to 4px)
-
-        // Calculate scaling ratios based on the current block size and the base size
-        const blockWidthRatio = Config.BLOCK_WIDTH / Config.BASE_BLOCK_PIXEL_SIZE;
+        const blockWidthRatio = Config.BLOCK_WIDTH / Config.BASE_BLOCK_PIXEL_SIZE; // Calculate scaling ratios based on the current block size and the base size
         const blockHeightRatio = Config.BLOCK_HEIGHT / Config.BASE_BLOCK_PIXEL_SIZE;
-
-        // --- Assign Core Properties (Scaled) ---
-        // Dimensions are defined in blocks in config, scale them here to pixels
-        this.width = this.stats.width_BLOCKS * Config.BLOCK_WIDTH; // <<< CORRECTED NAME
+        this.width = this.stats.width_BLOCKS * Config.BLOCK_WIDTH; // Dimensions are defined in blocks in config, scale them here to pixels
         this.height = this.stats.height_BLOCKS * Config.BLOCK_HEIGHT;
-
         this.x = x; // Initial x position (assumed to be in pixels)
         this.y = y; // Initial y position (assumed to be in pixels)
-
         this.color = this.stats.color;
         this.health = this.stats.health;
         this.displayName = this.stats.displayName;
-
-        // Scale speed/velocity values by the appropriate block ratio
-        this.maxSpeedX = this.stats.maxSpeedX_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
+        this.maxSpeedX = this.stats.maxSpeedX_BLOCKS_PER_SEC * Config.BLOCK_WIDTH; // Scale speed/velocity values by the appropriate block ratio
         this.maxSpeedY = this.stats.maxSpeedY_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
         this.swimSpeed = this.stats.swimSpeed_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
         this.jumpVelocity = this.stats.jumpVelocity_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
-
-        // Scale separation strength by Block Width ratio
-        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
-        // Scale Tetrapod specific velocities/forces if they were added to stats
-        this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
-
+        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * Config.BLOCK_WIDTH; // Scale separation strength by Block Width ratio
+        this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * Config.BLOCK_WIDTH; // Scale Tetrapod specific velocities/forces if they were added to stats
         // --- Store Movement Capabilities ---
         this.canSwim = this.stats.canSwim ?? false; // Default to false if undefined
         this.canFly = this.stats.canFly ?? false;   // Default to false if undefined
         this.applyGravityDefault = this.stats.applyGravity ?? !(this.canFly); // Default to true unless canFly
         this.canJump = this.stats.canJump ?? false; // Default to false
-
         // --- Physics State ---
         this.vx = 0;
         this.vy = 0;
@@ -101,21 +80,17 @@ export class Enemy {
         this.isActive = true; // This flag means the enemy exists and participates in game logic/collisions (until death anim ends)
         this.isInWater = false;
         this.waterJumpCooldown = 0; // Keep for non-swimming jumpers
-
-        // NEW: AI-controlled state flag(s) - specific AIs can set these
+        // AI-controlled state flag(s) - specific AIs can set these
         this.isFlopAttacking = false; // Specifically for Tetrapod's land hop attack
-
         // --- Visual Feedback State ---
         this.isFlashing = false;
         this.flashTimer = 0;
         this.flashDuration = Config.ENEMY_FLASH_DURATION; // Time-based, no scaling needed
-
         // --- Animation State ---
         this.isDying = false; // New flag: Is the death animation playing?
         this.deathAnimationTimer = 0; // Timer for the death animation duration
         this.isBeingAbsorbed = false;
         this.absorptionProgress = 0; // For the portal to potentially control animation details if needed directly on enemy
-
         // --- Instantiate AI Strategy ---
         const AIStrategyClass = aiStrategyMap[this.stats.aiType];
         if (AIStrategyClass) {
@@ -157,7 +132,6 @@ export class Enemy {
             }
             if (!this.isActive && !this.isDying) return; // Exit if now truly inactive
         }
-
         // --- Handle Dying State ---
         if (this.isDying) {
             this.deathAnimationTimer -= dt; // Decrement death timer
@@ -170,10 +144,7 @@ export class Enemy {
             // Stop any other updates while dying
             return; // Stop normal update logic while dying
         }
-
-
         // --- Normal Active Update Logic (Only if NOT dying) ---
-
         // Ensure isFlopAttacking is reset if we are NOT dying but it was somehow stuck true (safety)
         if (this.isFlopAttacking) {
             // Logic to turn off isFlopAttacking is now in FlopAI, tied to flopAttackTimer
@@ -184,8 +155,6 @@ export class Enemy {
             // The timer logic for this flag needs to be in the FlopAI's update method.
             // Let's assume FlopAI correctly sets/unsets `this.enemy.isFlopAttacking`.
         }
-
-
         // --- Determine Current Environment State ---
         this.isInWater = GridCollision.isEntityInWater(this);
         // Note: isOnGround is updated by collideAndResolve later, but we might need its state *from the previous frame* here.
@@ -364,7 +333,6 @@ export class Enemy {
             this.die(false); // Fell out
         }
     }
-
     takeDamage(amount) {
         // Do not take damage if already inactive, getting absorbed OR currently in the dying animation state
         if (this.isBeingAbsorbed || !this.isActive || this.isDying || this.isFlashing) return;
@@ -372,7 +340,6 @@ export class Enemy {
         this.health -= amount;
         this.isFlashing = true;
         this.flashTimer = this.flashDuration;
-
         if (this.health <= 0) {
             // This will now transition to the dying state instead of immediate isActive = false
             this.die(true); // Pass true as it was killed by player attack
@@ -382,21 +349,16 @@ export class Enemy {
     die(killedByPlayer = true) {
         // Prevent dying animation from starting multiple times
         if (!this.isActive || this.isDying) return;
-
         // console.log(`[Enemy] Starting death animation for ${this.displayName}. Killed by player: ${killedByPlayer}`);
-
         // Stop movement immediately
         this.vx = 0;
         this.vy = 0;
         this.isFlopAttacking = false; // Ensure this is off
-
         // Set dying state and timer
         this.isDying = true;
         this.deathAnimationTimer = Config.ENEMY_DEATH_ANIMATION_DURATION; // Time-based, no scaling needed
-
         // Keep isActive = true *during* the animation so it's updated and drawn.
         // It will be set to false in update() when the timer expires.
-
         // Handle item drops immediately when the enemy *starts* dying
         if (killedByPlayer && !this.isBeingAbsorbed && this.stats.dropTable && this.stats.dropTable.length > 0) {
             if (typeof this.x !== 'number' || typeof this.y !== 'number' || isNaN(this.x) || isNaN(this.y)) {
@@ -428,17 +390,14 @@ export class Enemy {
         // Optional: Play enemy death/pop sound effect here
         // AudioManager.playSound(Config.AUDIO_TRACKS.enemy_pop);
     }
-
     getPosition() {
         return { x: this.x, y: this.y };
     }
-
     getRect() { // No change needed, the rect is the base size, transformation happens in draw
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
         return { x: safeX, y: safeY, width: this.width, height: this.height };
     }
-
     // Modify draw() to handle the dying animation visual
     draw(ctx) {
         // Only draw if the enemy is active OR currently dying
@@ -453,13 +412,10 @@ export class Enemy {
         // --- Handle Dying Animation Drawing ---
         if (this.isDying) {
             ctx.save(); // Save context before transformations
-
             const totalAnimationDuration = Config.ENEMY_DEATH_ANIMATION_DURATION;
             const swellDuration = Config.ENEMY_SWELL_DURATION;
             const timeElapsed = totalAnimationDuration - this.deathAnimationTimer; // Time passed since animation started
-
             let currentScale = 1.0; // Default scale
-
             // Swell phase: Scale up during the first Config.ENEMY_SWELL_DURATION
             if (timeElapsed >= 0 && timeElapsed < swellDuration) { // Check elapsed time against swell duration
                 const swellProgress = timeElapsed / swellDuration; // 0 to <1
@@ -471,58 +427,37 @@ export class Enemy {
                 ctx.restore(); // Restore context if saved
                 return; // Do not draw after animation duration
             }
-
             // Calculate pivot point (center of the entity)
             const pivotX = this.x + this.width / 2;
             const pivotY = this.y + this.height / 2;
-
             // Translate to pivot, scale, translate back
             ctx.translate(pivotX, pivotY);
             ctx.scale(currentScale, currentScale);
             ctx.translate(-pivotX, -pivotY);
-
             // Draw the entity rectangle at the potentially scaled position
             // Use original color for death animation, not flashing
             ctx.fillStyle = this.color;
             // Note: fillRect needs the original x, y, width, height. Transformations handle the rest.
             ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-
             ctx.restore(); // Restore context
             return; // Drawing handled, exit
         }
-
-
         // --- Normal Active Drawing Logic (Only if NOT dying) ---
         // The following code is only reached if `!this.isDying`
-
         let drawColor = this.color;
         if (this.isFlashing) {
             drawColor = 'white';
         }
-
         ctx.fillStyle = drawColor;
         ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
         ctx.strokeStyle = 'white'; // Bright color
         ctx.lineWidth = 1;
         ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-
-        // Optional: Add a visual indicator for isFlopAttacking state for debugging
-        // if (this.isFlopAttacking) {
-        //      ctx.strokeStyle = 'red';
-        //      ctx.lineWidth = 1;
-        //      ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-        // }
-
     }
-
-    // NEW: Method to determine current contact damage based on state
+    // Method to determine current contact damage based on state
     getCurrentContactDamage() {
-        // If dying, enemy deals no damage
-        if (this.isDying) return 0;
-
-        // Default to 0 if this method is called on a type that doesn't have contact damage logic defined here
-        let damage = 0;
-
+        if (this.isDying) return 0; // If dying, enemy deals no damage
+        let damage = 0; // Default to 0 if this method is called on a type that doesn't have contact damage logic defined here
         // --- Specific Logic for Tetrapod ---
         if (this.type === Config.ENEMY_TYPE_TETRAPOD) {
             if (this.isInWater) {
@@ -549,7 +484,6 @@ export class Enemy {
             // For any enemy type not handled above, fall back to their base contactDamage stat (fixed value)
             damage = this.stats?.contactDamage ?? 0;
         }
-
         return damage;
     }
 }
