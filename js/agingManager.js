@@ -252,6 +252,20 @@ const blockBeforeChange = World.getBlock(c, r);
          }
      }
 
+     // --- NEW RULE: Unlit VEGETATION -> AIR (Decay) ---
+     if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_VEGETATION) {
+         // blockBeforeChange is the state of the block at (c,r) at the start of this aging pass for this cell.
+         // If newType hasn't changed yet, blockBeforeChange.isLit is the correct lighting state to check.
+         const isBlockLit = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? (blockBeforeChange.isLit ?? false) : false;
+
+         if (!isBlockLit) { // If the vegetation block itself is not lit
+             if (Math.random() < Config.AGING_PROB_UNLIT_VEGETATION_DECAY) { // Use the new config constant
+                 newType = Config.BLOCK_AIR;
+             }
+         }
+     }
+     // --- END NEW RULE ---
+
      // --- NEW RULE: AIR -> VEGETATION GROWTH (on lit DIRT or lit VEGETATION below) ---
      if (newType === originalType && originalType === Config.BLOCK_AIR) {
          const blockBelowData = World.getBlock(c, r + 1);

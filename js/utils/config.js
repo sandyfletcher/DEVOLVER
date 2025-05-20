@@ -158,6 +158,7 @@ export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
 export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_DIRT = 0.60; // Chance for AIR above lit DIRT to become VEGETATION
 export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_VEGETATION = 0.50; // Chance for AIR above lit VEGETATION to become VEGETATION
+export const AGING_PROB_UNLIT_VEGETATION_DECAY = 0.80; // Chance for unlit VEGETATION to decay to AIR
 
 // --- Tree Generation & Aging ---
 export const TREE_MIN_HEIGHT_TO_FORM = 5; // Minimum contiguous VEGETATION blocks required to form a tree (Old rule, might be obsolete if tiny tree is main form)
