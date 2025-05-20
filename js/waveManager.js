@@ -1,4 +1,6 @@
+// -----------------------------------------------------------------------------
 // root/js/waveManager.js
+// -----------------------------------------------------------------------------
 
 import * as UI from './ui.js';
 import * as Config from './utils/config.js';
@@ -22,12 +24,9 @@ let buildPhaseTimer = 0;
 let currentMaxTimer = 0;
 let waveStartCallback = null;
 let portalRef = null;
-
-// --- Sun Animation State ---
 let isSunAnimationActive = false;
 let sunAnimationTimer = 0;
 let sunAnimationDuration = 0;
-
 
 // --- Internal Helper Functions ---
 
@@ -90,10 +89,6 @@ function startNextWave() {
         currentMaxTimer = 0;
         return false;
     }
-
-    // The UI.showEpochText call that was here for the *second* display is REMOVED.
-    // The animated/warp-time display is handled by UI.startMyaEpochTransition in triggerWarpCleanupAndCalculations.
-
     state = 'WAVE_COUNTDOWN';
     mainWaveTimer = waveData.duration;
     currentMaxTimer = waveData.duration;
@@ -154,7 +149,6 @@ function triggerWarpCleanupAndCalculations() {
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     console.log("[WaveMgr] Entity cleanup and portal radius update complete.");
-
     // 2. Logical Gravity Settlement (Done once before aging/lighting loop)
     console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
     let gravityAnimationChanges = WorldManager.applyGravitySettlement(portalRef);
@@ -162,14 +156,12 @@ function triggerWarpCleanupAndCalculations() {
     if (gravityAnimationChanges.length > 0) {
         WorldManager.addProposedGravityChanges(gravityAnimationChanges);
     }
-
     // MYA Transition (Start this before the loop as it's a continuous visual effect)
     const currentWaveData = getCurrentWaveData();
     const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
     const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
     const currentMya = currentWaveData ? currentWaveData.mya : undefined;
     const nextMya = nextWaveData ? nextWaveData.mya : undefined;
-
     if (typeof currentMya === 'number' && typeof nextMya === 'number') {
         UI.startMyaEpochTransition(currentMya, nextMya, Config.MYA_TRANSITION_ANIMATION_DURATION);
     } else {
@@ -182,25 +174,20 @@ function triggerWarpCleanupAndCalculations() {
             UI.showEpochText("Final Preparations...");
         }
     }
-
     // 3. Interleaved Lighting and Aging Process
     console.log("[WaveMgr] Starting interleaved lighting and aging process (LOGICAL)...");
     let allVisualAgingChangesFromAgingPasses = [];
     let allGravityChangesFromAgingPasses = [];
     let allLightingChangesFromLoop = []; // To collect lighting changes for animation queueing
-
     if (nextWaveData && typeof nextWaveData === 'object') {
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
         for (let i = 0; i < passes; i++) {
             console.log(`[WaveMgr] Warp Intermission - Pass ${i + 1}/${passes}`);
-
             // A. Reset lighting state before calculating for this pass
             World.resetAllBlockLighting(); // Reset all lighting
-            
             // B. Calculate and Apply Lighting for this pass
             console.log(`[WaveMgr] Pass ${i + 1}: Calculating lighting...`);
             const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // false to skip debug drawing
-            
             if (proposedLightingChangesThisPass.length > 0) {
                 console.log(`[WaveMgr] Pass ${i + 1}: Applying ${proposedLightingChangesThisPass.length} lighting states directly.`);
                 proposedLightingChangesThisPass.forEach(change => {
@@ -211,7 +198,6 @@ function triggerWarpCleanupAndCalculations() {
                 });
                 allLightingChangesFromLoop.push(...proposedLightingChangesThisPass); // Collect for animation queue
             }
-
             // C. Apply Aging using the now updated lighting state
             console.log(`[WaveMgr] Pass ${i + 1}: Applying aging...`);
             const agingChangesInThisPass = AgingManager.applyAging(portalRef);
@@ -222,7 +208,7 @@ function triggerWarpCleanupAndCalculations() {
                 allGravityChangesFromAgingPasses.push(...agingChangesInThisPass.gravityChanges);
             }
         }
-        
+    
         // Queue all collected animations after the loop
         if (allLightingChangesFromLoop.length > 0) {
             WorldManager.addProposedLightingChanges(allLightingChangesFromLoop);
@@ -233,28 +219,33 @@ function triggerWarpCleanupAndCalculations() {
         if (allGravityChangesFromAgingPasses.length > 0) {
             WorldManager.addProposedGravityChanges(allGravityChangesFromAgingPasses);
         }
-        
+    
         console.log(`[WaveMgr] Interleaved lighting & aging (LOGICAL) complete. Total passes: ${passes}.`);
         console.log(`   - Total Visual Aging Changes: ${allVisualAgingChangesFromAgingPasses.length}`);
         console.log(`   - Total Gravity Changes from Aging: ${allGravityChangesFromAgingPasses.length}`);
         console.log(`   - Total Lighting Animation Changes Queued: ${allLightingChangesFromLoop.length}`);
-
     } else {
         console.warn("[WaveMgr] No next wave data found for aging/lighting process. This might be the last wave transition before victory.");
-        // Even if no next wave for aging, we might still want a final lighting pass if it wasn't done yet.
-        // However, the current structure ties passes to nextWaveData.
-        // If nextWaveData is null (e.g., final wave completed), we might need one last lighting refresh *if* the previous logic
-        // didn't already do it. But for now, this is fine. The previous one-time lighting pass will have run.
     }
 
-    // --- START Sun Animation ---
+    console.log("[WaveMgr] Applying final lighting pass after warp phase aging...");
+    World.resetAllBlockLighting(); // Reset before the final, thorough pass
+    const finalWarpLightingChanges = WorldManager.applyLightingPass(false, 1); // false to skip debug, 1 for full scan
+    if (finalWarpLightingChanges.length > 0) {
+        finalWarpLightingChanges.forEach(change => {
+            const block = World.getBlock(change.c, change.r);
+            if (block && typeof block === 'object') {
+                block.isLit = change.newLitState; // Apply directly to world data
+            }
+        });
+        console.log(`[WaveMgr] Final warp lighting pass lit ${finalWarpLightingChanges.length} additional blocks.`);
+    }
     if (Config.SUN_ANIMATION_ENABLED) {
         isSunAnimationActive = true;
         sunAnimationDuration = Config.MYA_TRANSITION_ANIMATION_DURATION > 0 ? Config.MYA_TRANSITION_ANIMATION_DURATION : Config.FIXED_SUN_ANIMATION_DURATION;
         sunAnimationTimer = sunAnimationDuration;
         console.log(`[WaveMgr] Started visual sun animation for ${sunAnimationDuration}s.`);
     }
-    // --- END Sun Animation ---
 }
 
 // --- Exported Functions ---
@@ -285,7 +276,7 @@ export function reset(callback = null, portalObject = null) {
 export function update(dt, gameState) {
     if (dt <= 0) return;
 
-    // --- Sun Animation Update (during WARP_ANIMATING) ---
+    // --- Sun Animation ---
     if (isSunAnimationActive && state === 'WARP_ANIMATING') {
         sunAnimationTimer -= dt;
         if (sunAnimationTimer <= 0) {
@@ -294,7 +285,6 @@ export function update(dt, gameState) {
             console.log("[WaveMgr] Visual sun animation finished.");
         }
     }
-    // --- End Sun Animation Update ---
 
     switch (state) {
         case 'PRE_WAVE':

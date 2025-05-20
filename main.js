@@ -78,6 +78,7 @@ async function performBackgroundWorldGeneration() {
             const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
             for (let i = 0; i < initialAgingPasses; i++) {
                 // 1. Calculate lighting changes for this pass
+                World.resetAllBlockLighting(); // Reset lighting for this aging pass
                 const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // false to skip debug drawing
 
                 // 2. Apply these lighting changes directly to the world data
@@ -94,9 +95,9 @@ async function performBackgroundWorldGeneration() {
                 AgingManager.applyAging(null);
             }
 
-            // ---- ADD THIS SECTION ----
             console.log("[Main] Applying final lighting pass after all initial aging...");
-            const finalLightingChanges = WorldManager.applyLightingPass(false); // Calculate one last time
+            World.resetAllBlockLighting(); // Reset before the final, thorough pass
+            const finalLightingChanges = WorldManager.applyLightingPass(false, 1); // false to skip debug, 1 for full scan
             if (finalLightingChanges.length > 0) {
                 finalLightingChanges.forEach(change => {
                     const block = World.getBlock(change.c, change.r); // Use World.getBlock
@@ -106,7 +107,6 @@ async function performBackgroundWorldGeneration() {
                 });
                 console.log(`[Main] Final lighting pass lit ${finalLightingChanges.length} additional blocks.`);
             }
-            // ---- END OF ADDED SECTION ----
 
             if (!Renderer.getGridCanvas()) Renderer.createGridCanvas();
             WorldManager.renderStaticWorldToGridCanvas();
@@ -439,7 +439,7 @@ errorOverlayMessageP = document.getElementById('error-message-text');
 function handleVisibilityChange() {
 if (document.hidden && FlowManager.getCurrentState() === GameState.RUNNING) {
 isAutoPaused = true;
-FlowManager.pauseGame(); // Delegate to FlowManager
+FlowManager.pauseGame();
 }
 }
 window.addEventListener('DOMContentLoaded', init);

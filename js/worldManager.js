@@ -376,7 +376,7 @@ function applyInitialFloodFill() {
     }
 }
 
-export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
+export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride = null) {
     // console.log("[WorldManager] Calculating proposed lighting changes...");
     let proposedChanges = [];
     const blocksToAnimateThisPass = new Set(); // Prevents duplicate animation queueing for the same block
@@ -401,7 +401,10 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
     const sunCenterPixelY = (Config.SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2); // Use Config value
     const sunStartPixelX = Config.CANVAS_WIDTH + (Config.BLOCK_WIDTH * 10);
     const sunEndPixelX = -(Config.BLOCK_WIDTH * 10);
-    const sunStepPixelX = Config.SUN_MOVEMENT_STEP_COLUMNS * Config.BLOCK_WIDTH;
+    
+    const stepColumnsToUse = sunStepOverride !== null ? sunStepOverride : Config.SUN_MOVEMENT_STEP_COLUMNS;
+    const sunStepPixelX = stepColumnsToUse * Config.BLOCK_WIDTH;
+
 
     for (let currentSunPixelX = sunStartPixelX; currentSunPixelX >= sunEndPixelX; currentSunPixelX -= sunStepPixelX) {
         const sunGridCol = Math.floor(currentSunPixelX / Config.BLOCK_WIDTH);

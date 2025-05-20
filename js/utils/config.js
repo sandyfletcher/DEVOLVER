@@ -74,7 +74,7 @@ export const BLOCK_HP = {
     [BLOCK_ROPE]: 25,
 };
 export const BLOCK_COLORS = {
-    [BLOCK_WATER]: 'rgb(50, 100, 200)',
+    [BLOCK_WATER]: 'rgb(38, 77, 154)', // New darker base color for water (UNLIT)
     [BLOCK_SAND]: 'rgb(210, 180, 140)',
     [BLOCK_DIRT]: 'rgb(130, 82, 45)',
     [BLOCK_VEGETATION]: 'rgb(80, 180, 80)',
@@ -94,14 +94,14 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
 };
 export const BLOCK_TRANSLUCENCY = {
     [BLOCK_AIR]: 1.0,         // Air lets all light through
-    [BLOCK_WATER]: 0.8,       // Water lets 90% of light through
+    [BLOCK_WATER]: 0.8,       // Water lets 80% of light through
     [BLOCK_SAND]: 0.0,        // Sand is opaque
     [BLOCK_DIRT]: 0.0,        // Dirt is opaque
-    [BLOCK_VEGETATION]: 0.4,  // Vegetation lets 60% of light through
+    [BLOCK_VEGETATION]: 0.4,  // Vegetation lets 40% of light through
     [BLOCK_STONE]: 0.0,       // Stone is opaque
     [BLOCK_WOOD]: 0.0,        // Wood is opaque
     [BLOCK_METAL]: 0.0,       // Metal is opaque
-    [BLOCK_BONE]: 0.0,        // Bone is opaque
+    [BLOCK_BONE]: 0.0,        // Bone is opaqued
     [BLOCK_ROPE]: 0.9,        // Rope is mostly transparent to light
 };
 export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal'];
