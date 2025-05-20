@@ -35,7 +35,7 @@ const GRAVITY_ANIMATION_FALL_SPEED = 200;
 const NEW_GRAVITY_ANIM_DELAY = 0.02;
 
 // Constants for lighting pass (re-used for visual sun rays)
-const SUN_MOVEMENT_Y_ROW_OFFSET = -3; 
+const SUN_MOVEMENT_Y_ROW_OFFSET = -3;
 // const SUN_RAYS_PER_POSITION = 36; // From config.js for visual sun
 // const SUN_MOVEMENT_STEP_COLUMNS = 5; // From config.js for lighting logic, not directly used by visual sun pass
 // const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(Config.GRID_ROWS * 1.2); // From config.js for visual sun
@@ -392,12 +392,12 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
     }
 
     // --- DEBUG DRAWING SETUP ---
-    let mainCtxForDebug; 
+    let mainCtxForDebug;
     if (DEBUG_DRAW_LIGHTING) {
         mainCtxForDebug = Renderer.getContext();
         if (!mainCtxForDebug) {
             console.error("Debug Lighting: Main context not available!");
-            DEBUG_DRAW_LIGHTING = false; 
+            DEBUG_DRAW_LIGHTING = false;
         }
     }
     // --- END DEBUG DRAWING SETUP ---
@@ -424,7 +424,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
             Renderer.restoreCameraTransforms(mainCtxForDebug);
             mainCtxForDebug.restore();
         }
- 
+
        // MODIFICATION START: Calculate rays only for the downward 180-degree arc
        const numDownwardRays = Math.ceil(Config.SUN_RAYS_PER_POSITION / 2);
        if (numDownwardRays <= 0) {
@@ -432,7 +432,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
            // console.warn("[WorldManager] applyLightingPass: numDownwardRays is zero or negative. Skipping ray casting for this sun position.");
            continue; // Skip to the next sun position
        }
- 
+
        for (let i = 0; i < numDownwardRays; i++) {
            let angle;
            if (numDownwardRays === 1) {
@@ -444,7 +444,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false) {
                // (i / (numDownwardRays - 1)) will go from 0 to 1 as i goes from 0 to numDownwardRays-1.
                angle = (i / (numDownwardRays - 1)) * Math.PI;
            }
-        
+
 
             let rayCurrentGridCol = sunGridCol;
             let rayCurrentGridRow = sunGridRow;
@@ -527,7 +527,7 @@ export function executeInitialWorldGenerationSequence() {
     applyInitialFloodFill();
 
     World.resetAllBlockLighting();
-    const initialProposedLighting = applyLightingPass(false); 
+    const initialProposedLighting = applyLightingPass(false);
 
     initialProposedLighting.forEach(change => {
         const block = World.getBlock(change.c, change.r);
@@ -892,14 +892,14 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
 
     for (let i = 0; i < Config.SUN_RAYS_PER_POSITION; i++) {
         const angle = (i / Config.SUN_RAYS_PER_POSITION) * 2 * Math.PI;
-        
+
         let rayCurrentGridCol = sunGridCol;
         let rayCurrentGridRow = sunGridRow;
-        
+
         const rayEndGridColTarget = Math.floor(sunGridCol + Math.cos(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
         const rayEndGridRowTarget = Math.floor(sunGridRow + Math.sin(angle) * Config.MAX_LIGHT_RAY_LENGTH_BLOCKS);
 
-        let rayPixelEndX = sunWorldX; 
+        let rayPixelEndX = sunWorldX;
         let rayPixelEndY = sunWorldY;
 
         let dx_ray = Math.abs(rayEndGridColTarget - rayCurrentGridCol);
@@ -915,17 +915,17 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
 
             if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
                 rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
-                
+
                 const blockType = World.getBlockType(rayCurrentGridCol, rayCurrentGridRow);
                 if (blockType !== null && blockType !== Config.BLOCK_AIR && blockType !== Config.BLOCK_WATER) {
-                    break; 
+                    break;
                 }
             } else if (rayCurrentGridRow >= Config.GRID_ROWS || rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) {
-                break; 
+                break;
             }
 
             if (rayCurrentGridCol === rayEndGridColTarget && rayCurrentGridRow === rayEndGridRowTarget) {
-                break; 
+                break;
             }
 
             let e2_ray = 2 * err_ray;
@@ -933,7 +933,7 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
             if (e2_ray <  dx_ray) { err_ray += dx_ray; rayCurrentGridRow += sy_ray; }
             currentRayBlockLength++;
         }
-        
+
         ctx.beginPath();
         ctx.moveTo(sunWorldX, sunWorldY);
         ctx.lineTo(rayPixelEndX, rayPixelEndY);
@@ -1054,8 +1054,30 @@ export function updateStaticWorldAt(col, row) {
             if (finalColor) {
                 gridCtx.fillStyle = finalColor;
                 gridCtx.fillRect(Math.floor(blockX), Math.floor(blockY), blockW, blockH);
+
+                // NEW: Draw natural wood outline
+                if (currentBlockType === Config.BLOCK_WOOD && typeof block === 'object' && block !== null && !block.isPlayerPlaced) {
+                    gridCtx.save();
+                    gridCtx.strokeStyle = 'rgba(60, 40, 20, 0.7)'; // Darker brown, semi-transparent
+                    gridCtx.lineWidth = 1; // Thin outline
+
+                    // Left edge
+                    gridCtx.beginPath();
+                    gridCtx.moveTo(Math.floor(blockX) + 0.5, Math.floor(blockY));
+                    gridCtx.lineTo(Math.floor(blockX) + 0.5, Math.floor(blockY + blockH));
+                    gridCtx.stroke();
+
+                    // Right edge
+                    gridCtx.beginPath();
+                    gridCtx.moveTo(Math.floor(blockX + blockW) - 0.5, Math.floor(blockY));
+                    gridCtx.lineTo(Math.floor(blockX + blockW) - 0.5, Math.floor(blockY + blockH));
+                    gridCtx.stroke();
+                    gridCtx.restore();
+                }
+                // END NEW
+
                 const isPlayerPlaced = typeof block === 'object' && block !== null ? (block.isPlayerPlaced ?? false) : false;
-                if (isPlayerPlaced) {
+                if (isPlayerPlaced) { // This will draw player outline ON TOP of natural wood outline if both apply (which is fine)
                     gridCtx.save();
                     gridCtx.strokeStyle = Config.PLAYER_BLOCK_OUTLINE_COLOR;
                     gridCtx.lineWidth = Config.PLAYER_BLOCK_OUTLINE_THICKNESS;

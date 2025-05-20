@@ -68,49 +68,57 @@ UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), 
 }
 window.toggleSfxMute = toggleSfxMute;
 async function performBackgroundWorldGeneration() {
-if (worldGenerationPromise && isWorldGenerated) return;
-if (worldGenerationPromise && !isWorldGenerated) return worldGenerationPromise;
-isWorldGenerated = false;
-worldGenerationPromise = (async () => {
-    try {
-        WorldManager.executeInitialWorldGenerationSequence(); // This applies its own lighting pass initially
+    if (worldGenerationPromise && isWorldGenerated) return;
+    if (worldGenerationPromise && !isWorldGenerated) return worldGenerationPromise;
+    isWorldGenerated = false;
+    worldGenerationPromise = (async () => {
+        try {
+            WorldManager.executeInitialWorldGenerationSequence(); // This applies its own lighting pass initially
 
-        const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
-        for (let i = 0; i < initialAgingPasses; i++) {
-            // 1. Calculate lighting changes for this pass
-            const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // false to skip debug drawing
+            const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
+            for (let i = 0; i < initialAgingPasses; i++) {
+                // 1. Calculate lighting changes for this pass
+                const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // false to skip debug drawing
 
-            // 2. Apply these lighting changes directly to the world data
-            if (proposedLightingChangesThisPass.length > 0) {
-                proposedLightingChangesThisPass.forEach(change => {
-                    const block = World.getBlock(change.c, change.r);
+                // 2. Apply these lighting changes directly to the world data
+                if (proposedLightingChangesThisPass.length > 0) {
+                    proposedLightingChangesThisPass.forEach(change => {
+                        const block = World.getBlock(change.c, change.r);
+                        if (block && typeof block === 'object') {
+                            block.isLit = change.newLitState;
+                        }
+                    });
+                }
+                
+                // 3. Apply aging using the now updated lighting state
+                AgingManager.applyAging(null);
+            }
+
+            // ---- ADD THIS SECTION ----
+            console.log("[Main] Applying final lighting pass after all initial aging...");
+            const finalLightingChanges = WorldManager.applyLightingPass(false); // Calculate one last time
+            if (finalLightingChanges.length > 0) {
+                finalLightingChanges.forEach(change => {
+                    const block = World.getBlock(change.c, change.r); // Use World.getBlock
                     if (block && typeof block === 'object') {
                         block.isLit = change.newLitState;
                     }
                 });
-                // Optionally, if lighting animations are desired even during this phase, queue them.
-                // For initial generation, direct application is often sufficient,
-                // but for consistency with other parts:
-                // WorldManager.addProposedLightingChanges(proposedLightingChangesThisPass);
-                // However, since this is background, and animations are usually finalized,
-                // direct application is the most critical part. Let's stick to that for now.
+                console.log(`[Main] Final lighting pass lit ${finalLightingChanges.length} additional blocks.`);
             }
-            
-            // 3. Apply aging using the now updated lighting state
-            AgingManager.applyAging(null);
-        }
+            // ---- END OF ADDED SECTION ----
 
-        if (!Renderer.getGridCanvas()) Renderer.createGridCanvas();
-        WorldManager.renderStaticWorldToGridCanvas();
-        WorldManager.seedWaterUpdateQueue();
-        isWorldGenerated = true;
-    } catch (error) {
-        console.error("[Main] FATAL error during background world generation:", error);
-        isWorldGenerated = false;
-        throw error;
-    }
-})();
-return worldGenerationPromise;
+            if (!Renderer.getGridCanvas()) Renderer.createGridCanvas();
+            WorldManager.renderStaticWorldToGridCanvas();
+            WorldManager.seedWaterUpdateQueue();
+            isWorldGenerated = true;
+        } catch (error) {
+            console.error("[Main] FATAL error during background world generation:", error);
+            isWorldGenerated = false;
+            throw error;
+        }
+    })();
+    return worldGenerationPromise;
 }
 function handleWaveStart(waveNumber) {
 // console.log(Triggered by WaveManager - Starting Wave ${waveNumber});
