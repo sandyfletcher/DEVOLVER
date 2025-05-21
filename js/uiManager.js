@@ -1,5 +1,5 @@
 // -----------------------------------------------------------------------------
-// root/js/ui.js - Manages HTML Sidebar Elements and Updates
+// root/js/uiManager.js - Manages HTML Sidebar Elements and Updates
 // -----------------------------------------------------------------------------
 
 import * as Config from './utils/config.js';

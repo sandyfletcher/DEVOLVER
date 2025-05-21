@@ -2,7 +2,7 @@
 // root/js/waveManager.js
 // -----------------------------------------------------------------------------
 
-import * as UI from './ui.js';
+import * as UI from './uiManager.js';
 import * as Config from './utils/config.js';
 import * as ItemManager from './itemManager.js';
 import * as World from './utils/world.js';

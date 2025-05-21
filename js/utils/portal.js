@@ -1,9 +1,9 @@
 // -----------------------------------------------------------------------------
-// root/js/portal.js - The core structure that needs defending
+// root/js/utils/portal.js - The core structure that needs defending
 // -----------------------------------------------------------------------------
 
-import * as Config from './utils/config.js';
-import * as WaveManager from './waveManager.js'; // to check game state
+import * as Config from './config.js';
+import * as WaveManager from '../waveManager.js'; // to check game state
 
 export class Portal {
     constructor(x, y) {

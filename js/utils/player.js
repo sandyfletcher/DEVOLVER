@@ -1,49 +1,44 @@
 // -----------------------------------------------------------------------------
-// root/js/player.js - Player Character Class
+// root/js/utils/player.js - Player Character Class
 // -----------------------------------------------------------------------------
-import * as Config from './utils/config.js';
-import * as GridCollision from './utils/gridCollision.js';
-import * as WorldManager from './worldManager.js';
-import * as World from './utils/world.js';
-import * as AudioManager from './audioManager.js';
+
+import * as Config from './config.js';
+import * as GridCollision from './gridCollision.js';
+import * as WorldManager from '../worldManager.js';
+import * as World from './world.js';
 
 export class Player {
     constructor(x, y, width, height, color) {
-        // Initialize all properties with default or starting values
         this.x = x; // Initial x position (assumed pixels)
         this.y = y; // Initial y position (assumed pixels)
-        // Player dimensions are now scaled in config based on blocks
         this.width = Config.PLAYER_WIDTH;
         this.height = Config.PLAYER_HEIGHT;
-        // this.color = color; // Color is now handled by hitbox or image
-        // Physics state (velocity)
-        this.vx = 0; // Velocity in pixels per second
-        this.vy = 0; // Velocity in pixels per second
+        this.vx = 0; // velocity in pixels per second
+        this.vy = 0;
         this.isOnGround = false;
         this.isInWater = false;
-        this.waterJumpCooldown = 0; // Cooldown timer for water jumps/strokes (time-based)
+        this.waterJumpCooldown = 0; // cooldown for water jumps/strokes
         this.isOnRope = false;
-        this.ropeCol = -1; // Column of the rope the player is currently on
-        this.canGrabRopeTimer = 0; // Cooldown after detaching before auto-grabbing again
-        // --- Weapon & Inventory State ---
-        this.hasShovel = false; // Default false, set true in reset
+        this.ropeCol = -1; // column of the rope the player is currently on
+        this.canGrabRopeTimer = 0; // cooldown after detaching before auto-grabbing again
+        this.hasShovel = false; // set true in reset
         this.hasSword = false;
         this.hasSpear = false;
-        this.selectedItem = Config.WEAPON_TYPE_UNARMED; // Start unarmed
-        this.inventory = {}; // Stores counts of materials: { 'dirt': 10, 'stone': 5 }
-        this.partialCollection = {}; // NEW: Stores partial collection counts: { 'dirt': 0, 'vegetation': 0 }
-        this.placementCooldown = 0; // Timer for delaying consecutive block placements (time-based)
+        this.selectedItem = Config.WEAPON_TYPE_UNARMED; // start unarmed
+        this.inventory = {}; // store material counts of materials
+        this.partialCollection = {}; // store partial collection counts
+        this.placementCooldown = 0; // timer delaying consecutive block placements 
         // --- Combat State ---
         this.isAttacking = false; // Is the attack animation/hitbox active? (Controlled by attackTimer now)
-        this.attackTimer = 0; // Duration timer for the current attack (time-based)
-        this.attackCooldown = 0; // Cooldown timer until the next weapon attack is possible (time-based)
+        this.attackTimer = 0; // Duration timer for the current attack 
+        this.attackCooldown = 0; // Cooldown timer until the next weapon attack is possible 
         this.hitEnemiesThisSwing = []; // Tracks enemies hit during the current attack swing
         this.hitBlocksThisSwing = []; // Tracks blocks hit during the current attack swing ("col,row" keys)
         // --- Health State ---
         this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY; // Max health for UI display (remain fixed)
         this.currentHealth = Config.PLAYER_INITIAL_HEALTH; // Starting health (remain fixed)
         this.isInvulnerable = false; // Is the player currently immune to damage?
-        this.invulnerabilityTimer = 0; // Timer for invulnerability duration (time-based)
+        this.invulnerabilityTimer = 0; // Timer for invulnerability duration 
         // --- Targeting State ---
         this.targetWorldPos = { x: 0, y: 0 }; // Mouse position in world coordinates
         this.targetGridCell = { col: 0, row: 0 }; // Grid cell the mouse is over
@@ -53,7 +48,7 @@ export class Player {
         this._lastValidTargetGridCell = null;
         // --- Animation State ---
         this.isDying = false; // New flag: Is the death animation playing?
-        this.deathAnimationTimer = 0; // Timer for the death animation duration (time-based)
+        this.deathAnimationTimer = 0; // Timer for the death animation duration 
         this.deathAnimationFrame = 0; // For discrete spin animation steps
         // Player is active by default at start
         this.isActive = true;
@@ -63,8 +58,7 @@ export class Player {
             this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;
             this.y = Config.CANVAS_HEIGHT / 2 - this.height / 2;
         }
-        // Player Image
-        this.image = new Image();
+        this.image = new Image(); // player Image
         this.imageLoaded = false;
         this.image.onload = () => {
             this.imageLoaded = true;
@@ -75,8 +69,7 @@ export class Player {
             this.imageLoaded = false; // Explicitly set to false on error
         };
         try {
-            // Ensure PLAYER_IMAGE_PATH is a string.
-            if (typeof Config.PLAYER_IMAGE_PATH === 'string') {
+            if (typeof Config.PLAYER_IMAGE_PATH === 'string') { // Ensure PLAYER_IMAGE_PATH is a string.
                 this.image.src = Config.PLAYER_IMAGE_PATH;
             } else {
                 console.error("Player image path is not a string:", Config.PLAYER_IMAGE_PATH);
@@ -87,9 +80,7 @@ export class Player {
             this.imageLoaded = false; // Ensure loaded is false
         }
     }
-
     update(dt, inputState, targetWorldPos, targetGridCell) {
-        // ... (dying logic remains unchanged) ...
         if (this.isDying) {
             if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
                 console.warn("Player Update: Invalid delta time during dying.", dt);
@@ -121,7 +112,6 @@ export class Player {
             }
             return;
         }
-
         if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
             console.warn("Player Update: Invalid delta time.", dt);
             if (this.currentHealth <= 0 && !this.isDying && this.isActive) { 
@@ -129,7 +119,6 @@ export class Player {
             }
             return; 
         }
-        
         if (typeof targetWorldPos !== 'object' || targetWorldPos === null || typeof targetWorldPos.x !== 'number' || typeof targetWorldPos.y !== 'number' || isNaN(targetWorldPos.x) || isNaN(targetWorldPos.y)) {
             this.targetWorldPos = this._lastValidTargetWorldPos || { x: this.x + this.width / 2 + this.lastDirection * 50, y: this.y + this.height / 2 }; 
         } else {
@@ -143,18 +132,15 @@ export class Player {
             this.targetGridCell = targetGridCell;
             this._lastValidTargetGridCell = { ...this.targetGridCell }; 
         }
-        
         const playerCenterX = this.x + this.width / 2;
         const targetDeltaX = this.targetWorldPos.x - playerCenterX;
         if (Math.abs(targetDeltaX) > 1) { 
             this.lastDirection = Math.sign(targetDeltaX);
         }
-        
         this.isInWater = GridCollision.isEntityInWater(this); 
         if (!this.isInWater && this.waterJumpCooldown > 0) {
             this.waterJumpCooldown = 0;
         }
-        
         this._updateTimers(dt);
         const activeInputState = this.isActive && !this.isDying ? inputState : {};
         this._handleInput(dt, activeInputState);
@@ -162,9 +148,7 @@ export class Player {
         this._checkBoundaries();
         this.currentHealth = Math.max(0, this.currentHealth);
     }
-
     _updateTimers(dt) {
-        // ... (timer logic remains unchanged) ...
         if (this.canGrabRopeTimer > 0) this.canGrabRopeTimer -= dt;
         if (this.canGrabRopeTimer < 0) this.canGrabRopeTimer = 0;
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
@@ -188,9 +172,7 @@ export class Player {
             }
         }
     }
-
     _handleInput(dt, inputState) {
-        // ... (input handling remains unchanged) ...
         this._handleMovement(dt, inputState); 
         if (inputState.attack) { 
             if (this.isMaterialSelected()) {
@@ -222,9 +204,7 @@ export class Player {
             }
         }
     }
-
     _handleMovement(dt, inputState) {
-        // ... (movement handling logic remains unchanged) ...
         if (this.isOnRope) {
             this.vx = 0; 
             if (inputState.jump) { 
@@ -269,7 +249,6 @@ export class Player {
                     this.vx = 0;
                 }
             }
-
             if (inputState.jump && this.waterJumpCooldown <= 0) {
                 if (this.isInWater) {
                     this.vy = -Config.WATER_SWIM_VELOCITY;
@@ -282,36 +261,26 @@ export class Player {
             }
         }
     }
-
     _handlePlacementHold() {
-        // ... (placement logic remains unchanged) ...
         if (this.placementCooldown > 0) return;
-
         const selectedMaterialType = this.selectedItem;
         if ((this.inventory[selectedMaterialType] || 0) <= 0) return;
-
         const targetForPlacement = this.targetWorldPos || this._lastValidTargetWorldPos;
         if (!targetForPlacement || !this._isTargetWithinRange(targetForPlacement)) return;
-
         const targetCellForPlacement = this.targetGridCell || this._lastValidTargetGridCell;
         if (!targetCellForPlacement || typeof targetCellForPlacement.col !== 'number' || typeof targetCellForPlacement.row !== 'number' || isNaN(targetCellForPlacement.col) || isNaN(targetCellForPlacement.row)) return;
-        
         const targetCol = targetCellForPlacement.col;
         const targetRow = targetCellForPlacement.row;
-
         const targetBlockType = World.getBlockType(targetCol, targetRow);
         if (targetBlockType === null) return; 
-
         const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
         if (!canPlaceInTargetCell) return;
         if (this.checkPlacementOverlap(targetCol, targetRow)) return;
-
         if (selectedMaterialType === 'vegetation') {
             const blockAboveType = World.getBlockType(targetCol, targetRow - 1);
             const blockAboveData = World.getBlock(targetCol, targetRow - 1); 
             const canAttachToSolid = blockAboveData !== null && GridCollision.isSolid(targetCol, targetRow - 1);
             const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
-
             if (canAttachToSolid || canExtendRope) {
                 if (WorldManager.placePlayerBlock(targetCol, targetRow, Config.BLOCK_ROPE)) {
                     this.decrementInventory(selectedMaterialType);
@@ -332,16 +301,13 @@ export class Player {
             }
         }
     }
-
     _applyPhysics(dt) {
-        // --- Check for Rope Interaction BEFORE standard physics ---
-        if (!this.isOnRope && this.canGrabRopeTimer <= 0) {
+        if (!this.isOnRope && this.canGrabRopeTimer <= 0) { // Check for Rope Interaction BEFORE standard physics
             const playerRect = this.getRect();
             const minCheckCol = Math.max(0, Math.floor(playerRect.x / Config.BLOCK_WIDTH));
             const maxCheckCol = Math.min(Config.GRID_COLS - 1, Math.floor((playerRect.x + playerRect.width - GridCollision.E_EPSILON) / Config.BLOCK_WIDTH));
             const minCheckRow = Math.max(0, Math.floor(playerRect.y / Config.BLOCK_HEIGHT));
             const maxCheckRow = Math.min(Config.GRID_ROWS - 1, Math.floor((playerRect.y + playerRect.height - GridCollision.E_EPSILON) / Config.BLOCK_HEIGHT));
-
             let foundRope = false;
             for (let r = minCheckRow; r <= maxCheckRow; r++) {
                 for (let c = minCheckCol; c <= maxCheckCol; c++) {
@@ -369,16 +335,12 @@ export class Player {
                 this.canGrabRopeTimer = 0.1; 
             }
         }
-
-        // --- Standard Physics (modified by isOnRope) ---
-        if (this.isOnRope) {
+        if (this.isOnRope) { // --- Standard Physics (modified by isOnRope) ---
             this.y += this.vy * dt;
-
             const headCheckY = this.y;
             const feetCheckY = this.y + this.height;
             const headRow = Math.floor(headCheckY / Config.BLOCK_HEIGHT);
             const feetRow = Math.floor(feetCheckY / Config.BLOCK_HEIGHT);
-
             if (this.vy < 0 && GridCollision.isSolid(this.ropeCol, headRow)) {
                 this.y = (headRow + 1) * Config.BLOCK_HEIGHT; 
                 this.vy = 0;
@@ -397,13 +359,11 @@ export class Player {
         } else { // --- Not on Rope: Apply normal physics ---
             const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
             const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
-
             if (!this.isOnGround) {
                 this.vy += currentGravity * dt;
             } else {
                 if (this.vy > 0.1) this.vy = 0;
             }
-
             if (this.isInWater) {
                 this.vy *= verticalDampingFactor;
                 this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
@@ -413,35 +373,15 @@ export class Player {
                     this.vy = Config.MAX_FALL_SPEED;
                 }
             }
-
             const potentialMoveX = this.vx * dt;
             const potentialMoveY = this.vy * dt;
-
-            // Call the external collision resolution function
-            // This function directly modifies this.x, this.y, this.vx, this.vy
-            const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
-
-            // Update player state flags based on the collision result
-            this.isOnGround = collisionResult.isOnGround;
-
-            // Velocities (this.vx, this.vy) are already zeroed out by collideAndResolve if a collision occurred.
-            // No need for:
-            // if (collisionResult.collidedX && !collisionResult.didStepUp) { this.vx = 0; }
-            // if (collisionResult.collidedY) { this.vy = 0; }
-            //
-            // The specific logic for re-checking ground after a step-up (the `if (collisionResult.didStepUp && !this.isOnGround)` block)
-            // can be removed if GridCollision.collideAndResolve is trusted to correctly set isOnGround after a step.
-            // Keeping it might be a specific fix for edge cases not fully handled by collideAndResolve, or it might be a source of conflict.
-            // For now, let's assume collideAndResolve is authoritative.
-            // If specific "sticky feet" or ledge behavior is desired *beyond* what collideAndResolve does, that block could be reinstated carefully.
+            const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY); //  directly modifies this.x, this.y, this.vx, this.vy
+            this.isOnGround = collisionResult.isOnGround; // Update player state flags based on the collision result
         }
-
         this._checkBoundaries();
         this.currentHealth = Math.max(0, this.currentHealth);
     }
-
     _checkBoundaries() {
-        // ... (boundary checking remains unchanged) ...
         if (this.x < 0) {
             this.x = 0;
             if (this.vx < 0) this.vx = 0; 
@@ -454,10 +394,6 @@ export class Player {
             this.die(); 
         }
     }
-
-    // ... (Rest of the Player class methods: _isTargetWithinRange, checkPlacementOverlap, getGhostBlockInfo, draw, drawGhostBlock, drawPlacementRange, takeDamage, die, getAttackHitbox, collision tracking helpers, inventory methods, crafting, state checkers, damage getters, UI interaction methods, reset, resetPosition, isActive) ...
-    // These methods generally look fine and don't have obvious syntax errors or the type of issue that would be confused with one.
-    // Their correctness depends on the logic within and the config values.
     _isTargetWithinRange(targetWorldPos) {
         if (!targetWorldPos) return false;
         if (typeof this.x !== 'number' || typeof this.y !== 'number' ||
@@ -475,7 +411,6 @@ export class Player {
         const distSq = dx * dx + dy * dy;
         return distSq <= Config.PLAYER_INTERACTION_RANGE_SQ;
     }
-    
     checkPlacementOverlap(targetCol, targetRow) {
         if (targetCol < 0 || targetRow < 0 || targetCol >= Config.GRID_COLS || targetRow >= Config.GRID_ROWS) return true; 
         const blockRect = {
@@ -491,33 +426,24 @@ export class Player {
                         playerRect.y + playerRect.height > blockRect.y;
         return overlap; 
     }
-    
     getGhostBlockInfo() {
         if (!this.isMaterialSelected()) return null;
-        
         const targetCell = this.targetGridCell || this._lastValidTargetGridCell;
         if (!targetCell || typeof targetCell.col !== 'number' || typeof targetCell.row !== 'number' || isNaN(targetCell.col) || isNaN(targetCell.row)) return null;
         const { col, row } = targetCell;
-
         const targetWorldPosForCheck = this.targetWorldPos || this._lastValidTargetWorldPos;
         if (!targetWorldPosForCheck || !this._isTargetWithinRange(targetWorldPosForCheck)) return null;
-        
         const targetBlockType = World.getBlockType(col, row);
         if (targetBlockType === null) return null;
-
         const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
         if (!canPlaceInTargetCell) return null;
         if (this.checkPlacementOverlap(col, row)) return null;
-
         const selectedMaterialType = this.selectedItem;
-
         if (selectedMaterialType === 'vegetation') {
             const blockAboveType = World.getBlockType(col, row - 1);
             const blockAboveData = World.getBlock(col, row - 1);
-            
             const canAttachToSolid = blockAboveData !== null && GridCollision.isSolid(col, row - 1);
             const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
-
             if (canAttachToSolid || canExtendRope) {
                 const ropeProps = Config.BLOCK_PROPERTIES[Config.BLOCK_ROPE];
                 return { col: col, row: row, color: ropeProps?.color || Config.PLAYER_HITBOX_COLOR };
@@ -525,18 +451,14 @@ export class Player {
             return null; 
         } else { 
             if (!GridCollision.hasSolidNeighbor(col, row)) return null;
-            
             const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[selectedMaterialType];
             if (blockTypeToPlace === undefined) return null;
-            
             const blockProps = Config.BLOCK_PROPERTIES[blockTypeToPlace];
             const blockColor = blockProps?.color;
             if (!blockColor) return null;
-            
             return { col: col, row: row, color: blockColor };
         }
     }
-    
     draw(ctx) {
         if (!this.isActive && !this.isDying || !ctx) return;
         if (isNaN(this.x) || isNaN(this.y)) {
@@ -583,19 +505,15 @@ export class Player {
             ctx.restore(); 
             return; 
         }
-        
         let shouldDrawPlayer = true;
         if (this.isInvulnerable) {
             shouldDrawPlayer = Math.floor(performance.now() / 100) % 2 === 0;
         }
-        
         ctx.fillStyle = Config.PLAYER_HITBOX_COLOR;
         ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-
         if (shouldDrawPlayer && this.imageLoaded && this.image.complete && this.image.naturalWidth > 0) {
             ctx.drawImage(this.image, Math.floor(this.x), Math.floor(this.y), this.width, this.height);
         }
-
         if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             ctx.save(); 
             const playerCenterX = this.x + this.width / 2;
@@ -622,7 +540,6 @@ export class Player {
             }
             ctx.restore(); 
         }
-        
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             const hitbox = this.getAttackHitbox(); 
             if (hitbox) {
@@ -641,7 +558,6 @@ export class Player {
             }
         }
     }
-    
     drawGhostBlock(ctx) {
         if (!ctx) return; 
         const ghostInfo = this.getGhostBlockInfo(); 
@@ -673,7 +589,6 @@ export class Player {
             ctx.restore(); 
         }
     }
-
     drawPlacementRange(ctx) {
         if (!ctx || !this.isMaterialSelected() || this.isDying || !this.isActive) {
             return; 
@@ -696,7 +611,6 @@ export class Player {
         ctx.stroke();
         ctx.restore();
     }
-
     takeDamage(amount) {
         if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
             return;
@@ -711,7 +625,6 @@ export class Player {
             this.invulnerabilityTimer = Config.PLAYER_INVULNERABILITY_DURATION;
         }
     }
-    
     die() {
         if (!this.isActive || this.isDying) {
             if (this.currentHealth <= 0 && !this.isActive && !this.isDying) {
@@ -729,7 +642,6 @@ export class Player {
         this.deathAnimationTimer = Config.PLAYER_DEATH_ANIMATION_DURATION;
         this.deathAnimationFrame = 0; 
     }
-    
     getAttackHitbox() {
         if (!this.isAttacking || !this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED || this.isDying) {
             return null;
@@ -742,11 +654,8 @@ export class Player {
         const dx = targetX - playerCenterX;
         const dy = targetY - playerCenterY;
         const dist = Math.sqrt(dx * dx + dy * dy); 
-        let hitboxWidth, hitboxHeight, reachX, reachY_config; // Renamed reachY to reachY_config to avoid confusion
-        
-        // Temporary variables for hitbox center calculation within the switch
-        let tempHitboxCenterX, tempHitboxCenterY;
-
+        let hitboxWidth, hitboxHeight, reachX, reachY_config;
+        let tempHitboxCenterX, tempHitboxCenterY; // Temporary variables for hitbox center calculation within the switch
         switch (this.selectedItem) {
             case Config.WEAPON_TYPE_SWORD:
                 hitboxWidth = Config.PLAYER_SWORD_ATTACK_WIDTH; hitboxHeight = Config.PLAYER_SWORD_ATTACK_HEIGHT;
@@ -765,7 +674,6 @@ export class Player {
                 hitboxWidth = Config.PLAYER_SPEAR_ATTACK_WIDTH; 
                 hitboxHeight = Config.PLAYER_SPEAR_ATTACK_HEIGHT;
                 const spearReachDistance = Config.PLAYER_SPEAR_ATTACK_REACH_X; // Primary reach distance for spear
-
                 if (dist > GridCollision.E_EPSILON) {
                     const normX = dx / dist;
                     const normY = dy / dist;
@@ -793,11 +701,8 @@ export class Player {
                 break;
             default: return null; 
         }
-
-        // Calculate final hitbox top-left from its center, width, and height
-        const hitboxX = tempHitboxCenterX - hitboxWidth / 2;
+        const hitboxX = tempHitboxCenterX - hitboxWidth / 2; // Calculate final hitbox top-left from its center, width, and height
         const hitboxY = tempHitboxCenterY - hitboxHeight / 2;
-
         if (typeof hitboxX !== 'number' || typeof hitboxY !== 'number' ||
             typeof hitboxWidth !== 'number' || typeof hitboxHeight !== 'number' ||
             isNaN(hitboxX) || isNaN(hitboxY) || isNaN(hitboxWidth) || isNaN(hitboxHeight)) {
@@ -806,12 +711,10 @@ export class Player {
         }
         return { x: hitboxX, y: hitboxY, width: hitboxWidth, height: hitboxHeight };
     }
-    
     hasHitEnemyThisSwing(enemy) { return this.hitEnemiesThisSwing.includes(enemy); }
     registerHitEnemy(enemy) { if (!this.hasHitEnemyThisSwing(enemy)) { this.hitEnemiesThisSwing.push(enemy); } }
     hasHitBlockThisSwing(col, row) { const blockKey = `${col},${row}`; return this.hitBlocksThisSwing.includes(blockKey); }
     registerHitBlock(col, row) { const blockKey = `${col},${row}`; if (!this.hitBlocksThisSwing.includes(blockKey)) { this.hitBlocksThisSwing.push(blockKey); } }
-    
     pickupItem(item) {
         if (!item || !item.type) return false;
         let pickedUp = false;
@@ -844,7 +747,6 @@ export class Player {
         }
         return pickedUp;
     }    
-    
     hasWeapon(weaponType) {
         switch (weaponType) {
             case Config.WEAPON_TYPE_SWORD: return this.hasSword;
@@ -853,7 +755,6 @@ export class Player {
             default: return false; 
         }
     }
-    
     equipItem(itemType) {
         if (itemType === Config.WEAPON_TYPE_UNARMED) {
             this.selectedItem = Config.WEAPON_TYPE_UNARMED;
@@ -877,7 +778,6 @@ export class Player {
         }
         return false; 
     }
-    
     decrementInventory(itemType, amount = 1) { 
         if (Config.INVENTORY_MATERIALS.includes(itemType) && (this.inventory[itemType] || 0) >= amount) {
             this.inventory[itemType] -= amount;
@@ -888,7 +788,6 @@ export class Player {
         }
         return false; 
     }
-    
     craftItem(itemType) {
         const recipe = Config.CRAFTING_RECIPES[itemType];
         if (!recipe) {
@@ -933,23 +832,18 @@ export class Player {
         }
         return craftedSuccessfully;
     }
-
     getPartialCollection(materialType) {
         return this.partialCollection[materialType] || 0;
     }
-    
     isWeaponType(itemType) {
         return [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL].includes(itemType);
     }
-    
     isWeaponSelected() {
         return this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.isWeaponType(this.selectedItem);
     }
-    
     isMaterialSelected() {
         return Config.INVENTORY_MATERIALS.includes(this.selectedItem);
     }
-    
     getRect() {
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
@@ -957,13 +851,11 @@ export class Player {
         const safeHeight = (typeof this.height === 'number' && !isNaN(this.height)) ? this.height : 1;
         return { x: safeX, y: safeY, width: safeWidth, height: safeHeight };
     }
-    
     getPosition() {
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
         return { x: safeX, y: safeY };
     }
-    
     getCurrentHealth() { return this.currentHealth; }
     getMaxHealth() { return this.maxHealth; }
     getInventory() { return this.inventory; }
@@ -971,15 +863,12 @@ export class Player {
     getSwordStatus() { return this.hasSword; }
     getSpearStatus() { return this.hasSpear; }
     getCurrentlySelectedItem() { return this.selectedItem; }
-    
     getActiveInventoryMaterial() {
         return this.isMaterialSelected() ? this.selectedItem : null;
     }
-    
     getActiveWeaponType() {
         return this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED ? this.selectedItem : null;
     }
-    
     getCurrentAttackDamage() {
         if (!this.isWeaponSelected() || this.isDying) return 0;
         switch (this.selectedItem) {
@@ -989,13 +878,11 @@ export class Player {
             default: return 0;
         }
     }
-    
     getCurrentBlockDamage() {
         if (this.isDying) return 0;
         if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) return Config.PLAYER_SHOVEL_BLOCK_DAMAGE;
         return 0;
     }
-    
     setActiveInventoryMaterial(materialType) {
         if (this.isDying) return false;
         if (Config.INVENTORY_MATERIALS.includes(materialType)) {
@@ -1007,7 +894,6 @@ export class Player {
         }
         return false; 
     }
-    
     setActiveWeapon(weaponType) {
         if (this.isDying) return false;
         if (this.isWeaponType(weaponType) || weaponType === Config.WEAPON_TYPE_UNARMED) {
@@ -1037,7 +923,6 @@ export class Player {
         }
         return false; 
     }
-    
     reset() {
         console.log("Resetting player state...");
         this.x = Config.PLAYER_START_X;
@@ -1090,11 +975,9 @@ export class Player {
             this.imageLoaded = true; 
         }
     }
-    
     resetPosition() {
         this.die(); 
     }
-    
     isActive() {
         return this.isActive;
     }

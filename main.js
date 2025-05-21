@@ -2,8 +2,8 @@
 // root/js/main.js - Game Entry Point and Main Loop
 // -----------------------------------------------------------------------------
 
-import * as UI from './js/ui.js';
-import * as Input from './js/input.js';
+import * as UI from './js/uiManager.js';
+import * as Input from './js/inputManager.js';
 import * as Config from './js/utils/config.js';
 import * as Renderer from './js/renderer.js';
 import * as WaveManager from './js/waveManager.js';
@@ -15,8 +15,8 @@ import * as AudioManager from './js/audioManager.js';
 import * as AgingManager from './js/agingManager.js';
 import * as CollisionManager from './js/collisionManager.js';
 import * as FlowManager from './js/flowManager.js';
-import { Player } from './js/player.js';
-import { Portal } from './js/portal.js';
+import { Player } from './js/utils/player.js';
+import { Portal } from './js/utils/portal.js';
 import * as World from './js/utils/world.js';
 
 let gameStartTime = 0;
