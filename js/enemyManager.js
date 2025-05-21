@@ -27,8 +27,8 @@ export function trySpawnEnemy(enemyType) {
     const stats = Config.ENEMY_STATS[enemyType];
     // Read dimensions in BLOCK units from stats, then scale to pixels.
     // Use default BLOCK units if stats are missing, then scale.
-    const enemyWidthBlocks = stats?.width_BLOCKS ?? Config.DEFAULT_ENEMY_WIDTH_BLOCKS;
-    const enemyHeightBlocks = stats?.height_BLOCKS ?? Config.DEFAULT_ENEMY_HEIGHT_BLOCKS;
+    const enemyWidthBlocks = stats?.width_BLOCKS ?? Config.DEFAULT_ENEMY_WIDTH;
+    const enemyHeightBlocks = stats?.height_BLOCKS ?? Config.DEFAULT_ENEMY_HEIGHT;
     const enemyWidth = enemyWidthBlocks * Config.BLOCK_WIDTH;   // Scale to pixels
     const enemyHeight = enemyHeightBlocks * Config.BLOCK_HEIGHT; // Scale to pixels
     for (let attempt = 0; attempt < maxSpawnAttempts && !foundValidSpawnPoint; attempt++) {
