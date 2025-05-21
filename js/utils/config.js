@@ -316,11 +316,11 @@ export const AGING_PROB_TREE_CANOPY_DECAY = 0.01;
 
 // --- Animation Parameters ---
 
-export const AGING_ANIMATION_BLOCKS_AT_ONCE = 10; // Max number of blocks animating simultaneously
-export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.05; // Delay (seconds) before starting the next block animation in the queue
-export const AGING_ANIMATION_SWELL_DURATION = 0.12; // Duration (seconds) of the "swell" part
-export const AGING_ANIMATION_POP_DURATION = 0.06; // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
-export const AGING_ANIMATION_SWELL_SCALE = 1.8; // Max scale factor during swell (e.g., 1.5x size)
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 20; // Max number of blocks animating simultaneously
+export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.03; // Delay (seconds) before starting the next block animation in the queue
+export const AGING_ANIMATION_SWELL_DURATION = 0.1; // Duration (seconds) of the "swell" part
+export const AGING_ANIMATION_POP_DURATION = 0.05; // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
+export const AGING_ANIMATION_SWELL_SCALE = 2; // Max scale factor during swell (e.g., 1.5x size)
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
 export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (briefly)
 export const WARPPHASE_DURATION = 8.0; // Fixed duration of WARP PHASE in seconds .
@@ -330,14 +330,9 @@ export const ENEMY_SWELL_SCALE = 1.5; // Max scale factor during enemy swell (e.
 export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time in seconds for player death animation.
 export const PLAYER_SPIN_DURATION = 1.0; // Time in seconds for the spin part of player death.
 export const PLAYER_SPIN_FRAMES = 6; // Number of visual steps in the player spin animation.
-export const LIGHTING_ANIMATION_BLOCKS_AT_ONCE = 15; // Max number of blocks animating lighting simultaneously
-export const LIGHTING_ANIMATION_NEW_BLOCK_DELAY = 0.01; // Delay (seconds) before starting the next lighting animation
-export const LIGHTING_ANIMATION_DURATION = 0.4; // Duration (seconds) of the lighting flash/effect
-export const LIGHTING_ANIMATION_COLOR = 'rgba(255, 255, 150, 0.6)'; // Color for the lighting animation flash
-export const LIGHTING_ANIMATION_MAX_ALPHA = 0.7; // Max alpha for the flash (used if color has low alpha)
 export const LIT_BLOCK_BRIGHTNESS_FACTOR = 1.3; // How much brighter a lit block appears (multiplier for its base color)
 
-// --- Sun Animation (Visual Only for Warp Phase) ---
+// --- Sun Animation ---
 
 export const SUN_ANIMATION_ENABLED = true; // To easily toggle this new effect
 export const SUN_ANIMATION_COLOR = "rgba(255, 200, 100, 0.9)"; // Light orange fill, slightly transparent
@@ -393,15 +388,15 @@ export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above me
 
 // --- Player Parameters ---
 
-export const PLAYER_IMAGE_PATH = 'assets/player.png'; // Path to the player image
-export const PLAYER_HITBOX_COLOR = 'rgba(200, 50, 50, 0.3)'; // Color for the player's hitbox
+export const PLAYER_IMAGE_PATH = 'assets/player.png'; // path to player image
+export const PLAYER_HITBOX_COLOR = 'rgba(200, 50, 50, 0.3)';
 export const PLAYER_COLOR = 'rgb(200, 50, 50)';
-export const PLAYER_WIDTH = 3 * BLOCK_WIDTH; // Pixel width.
-export const PLAYER_HEIGHT = 6 * BLOCK_HEIGHT; // Pixel height.
+export const PLAYER_WIDTH = 3 * BLOCK_WIDTH;
+export const PLAYER_HEIGHT = 6 * BLOCK_HEIGHT;
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2; // Player start position (pixels, derived from block-based world constants).
 export const PLAYER_START_Y = (MEAN_GROUND_LEVEL * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT);
-export const PLAYER_INITIAL_HEALTH = 100; // Unitless.
-export const PLAYER_MAX_HEALTH_DISPLAY = 100; // Unitless, for UI.
+export const PLAYER_INITIAL_HEALTH = 100;
+export const PLAYER_MAX_HEALTH_DISPLAY = 100;
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds
 export const PLAYER_MOVE_ACCELERATION_BLOCKS_PER_SEC_SQ = 200; // Base acceleration in block widths/sec^2.
 export const PLAYER_MOVE_ACCELERATION = PLAYER_MOVE_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_WIDTH; // Pixels/sec^2.
@@ -481,8 +476,8 @@ export const CRAFTING_RECIPES = { // fixed material types and amounts
 
 export const MAX_ENEMIES = 150; // TODO: determine if necessary or if being restrictive for future spawning logic
 export const ENEMY_SPAWN_EDGE_MARGIN = 10 * BLOCK_WIDTH; // Distance from screen edge in block units
-export const ENEMY_FLASH_DURATION = 0.15; // seconds
-export const DEFAULT_ENEMY_WIDTH = 2; 
+export const ENEMY_FLASH_DURATION = 0.15;
+export const DEFAULT_ENEMY_WIDTH = 2; d
 export const DEFAULT_ENEMY_HEIGHT = 2;
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // Factor of enemy's own width.
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 15 * BLOCK_WIDTH; // Base push strength
@@ -492,7 +487,7 @@ export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
 export const TETRAPOD_WATER_CONTACT_DAMAGE = 1; // Tetrapod specific constants (damage is unitless, velocity is block units).
 export const TETRAPOD_LAND_FLOP_DAMAGE = 1;
 export const TETRAPOD_LAND_STILL_DAMAGE = 0;
-export const TETRAPOD_FLOP_ATTACK_DURATION = 0.2; // seconds
+export const TETRAPOD_FLOP_ATTACK_DURATION = 0.2;
 export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5;
 export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0;
 export const ENEMY_STATS = {

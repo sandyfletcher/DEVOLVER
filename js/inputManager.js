@@ -54,19 +54,56 @@ const handleKeyUp = (e) => {
     }
 };
 
+// REVISED function to correctly handle 'object-fit: contain'
 function getInternalMouseCoords(e) {
     if (!canvas) return { x: state.internalMouseX, y: state.internalMouseY };
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) {
+
+    const rect = canvas.getBoundingClientRect(); // CSS box of the canvas element
+
+    // Dimensions of the canvas element's CSS box
+    const cssBoxWidth = rect.width;
+    const cssBoxHeight = rect.height;
+
+    if (cssBoxWidth === 0 || cssBoxHeight === 0) {
+        // Avoid division by zero if canvas has no dimensions
         return { x: state.internalMouseX, y: state.internalMouseY };
     }
-    const displayMouseX = e.clientX - rect.left;
-    const displayMouseY = e.clientY - rect.top;
-    const internalX = displayMouseX * (canvas.width / rect.width);
-    const internalY = displayMouseY * (canvas.height / rect.height);
-    const clampedX = Math.max(0, Math.min(internalX, canvas.width));
-    const clampedY = Math.max(0, Math.min(internalY, canvas.height));
-    return { x: clampedX, y: clampedY };
+
+    // Internal resolution of the canvas (from its width/height attributes)
+    const internalWidth = canvas.width;
+    const internalHeight = canvas.height;
+
+    // Calculate the scale factor used by 'object-fit: contain'
+    // The browser scales the content uniformly to fit, maintaining aspect ratio.
+    const scale = Math.min(cssBoxWidth / internalWidth, cssBoxHeight / internalHeight);
+
+    // Dimensions of the *rendered content* within the CSS box
+    const renderedContentWidth = internalWidth * scale;
+    const renderedContentHeight = internalHeight * scale;
+
+    // Calculate letterboxing (offsets of the rendered content from the CSS box's top-left)
+    const offsetX = (cssBoxWidth - renderedContentWidth) / 2;
+    const offsetY = (cssBoxHeight - renderedContentHeight) / 2;
+
+    // Mouse position relative to the CSS box's top-left
+    const mouseXInCssBox = e.clientX - rect.left;
+    const mouseYInCssBox = e.clientY - rect.top;
+
+    // Mouse position relative to the *rendered content's* top-left
+    // If the click is in the letterbox area, these could be negative or > renderedContentWidth/Height
+    const mouseXInRenderedContent = mouseXInCssBox - offsetX;
+    const mouseYInRenderedContent = mouseYInCssBox - offsetY;
+
+    // Convert mouse position relative to rendered content back to internal canvas coordinates
+    let internalX = mouseXInRenderedContent / scale;
+    let internalY = mouseYInRenderedContent / scale;
+
+    // Clamp to the internal canvas dimensions. Clicks in letterbox areas will effectively
+    // be clamped to the edges of the internal canvas.
+    internalX = Math.max(0, Math.min(internalX, internalWidth));
+    internalY = Math.max(0, Math.min(internalY, internalHeight));
+
+    return { x: internalX, y: internalY };
 }
 
 const handleMouseDown = (e) => {
