@@ -378,7 +378,9 @@ function applyInitialFloodFill() {
 
 export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride = null) {
     let proposedChanges = [];
-    const blocksToAnimateThisPass = new Set();
+    // The `blocksToAnimateThisPass` set is not directly used in this logical lighting pass,
+    // but rather in the diffing logic that comes after, so it's commented out here to avoid confusion.
+    // const blocksToAnimateThisPass = new Set(); 
 
     const grid = World.getGrid();
     if (!grid || grid.length === 0) {
@@ -395,7 +397,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
         }
     }
 
-    const sunCenterPixelY = (SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
+    const sunCenterPixelY = (Config.SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
     const sunStartPixelX = Config.CANVAS_WIDTH + (Config.BLOCK_WIDTH * 10);
     const sunEndPixelX = -(Config.BLOCK_WIDTH * 10);
     
@@ -436,26 +438,52 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
             let err = dx - dy;
             let currentRayBlockLength = 0;
 
+            // Initialize light ray power for each new ray
+            let currentLightPower = Config.INITIAL_LIGHT_RAY_POWER;
+
             while (currentRayBlockLength < Config.MAX_LIGHT_RAY_LENGTH_BLOCKS) {
+                // If light power drops below threshold, the ray stops
+                if (currentLightPower < Config.MIN_LIGHT_THRESHOLD) {
+                    break;
+                }
+
                 if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
                     rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
                     const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow);
                     const blockProps = Config.BLOCK_PROPERTIES[block?.type ?? Config.BLOCK_AIR];
+
+                    // If the block is fully opaque (translucency 0.0), it blocks the ray entirely
+                    if (blockProps && blockProps.translucency === 0.0) {
+                        // The block gets lit if it wasn't already and has enough power
+                        if (typeof block === 'object' && block !== null && !block.isLit) {
+                             proposedChanges.push({ c: rayCurrentGridCol, r: rayCurrentGridRow, newLitState: true });
+                        }
+                        break; // Ray stops here
+                    }
+
+                    // If the block is air or fully transparent (translucency 1.0), it does not reduce light power
                     if (block === Config.BLOCK_AIR || (blockProps && blockProps.translucency === 1.0)) {
-                        // Ray passes
-                    } else if (typeof block === 'object' && block !== null && blockProps) {
+                        // Ray passes without power reduction
+                    } 
+                    // If the block is a solid object (not air/water, not fully opaque), reduce light power based on its translucency
+                    else if (typeof block === 'object' && block !== null && blockProps) {
+                        // Light the block if it's not already lit and has sufficient incoming light power
                         if (!block.isLit) {
-                            const changeKey = `${rayCurrentGridCol},${rayCurrentGridRow}`;
-                            // Note: We are collecting proposed changes, not adding to blocksToAnimateThisPass here
-                            // because this function is now primarily for LOGICAL updates.
-                            // The visual animation queuing will happen after a diff.
                             proposedChanges.push({ c: rayCurrentGridCol, r: rayCurrentGridRow, newLitState: true });
                         }
-                        if (blockProps.translucency === 0.0) break;
-                    } else { break; }
+                        // Reduce light power by the block's translucency factor
+                        currentLightPower *= blockProps.translucency;
+                    } 
+                    // Fallback for unknown or invalid block types, stop the ray as a safeguard
+                    else {
+                        break; 
+                    }
                 } else if (rayCurrentGridRow >= Config.GRID_ROWS || rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) {
+                    // Ray goes out of world bounds
                     break;
                 }
+
+                // Move to the next block along the ray
                 if (rayCurrentGridCol === rayEndGridCol && rayCurrentGridRow === rayEndGridRow) break;
                 let e2 = 2 * err;
                 if (e2 > -dy) { err -= dy; rayCurrentGridCol += sx; }

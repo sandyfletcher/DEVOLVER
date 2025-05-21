@@ -331,6 +331,8 @@ export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time in seconds for
 export const PLAYER_SPIN_DURATION = 1.0; // Time in seconds for the spin part of player death.
 export const PLAYER_SPIN_FRAMES = 6; // Number of visual steps in the player spin animation.
 export const LIT_BLOCK_BRIGHTNESS_FACTOR = 1.3; // How much brighter a lit block appears (multiplier for its base color)
+export const INITIAL_LIGHT_RAY_POWER = 1.0; // Starting power of a light ray
+export const MIN_LIGHT_THRESHOLD = 0.01; // Ray stops propagating if its power drops below this
 
 // --- Sun Animation ---
 
