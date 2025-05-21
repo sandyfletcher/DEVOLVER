@@ -1,6 +1,6 @@
 // =============================================================================
 // js/renderer.js - Canvas Setup and Drawing Operations
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 import * as Config from './utils/config.js';
 import * as GridCollision from './utils/gridCollision.js';
@@ -8,7 +8,7 @@ import * as GridCollision from './utils/gridCollision.js';
 let canvas = null;
 let ctx = null;
 let gridCanvas = null; // off-screen canvas element
-let gridCtx = null;    // context for off-screen canvas
+let gridCtx = null; // context for off-screen canvas
 let gameWrapperEl = null; // get dimensions for main canvas
 let cameraX = 0;
 let cameraY = 0;
@@ -19,7 +19,9 @@ let MIN_ZOOM_FACTOR = Config.MIN_CAMERA_SCALE;   // base min zoom, will be adjus
 const FULL_WORLD_PIXEL_WIDTH = Config.CANVAS_WIDTH; // total dimensions of game world
 const FULL_WORLD_PIXEL_HEIGHT = Config.CANVAS_HEIGHT;
 
-function handleResize() {
+function _getWorldPixelWidth() { return FULL_WORLD_PIXEL_WIDTH; } // get fixed pixel width of entire game world
+function _getWorldPixelHeight() { return FULL_WORLD_PIXEL_HEIGHT; } // fixed pixel height
+function _handleResize() {
     if (!canvas || !gameWrapperEl) return;
     const newWidth = gameWrapperEl.clientWidth;
     const newHeight = gameWrapperEl.clientHeight;
@@ -28,10 +30,9 @@ function handleResize() {
         canvas.height = newHeight;
         console.log(`Renderer: Canvas resized to ${canvas.width}x${canvas.height}`);
     } // gridCanvas size remains fixed to the full world dimensions (handled by createGridCanvas)
-    updateMinZoomFactorAndRecalculateScale(); // update min zoom and actual scale based on new canvas size,  also effectively re-clamps currentZoomFactor if needed
+    _updateMinZoomFactorAndRecalculateScale(); // update min zoom and actual scale based on new canvas size, also effectively re-clamps currentZoomFactor if needed
 }
-
-function updateMinZoomFactorAndRecalculateScale() {
+function _updateMinZoomFactorAndRecalculateScale() {
     if (!canvas || canvas.height === 0 || canvas.width === 0 || FULL_WORLD_PIXEL_HEIGHT === 0 || FULL_WORLD_PIXEL_WIDTH === 0) {
         MIN_ZOOM_FACTOR = Config.MIN_CAMERA_SCALE; // fallback to config's absolute min
         actualCameraScale = 1.0;
@@ -76,19 +77,23 @@ function updateMinZoomFactorAndRecalculateScale() {
     }
     // console.log(`Renderer: MinZoomFactor: ${MIN_ZOOM_FACTOR.toFixed(3)}, CurrentZoom: ${currentZoomFactor.toFixed(3)}, ActualScale: ${actualCameraScale.toFixed(3)}`);
 }
-
-export function init() { // Initializes the main canvas and rendering context. */
+export function getContext() { return ctx; } // main rendering context
+export function getGridContext() { return gridCtx; } // context for off-screen grid canvas
+export function getGridCanvas() { return gridCanvas; } // off-screen grid canvas HTML element itself
+export function getCanvas() { return canvas; }
+export function getCameraScale() { return actualCameraScale; } // effective scale applied
+export function getCurrentZoomFactor() { return currentZoomFactor; } // player-controlled zoom factor
+export function init() { // initialize main canvas and rendering context
     canvas = document.getElementById('game-canvas');
-    gameWrapperEl = document.getElementById('game-wrapper'); // Get the game wrapper element
+    gameWrapperEl = document.getElementById('game-wrapper'); // game wrapper element
     if (!canvas) { throw new Error("Renderer: Canvas element 'game-canvas' not found!"); }
     if (!gameWrapperEl) { throw new Error("Renderer: Game wrapper element 'game-wrapper' not found!"); }
-    handleResize(); // initial resize to set canvas internal dimensions and calculate initial scales
+    _handleResize(); // initial resize to set canvas internal dimensions and calculate initial scales
     ctx = canvas.getContext('2d');
     if (!ctx) { throw new Error("Renderer: Failed to get 2D context!"); }
     ctx.imageSmoothingEnabled = false;
-    window.addEventListener('resize', handleResize); // resize listener
+    window.addEventListener('resize', _handleResize); // resize listener
 }
-
 export function createGridCanvas() {
     gridCanvas = document.createElement('canvas');
     gridCanvas.width = FULL_WORLD_PIXEL_WIDTH; // grid canvas dimensions are fixed to the full world size
@@ -97,11 +102,6 @@ export function createGridCanvas() {
     if (!gridCtx) { throw new Error("Renderer: Failed to get 2D context for grid canvas!"); }
     gridCtx.imageSmoothingEnabled = false;
 }
-
-export function getContext() { return ctx; } //main rendering context
-export function getGridContext() { return gridCtx; } // context for off-screen grid canvas
-export function getGridCanvas() { return gridCanvas; } // off-screen grid canvas HTML element itself
-
 export function clear() { // clears entire main canvas and fills with the background color
     if (!ctx || !canvas) {
         console.error("Renderer: Cannot clear - not initialized.");
@@ -109,24 +109,16 @@ export function clear() { // clears entire main canvas and fills with the backgr
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Only clear to transparent
 }
-
 export function clearRect(x, y, width, height) {
     if (!ctx) { console.error("Renderer: Cannot clearRect - not initialized."); return; }
     ctx.clearRect(x, y, width, height);
 }
-
-export function getCanvas() { return canvas; }
-
-function getWorldPixelWidth() { return FULL_WORLD_PIXEL_WIDTH; } // get fixed pixel width of entire game world
-function getWorldPixelHeight() { return FULL_WORLD_PIXEL_HEIGHT; } // fixed pixel height
-
-export function updateZoomLevel(deltaZoom) { //  update abstract zoom level
+export function updateZoomLevel(deltaZoom) { // update abstract zoom level
     const oldZoomFactor = currentZoomFactor;
     currentZoomFactor += deltaZoom;
     currentZoomFactor = Math.max(MIN_ZOOM_FACTOR, Math.min(currentZoomFactor, MAX_ZOOM_FACTOR));
-
     if (currentZoomFactor !== oldZoomFactor) {
-         updateMinZoomFactorAndRecalculateScale(); // recalculate actualCameraScale
+        _updateMinZoomFactorAndRecalculateScale(); // recalculate actualCameraScale
     }
 }
 export function calculateInitialCamera(player) {
@@ -135,7 +127,7 @@ export function calculateInitialCamera(player) {
         return;
     }
     currentZoomFactor = 1.0; // start with zoom factor 1 (fits world height)
-    updateMinZoomFactorAndRecalculateScale(); // set actualCameraScale
+    _updateMinZoomFactorAndRecalculateScale(); // set actualCameraScale
     if (player && player.isActive) {
         const viewWidthOnCanvas = canvas.width;     // current canvas dimensions in CSS pixels
         const viewHeightOnCanvas = canvas.height;   
@@ -145,8 +137,8 @@ export function calculateInitialCamera(player) {
         const playerCenterY = player.y + player.height / 2;
         let targetX = playerCenterX - (visibleWorldWidth / 2);
         let targetY = playerCenterY - (visibleWorldHeight / 2);
-        const worldPixelWidthVal = getWorldPixelWidth();
-        const worldPixelHeightVal = getWorldPixelHeight();
+        const worldPixelWidthVal = _getWorldPixelWidth();
+        const worldPixelHeightVal = _getWorldPixelHeight();
         const maxCameraX = Math.max(0, worldPixelWidthVal - visibleWorldWidth);
         const maxCameraY = Math.max(0, worldPixelHeightVal - visibleWorldHeight);
         cameraX = Math.max(0, Math.min(targetX, maxCameraX));
@@ -155,14 +147,14 @@ export function calculateInitialCamera(player) {
         if (worldPixelHeightVal <= visibleWorldHeight) cameraY = (worldPixelHeightVal - visibleWorldHeight) / 2;
     } else {
         cameraX = 0;
-        cameraY = 0; // actualCameraScale is already set by updateMinZoomFactorAndRecalculateScale
+        cameraY = 0; // actualCameraScale already set by _updateMinZoomFactorAndRecalculateScale
     }
 }
 export function calculateCameraPosition(player, isGameRunning) {
     if (!canvas || !player || !player.isActive || !isGameRunning) return;
     const viewWidthOnCanvas = canvas.width;
     const viewHeightOnCanvas = canvas.height;
-    const visibleWorldWidth = viewWidthOnCanvas / actualCameraScale; // actualCameraScale is managed by zoom resize
+    const visibleWorldWidth = viewWidthOnCanvas / actualCameraScale; // actualCameraScale managed by zoom resize
     const visibleWorldHeight = viewHeightOnCanvas / actualCameraScale;
     const playerCenterX = player.x + player.width / 2;
     const playerCenterY = player.y + player.height / 2;
@@ -170,8 +162,8 @@ export function calculateCameraPosition(player, isGameRunning) {
     let targetY = playerCenterY - (visibleWorldHeight / 2);
     cameraX = targetX; // camera follows player
     cameraY = targetY;
-    const worldPixelWidthVal = getWorldPixelWidth();
-    const worldPixelHeightVal = getWorldPixelHeight();
+    const worldPixelWidthVal = _getWorldPixelWidth();
+    const worldPixelHeightVal = _getWorldPixelHeight();
     const maxCameraX = Math.max(0, worldPixelWidthVal - visibleWorldWidth); // clamp camera to world boundaries
     const maxCameraY = Math.max(0, worldPixelHeightVal - visibleWorldHeight);
     cameraX = Math.max(0, Math.min(cameraX, maxCameraX));
@@ -210,8 +202,6 @@ export function getMouseWorldCoords(inputMousePos) { // converts mouse coordinat
     return { x: worldX, y: worldY };
 }
 export function getMouseGridCoords(inputMousePos) {
-    const { x: worldX, y: worldY } = getMouseWorldCoords(inputMousePos); // Uses internal camera state
+    const { x: worldX, y: worldY } = getMouseWorldCoords(inputMousePos); // use internal camera state
     return GridCollision.worldToGridCoords(worldX, worldY);
 }
-export function getCameraScale() { return actualCameraScale; } // effective scale applied
-export function getCurrentZoomFactor() { return currentZoomFactor; } // player-controlled zoom factor
