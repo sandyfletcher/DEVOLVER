@@ -122,7 +122,7 @@ function endWave() {
     }
     if (currentMainWaveIndex + 1 < Config.WAVES.length) {
         state = 'BUILDPHASE';
-        buildPhaseTimer = waveData.intermissionDuration ?? (Config.AGING_DEFAULT_PASSES_PER_WAVE * 0.5 + 10.0);
+        buildPhaseTimer = waveData.intermissionDuration;
         currentMaxTimer = buildPhaseTimer;
         AudioManager.stopGameMusic();
     } else {
@@ -180,7 +180,7 @@ function triggerWarpCleanupAndCalculations() {
     let allGravityChangesFromAgingPasses = [];
     let allLightingChangesFromLoop = []; // To collect lighting changes for animation queueing
     if (nextWaveData && typeof nextWaveData === 'object') {
-        const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
+        const passes = nextWaveData.agingPasses;
         for (let i = 0; i < passes; i++) {
             console.log(`[WaveMgr] Warp Intermission - Pass ${i + 1}/${passes}`);
             // A. Reset lighting state before calculating for this pass

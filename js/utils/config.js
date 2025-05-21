@@ -288,7 +288,6 @@ export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT; // Threshold in pixels.
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
 export const AGING_INITIAL_PASSES = 10; // Number of aging passes on initial world generation.
-export const AGING_DEFAULT_PASSES_PER_WAVE = 5 // Default aging passes between waves.
 export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Probabilities (chance per eligible block per pass)
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
 export const AGING_PROB_WATER_EROSION_DIRT_VEGETATION = 0.9;
@@ -356,7 +355,7 @@ export const FIXED_SUN_ANIMATION_DURATION = 8.0;
 export const SUN_MOVEMENT_Y_ROW_OFFSET = 20;
 export const SUN_MOVEMENT_STEP_COLUMNS = 2;
 export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2);
-export const SUN_RAYS_PER_POSITION = 72; // Increased from 36 for more plentiful rays
+export const SUN_RAYS_PER_POSITION = 72; // increased for more plentiful rays
 
 // --- Delta-Time Physics ---
 
@@ -530,52 +529,52 @@ export const TETRAPOD_FLOP_ATTACK_DURATION = 0.2; // Seconds (time-based).
 export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5; // Seconds (time-based).
 export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0; // Seconds (time-based).
 export const ENEMY_STATS = { // Enemy Stats: Speeds/velocities/forces are base values in block units per second (or per sec^2).
-[ENEMY_TYPE_TETRAPOD]: {
-displayName: "Tetrapod", aiType: 'flopAI', color: 'rgb(100, 120, 80)',
-width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS, // Width in block units.
-height_BLOCKS: DEFAULT_ENEMY_HEIGHT_BLOCKS, // Height in block units.
-health: 1, contactDamage: 0, applyGravity: true, gravityFactor: 1.0,
-maxSpeedX_BLOCKS_PER_SEC: 3.75, // Formerly 15 relative to 4px block (15/4 = 3.75 blocks/sec)
-maxSpeedY_BLOCKS_PER_SEC: 12.5, // Formerly 50 relative to 4px block (50/4 = 12.5 blocks/sec)
-swimSpeed_BLOCKS_PER_SEC: 17.5, // Formerly 70 relative to 4px block
-canJump: true,
-jumpVelocity_BLOCKS_PER_SEC: 12.5, // Formerly 50 (2000.25) relative to 4px block
-canSwim: true, canFly: false,
-separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2,
-separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC * 0.8, // Base strength in block units.
-landHopHorizontalVelocity_BLOCKS_PER_SEC: 12.5, // Formerly 50 relative to 4px block
-dropTable: [{ type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }],
-},
-[ENEMY_TYPE_CENTER_SEEKER]: {
-displayName: "Seeker", aiType: 'seekCenter', color: 'rgb(80, 150, 80)',
-width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS,
-height_BLOCKS: DEFAULT_ENEMY_HEIGHT_BLOCKS,
-maxSpeedX_BLOCKS_PER_SEC: 10,
-maxSpeedY_BLOCKS_PER_SEC: 12.5,
-swimSpeed_BLOCKS_PER_SEC: 12.5,
-health: 1, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
-canJump: true,
-jumpVelocity_BLOCKS_PER_SEC: 25, // Formerly 100 (2000.5) relative to 4px
-canSwim: false, canFly: false,
-separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
-separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC,
-dropTable: [{ type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }],
-},
-[ENEMY_TYPE_PLAYER_CHASER]: {
-displayName: "Chaser", aiType: 'chasePlayer', color: 'rgb(150, 80, 80)',
-width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS,
-height_BLOCKS: DEFAULT_ENEMY_HEIGHT_BLOCKS,
-maxSpeedX_BLOCKS_PER_SEC: 13.75,
-maxSpeedY_BLOCKS_PER_SEC: 12.5,
-swimSpeed_BLOCKS_PER_SEC: 12.5,
-health: 2, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
-canJump: true,
-jumpVelocity_BLOCKS_PER_SEC: 37.5,
-canSwim: false, canFly: false,
-separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
-separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC,
-dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
-},
+    [ENEMY_TYPE_TETRAPOD]: {
+        displayName: "Tetrapod", aiType: 'flopAI', color: 'rgb(100, 120, 80)',
+        width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS, // Width in block units.
+        height_BLOCKS: DEFAULT_ENEMY_HEIGHT_BLOCKS, // Height in block units.
+        health: 1, contactDamage: 0, applyGravity: true, gravityFactor: 1.0,
+        maxSpeedX_BLOCKS_PER_SEC: 3.75, // Formerly 15 relative to 4px block (15/4 = 3.75 blocks/sec)
+        maxSpeedY_BLOCKS_PER_SEC: 12.5, // Formerly 50 relative to 4px block (50/4 = 12.5 blocks/sec)
+        swimSpeed_BLOCKS_PER_SEC: 17.5, // Formerly 70 relative to 4px block
+        canJump: true,
+        jumpVelocity_BLOCKS_PER_SEC: 12.5, // Formerly 50 (2000.25) relative to 4px block
+        canSwim: true, canFly: false,
+        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.2,
+        separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC * 0.8, // Base strength in block units.
+        landHopHorizontalVelocity_BLOCKS_PER_SEC: 12.5, // Formerly 50 relative to 4px block
+        dropTable: [{ type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }],
+    },
+    [ENEMY_TYPE_CENTER_SEEKER]: {
+        displayName: "Seeker", aiType: 'seekCenter', color: 'rgb(80, 150, 80)',
+        width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS,
+        height_BLOCKS: DEFAULT_ENEMY_HEIGHT_BLOCKS,
+        maxSpeedX_BLOCKS_PER_SEC: 10,
+        maxSpeedY_BLOCKS_PER_SEC: 12.5,
+        swimSpeed_BLOCKS_PER_SEC: 12.5,
+        health: 1, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
+        canJump: true,
+        jumpVelocity_BLOCKS_PER_SEC: 25, // Formerly 100 (2000.5) relative to 4px
+        canSwim: false, canFly: false,
+        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
+        separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC,
+        dropTable: [{ type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }],
+    },
+    [ENEMY_TYPE_PLAYER_CHASER]: {
+        displayName: "Chaser", aiType: 'chasePlayer', color: 'rgb(150, 80, 80)',
+        width_BLOCKS: DEFAULT_ENEMY_WIDTH_BLOCKS,
+        height_BLOCKS: DEFAULT_ENEMY_HEIGHT_BLOCKS,
+        maxSpeedX_BLOCKS_PER_SEC: 13.75,
+        maxSpeedY_BLOCKS_PER_SEC: 12.5,
+        swimSpeed_BLOCKS_PER_SEC: 12.5,
+        health: 2, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
+        canJump: true,
+        jumpVelocity_BLOCKS_PER_SEC: 37.5,
+        canSwim: false, canFly: false,
+        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
+        separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH_BLOCKS_PER_SEC,
+        dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
+    },
 };
 
 // --- Wave Scripting ---
@@ -584,69 +583,86 @@ export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const MYA_TRANSITION_ANIMATION_DURATION = 6.0; // seconds for the MYA number to animate
 export const WAVES = [
-{
-mainWaveNumber: 1,
-mya: 350,
-duration: 117,
-intermissionDuration: 15.0,
-audioTrack: AUDIO_TRACKS.wave1,
-agingPasses: 10,
-subWaves: [
-{ enemyGroups: [
-{ type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
-{ type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
-{ type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
-]},
-{ enemyGroups: [
-{ type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
-{ type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
-]},
-{ enemyGroups: [
-{ type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
-{ type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
-]}
-]
-},
-{
-mainWaveNumber: 2,
-mya: 300,
-duration: 137,
-intermissionDuration: 15.0,
-audioTrack: AUDIO_TRACKS.wave2,
-agingPasses: 10,
-subWaves: [
-{ enemyGroups: [
-{ type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
-{ type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
-]},
-{ enemyGroups: [
-{ type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
-{ type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
-]},
-{ enemyGroups: [
-{ type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
-{ type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
-{ type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
-]}
-]
-},
-{
-mainWaveNumber: 3,
-mya: 250,
-duration: 90,
-intermissionDuration: 15.0,
-audioTrack: AUDIO_TRACKS.wave3,
-agingPasses: 10,
-subWaves: [
-{ enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
-{ enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
-]
-}
-// Example for a future wave that might be "Present Day" or a custom text
-// {
-// mainWaveNumber: 4,
-// mya: 0, // Or customEpochText: "The Age of Mammals!"
-// duration: 120,
-// ...
-// }
+    {
+        mainWaveNumber: 1,
+        mya: 350,
+        duration: 117,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave1,
+        agingPasses: 5,
+        subWaves: [
+            { enemyGroups: [
+            { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
+            { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
+            { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
+            ]},
+            { enemyGroups: [
+            { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
+            { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
+            ]},
+            { enemyGroups: [
+            { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
+            { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
+            ]}
+        ]
+    },
+    {
+        mainWaveNumber: 2,
+        mya: 300,
+        duration: 137,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave2,
+        agingPasses: 5,
+        subWaves: [
+            { enemyGroups: [
+            { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
+            { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
+            ]},
+            { enemyGroups: [
+            { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
+            { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
+            ]},
+            { enemyGroups: [
+            { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
+            { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
+            { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
+            ]}
+        ]
+    },
+    {
+        mainWaveNumber: 3,
+        mya: 250,
+        duration: 30,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave3,
+        agingPasses: 5,
+        subWaves: [
+        { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+        { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+        ]
+    },
+    {
+        mainWaveNumber: 4,
+        mya: 200,
+        duration: 30,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave3,
+        agingPasses: 5,
+        subWaves: [
+        { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+        { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+        ]
+    },
+    {
+        mainWaveNumber: 5,
+        customEpochText: "Present Day!", // sub out mya for custom text
+        duration: 30,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave3,
+        agingPasses: 5,
+        subWaves: [
+        { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+        { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+        ]
+    }
 ];
