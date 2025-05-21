@@ -1,48 +1,41 @@
+// -----------------------------------------------------------------------------
 // root/js/ui.js - Manages HTML Sidebar Elements and Updates
+// -----------------------------------------------------------------------------
 
 import * as Config from './utils/config.js';
 import * as EnemyManager from './enemyManager.js';
 import * as AudioManager from './audioManager.js';
 import * as WorldManager from './worldManager.js';
 
-// Top UI Overlay (replaces top-sidebar)
 let topUiOverlayEl = null;
 let playerColumnEl, portalColumnEl;
 let playerHealthBarContainerEl, playerHealthBarFillEl;
 let portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl;
 let timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl;
-// Bottom UI Overlay (replaces bottom-sidebar)
 let bottomUiOverlayEl;
 let itemSelectionAreaEl;
 let inventoryBoxesContainerEl, weaponSlotsContainerEl;
-// --- Settings Menu References ---
 let settingsBtnToggleGrid = null;
 let settingsBtnMuteMusic = null;
 let settingsBtnMuteSfx = null;
 let settingsValueGrid = null;
 let settingsValueMusic = null;
 let settingsValueSfx = null;
-// Overlay
 let bootOverlayEl = null;
 let epochOverlayEl = null;
-let epochHideTimer = null; // Stores the timer ID for showEpochText's fade-out
-// --- Pause Menu Epoch Text ---
+let epochHideTimer = null;
 let pauseMenuEpochTextEl = null;
-// --- Internal State ---
 let playerRef = null;
 let portalRef = null;
 const itemSlotDivs = {};
 const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SHOVEL, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SWORD];
 let isUIReady = false;
-
-// --- MYA Transition State ---
 let isMyaTransitionActive = false;
 let myaTransitionFrom = 0;
 let myaTransitionTo = 0;
 let myaTransitionTimer = 0;
 let myaTransitionDuration = 0;
 let myaTransitionCurrentDisplayValue = 0;
-
 
 export function initOverlay() {
     bootOverlayEl = document.getElementById('boot-overlay');
@@ -54,9 +47,7 @@ export function initOverlay() {
 }
 export function initGameUI() {
     let success = true;
-    // --- Find Top UI Overlay Elements ---
-    topUiOverlayEl = document.getElementById('top-ui-overlay'); // New
-    // Elements within top-ui-overlay (their IDs remain the same)
+    topUiOverlayEl = document.getElementById('top-ui-overlay');
     playerColumnEl = document.getElementById('player-column');
     portalColumnEl = document.getElementById('portal-column');
     playerHealthBarContainerEl = document.getElementById('player-health-bar-container');
@@ -68,36 +59,24 @@ export function initGameUI() {
     timerBarContainerEl = document.getElementById('timer-bar-container');
     timerBarFillEl = document.getElementById('timer-bar-fill');
     timerTextOverlayEl = document.getElementById('timer-text-overlay');
-    // --- Find Bottom UI Overlay Elements ---
-    bottomUiOverlayEl = document.getElementById('bottom-ui-overlay'); // New
-    // Elements within bottom-ui-overlay (their IDs remain the same)
+    bottomUiOverlayEl = document.getElementById('bottom-ui-overlay');
     itemSelectionAreaEl = document.getElementById('item-selection-area');
     inventoryBoxesContainerEl = document.getElementById('inventory-boxes-container');
     weaponSlotsContainerEl = document.getElementById('weapon-slots-container');
-    // --- NEW: Find Settings Menu Elements ---
     settingsBtnToggleGrid = document.getElementById('settings-btn-toggle-grid');
     settingsBtnMuteMusic = document.getElementById('settings-btn-mute-music');
     settingsBtnMuteSfx = document.getElementById('settings-btn-mute-sfx');
     settingsValueGrid = document.getElementById('settings-value-grid');
     settingsValueMusic = document.getElementById('settings-value-music');
     settingsValueSfx = document.getElementById('settings-value-sfx');
-    // Find Epoch Overlay Element
     epochOverlayEl = document.getElementById('epoch-overlay');
-    // --- Find Pause Menu Epoch Text Element ---
     pauseMenuEpochTextEl = document.getElementById('pause-menu-epoch-text');
-    // --- Verification ---
-    const requiredElements = [
-        topUiOverlayEl, // Check new parent
-        playerColumnEl, portalColumnEl,
-        playerHealthBarContainerEl, playerHealthBarFillEl,
-        portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl,
-        timerRowEl, timerBarContainerEl, timerBarFillEl, timerTextOverlayEl,
-        bottomUiOverlayEl, // Check new parent
-        itemSelectionAreaEl, inventoryBoxesContainerEl, weaponSlotsContainerEl,
-        settingsBtnToggleGrid, settingsBtnMuteMusic, settingsBtnMuteSfx,
-        settingsValueGrid, settingsValueMusic, settingsValueSfx,
-        epochOverlayEl,
-        pauseMenuEpochTextEl // Added pause menu epoch text element
+    const requiredElements = [ // verification
+        topUiOverlayEl, playerColumnEl, portalColumnEl, playerHealthBarContainerEl, playerHealthBarFillEl, 
+        portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl, timerRowEl, timerBarContainerEl, 
+        timerBarFillEl, timerTextOverlayEl, bottomUiOverlayEl,itemSelectionAreaEl, inventoryBoxesContainerEl, 
+        weaponSlotsContainerEl, settingsBtnToggleGrid, settingsBtnMuteMusic, settingsBtnMuteSfx, settingsValueGrid, 
+        settingsValueMusic, settingsValueSfx, epochOverlayEl, pauseMenuEpochTextEl
     ];
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
@@ -119,38 +98,33 @@ export function initGameUI() {
         });
         success = false;
     }
-    // --- Clear previous dynamic content and listeners ---
-    if (inventoryBoxesContainerEl) inventoryBoxesContainerEl.innerHTML = 'Loading...';
+    if (inventoryBoxesContainerEl) inventoryBoxesContainerEl.innerHTML = 'Loading...'; // clear previous dynamic content and listeners
     if (weaponSlotsContainerEl) weaponSlotsContainerEl.innerHTML = '';
     for (const key in itemSlotDivs) {
         delete itemSlotDivs[key];
     }
-    // --- Create Item/Weapon Selection Boxes Dynamically ---
-    if (inventoryBoxesContainerEl && weaponSlotsContainerEl) {
+    if (inventoryBoxesContainerEl && weaponSlotsContainerEl) { // create item/weapon selection boxes dynamically
         inventoryBoxesContainerEl.innerHTML = '';
         weaponSlotsContainerEl.innerHTML = '';
-        // Create 15 Material Slots
-        for (let i = 0; i < 15; i++) {
+        for (let i = 0; i < 15; i++) { // create 15 material slots
             if (i < Config.INVENTORY_MATERIALS.length) {
                 createItemSlot(Config.INVENTORY_MATERIALS[i], inventoryBoxesContainerEl, 'material');
             } else {
-                // Create a placeholder slot
-                createItemSlot(`placeholder_material_${i - Config.INVENTORY_MATERIALS.length}`, inventoryBoxesContainerEl, 'material-placeholder');
+                createItemSlot(`placeholder_material_${i - Config.INVENTORY_MATERIALS.length}`, inventoryBoxesContainerEl, 'material-placeholder'); // create placeholder slot
             }
         }
-        for (let i = 0; i < 15; i++) { // Create 15 Weapon Slots
+        for (let i = 0; i < 15; i++) { // create 15 weapon slots
             if (i < WEAPON_SLOTS_ORDER.length) {
                 createItemSlot(WEAPON_SLOTS_ORDER[i], weaponSlotsContainerEl, 'weapon');
             } else {
-                // Create a placeholder slot
-                createItemSlot(`placeholder_weapon_${i - WEAPON_SLOTS_ORDER.length}`, weaponSlotsContainerEl, 'weapon-placeholder');
+                createItemSlot(`placeholder_weapon_${i - WEAPON_SLOTS_ORDER.length}`, weaponSlotsContainerEl, 'weapon-placeholder'); // create placeholder slot
             }
         }
     } else { 
         success = false;
     }
-    if (success) {     // --- Set Initial States and Add Event Listeners ---
-        settingsBtnToggleGrid.addEventListener('click', () => { // Add Event Listeners for Settings Buttons
+    if (success) { // set initial states and add event listeners
+        settingsBtnToggleGrid.addEventListener('click', () => {
             if (typeof window.toggleGridDisplay === 'function') {
                 window.toggleGridDisplay();
             } else {
@@ -171,10 +145,10 @@ export function initGameUI() {
                 console.error("UI Error: toggleSfxMute function not found on window.");
             }
         });
-        updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // Initial states
+        updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // initial state
         updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH);
         updateWaveTimer({ state: 'LOADING', timer: 0, maxTimer: 1, progressText: "Loading...", mainWaveNumber: 0 });
-        updatePauseMenuEpochText(""); // Initialize pause menu epoch text as empty
+        updatePauseMenuEpochText(""); // initialize pause menu epoch text as empty
         isUIReady = true;
     } else {
         isUIReady = false;
@@ -182,7 +156,7 @@ export function initGameUI() {
     }
     return success;
 }
-function createItemSlot(itemType, container, category) { // Helper to create and setup a single item/weapon slot div
+function createItemSlot(itemType, container, category) { // create and setup a single item/weapon slot div
      if (!container) {
         console.error(`UI createItemSlot: Container element is null for type "${itemType}".`);
         return;
@@ -192,13 +166,11 @@ function createItemSlot(itemType, container, category) { // Helper to create and
     slotDiv.dataset.item = itemType; 
     slotDiv.dataset.category = category; 
     slotDiv.classList.add('disabled'); 
-
     let titleText = itemType.toUpperCase(); 
     if (category === 'material') {
         const blockTypeForMaterial = Config.MATERIAL_TO_BLOCK_TYPE[itemType];
         const blockProps = Config.BLOCK_PROPERTIES[blockTypeForMaterial];
         slotDiv.style.backgroundColor = blockProps?.color || '#444';
-
         const countSpan = document.createElement('span'); 
         countSpan.classList.add('item-count');
         countSpan.textContent = ''; 
@@ -239,8 +211,7 @@ function createItemSlot(itemType, container, category) { // Helper to create and
     container.appendChild(slotDiv);
     itemSlotDivs[itemType] = slotDiv;
 }
-// Helper function to handle clicks on item/weapon slots
-function handleItemSlotClick(itemType, category) {
+function handleItemSlotClick(itemType, category) { // handle clicks on item/weapon slots
     if (category.includes('-placeholder')) {
         return;
     }
@@ -273,7 +244,7 @@ function handleItemSlotClick(itemType, category) {
         }
     }
 }
-export function setPlayerReference(playerObject) { // Sets the reference to the player object
+export function setPlayerReference(playerObject) { // set reference to player object
     playerRef = playerObject;
     if (playerRef) {
         requestAnimationFrame(() => {
@@ -303,7 +274,7 @@ export function setPlayerReference(playerObject) { // Sets the reference to the 
         }
     }
 }
-export function setPortalReference(portalObject) { // Sets the reference to the portal object
+export function setPortalReference(portalObject) { // set reference to portal object
     portalRef = portalObject;
     if (portalRef) {
         requestAnimationFrame(() => {
@@ -314,7 +285,7 @@ export function setPortalReference(portalObject) { // Sets the reference to the 
         if (portalColumnH2El) portalColumnH2El.style.color = 'white'; 
     }
 }
-export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMuted) { // Updates the visual state of settings buttons
+export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMuted) { // update visual state of settings buttons
     if (settingsBtnToggleGrid && settingsValueGrid) {
         settingsBtnToggleGrid.classList.toggle('active', isGridVisible);
         settingsBtnToggleGrid.title = isGridVisible ? 'Hide Grid Overlay' : 'Show Grid Overlay';
@@ -334,7 +305,7 @@ export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMut
         settingsValueSfx.style.color = isSfxMuted ? 'red' : 'lime';
     }
 }
-export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) { // Updates player health bar and inventory/weapon slots
+export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) { // update player health bar and inventory/weapon slots
      if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
         console.error("UI UpdatePlayerInfo: Missing essential elements.");
         if(playerHealthBarFillEl){
@@ -363,7 +334,6 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             const partialCount = getPartialCollectionFn(materialType);
             isDisabled = (count === 0 && partialCount === 0);
             currentTitle = `${materialType.toUpperCase()} (${count} full, ${partialCount}/4 collected)`;
-
             const quadrants = slotDiv.querySelectorAll('.quadrant-container .quadrant');
             if (quadrants.length === 4) { 
                  quadrants[0].classList.toggle('filled', partialCount >= 1);
@@ -429,7 +399,7 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         slotDiv.title = titleText;
     }
 }
-export function updatePortalInfo(currentHealth, maxHealth) { // Updates the portal health bar and its title color
+export function updatePortalInfo(currentHealth, maxHealth) { // updates portal health bar and color
     if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) {
         console.error("UI UpdatePortalInfo: Missing essential elements.");
         if(portalHealthBarFillEl){
@@ -449,7 +419,7 @@ export function updatePortalInfo(currentHealth, maxHealth) { // Updates the port
         else portalColumnH2El.style.color = 'red'; 
     }
 }
-export function updateWaveTimer(waveInfo) { // Updates the wave timer bar and text
+export function updateWaveTimer(waveInfo) { // updates timer bar and text
     if (!timerBarFillEl || !timerTextOverlayEl || !timerRowEl) {
         console.error("UI UpdateWaveTimer: Missing essential elements.");
         return;
@@ -481,13 +451,9 @@ export function updateWaveTimer(waveInfo) { // Updates the wave timer bar and te
             break;
         case 'WARPPHASE': 
         case 'WARP_ANIMATING':
-            // Text for WARP_ANIMATING is now handled by updateMyaEpochTransition or showEpochText
-            // Timer bar might show 100% or 0% based on desired visual during this phase.
-            // For now, let it use the (1,1) values from waveManager if passed.
-            // We can hide the timer text overlay or change it if needed.
-            displayTimerValue = false; // Don't show raw timer for warp
-            timerText = ""; // Clear text, epoch overlay will show MYA
-            if (timerBarFillEl) timerBarFillEl.style.width = '100%'; // Keep bar full during warp
+            displayTimerValue = false; // don't show raw timer for warp
+            timerText = ""; // clear text, epoch overlay will show MYA
+            if (timerBarFillEl) timerBarFillEl.style.width = '100%'; // bar full during warp
             break;
         case 'GAME_OVER':
             timerText = "GAME OVER";
@@ -511,14 +477,11 @@ export function updateWaveTimer(waveInfo) { // Updates the wave timer bar and te
     }
     timerTextOverlayEl.textContent = timerText;
 }
-
-// Helper to format MYA values
-function formatMya(myaValue) {
+function formatMya(myaValue) { // helper to format MYA values
     if (typeof myaValue !== 'number' || isNaN(myaValue)) return "Time Unknown";
     if (myaValue === 0) return "Present Day";
     return `${Math.round(myaValue)} Million Years Ago`;
 }
-
 export function showEpochText(valueOrString) {
     if (!epochOverlayEl) {
         console.warn("UI showEpochText: Element not found.", epochOverlayEl);
@@ -527,19 +490,15 @@ export function showEpochText(valueOrString) {
     if (isMyaTransitionActive) {
         return;
     }
-
     const textToDisplay = (typeof valueOrString === 'number') ? formatMya(valueOrString) : valueOrString;
     epochOverlayEl.textContent = textToDisplay;
-
     if (epochHideTimer) {
         clearTimeout(epochHideTimer);
         epochHideTimer = null;
     }
-
     epochOverlayEl.style.transition = 'opacity 0.5s ease-in-out, visibility 0s linear 0s';
     epochOverlayEl.style.visibility = 'visible';
     epochOverlayEl.style.opacity = '1';
-
     const displayDurationMs = Config.EPOCH_DISPLAY_DURATION * 1000;
     epochHideTimer = setTimeout(() => {
         epochOverlayEl.style.opacity = '0';
@@ -551,10 +510,8 @@ export function showEpochText(valueOrString) {
         }, 500); 
     }, displayDurationMs);
 }
-
 export function startMyaEpochTransition(fromMya, toMya, duration) {
     if (!epochOverlayEl) return;
-
     console.log(`[UI] Starting MYA transition from ${fromMya} to ${toMya} over ${duration}s`);
     isMyaTransitionActive = true;
     myaTransitionFrom = fromMya;
@@ -562,32 +519,24 @@ export function startMyaEpochTransition(fromMya, toMya, duration) {
     myaTransitionDuration = duration;
     myaTransitionTimer = duration;
     myaTransitionCurrentDisplayValue = fromMya;
-
     if (epochHideTimer) {
         clearTimeout(epochHideTimer);
         epochHideTimer = null;
     }
-
     epochOverlayEl.style.transition = 'none';
     epochOverlayEl.style.visibility = 'visible';
     epochOverlayEl.style.opacity = '1';
     epochOverlayEl.textContent = formatMya(myaTransitionCurrentDisplayValue);
 }
-
 export function updateMyaEpochTransition(dt) {
     if (!isMyaTransitionActive || !epochOverlayEl) return;
-
     myaTransitionTimer -= dt;
-
     if (myaTransitionTimer <= 0) {
         isMyaTransitionActive = false;
         epochOverlayEl.textContent = formatMya(myaTransitionTo);
-
         epochOverlayEl.style.transition = 'opacity 0.5s ease-in-out, visibility 0s linear 0s';
         epochOverlayEl.style.opacity = '1';
-
         if (epochHideTimer) clearTimeout(epochHideTimer);
-
         const finalDisplayDuration = Config.EPOCH_DISPLAY_DURATION * 500; 
         epochHideTimer = setTimeout(() => {
             epochOverlayEl.style.opacity = '0';
@@ -596,20 +545,16 @@ export function updateMyaEpochTransition(dt) {
                 epochHideTimer = null;
             }, 500);
         }, finalDisplayDuration);
-
         console.log(`[UI] MYA transition finished. Displaying: ${formatMya(myaTransitionTo)}`);
         return;
     }
-
     const progress = Math.max(0, Math.min(1, 1 - (myaTransitionTimer / myaTransitionDuration)));
     let nextDisplayValue = Math.round(myaTransitionFrom + (myaTransitionTo - myaTransitionFrom) * progress);
-    
     if (nextDisplayValue !== myaTransitionCurrentDisplayValue) {
         myaTransitionCurrentDisplayValue = nextDisplayValue;
         epochOverlayEl.textContent = formatMya(myaTransitionCurrentDisplayValue);
     }
 }
-
 export function updatePauseMenuEpochText(epochText) {
     if (!pauseMenuEpochTextEl) {
         console.warn("UI updatePauseMenuEpochText: Element not found.");
@@ -623,8 +568,7 @@ export function updatePauseMenuEpochText(epochText) {
         pauseMenuEpochTextEl.style.display = 'none';
     }
 }
-
-export function isInitialized() { // Add a getter to check if the main game UI initialization was successful
+export function isInitialized() { // getter to check if main game UI initialization was successful
     return isUIReady;
 }
 export function getMyaTransitionInfo() {
