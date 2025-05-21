@@ -23,10 +23,8 @@ function _getWorldPixelWidth() { return FULL_WORLD_PIXEL_WIDTH; } // get fixed p
 function _getWorldPixelHeight() { return FULL_WORLD_PIXEL_HEIGHT; } // fixed pixel height
 function _handleResize() {
     if (!canvas || !gameWrapperEl) return;
-
     const newDisplayWidth = gameWrapperEl.clientWidth;
     const newDisplayHeight = gameWrapperEl.clientHeight;
-
     // Only update canvas's internal drawing buffer dimensions if the wrapper has positive size.
     // If the wrapper is display: none, its clientWidth/Height will be 0.
     // In such cases, we want the canvas to retain its last valid (non-zero) size.
@@ -36,19 +34,10 @@ function _handleResize() {
             canvas.height = newDisplayHeight;
             console.log(`Renderer: Canvas drawing buffer resized to ${canvas.width}x${canvas.height}`);
         }
-    } else {
-        // If newDisplayWidth or newDisplayHeight is 0, it means the gameWrapperEl is hidden.
-        // The canvas should keep its last set valid dimensions.
-        // This prevents canvas.width/height from becoming 0.
-        // No explicit console.log here to avoid spamming if wrapper is repeatedly 0.
     }
-
     _updateMinZoomFactorAndRecalculateScale(); // update min zoom and actual scale based on current canvas dimensions
 }
 function _updateMinZoomFactorAndRecalculateScale() {
-    // This check is crucial. After the _handleResize modification, canvas.width/height should
-    // never be 0 (unless init() itself failed or Config values are 0).
-    // The previous error messages about zero dimensions will no longer occur.
     if (!canvas || canvas.height === 0 || canvas.width === 0 || FULL_WORLD_PIXEL_HEIGHT === 0 || FULL_WORLD_PIXEL_WIDTH === 0) {
         MIN_ZOOM_FACTOR = Config.MIN_CAMERA_SCALE; // fallback to config's absolute min
         actualCameraScale = 1.0;
@@ -65,11 +54,6 @@ function _updateMinZoomFactorAndRecalculateScale() {
     // The minimum zoom factor should allow viewing either the full height (zoomFactor=1.0) or full width.
     // So, it's the smaller of 1.0 (fits height) and zoomFactorToFitWidth (fits width).
     MIN_ZOOM_FACTOR = Math.min(1.0, zoomFactorToFitWidth);
-    // Now, also consider the absolute minimum scale from Config.js
-    // We need to convert Config.MIN_CAMERA_SCALE (an absolute ctx.scale value)
-    // to an equivalent currentZoomFactor.
-    // actualCameraScale = (canvas.height / FULL_WORLD_PIXEL_HEIGHT) * currentZoomFactor
-    // So, currentZoomFactor = actualCameraScale * FULL_WORLD_PIXEL_HEIGHT / canvas.height
     if (canvas.height > 0 && FULL_WORLD_PIXEL_HEIGHT > 0) {
         const baseScaleFactorForHeightFit = canvas.height / FULL_WORLD_PIXEL_HEIGHT;
         if (baseScaleFactorForHeightFit > 0) { // Avoid division by zero
@@ -89,7 +73,7 @@ function _updateMinZoomFactorAndRecalculateScale() {
         const baseScaleToFitHeight = canvas.height / FULL_WORLD_PIXEL_HEIGHT;
         actualCameraScale = baseScaleToFitHeight * currentZoomFactor;
     } else {
-        actualCameraScale = 1.0; // Fallback
+        actualCameraScale = 1.0; // fallback
     }
     // console.log(`Renderer: MinZoomFactor: ${MIN_ZOOM_FACTOR.toFixed(3)}, CurrentZoom: ${currentZoomFactor.toFixed(3)}, ActualScale: ${actualCameraScale.toFixed(3)}`);
 }
