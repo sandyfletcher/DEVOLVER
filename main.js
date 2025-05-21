@@ -42,12 +42,12 @@ const GameState = FlowManager.GameState;
 // --- Global Functions for HTML Event Handlers & Renderer ---
 
 window.pauseGameCallback = () => FlowManager.pauseGame();
-window.updateCameraScale = (deltaScale) => {
+window.updateCameraScale = (deltaZoom) => {
     const currentGameState = FlowManager.getCurrentState();
         if (currentGameState !== GameState.RUNNING && currentGameState !== GameState.PAUSED) {
             return;
         }
-    Renderer.updateCameraScale(deltaScale);
+    Renderer.updateZoomLevel(deltaZoom);
 };
 window.skipCutscene = () => FlowManager.skipCutscene();
 function toggleGridDisplay() {
