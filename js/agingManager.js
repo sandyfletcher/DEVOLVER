@@ -2,17 +2,11 @@
 // root/js/agingManager.js - Handles World Aging Effects (erosion, growth, etc.)
 // -----------------------------------------------------------------------------
 import * as Config from './utils/config.js';
-import { PerlinNoise } from './utils/noise.js'; // Import noise utility
 import * as World from './utils/world.js'; // Import world data access
 import * as GridCollision from './utils/gridCollision.js'; // Import solid checks, hasSolidNeighbor
 import { createBlock } from './utils/block.js'; // Import createBlock
 
-let agingNoiseGenerator = null; // dedicated noise instance for aging
 let allGravityChangesFromAgingThisPass = []; // This will store gravity changes from aging, to be returned by applyAging
-
-export function init() { // initialize the dedicated noise generator for aging
-    agingNoiseGenerator = new PerlinNoise(Math.random()); // different seed each time
-}
 
 // Helper function to get neighbor block types
 function getNeighborTypes(c, r) {
@@ -158,10 +152,6 @@ function expandCanopy(canopyC, canopyR, changedCellsArray) {
 }
 
 export function applyAging(portalRef) { // applies aging effects (erosion, growth, stoneification, etc.) to the world grid
-    if (!agingNoiseGenerator) {
-        console.error("Aging noise generator not initialized!");
-        return { visualChanges: [], gravityChanges: [] }; // Return structure
-    }
     const grid = World.getGrid();
     if (!grid || grid.length === 0 || grid[0].length === 0) {
         console.error("World grid is not available or empty for aging.");

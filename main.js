@@ -22,49 +22,47 @@ import * as World from './js/utils/world.js';
 let gameStartTime = 0;
 let lastTime = 0;
 let gameLoopId = null;
-let isAutoPaused = false; // Remains in main.js for visibilitychange
-let isGridVisible = false; // Remains in main.js for settings UI toggle
+let isAutoPaused = false;
+let isGridVisible = false;
 let player = null;
 let portal = null;
-// DOM Element references for FlowManager and UI
 let appContainerEl, bootOverlayEl, menuOverlayEl, gameWrapperEl, epochOverlayEl;
 let overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl;
 let overlaySettingsContentEl, overlayCutsceneContentEl, overlayPauseContentEl;
 let overlayGameOverContentEl, overlayVictoryContentEl;
 let cutsceneImageDisplayEl, cutsceneTextContentEl, cutsceneTextContainerEl, cutsceneSkipButton;
 let gameOverStatsTextP, victoryStatsTextP, errorOverlayMessageP;
-// Button references for event listeners
 let titleStartButton, mainmenuStartGameButton, mainmenuSettingsButton, settingsBackButton;
 let resumeButton, restartButtonGameOver, restartButtonVictory, restartButtonPause;
 let btnToggleGridEl, muteMusicButtonEl, muteSfxButtonEl, settingsButtonPauseOverlayEl;
 let worldGenerationPromise = null;
 let isWorldGenerated = false;
-// Make GameState accessible if needed by main logic directly (e.g. Renderer conditional drawing)
 const GameState = FlowManager.GameState;
+
 // --- Global Functions for HTML Event Handlers & Renderer ---
-window.pauseGameCallback = () => FlowManager.pauseGame(); // Delegate to FlowManager
-window.updateCameraScale = (deltaScale) => { // Delegate to Renderer
-const currentGameState = FlowManager.getCurrentState();
-if (currentGameState !== GameState.RUNNING && currentGameState !== GameState.PAUSED) {
-return;
-}
-Renderer.updateCameraScale(deltaScale);
+
+window.pauseGameCallback = () => FlowManager.pauseGame();
+window.updateCameraScale = (deltaScale) => {
+    const currentGameState = FlowManager.getCurrentState();
+        if (currentGameState !== GameState.RUNNING && currentGameState !== GameState.PAUSED) {
+            return;
+        }
+    Renderer.updateCameraScale(deltaScale);
 };
-window.skipCutscene = () => FlowManager.skipCutscene(); // Delegate
-// Settings Toggles (remain in main.js for now, tightly coupled with isGridVisible)
+window.skipCutscene = () => FlowManager.skipCutscene();
 function toggleGridDisplay() {
-isGridVisible = !isGridVisible;
-UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
+    isGridVisible = !isGridVisible;
+    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 }
 window.toggleGridDisplay = toggleGridDisplay;
 function toggleMusicMute() {
-const newState = AudioManager.toggleMusicMute();
-UI.updateSettingsButtonStates(isGridVisible, newState, AudioManager.getSfxMutedState());
+    const newState = AudioManager.toggleMusicMute();
+    UI.updateSettingsButtonStates(isGridVisible, newState, AudioManager.getSfxMutedState());
 }
 window.toggleMusicMute = toggleMusicMute;
 function toggleSfxMute() {
-const newState = AudioManager.toggleSfxMute();
-UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
+    const newState = AudioManager.toggleSfxMute();
+    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
 }
 window.toggleSfxMute = toggleSfxMute;
 async function performBackgroundWorldGeneration() {
@@ -330,27 +328,27 @@ const currentGameState = FlowManager.getCurrentState();
 function init() {
 let success = true;
 try {
-// Query DOM elements needed by FlowManager and main.js
-appContainerEl = document.getElementById('app-container');
-bootOverlayEl = document.getElementById('boot-overlay');
-menuOverlayEl = document.getElementById('menu-overlay');
-gameWrapperEl = document.getElementById('game-wrapper');
-epochOverlayEl = document.getElementById('epoch-overlay');
-overlayTitleContentEl = document.getElementById('overlay-title-content');
-overlayErrorContentEl = document.getElementById('overlay-error-content');
-overlayMainMenuContentEl = document.getElementById('overlay-mainmenu-content');
-overlaySettingsContentEl = document.getElementById('overlay-settings-content');
-overlayCutsceneContentEl = document.getElementById('overlay-cutscene-content');
-overlayPauseContentEl = document.getElementById('overlay-pause-content');
-overlayGameOverContentEl = document.getElementById('overlay-gameover-content');
-overlayVictoryContentEl = document.getElementById('overlay-victory-content');
-cutsceneImageDisplayEl = document.getElementById('cutscene-image-display');
-cutsceneTextContentEl = document.getElementById('cutscene-text-content');
-cutsceneTextContainerEl = document.getElementById('cutscene-text-box');
-cutsceneSkipButton = document.getElementById('cutscene-skip-button');
-gameOverStatsTextP = document.getElementById('gameover-stats-text');
-victoryStatsTextP = document.getElementById('victory-stats-text');
-errorOverlayMessageP = document.getElementById('error-message-text');
+    // Query DOM elements needed by FlowManager and main.js
+    appContainerEl = document.getElementById('app-container');
+    bootOverlayEl = document.getElementById('boot-overlay');
+    menuOverlayEl = document.getElementById('menu-overlay');
+    gameWrapperEl = document.getElementById('game-wrapper');
+    epochOverlayEl = document.getElementById('epoch-overlay');
+    overlayTitleContentEl = document.getElementById('overlay-title-content');
+    overlayErrorContentEl = document.getElementById('overlay-error-content');
+    overlayMainMenuContentEl = document.getElementById('overlay-mainmenu-content');
+    overlaySettingsContentEl = document.getElementById('overlay-settings-content');
+    overlayCutsceneContentEl = document.getElementById('overlay-cutscene-content');
+    overlayPauseContentEl = document.getElementById('overlay-pause-content');
+    overlayGameOverContentEl = document.getElementById('overlay-gameover-content');
+    overlayVictoryContentEl = document.getElementById('overlay-victory-content');
+    cutsceneImageDisplayEl = document.getElementById('cutscene-image-display');
+    cutsceneTextContentEl = document.getElementById('cutscene-text-content');
+    cutsceneTextContainerEl = document.getElementById('cutscene-text-box');
+    cutsceneSkipButton = document.getElementById('cutscene-skip-button');
+    gameOverStatsTextP = document.getElementById('gameover-stats-text');
+    victoryStatsTextP = document.getElementById('victory-stats-text');
+    errorOverlayMessageP = document.getElementById('error-message-text');
 // Query Button elements
     titleStartButton = document.getElementById('start-game-button');
     mainmenuStartGameButton = document.getElementById('mainmenu-start-game-button');
@@ -364,7 +362,6 @@ errorOverlayMessageP = document.getElementById('error-message-text');
     btnToggleGridEl = document.getElementById('settings-btn-toggle-grid'); 
     muteMusicButtonEl = document.getElementById('settings-btn-mute-music'); 
     muteSfxButtonEl = document.getElementById('settings-btn-mute-sfx');    
-
     // Verify all queried elements
     const allElements = [
         appContainerEl, bootOverlayEl, menuOverlayEl, gameWrapperEl, epochOverlayEl,
@@ -383,17 +380,12 @@ errorOverlayMessageP = document.getElementById('error-message-text');
         });
         throw new Error("One or more critical UI elements are missing.");
     }
-
     Renderer.init();
     AudioManager.init();
-    AgingManager.init();
     if (!UI.initGameUI()) throw new Error("FATAL INIT ERROR: UI.initGameUI() failed.");
     Input.init();
-
     lastTime = 0; isAutoPaused = false; isGridVisible = false;
-
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
-
     const gameFlowDependencies = {
         bootOverlayEl, menuOverlayEl, appContainer: appContainerEl, gameWrapperEl,
         overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
