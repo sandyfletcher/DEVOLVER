@@ -15,7 +15,7 @@ let cameraY = 0;
 let actualCameraScale = 1.0; // ctx.scale() value, dynamically calculated
 let currentZoomFactor = 1.0; // player-controlled abstract zoom level (1.0 = fit height by default)
 const MAX_ZOOM_FACTOR = Config.MAX_CAMERA_SCALE; // use existing config for max abstract zoom
-let MIN_ZOOM_FACTOR = Config.MIN_CAMERA_SCALE;   // base min zoom, will be adjusted dynamically
+let MIN_ZOOM_FACTOR = 0; // base min zoom, will be adjusted dynamically // Changed from Config.MIN_CAMERA_SCALE
 const FULL_WORLD_PIXEL_WIDTH = Config.CANVAS_WIDTH; // total dimensions of game world
 const FULL_WORLD_PIXEL_HEIGHT = Config.CANVAS_HEIGHT;
 
@@ -23,20 +23,36 @@ function _getWorldPixelWidth() { return FULL_WORLD_PIXEL_WIDTH; } // get fixed p
 function _getWorldPixelHeight() { return FULL_WORLD_PIXEL_HEIGHT; } // fixed pixel height
 function _handleResize() {
     if (!canvas || !gameWrapperEl) return;
-    const newWidth = gameWrapperEl.clientWidth;
-    const newHeight = gameWrapperEl.clientHeight;
-    if (canvas.width !== newWidth || canvas.height !== newHeight) {
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-        console.log(`Renderer: Canvas resized to ${canvas.width}x${canvas.height}`);
-    } // gridCanvas size remains fixed to the full world dimensions (handled by createGridCanvas)
-    _updateMinZoomFactorAndRecalculateScale(); // update min zoom and actual scale based on new canvas size, also effectively re-clamps currentZoomFactor if needed
+
+    const newDisplayWidth = gameWrapperEl.clientWidth;
+    const newDisplayHeight = gameWrapperEl.clientHeight;
+
+    // Only update canvas's internal drawing buffer dimensions if the wrapper has positive size.
+    // If the wrapper is display: none, its clientWidth/Height will be 0.
+    // In such cases, we want the canvas to retain its last valid (non-zero) size.
+    if (newDisplayWidth > 0 && newDisplayHeight > 0) {
+        if (canvas.width !== newDisplayWidth || canvas.height !== newDisplayHeight) {
+            canvas.width = newDisplayWidth;
+            canvas.height = newDisplayHeight;
+            console.log(`Renderer: Canvas drawing buffer resized to ${canvas.width}x${canvas.height}`);
+        }
+    } else {
+        // If newDisplayWidth or newDisplayHeight is 0, it means the gameWrapperEl is hidden.
+        // The canvas should keep its last set valid dimensions.
+        // This prevents canvas.width/height from becoming 0.
+        // No explicit console.log here to avoid spamming if wrapper is repeatedly 0.
+    }
+
+    _updateMinZoomFactorAndRecalculateScale(); // update min zoom and actual scale based on current canvas dimensions
 }
 function _updateMinZoomFactorAndRecalculateScale() {
+    // This check is crucial. After the _handleResize modification, canvas.width/height should
+    // never be 0 (unless init() itself failed or Config values are 0).
+    // The previous error messages about zero dimensions will no longer occur.
     if (!canvas || canvas.height === 0 || canvas.width === 0 || FULL_WORLD_PIXEL_HEIGHT === 0 || FULL_WORLD_PIXEL_WIDTH === 0) {
         MIN_ZOOM_FACTOR = Config.MIN_CAMERA_SCALE; // fallback to config's absolute min
         actualCameraScale = 1.0;
-        console.warn("Renderer: Cannot update min zoom factor, canvas or world dimensions are zero.");
+        console.warn("Renderer: Cannot update min zoom factor, canvas is invalid or world dimensions are zero.");
         return;
     }
     const arCanvas = canvas.width / canvas.height; // Calculate the zoom factor needed to make the entire world width visible, given that a zoomFactor of 1.0 makes the entire world height visible.
