@@ -4,8 +4,8 @@
 
 import * as Config from './utils/config.js';
 import * as AudioManager from './audioManager.js';
-import * as WaveManager from './waveManager.js'; // For stats text & epoch info
-import * as UI from './ui.js'; // For epoch text & pause menu epoch text
+import * as WaveManager from './waveManager.js';
+import * as UI from './ui.js';
 
 export const GameState = Object.freeze({
     TITLE: 'TITLE',
@@ -18,25 +18,22 @@ export const GameState = Object.freeze({
     VICTORY: 'VICTORY',
     ERROR: 'ERROR'
 });
+
 let currentGameState = GameState.TITLE;
 let settingsOpenedFrom = null;
-// DOM element references
 let bootOverlayEl, menuOverlayEl, appContainer, gameWrapperEl;
 let overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl;
 let overlaySettingsContentEl, overlayCutsceneContentEl, overlayPauseContentEl;
 let overlayGameOverContentEl, overlayVictoryContentEl;
 let cutsceneImageDisplayEl, cutsceneTextContentEl, cutsceneTextContainerEl, cutsceneSkipButton;
 let gameOverStatsTextP, victoryStatsTextP, errorOverlayMessageP;
-// Cutscene state
 let currentCutsceneImageIndex = 0;
 let cutsceneTimer = 0;
 const cutsceneDurationPerImage = Config.CUTSCENE_IMAGE_DURATION;
-// Callbacks to main.js
 let mainInitializeAndRunGameCallback;
 let mainFullGameResetCallback;
 
 export function init(dependencies) {
-    // DOM Elements
     bootOverlayEl = dependencies.bootOverlayEl;
     menuOverlayEl = dependencies.menuOverlayEl;
     appContainer = dependencies.appContainer;
@@ -56,10 +53,9 @@ export function init(dependencies) {
     gameOverStatsTextP = dependencies.gameOverStatsTextP;
     victoryStatsTextP = dependencies.victoryStatsTextP;
     errorOverlayMessageP = dependencies.errorOverlayMessageP;
-    // Callbacks
     mainInitializeAndRunGameCallback = dependencies.onStartGameRequested;
     mainFullGameResetCallback = dependencies.onFullGameResetRequested;
-    changeState(GameState.TITLE); // Initial state
+    changeState(GameState.TITLE); // initial state
 }
 export function getCurrentState() {
     return currentGameState;
@@ -78,10 +74,7 @@ function showOverlayInternal(stateToShow) {
         overlayGameOverContentEl, overlayVictoryContentEl
     ];
     allContentDivs.forEach(div => { if (div) div.style.display = 'none'; });
-    // Default gameWrapperEl display, specific cases will override
-    if (gameWrapperEl) gameWrapperEl.style.display = 'flex';
-
-
+    if (gameWrapperEl) gameWrapperEl.style.display = 'flex'; // default gameWrapperEl display
     if (stateToShow !== GameState.CUTSCENE) {
         if (cutsceneImageDisplayEl) {
             cutsceneImageDisplayEl.classList.remove('active');
@@ -98,35 +91,35 @@ function showOverlayInternal(stateToShow) {
             if (overlayTitleContentEl) overlayTitleContentEl.style.display = 'flex';
             AudioManager.stopAllMusic();
             break;
-        case GameState.RUNNING: // *** NEW CASE ***
-            hideAllOverlaysInternal(); // This handles overlays, appContainer blur, and gameWrapperEl display
-            AudioManager.stopUIMusic();
-            // Game music is typically started by WaveManager or another game logic piece.
+        case GameState.RUNNING:
+            hideAllOverlaysInternal(); // handles overlays, blur, and gameWrapperEl display
+            AudioManager.stopUIMusic(); // music started by WaveManager
             break;
         case GameState.MAIN_MENU:
             if (gameWrapperEl) gameWrapperEl.style.display = 'none';
             menuOverlayEl.classList.add('active', 'show-mainmenu', 'force-opaque');
             if (overlayMainMenuContentEl) overlayMainMenuContentEl.style.display = 'flex';
             AudioManager.stopGameMusic(); AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
-            if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
+            if (Config.AUDIO_TRACKS.MENU) AudioManager.playUIMusic(Config.AUDIO_TRACKS.MENU);
             break;
         case GameState.SETTINGS:
             menuOverlayEl.classList.add('active', 'show-settings');
             if (overlaySettingsContentEl) overlaySettingsContentEl.style.display = 'flex';
             if (settingsOpenedFrom === GameState.PAUSED) {
-                appContainer.classList.add('overlay-active'); // Game wrapper visible but blurred
-                if (gameWrapperEl) gameWrapperEl.style.display = 'flex'; // Ensure visible
-            } else { // From main menu
+                appContainer.classList.add('overlay-active'); // game wrapper blurred
+                if (gameWrapperEl) gameWrapperEl.style.display = 'flex'; // ensure visible
+            } else { // from main menu
                 menuOverlayEl.classList.add('force-opaque');
-                if (gameWrapperEl) gameWrapperEl.style.display = 'none'; // Hide game wrapper
+                if (gameWrapperEl) gameWrapperEl.style.display = 'none'; // hide game wrapper
             }
             break;
         case GameState.CUTSCENE:
             menuOverlayEl.classList.add('active', 'show-cutscene');
             if (overlayCutsceneContentEl) overlayCutsceneContentEl.style.display = 'flex';
-            appContainer.classList.add('overlay-active'); // Game wrapper should be visible to be blurred
-            if (gameWrapperEl) gameWrapperEl.style.display = 'flex'; // Ensure visible
+            appContainer.classList.add('overlay-active'); // wrapper should be visible to blur
+            if (gameWrapperEl) gameWrapperEl.style.display = 'flex';
             AudioManager.stopUIMusic(); AudioManager.stopGameMusic();
+            if (Config.AUDIO_TRACKS.CUTSCENE) AudioManager.playUIMusic(Config.AUDIO_TRACKS.CUTSCENE);
             if (cutsceneImageDisplayEl) {
                 cutsceneImageDisplayEl.src = '';
                 cutsceneImageDisplayEl.classList.remove('active');
@@ -137,30 +130,27 @@ function showOverlayInternal(stateToShow) {
             menuOverlayEl.classList.add('active', 'show-pause');
             if (overlayPauseContentEl) overlayPauseContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
-            if (gameWrapperEl) gameWrapperEl.style.display = 'flex'; // Ensure visible
+            if (gameWrapperEl) gameWrapperEl.style.display = 'flex';
             AudioManager.pauseGameMusic(); AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
-
-            // Update epoch text in pause menu
-            const epochInfo = WaveManager.getCurrentEpochInfo();
+            const epochInfo = WaveManager.getCurrentEpochInfo(); // update epoch text in pause menu
             UI.updatePauseMenuEpochText(epochInfo);
             break;
         case GameState.GAME_OVER:
             menuOverlayEl.classList.add('active', 'show-gameover');
             if (overlayGameOverContentEl) overlayGameOverContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
-            if (gameWrapperEl) gameWrapperEl.style.display = 'flex'; // Ensure visible
+            if (gameWrapperEl) gameWrapperEl.style.display = 'flex';
             AudioManager.stopGameMusic();
             if (gameOverStatsTextP && WaveManager) gameOverStatsTextP.textContent = `You reached Wave ${WaveManager.getCurrentWaveNumber()}!`;
             AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
             if (Config.AUDIO_TRACKS.gameOver) AudioManager.playUIMusic(Config.AUDIO_TRACKS.gameOver);
-            else if (Config.AUDIO_TRACKS.pause) AudioManager.playUIMusic(Config.AUDIO_TRACKS.pause);
             break;
         case GameState.VICTORY:
             menuOverlayEl.classList.add('active', 'show-victory');
             if (overlayVictoryContentEl) overlayVictoryContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active');
-            if (gameWrapperEl) gameWrapperEl.style.display = 'flex'; // Ensure visible
+            if (gameWrapperEl) gameWrapperEl.style.display = 'flex';
             AudioManager.stopGameMusic();
             if (victoryStatsTextP && Config.WAVES) victoryStatsTextP.textContent = `You cleared all ${Config.WAVES.length} waves!`;
             AudioManager.setVolume('ui', Config.AUDIO_DEFAULT_UI_VOLUME);
@@ -193,7 +183,7 @@ function hideAllOverlaysInternal() {
         overlayGameOverContentEl, overlayVictoryContentEl
     ];
     allContentDivs.forEach(div => { if (div) div.style.display = 'none'; });
-    if (gameWrapperEl) gameWrapperEl.style.display = ''; // Reset to CSS default (flex)
+    if (gameWrapperEl) gameWrapperEl.style.display = ''; // default CSS flex
 }
 export function changeState(newState, data = {}) {
     const oldState = currentGameState;
@@ -310,9 +300,8 @@ export function skipCutscene() {
     else console.error("FlowManager: mainInitializeAndRunGameCallback not set for skip cutscene!");
 }
 export function requestStartGameplay() {
-    // This is called when the game should actually start (e.g. after main menu "Start Game" or cutscene end)
-    if (mainInitializeAndRunGameCallback) {
-        mainInitializeAndRunGameCallback(); // This will set currentGameState to RUNNING in main.js
+    if (mainInitializeAndRunGameCallback) { // called when game should actually start (after "start game" or cutscene end)
+        mainInitializeAndRunGameCallback(); // set currentGameState to RUNNING (main.js)
     } else {
         console.error("FlowManager: mainInitializeAndRunGameCallback not set!");
         changeState(GameState.ERROR, { errorMessage: "Cannot start game, core setup missing." });
@@ -327,8 +316,7 @@ export function pauseGame() {
 export function resumeGame() {
     if (currentGameState !== GameState.PAUSED) return;
     console.log(">>> FlowManager: Resuming Game <<<");
-    changeState(GameState.RUNNING); // This changes state and calls showOverlayInternal
-    // hideAllOverlaysInternal(); // showOverlayInternal(GameState.RUNNING) now handles this
+    changeState(GameState.RUNNING); // changes state and calls showOverlayInternal
     AudioManager.unpauseGameMusic();
 }
 export function handleGameOver() {
@@ -343,10 +331,9 @@ export function handleVictory() {
 }
 export function requestFullGameReset() {
     if (mainFullGameResetCallback) {
-        mainFullGameResetCallback(); // This will call main.js's full reset logic
+        mainFullGameResetCallback();
     } else {
         console.error("FlowManager: mainFullGameResetCallback not set!");
         changeState(GameState.ERROR, { errorMessage: "Cannot restart game, core reset missing." });
     }
-    // After main.js resets, it should ideally call back to changeState(GameState.MAIN_MENU)
 }

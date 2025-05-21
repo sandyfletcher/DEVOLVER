@@ -9,11 +9,11 @@ export const AUDIO_DEFAULT_GAME_VOLUME = 0.4;
 export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
 export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
 export const AUDIO_TRACKS = {
-    // title: 'assets/audio/title_music.mp3',
+    MENU: 'assets/audio/music/Menu.mp3',
     pause: 'assets/audio/music/Pause.mp3',
-    // gameOver: 'assets/audio/gameover_music.mp3',
+    gameOver: 'assets/audio/music/GameOver.mp3',
     victory: 'assets/audio/music/Victory.mp3',
-    // introMusic: 'assets/audio/music/Intro.mp3',
+    CUTSCENE: 'assets/audio/music/Cutscene.mp3',
     wave1: 'assets/audio/music/Wave1-350.mp3',
     wave2: 'assets/audio/music/Wave2-300.mp3',
     wave3: 'assets/audio/music/wave3.mp3',
