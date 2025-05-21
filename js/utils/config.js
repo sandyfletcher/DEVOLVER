@@ -483,6 +483,10 @@ export const DEFAULT_ENEMY_WIDTH = 2;
 export const DEFAULT_ENEMY_HEIGHT = 2;
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // Factor of enemy's own width.
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 15 * BLOCK_WIDTH; // Base push strength
+
+// NEW ENEMY TYPE
+export const ENEMY_TYPE_DUNKLEOSTEUS = 'dunkleosteus'; // New enemy constant
+
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker'; // Enemy types (string constants)
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
@@ -539,6 +543,29 @@ export const ENEMY_STATS = {
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH,
         dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
     },
+    [ENEMY_TYPE_DUNKLEOSTEUS]: { // DUNKLEOSTEUS STATS
+        displayName: "Dunkleosteus",
+        aiType: 'fishAI', // New AI type
+        color: 'rgb(80, 100, 120)', // Dark blue/grey
+        width_BLOCKS: 4, // Larger fish
+        height_BLOCKS: 2,
+        health: 3, // More health
+        contactDamage: 15, // High contact damage
+        applyGravity: true, // Yes, for when it's out of water
+        gravityFactor: 1.0,
+        maxSpeedX_BLOCKS_PER_SEC: 6.5, // Faster horizontally
+        maxSpeedY_BLOCKS_PER_SEC: 0, // No vertical movement from AI on land (gravity handles vertical)
+        swimSpeed_BLOCKS_PER_SEC: 15, // Fast in water
+        canJump: false,
+        jumpVelocity_BLOCKS_PER_SEC: 0,
+        canSwim: true, // Crucially, it can swim
+        canFly: false,
+        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.5, // Larger separation
+        separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH * 1.2,
+        landHopHorizontalVelocity_BLOCKS_PER_SEC: 0, // Not applicable
+        dropTable: [{ type: 'bone', chance: 0.7, minAmount: 2, maxAmount: 3 }, { type: 'metal', chance: 0.2, minAmount: 1, maxAmount: 1 }],
+        outOfWaterDamagePerSecond: 15, // NEW STAT: damage per second when out of water
+    },
 };
 
 // --- Wave Scripting ---
@@ -557,6 +584,7 @@ export const WAVES = [
         subWaves: [
             { enemyGroups: [
                 { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
+                { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 }, // ADDED DUNKLEOSTEUS HERE
                 { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
                 { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
             ]},

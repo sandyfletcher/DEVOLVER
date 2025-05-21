@@ -9,12 +9,14 @@ import { E_EPSILON } from './gridCollision.js';
 import { SeekCenterAI } from './ai/seekCenterAI.js';
 import { ChasePlayerAI } from './ai/chasePlayerAI.js';
 import { FlopAI } from './ai/flopAI.js';
+import { FishAI } from './ai/fishAI.js'; // NEW: Import FishAI
 import * as AudioManager from '../audioManager.js'; // Import AudioManager
 
 const aiStrategyMap = { // Map AI type strings from config to the actual AI Strategy classes
     'seekCenter': SeekCenterAI,
     'chasePlayer': ChasePlayerAI,
-    'flopAI': FlopAI, // Ensure FlopAI is mapped
+    'flopAI': FlopAI,
+    'fishAI': FishAI, // NEW: Add FishAI to the map
     // 'flyPatrol': FlyerAI, // Add mappings for new AI types here
     // 'standAndShoot': ShooterAI,
 };
@@ -30,22 +32,22 @@ export class Enemy {
                  displayName: "Unknown (Fallback)",
                  aiType: 'seekCenter',
                  color: 'purple',
-                 width: Config.DEFAULT_ENEMY_WIDTH_BLOCKS, // Use block dimensions for fallback
-                 height: Config.DEFAULT_ENEMY_HEIGHT_BLOCKS,
-                 maxSpeedX: 30, 
-                 maxSpeedY: 50,
-                 swimSpeed: 50,
+                 width_BLOCKS: Config.DEFAULT_ENEMY_WIDTH, // Use block dimensions for fallback
+                 height_BLOCKS: Config.DEFAULT_ENEMY_HEIGHT,
+                 maxSpeedX_BLOCKS_PER_SEC: 30, 
+                 maxSpeedY_BLOCKS_PER_SEC: 50,
+                 swimSpeed_BLOCKS_PER_SEC: 50,
                  health: 1,
                  contactDamage: 1,
                  applyGravity: true,
                  gravityFactor: 1.0,
                  canJump: false,
-                 jumpVelocity: 0,
+                 jumpVelocity_BLOCKS_PER_SEC: 0,
                  canSwim: false,
                  canFly: false,
                  separationFactor: Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
-                 separationStrength: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH_PIXELS_PER_SEC, 
-                 landHopHorizontalVelocity: 0, // Default for non-tetrapods
+                 separationStrength_BLOCKS_PER_SEC: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH, 
+                 landHopHorizontalVelocity_BLOCKS_PER_SEC: 0, // Default for non-tetrapods
                  dropTable: [],
                  ...fallbackStats // Merge fallback stats if available
              };
@@ -157,6 +159,16 @@ export class Enemy {
         }
         // --- Determine Current Environment State ---
         this.isInWater = GridCollision.isEntityInWater(this);
+
+        // NEW: Handle out-of-water damage (specific to Dunkleosteus)
+        if (this.type === Config.ENEMY_TYPE_DUNKLEOSTEUS && !this.isInWater && this.health > 0) {
+            const damagePerSecond = this.stats.outOfWaterDamagePerSecond ?? 0;
+            if (damagePerSecond > 0) {
+                const damageThisFrame = damagePerSecond * dt;
+                this.takeDamage(damageThisFrame); // Take damage directly
+            }
+        }
+
         // Note: isOnGround is updated by collideAndResolve later, but we might need its state *from the previous frame* here.
         // Let's assume collisionResult.isOnGround is the most up-to-date check.
         // --- Reset water jump cooldown if just exited water (for non-swimmers) ---
@@ -471,6 +483,11 @@ export class Enemy {
                 // Maybe still 0 damage if not actively flopping? Let's say 0 unless isFlopAttacking
                 damage = this.isFlopAttacking ? Config.TETRAPOD_LAND_FLOP_DAMAGE : Config.TETRAPOD_LAND_STILL_DAMAGE; // Same as land logic
             }
+        }
+        // NEW: Specific Logic for Dunkleosteus
+        else if (this.type === Config.ENEMY_TYPE_DUNKLEOSTEUS) {
+            // Dunkleosteus deals its configured contactDamage when in water, 0 otherwise
+            damage = this.isInWater ? (this.stats?.contactDamage ?? 0) : 0;
         }
         // --- Add Specific Logic for Other Enemy Types Here If Needed ---
         // else if (this.type === Config.ENEMY_TYPE_SPIKE_BALL) {

@@ -107,11 +107,9 @@ function triggerWarpCleanupAndCalculations() {
         console.error("[WaveMgr] Warp process failed: Portal reference is null.");
         return;
     }
-
     // 0. Clear any existing visual animations from previous states (IMPORTANT)
     WorldManager.finalizeAllGravityAnimations(); // Clear out any stragglers
     WorldManager.finalizeAllTransformAnimations(); // Clear out any stragglers
-
     // 1. Snapshot initial grid state
     console.log("[WaveMgr] Snapshotting initial grid state...");
     const initialGridState = World.getGrid().map(row =>
@@ -122,7 +120,6 @@ function triggerWarpCleanupAndCalculations() {
             return block; // Keep BLOCK_AIR (0) as is
         })
     );
-
     // 2. Entity Clearing & Portal Radius
     portalRef.setSafetyRadius(portalRef.safetyRadius + Config.PORTAL_RADIUS_GROWTH_PER_WAVE);
     const portalCenter = portalRef.getPosition();
@@ -130,12 +127,10 @@ function triggerWarpCleanupAndCalculations() {
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     console.log("[WaveMgr] Entity cleanup and portal radius update complete.");
-
     // 3. Logical Gravity Settlement (Done once before aging/lighting loop)
     console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
     let allGravityChangesForAnimation = WorldManager.applyGravitySettlement(portalRef); // Returns changes for animation
     console.log(`[WaveMgr] Gravity settlement (LOGICAL) complete. ${allGravityChangesForAnimation.length} blocks potentially moved.`);
-
     // MYA Transition (UI)
     const currentWaveData = getCurrentWaveData();
     const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
@@ -153,16 +148,13 @@ function triggerWarpCleanupAndCalculations() {
             UI.showEpochText("Final Preparations...");
         }
     }
-
     // 4. Interleaved Lighting and Aging Process (LOGICAL UPDATES ONLY)
     console.log("[WaveMgr] Starting interleaved lighting and aging process (LOGICAL)...");
     if (nextWaveData && typeof nextWaveData === 'object') {
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
         for (let i = 0; i < passes; i++) {
             console.log(`[WaveMgr] Warp Intermission - Pass ${i + 1}/${passes}`);
-
             World.resetAllBlockLighting(); // Reset all lighting (LOGICAL)
-
             const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // LOGICAL
             if (proposedLightingChangesThisPass.length > 0) {
                 proposedLightingChangesThisPass.forEach(change => {
@@ -172,7 +164,6 @@ function triggerWarpCleanupAndCalculations() {
                     }
                 });
             }
-
             const agingChangesInThisPass = AgingManager.applyAging(portalRef); // LOGICAL (calls World.setBlock internally)
             if (agingChangesInThisPass.gravityChanges && Array.isArray(agingChangesInThisPass.gravityChanges)) {
                 allGravityChangesForAnimation.push(...agingChangesInThisPass.gravityChanges); // Collect gravity changes from aging
@@ -182,7 +173,6 @@ function triggerWarpCleanupAndCalculations() {
     } else {
         console.warn("[WaveMgr] No next wave data found for aging/lighting process. This might be the last wave transition before victory.");
     }
-
     // 5. Final Lighting Pass (LOGICAL)
     console.log("[WaveMgr] Applying final lighting pass after warp phase aging (LOGICAL)...");
     World.resetAllBlockLighting();
@@ -196,17 +186,14 @@ function triggerWarpCleanupAndCalculations() {
         });
         console.log(`[WaveMgr] Final warp lighting pass lit ${finalWarpLightingChanges.length} additional blocks.`);
     }
-
     // 6. Diff and Queue Transform Animations
     console.log("[WaveMgr] Diffing grid and queuing transform animations...");
     WorldManager.diffGridAndQueueTransformAnimations(initialGridState, World.getGrid());
-
     // 7. Queue All Collected Gravity Animations
     if (allGravityChangesForAnimation.length > 0) {
         console.log(`[WaveMgr] Queuing ${allGravityChangesForAnimation.length} gravity changes for animation.`);
         WorldManager.addProposedGravityChanges(allGravityChangesForAnimation);
     }
-
     // 8. Sun Animation (Visual)
     if (Config.SUN_ANIMATION_ENABLED) {
         isSunAnimationActive = true;
@@ -358,7 +345,7 @@ export function getAnimatedSunPosition() {
 function formatMyaForPauseMenu(myaValue) {
     if (typeof myaValue !== 'number' || isNaN(myaValue)) return "Epoch Unknown";
     if (myaValue === 0) return "Present Day";
-    return `${Math.round(myaValue)} MYA`;
+    return `${Math.round(myaValue)} million years ago`;
 }
 export function getCurrentEpochInfo() {
     let waveData;
