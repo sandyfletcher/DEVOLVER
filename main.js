@@ -5,7 +5,7 @@
 import * as UI from './js/uiManager.js';
 import * as Input from './js/inputManager.js';
 import * as Config from './js/utils/config.js';
-import * as Renderer from './js/renderer.js';
+import * as Renderer from './js/utils/renderer.js';
 import * as WaveManager from './js/waveManager.js';
 import * as GridRenderer from './js/utils/grid.js';
 import * as ItemManager from './js/itemManager.js';

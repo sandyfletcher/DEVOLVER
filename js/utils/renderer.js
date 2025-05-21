@@ -2,8 +2,8 @@
 // js/renderer.js - Canvas Setup and Drawing Operations
 // =============================================================================
 
-import * as Config from './utils/config.js';
-import * as GridCollision from './utils/gridCollision.js';
+import * as Config from './config.js';
+import * as GridCollision from './gridCollision.js';
 
 let canvas = null;
 let ctx = null;

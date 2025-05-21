@@ -3,10 +3,10 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from './utils/config.js';
-import * as Renderer from './renderer.js';
+import * as Renderer from './utils/renderer.js';
 import * as World from './utils/world.js';
 import * as ItemManager from './itemManager.js';
-import { generateInitialWorld as generateWorldFromGenerator } from './utils/worldGenerator.js'; // Import the generator
+import { generateInitialWorld as generateWorldFromGenerator } from './utils/worldGenerator.js';
 import * as GridCollision from './utils/gridCollision.js';
 import { createBlock } from './utils/block.js';
 import * as WaveManager from './waveManager.js';
@@ -15,7 +15,7 @@ import * as WaveManager from './waveManager.js';
 let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
 let waterPropagationTimer = 0; // timer to control spread speed
 
-// --- NEW: Transform Animation State (replaces aging and lighting specific animations) ---
+// --- Transform Animation State (replaces aging and lighting specific animations) ---
 let transformAnimationQueue = []; // Stores { c, r, oldBlockData, newBlockData }
 let activeTransformAnimations = []; // Stores { c, r, oldBlockData, newBlockData, timer, phase, currentScale }
 let newTransformAnimationStartTimer = 0; // Timer to delay starting new transform animations
