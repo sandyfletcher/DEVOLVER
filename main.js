@@ -187,7 +187,7 @@ UI.setPlayerReference(null); UI.setPortalReference(null); // UI still needs to b
 EnemyManager.clearAllEnemies(); ItemManager.clearAllItems();
 AudioManager.stopAllMusic();
 isAutoPaused = false; // isGridVisible state persists unless explicitly reset
-worldGenerationPromise = null; // Reset world generation state for next game start
+worldGenerationPromise = null; // reset world generation state for next game start - causing warning on second playthrough?
 isWorldGenerated = false;
 FlowManager.changeState(GameState.MAIN_MENU);
 }

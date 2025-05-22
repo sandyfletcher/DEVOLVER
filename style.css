@@ -22,15 +22,20 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    width: 97vw;
-    height: 94vh;
+    
     box-shadow: 0 0 1rem rgba(255, 255, 255, 0.3);
     padding: 0.5rem;
     box-sizing: border-box;
     margin: auto;
     position: relative;
-    /* Removed transition: filter for app-container itself, was probably not intended here */
     overflow: hidden;
+    aspect-ratio: 2 / 1; /* This ensures the element always maintains a 2:1 w:h ratio */
+    max-width: 97vw;     /* Limit its maximum width based on viewport width */
+    max-height: 94vh;    /* Limit its maximum height based on viewport height */
+    /* This calc will ensure it takes the largest possible size that fits
+       within both max-width and max-height constraints while preserving 2:1 */
+    width: calc(min(97vw, 94vh * (2 / 1)));
+    height: calc(min(97vw * (1 / 2), 94vh));
 }
 #game-wrapper {
     width: 100%;
@@ -45,44 +50,38 @@ body {
     overflow: hidden;
     background-color: rgb(135, 206, 235);
 }
-/* Pseudo-element for the semi-transparent background image */
-/* This will sit on top of #game-wrapper's background-color, but behind the canvas */
-#game-wrapper::after {
-    content: ""; /* Necessary for pseudo-elements to render */
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url('assets/background.jpeg');
-    background-repeat: no-repeat;       /* Or 'repeat' if desired */
-    background-position: center center; /* Center the image */
-    background-size: cover;             /* Adjust as needed: 'contain', '100% 100%', etc. */
-    opacity: 0.7; /* 70% opacity for the image */
-    z-index: 0;  /* CHANGED FROM -1: Places this above parent's bg, below canvas */
-}
-
-/* The existing ::before pseudo-element for dimming (unrelated to this background image) */
-/* This has a high z-index (52) to appear on top of game UI when active */
-#game-wrapper::before {
+#game-wrapper::after { /* pseudo-element for the semi-transparent background image, sits on top of #game-wrapper's background-color, but behind the canvas */
     content: "";
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); /* Semi-transparent black for dimming */
+    background-image: url('assets/background.jpeg');
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: cover; /* adjust: 'contain'/'100% 100%' */
+    opacity: 0.7;
+    z-index: 0;  /* above parent's bg, below canvas */
+}
+#game-wrapper::before { /* existing ::before pseudo-element for dimming (unrelated to this background image) */
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
-    z-index: 52; /* High z-index for dimming overlay */
+    z-index: 52;
 }
-
 #game-canvas {
     display: block;
-    width: 100%; /* Fill container width */
-    height: 100%; /* Fill container height */
+    width: 100%;
+    height: 100%;
     max-width: 100%;
     max-height: 100%;
     image-rendering: pixelated;
@@ -90,7 +89,6 @@ body {
     position: relative;
     z-index: 1;
 }
-
 #top-ui-overlay {
     position: absolute;
     top: 0;
@@ -198,7 +196,7 @@ body {
     font-size: 3em;
     color: white;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
-    z-index: 50; /* Below game-wrapper::before dimming layer (52) and fixed UI (51) */
+    z-index: 50; /* below wrapper dimming layer (52) and fixed UI (51) */
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.5s ease-in-out, visibility 0s linear 0.5s;
@@ -308,7 +306,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 2;
-    font-size: 1.1em;
+    font-size: 1.1rem;
     font-weight: bold;
     color: white;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
@@ -316,8 +314,8 @@ body {
 }
 .item-box .item-count {
     position: absolute;
-    bottom: 0.0625rem; /* CHANGED from 1px */
-    right: 0.125rem;  /* CHANGED from 2px */
+    bottom: 0.0625rem;
+    right: 0.125rem;
     font-size: 0.8em;
     font-weight: bold;
     color: white;
@@ -535,36 +533,24 @@ body {
 #settings-button-overlay-pause:hover {
     background-color: #666;
 }
-
-/* Pause Menu Epoch Text Style */
 #overlay-pause-content .pause-epoch-info {
     font-size: 1.1em;
     color: #cccccc;
-    margin-top: -1rem; /* Adjust spacing relative to PAUSED title */
+    margin-top: -1rem; /* spacing relative to PAUSED title */
     margin-bottom: 1.5rem;
     font-style: italic;
 }
-
-
 #app-container.overlay-active > #game-wrapper::before {
     opacity: 1;
     visibility: visible;
-    transition-delay: 0s; /* Make dimming appear immediately with overlay */
+    transition-delay: 0s; /* dimming appears immediately with overlay */
 }
-
 #app-container.overlay-active > #game-wrapper {
-    /* filter: blur(4px) brightness(0.6); REMOVED */
-    pointer-events: none; /* This is still needed to prevent interaction with game */
-    /* transition: filter 0.3s ease; REMOVED */
+    pointer-events: none;
 }
-#app-container > #game-wrapper { /* This is the state when overlay-active is NOT present */
-    /* filter: none; REMOVED */
-    pointer-events: auto; /* Ensure game is interactive */
-    /* transition: filter 0.3s ease; REMOVED */
+#app-container > #game-wrapper {
+    pointer-events: auto;
 }
-/* The #game-wrapper::before default state (opacity 0, visibility hidden) handles the "undimmed" appearance */
-
-
 #landscape-warning {
     display: none;
     position: fixed;
@@ -573,7 +559,7 @@ body {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.9);
-    color: white; z-index: 101; /* Above menu-overlay but below boot-overlay error */
+    color: white; z-index: 101; /* above menu-overlay but below boot-overlay error */
     justify-content: center;
     align-items: center;
     text-align: center;
