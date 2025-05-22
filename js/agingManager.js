@@ -1,6 +1,7 @@
 // -----------------------------------------------------------------------------
 // root/js/agingManager.js - Handles World Aging Effects (erosion, growth, etc.)
 // -----------------------------------------------------------------------------
+
 import * as Config from './utils/config.js';
 import * as World from './utils/world.js'; // Import world data access
 import * as GridCollision from './utils/gridCollision.js'; // Import solid checks, hasSolidNeighbor

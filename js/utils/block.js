@@ -25,6 +25,7 @@ export function createBlock(type, isPlayerPlaced = false) {
         translucency: properties.translucency,
         isPlayerPlaced: isPlayerPlaced,
         isLit: false,
-        isBurnt: false // Future use
+        lightLevel: 0.0, // transitioning to having light be a range instead of binary
+        isBurnt: false // future use
     };
 }

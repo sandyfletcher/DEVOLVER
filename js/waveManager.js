@@ -344,8 +344,9 @@ export function getAnimatedSunPosition() {
 }
 function formatMyaForPauseMenu(myaValue) {
     if (typeof myaValue !== 'number' || isNaN(myaValue)) return "Epoch Unknown";
-    if (myaValue === 0) return "Present Day";
-    return `${Math.round(myaValue)} million years ago`;
+    // if (myaValue < 0) return "THE FUTURE...";
+    if (myaValue === 0) return "MODERN TIMES";
+    return `${Math.round(myaValue)} MILLION YEARS AGO`;
 }
 export function getCurrentEpochInfo() {
     let waveData;
