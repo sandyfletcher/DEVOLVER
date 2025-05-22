@@ -60,7 +60,7 @@ export function init(dependencies) {
 export function getCurrentState() {
     return currentGameState;
 }
-function showOverlayInternal(stateToShow) {
+export function showOverlayInternal(stateToShow) {
     if (!bootOverlayEl || !menuOverlayEl || !appContainer || !gameWrapperEl ) {
         console.error("FlowManager ShowOverlay: Core overlay/app or game world container elements not found!");
         return;
@@ -114,7 +114,7 @@ function showOverlayInternal(stateToShow) {
             }
             break;
         case GameState.CUTSCENE:
-            menuOverlayEl.classList.add('active', 'show-cutscene');
+            menuOverlayEl.classList.add('active', 'show-cutscene', 'force-opaque');
             if (overlayCutsceneContentEl) overlayCutsceneContentEl.style.display = 'flex';
             appContainer.classList.add('overlay-active'); // wrapper should be visible to blur
             if (gameWrapperEl) gameWrapperEl.style.display = 'flex';
