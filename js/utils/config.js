@@ -431,7 +431,7 @@ export const WEAPON_STATS = {
         symbol: "👊",
         width: 1 * BLOCK_WIDTH, // Placeholder dimensions
         height: 1 * BLOCK_HEIGHT,
-        color: 'transparent',
+        // color: 'transparent', // No main color needed if not drawn, or per-shape
         attackDamage: 1, // Minimal damage
         blockDamage: 0,
         attackReachX: PLAYER_WIDTH * 0.2, // Small reach
@@ -442,68 +442,85 @@ export const WEAPON_STATS = {
         attackCooldown: 0.2,
         attackColor: 'rgba(255, 255, 255, 0.2)',
         visualAnchorOffset: { x: 0, y: 0 }, // Center of weapon
-        shape: [{ type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT }] // Placeholder visual
+        shape: [{ type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'transparent' }] // Placeholder visual, transparent
     },
-    [WEAPON_TYPE_SHOVEL]: {
+[WEAPON_TYPE_SHOVEL]: {
         displayName: "Shovel",
         symbol: "⛏️",
-        width: 2 * BLOCK_WIDTH, // 32px (bounding box width)
-        height: 3 * BLOCK_HEIGHT, // 48px (bounding box height)
-        color: 'rgb(0, 0, 0)', // Pitch-black
-        outlineColor: 'rgb(128, 0, 128)', // Bright purple
-        outlineWidth: 3, // Custom outline width for shovel
+        width: 2 * BLOCK_WIDTH,         // Bounding box width (blade is 2BW wide)
+        height: 4.5 * BLOCK_HEIGHT,      // UPDATED: Bounding box height (handle 3BH + blade 1.5BH)
+        outlineColor: 'rgb(75, 75, 75)', 
+        outlineWidth: 2,                 
         attackDamage: 5,
         blockDamage: 25,
-        attackReachX: 3 * BLOCK_WIDTH, // Distance from player center to hitbox center (48px)
-        attackReachY: PLAYER_HEIGHT * 0.4, // Vertical offset from player center to hitbox center (38.4px)
-        attackWidth: (1 * BLOCK_WIDTH) * 2, // 32px
-        attackHeight: (2 * BLOCK_HEIGHT) * 2, // 64px
+        attackReachX: 3 * BLOCK_WIDTH,  
+        attackReachY: PLAYER_HEIGHT * 0.4, 
+        attackWidth: (1 * BLOCK_WIDTH) * 2, 
+        attackHeight: (2 * BLOCK_HEIGHT) * 2, 
         attackDuration: 0.3,
         attackCooldown: 0.4,
         attackColor: 'rgba(180, 180, 180, 0.5)',
-        recipe: [], // Shovel is usually starting item, not crafted
-        visualAnchorOffset: { x: 0, y: 1.5 * BLOCK_HEIGHT }, // The tip of the blade (bottom center of weapon's bounding box)
+        recipe: [], 
+        visualAnchorOffset: { x: 0, y: 1.5 * BLOCK_HEIGHT }, // Tip of the blade aims at target (STAYS THE SAME)
+        handPositions: { // Local coords relative to weapon's rotational center (pivot)
+            back: { x: 0, y: -3.0 * BLOCK_HEIGHT },  // UPDATED: End of the longer handle (top)
+            front: { x: 0, y: -1.5 * BLOCK_HEIGHT } // UPDATED: Midpoint of the longer handle
+        },
         shape: [
-            // Handle (rectangle) - x,y are relative to shovel's rotational center (0,0)
-            { type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -1.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1.5 * BLOCK_HEIGHT },
-            // Blade (triangle) - points are relative to shovel's rotational center (0,0)
+            // Handle (rectangle)
+            { 
+                type: 'rect', 
+                x: -0.5 * BLOCK_WIDTH,      // Centered horizontally
+                y: -3.0 * BLOCK_HEIGHT,     // UPDATED: Starts 3BH above the pivot
+                w: 1 * BLOCK_WIDTH, 
+                h: 3.0 * BLOCK_HEIGHT,      // UPDATED: Length of handle
+                color: 'rgb(139, 69, 19)'   // SaddleBrown color for handle
+            },
+            // Blade (triangle) - STAYS THE SAME relative to the pivot
             {
                 type: 'triangle',
-                p1: { x: -1 * BLOCK_WIDTH, y: 0 * BLOCK_HEIGHT },    // Top-left corner of blade base
-                p2: { x: 1 * BLOCK_WIDTH, y: 0 * BLOCK_HEIGHT },     // Top-right corner of blade base
-                p3: { x: 0 * BLOCK_WIDTH, y: 1.5 * BLOCK_HEIGHT }    // Bottom-center point (the tip)
+                p1: { x: -1 * BLOCK_WIDTH, y: 0 * BLOCK_HEIGHT },
+                p2: { x: 1 * BLOCK_WIDTH, y: 0 * BLOCK_HEIGHT },
+                p3: { x: 0 * BLOCK_WIDTH, y: 1.5 * BLOCK_HEIGHT },
+                color: 'rgb(128, 128, 128)'
             }
         ]
     },
     [WEAPON_TYPE_SWORD]: {
         displayName: "Sword",
         symbol: "⚔️",
-        width: 3 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: 'rgb(180, 180, 190)',
+        width: 3 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, 
+        // color: 'rgb(180, 180, 190)', // Can be fallback
+        outlineColor: 'rgb(100, 100, 110)',
+        outlineWidth: 2,
         attackDamage: 15, blockDamage: 0,
-        attackReachX: PLAYER_WIDTH * 0.8, attackReachY: 0, // Y is fixed relative to player center.
+        attackReachX: PLAYER_WIDTH * 0.8, attackReachY: 0, 
         attackWidth: PLAYER_WIDTH * 1.5, attackHeight: PLAYER_HEIGHT * 0.9,
         attackDuration: 0.2, attackCooldown: 0.3, attackColor: 'rgba(255, 255, 255, 0.5)',
         recipe: [ { type: 'stone', amount: 5 } ],
-        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 }, // Tip of the sword (right edge, centered vertically)
+        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 }, 
         shape: [
-            { type: 'rect', x: -1.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 3 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT }
+            { type: 'rect', x: -1.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 3 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'rgb(180, 180, 190)' }
         ]
     },
     [WEAPON_TYPE_SPEAR]: {
         displayName: "Spear",
         symbol: "↑",
-        width: 4 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: 'rgb(210, 180, 140)',
+        width: 4 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, 
+        // color: 'rgb(210, 180, 140)', // Can be fallback
+        outlineColor: 'rgb(130, 100, 60)',
+        outlineWidth: 2,
         attackDamage: 8, blockDamage: 0,
-        attackReachX: BLOCK_WIDTH * 6, // Total distance from player center to spear tip, then hitbox is placed around it.
-        attackReachY: undefined, // undefined means it's a direct vector from player to target for reach.
+        attackReachX: BLOCK_WIDTH * 6, 
+        attackReachY: undefined, 
         attackWidth: BLOCK_WIDTH * 0.5, attackHeight: BLOCK_HEIGHT * 1.5,
         attackDuration: 0.3,
         attackCooldown: 0.5,
         attackColor: 'rgba(220, 220, 180, 0.5)',
         recipe: [ { type: 'wood', amount: 2 }, { type: 'stone', amount: 1 } ],
-        visualAnchorOffset: { x: 2 * BLOCK_WIDTH, y: 0 }, // Tip of the spear (right edge, centered vertically)
+        visualAnchorOffset: { x: 2 * BLOCK_WIDTH, y: 0 }, 
         shape: [
-            { type: 'rect', x: -2 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 4 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT }
+            { type: 'rect', x: -2 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 4 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'rgb(210, 180, 140)' }
         ]
     }
 };

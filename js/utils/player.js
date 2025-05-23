@@ -161,8 +161,7 @@ export class Player {
                     if (weaponStats) {
                         this.attackTimer = weaponStats.attackDuration;
                         this.attackCooldown = weaponStats.attackCooldown;
-                    } else {
-                        // Fallback for unknown weapon
+                    } else { // fallback for unknown weapon
                         this.attackTimer = 0.1;
                         this.attackCooldown = 0.2;
                     }
@@ -445,7 +444,7 @@ export class Player {
             } else if (timeElapsed >= spinDuration && timeElapsed < totalAnimationDuration) { 
                 const swellDuration = totalAnimationDuration - spinDuration;
                 if (swellDuration > 0) {
-                    const swellProgress = (timeElapsed - spinDuration) / swellDuration; // Corrected progress calculation
+                    const swellProgress = (timeElapsed - spinDuration) / swellDuration; // progress calculation
                     currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress; 
                 } else {
                     currentScale = 1.0; 
@@ -468,49 +467,38 @@ export class Player {
             ctx.fillStyle = Config.PLAYER_BODY_COLOR; // --- Normal Active Drawing (Player Body, Arms, Weapon) ---
             ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
         }
-
         // Check if a weapon is selected and not in attack animation
         if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             const playerCenterX = this.x + this.width / 2;
             const playerCenterY = this.y + this.height / 2;
             const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; 
-            
-            // --- NEW WEAPON POSITIONING LOGIC ---
             let weaponStats = Config.WEAPON_STATS[this.selectedItem];
+
             if (!weaponStats || !weaponStats.shape || !weaponStats.visualAnchorOffset) {
-                // Should not happen if config is properly defined
                 console.warn(`Player.draw: Missing weapon stats or shape/anchor for ${this.selectedItem}.`);
                 return;
             }
 
             const visualAnchorOffsetX = weaponStats.visualAnchorOffset.x;
             const visualAnchorOffsetY = weaponStats.visualAnchorOffset.y;
-
             const dx_to_raw = rawTargetWorldPos.x - playerCenterX;
             const dy_to_raw = rawTargetWorldPos.y - playerCenterY;
             
-            // Calculate the effective maximum reach for the visual weapon.
-            // For weapons with attackReachY defined (sword/shovel), it's the hypotenuse from player center to attackReachX,Y.
-            // For weapons with attackReachY undefined (spear), it's just attackReachX.
             let maxVisualReach;
-            if (weaponStats.attackReachY === undefined) { // Spear-like logic (distance from player center to hitbox center)
+            if (weaponStats.attackReachY === undefined) { 
                 maxVisualReach = weaponStats.attackReachX;
-            } else { // Shovel/Sword-like logic (horizontal and vertical offsets from player center to hitbox center)
+            } else { 
                 maxVisualReach = Math.sqrt(
                     (weaponStats.attackReachX * weaponStats.attackReachX) +
                     (weaponStats.attackReachY * weaponStats.attackReachY)
                 );
             }
-            // Ensure some minimal distance if the weapon's configured attack reach is very small.
-            // This prevents the weapon from visually "disappearing" or sitting too close to the player center
-            // if its attackReach is tiny, while still respecting its actual range.
-            maxVisualReach = Math.max(maxVisualReach, weaponStats.width, weaponStats.height, Config.BLOCK_WIDTH * 2); // Use a small default minimum size
-
+            maxVisualReach = Math.max(maxVisualReach, weaponStats.width, weaponStats.height, Config.BLOCK_WIDTH * 2); 
+            
             let clampedTargetX = rawTargetWorldPos.x;
             let clampedTargetY = rawTargetWorldPos.y;
             const dist_to_raw = Math.sqrt(dx_to_raw * dx_to_raw + dy_to_raw * dy_to_raw);
 
-            // Clamp the target position to the maxVisualReach from the player's center.
             if (dist_to_raw > maxVisualReach + GridCollision.E_EPSILON) {
                 if (dist_to_raw > GridCollision.E_EPSILON) {
                     const normalizedDx = dx_to_raw / dist_to_raw;
@@ -518,36 +506,21 @@ export class Player {
                     clampedTargetX = playerCenterX + normalizedDx * maxVisualReach;
                     clampedTargetY = playerCenterY + normalizedDy * maxVisualReach;
                 } else {
-                    // If cursor is on player, point straight forward at maxVisualReach
                     clampedTargetX = playerCenterX + this.lastDirection * maxVisualReach;
                     clampedTargetY = playerCenterY;
                 }
             } else if (dist_to_raw < GridCollision.E_EPSILON) {
-                 // If cursor is very close to player, point straight forward at a fraction of maxVisualReach
                  clampedTargetX = playerCenterX + this.lastDirection * (maxVisualReach * 0.1);
                  clampedTargetY = playerCenterY;
             }
-            
-            // Calculate the angle from player's center to the CLAMPED target
+
             let angle = Math.atan2(clampedTargetY - playerCenterY, clampedTargetX - playerCenterX);
             
-            // Calculate the weapon's rotational center (weaponCenterX, weaponCenterY)
-            // so that its visualAnchorOffset point aligns with the clampedTarget.
-            // This involves inverse rotation and translation:
-            // (clampedTargetX, clampedTargetY) = (weaponCenterX, weaponCenterY) + (rotatedAnchorOffsetX, rotatedAnchorOffsetY)
-            // Where rotatedAnchorOffset = (visualAnchorOffsetX * cos(angle) - visualAnchorOffsetY * sin(angle),
-            //                              visualAnchorOffsetX * sin(angle) + visualAnchorOffsetY * cos(angle))
-            // So:
-            // weaponCenterX = clampedTargetX - rotatedAnchorOffsetX
-            // weaponCenterY = clampedTargetY - rotatedAnchorOffsetY
             const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(angle) - visualAnchorOffsetY * Math.sin(angle);
             const rotatedAnchorOffsetY = visualAnchorOffsetX * Math.sin(angle) + visualAnchorOffsetY * Math.cos(angle);
-
-            const weaponCenterX = clampedTargetX - rotatedAnchorOffsetX;
-            const weaponCenterY = clampedTargetY - rotatedAnchorOffsetY;
-
-            // --- END NEW WEAPON POSITIONING LOGIC ---
-
+            const weaponPivotX = clampedTargetX - rotatedAnchorOffsetX; // Weapon's rotational center in world space
+            const weaponPivotY = clampedTargetY - rotatedAnchorOffsetY;
+            
             // --- Arm Calculations ---
             const shoulderOffsetPxX = this.width * Config.PLAYER_SHOULDER_OFFSET_X_FACTOR;
             const shoulderOffsetPxY = this.height * Config.PLAYER_SHOULDER_OFFSET_Y_FACTOR;
@@ -555,59 +528,83 @@ export class Player {
             const shoulderRightY = this.y + shoulderOffsetPxY;
             const shoulderLeftX = this.x + shoulderOffsetPxX;
             const shoulderLeftY = this.y + shoulderOffsetPxY;
-            
-            let holdingArmOriginX, holdingArmOriginY;
-            let otherArmOriginX, otherArmOriginY;
+        
+            let frontShoulderX, frontShoulderY; // Player's shoulder for the "front" hand
+            let backShoulderX, backShoulderY;   // Player's shoulder for the "back" hand
 
             if (this.lastDirection === 1) { // Player facing right
-                holdingArmOriginX = shoulderRightX;
-                holdingArmOriginY = shoulderRightY;
-                otherArmOriginX = shoulderLeftX;
-                otherArmOriginY = shoulderLeftY;
+                frontShoulderX = shoulderRightX;
+                frontShoulderY = shoulderRightY;
+                backShoulderX = shoulderLeftX;
+                backShoulderY = shoulderLeftY;
             } else { // Player facing left
-                holdingArmOriginX = shoulderLeftX;
-                holdingArmOriginY = shoulderLeftY;
-                otherArmOriginX = shoulderRightX;
-                otherArmOriginY = shoulderRightY;
+                frontShoulderX = shoulderLeftX;
+                frontShoulderY = shoulderLeftY;
+                backShoulderX = shoulderRightX;
+                backShoulderY = shoulderRightY;
             }
 
-            // Calculate angle and length for the holding arm (connects its shoulder to weapon center)
-            const holdingArmAngle = Math.atan2(weaponCenterY - holdingArmOriginY, weaponCenterX - holdingArmOriginX);
-            let holdingArmLength = Math.sqrt(
-                Math.pow(weaponCenterX - holdingArmOriginX, 2) + 
-                Math.pow(weaponCenterY - holdingArmOriginY, 2)
-            );
-            // Calculate angle and length for the other arm (connects its shoulder to weapon center)
-            const otherArmAngle = Math.atan2(weaponCenterY - otherArmOriginY, weaponCenterX - otherArmOriginX);
-            let otherArmLength = Math.sqrt(
-                Math.pow(weaponCenterX - otherArmOriginX, 2) + 
-                Math.pow(weaponCenterY - otherArmOriginY, 2)
-            );
-            
-            const maxArmLength = this.width * 2; 
-            holdingArmLength = Math.min(holdingArmLength, maxArmLength);
-            otherArmLength = Math.min(otherArmLength, maxArmLength * 0.8); 
-            
-            holdingArmLength = Math.max(0, holdingArmLength);
-            otherArmLength = Math.max(0, otherArmLength);
+            // Get target points for hands on the weapon (in world coordinates)
+            let frontHandWorldX, frontHandWorldY;
+            let backHandWorldX, backHandWorldY;
 
+            if (weaponStats.handPositions && weaponStats.handPositions.front && weaponStats.handPositions.back) {
+                const localFrontHand = weaponStats.handPositions.front; // {x, y} relative to weapon pivot
+                const localBackHand = weaponStats.handPositions.back;   // {x, y} relative to weapon pivot
+
+                // Rotate local hand positions by weapon's current angle and add weapon's world pivot
+                frontHandWorldX = weaponPivotX + (localFrontHand.x * Math.cos(angle) - localFrontHand.y * Math.sin(angle));
+                frontHandWorldY = weaponPivotY + (localFrontHand.x * Math.sin(angle) + localFrontHand.y * Math.cos(angle));
+                
+                backHandWorldX = weaponPivotX + (localBackHand.x * Math.cos(angle) - localBackHand.y * Math.sin(angle));
+                backHandWorldY = weaponPivotY + (localBackHand.x * Math.sin(angle) + localBackHand.y * Math.cos(angle));
+            } else {
+                // Fallback: if no handPositions defined, both hands aim at weapon's pivot
+                frontHandWorldX = weaponPivotX;
+                frontHandWorldY = weaponPivotY;
+                backHandWorldX = weaponPivotX;
+                backHandWorldY = weaponPivotY;
+            }
+            
+            // Calculate angle and length for the front arm (connects frontShoulder to frontHandWorld)
+            const frontArmAngle = Math.atan2(frontHandWorldY - frontShoulderY, frontHandWorldX - frontShoulderX);
+            let frontArmLength = Math.sqrt(
+                Math.pow(frontHandWorldX - frontShoulderX, 2) + 
+                Math.pow(frontHandWorldY - frontShoulderY, 2)
+            );
+            
+            // Calculate angle and length for the back arm (connects backShoulder to backHandWorld)
+            const backArmAngle = Math.atan2(backHandWorldY - backShoulderY, backHandWorldX - backShoulderX);
+            let backArmLength = Math.sqrt(
+                Math.pow(backHandWorldX - backShoulderX, 2) + 
+                Math.pow(backHandWorldY - backShoulderY, 2)
+            );
+
+            const maxArmLength = this.width * 2; // Max arm stretch
+            frontArmLength = Math.min(frontArmLength, maxArmLength);
+            backArmLength = Math.min(backArmLength, maxArmLength * 0.9); // Back arm can be a bit shorter
+            frontArmLength = Math.max(0, frontArmLength);
+            backArmLength = Math.max(0, backArmLength);
+            
             // --- Drawing Order for Arms and Weapon ---
-            // Draw back arm (always the arm on the "inside" relative to facing direction)
+            // Draw back arm
             ctx.save();
-            ctx.translate(otherArmOriginX, otherArmOriginY);
-            ctx.rotate(otherArmAngle);
+            ctx.translate(backShoulderX, backShoulderY);
+            ctx.rotate(backArmAngle);
             ctx.fillStyle = Config.ARM_COLOR;
-            ctx.fillRect(0, -Config.ARM_THICKNESS / 2, otherArmLength, Config.ARM_THICKNESS);
+            ctx.fillRect(0, -Config.ARM_THICKNESS / 2, backArmLength, Config.ARM_THICKNESS);
             ctx.restore();
 
-            ctx.save(); // Translate to weapon's rotational center
-            ctx.translate(weaponCenterX, weaponCenterY); 
+            // Draw Weapon
+            ctx.save(); 
+            ctx.translate(weaponPivotX, weaponPivotY); // Translate to weapon's rotational center
             ctx.rotate(angle); // Rotate around its center
-
-            // Draw each primitive defined in the weapon's shape
+            
             weaponStats.shape.forEach(shapeDef => {
+                const fillColor = shapeDef.color || weaponStats.color || 'magenta';
+                ctx.fillStyle = fillColor;
+
                 if (shapeDef.type === 'rect') {
-                    ctx.fillStyle = weaponStats.color;
                     ctx.fillRect(Math.floor(shapeDef.x), Math.floor(shapeDef.y), Math.ceil(shapeDef.w), Math.ceil(shapeDef.h));
                     if (weaponStats.outlineColor && weaponStats.outlineWidth) {
                         ctx.strokeStyle = weaponStats.outlineColor;
@@ -621,7 +618,6 @@ export class Player {
                         );
                     }
                 } else if (shapeDef.type === 'triangle') {
-                    ctx.fillStyle = weaponStats.color;
                     ctx.beginPath();
                     ctx.moveTo(Math.floor(shapeDef.p1.x), Math.floor(shapeDef.p1.y));
                     ctx.lineTo(Math.floor(shapeDef.p2.x), Math.floor(shapeDef.p2.y));
@@ -631,21 +627,20 @@ export class Player {
                     if (weaponStats.outlineColor && weaponStats.outlineWidth) {
                         ctx.strokeStyle = weaponStats.outlineColor;
                         ctx.lineWidth = weaponStats.outlineWidth;
-                        ctx.stroke(); // Stroke the path defined by beginPath/lineTo/closePath
+                        ctx.stroke(); 
                     }
                 }
             });
-            ctx.restore();
-
-            // Draw front arm (always the arm on the "outside" relative to facing direction)
+            ctx.restore(); // Restore from weapon's transformations
+            
+            // Draw front arm
             ctx.save(); 
-            ctx.translate(holdingArmOriginX, holdingArmOriginY);
-            ctx.rotate(holdingArmAngle);
+            ctx.translate(frontShoulderX, frontShoulderY);
+            ctx.rotate(frontArmAngle);
             ctx.fillStyle = Config.ARM_COLOR;
-            ctx.fillRect(0, -Config.ARM_THICKNESS / 2, holdingArmLength, Config.ARM_THICKNESS);
+            ctx.fillRect(0, -Config.ARM_THICKNESS / 2, frontArmLength, Config.ARM_THICKNESS);
             ctx.restore();
         }
-        // ... rest of draw() (attack hitbox) ...
         // --- Attack Hitbox ---
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             const hitbox = this.getAttackHitbox(); 
