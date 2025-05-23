@@ -190,12 +190,9 @@ function createItemSlot(itemType, container, category) { // create and setup a s
             slotDiv.insertBefore(quadrantContainer, countSpan); 
         }
     } else if (category === 'weapon') {
-        if (itemType === Config.WEAPON_TYPE_SWORD) slotDiv.textContent = '⚔️';
-        else if (itemType === Config.WEAPON_TYPE_SPEAR) slotDiv.textContent = '↑';
-        else if (itemType === Config.WEAPON_TYPE_SHOVEL) slotDiv.textContent = '⛏️';
-        else if (itemType === Config.WEAPON_TYPE_UNARMED) slotDiv.textContent = '👊';
-        else slotDiv.textContent = '?'; 
-        titleText += ' (Unavailable)'; 
+        const weaponStats = Config.WEAPON_STATS[itemType];
+        slotDiv.textContent = weaponStats?.symbol || '?'; // Use the new symbol property
+        titleText = (weaponStats?.displayName || itemType.toUpperCase()) + ' (Unavailable)'; // Use displayName for title
     } else if (category.includes('-placeholder')) {
         slotDiv.textContent = ''; 
         slotDiv.style.backgroundColor = '#2a2a2a'; 
@@ -269,7 +266,8 @@ export function setPlayerReference(playerObject) { // set reference to player ob
                 if (countSpan) countSpan.textContent = ''; 
                 slotDiv.title = `${key.toUpperCase()} (0)`; 
             } else if (slotDiv.dataset.category === 'weapon') {
-                slotDiv.title = `${key.toUpperCase()} (Unavailable)`;
+                const weaponStats = Config.WEAPON_STATS[key];
+                slotDiv.title = `${weaponStats?.displayName || key.toUpperCase()} (Unavailable)`;
             }
         }
     }
@@ -359,10 +357,11 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             continue; 
         }
         const possessed = playerPossession[weaponType]; 
-        const recipe = Config.CRAFTING_RECIPES[weaponType]; 
-        const isCraftable = recipe !== undefined; 
+        const weaponStats = Config.WEAPON_STATS[weaponType]; // Get weapon stats
+        const recipe = weaponStats?.recipe; // Get recipe from weaponStats
+        const isCraftable = recipe !== undefined && recipe.length > 0;
         let canInteract = false; 
-        let titleText = weaponType.toUpperCase(); 
+        let titleText = weaponStats?.displayName || weaponType.toUpperCase(); // Use display name for title
         if (possessed) {
             canInteract = true;
             titleText += ' (Owned)'; 

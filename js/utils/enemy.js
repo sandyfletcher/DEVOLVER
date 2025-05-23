@@ -3,20 +3,20 @@
 // -----------------------------------------------------------------------------
 
 import * as Config from './config.js';
-import * as ItemManager from '../itemManager.js'; // Needed for drops on death
-import * as GridCollision from './gridCollision.js'; // For physics and water detection
+import * as ItemManager from '../itemManager.js';
+import * as GridCollision from './gridCollision.js';
 import { E_EPSILON } from './gridCollision.js';
 import { SeekCenterAI } from './ai/seekCenterAI.js';
 import { ChasePlayerAI } from './ai/chasePlayerAI.js';
 import { FlopAI } from './ai/flopAI.js';
-import { FishAI } from './ai/fishAI.js'; // NEW: Import FishAI
-import * as AudioManager from '../audioManager.js'; // Import AudioManager
+import { FishAI } from './ai/fishAI.js';
+import * as AudioManager from '../audioManager.js';
 
 const aiStrategyMap = { // Map AI type strings from config to the actual AI Strategy classes
     'seekCenter': SeekCenterAI,
     'chasePlayer': ChasePlayerAI,
     'flopAI': FlopAI,
-    'fishAI': FishAI, // NEW: Add FishAI to the map
+    'fishAI': FishAI,
     // 'flyPatrol': FlyerAI, // Add mappings for new AI types here
     // 'standAndShoot': ShooterAI,
 };
@@ -29,157 +29,106 @@ export class Enemy {
             console.error(`>>> Enemy CONSTRUCTOR: Unknown enemy type "${enemyType}". Using fallback stats.`);
             const fallbackStats = Config.ENEMY_STATS[Config.ENEMY_TYPE_CENTER_SEEKER] || {}; // Define minimal fallback stats or default to center_seeker if type is unknown
             rawStats = { // Use a basic fallback if center_seeker is also missing (unlikely)
-                 displayName: "Unknown (Fallback)",
-                 aiType: 'seekCenter',
-                 color: 'purple',
-                 width_BLOCKS: Config.DEFAULT_ENEMY_WIDTH, // Use block dimensions for fallback
-                 height_BLOCKS: Config.DEFAULT_ENEMY_HEIGHT,
-                 maxSpeedX_BLOCKS_PER_SEC: 30, 
-                 maxSpeedY_BLOCKS_PER_SEC: 50,
-                 swimSpeed_BLOCKS_PER_SEC: 50,
-                 health: 1,
-                 contactDamage: 1,
-                 applyGravity: true,
-                 gravityFactor: 1.0,
-                 canJump: false,
-                 jumpVelocity_BLOCKS_PER_SEC: 0,
-                 canSwim: false,
-                 canFly: false,
-                 separationFactor: Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
-                 separationStrength_BLOCKS_PER_SEC: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH, 
-                 landHopHorizontalVelocity_BLOCKS_PER_SEC: 0, // Default for non-tetrapods
-                 dropTable: [],
-                 ...fallbackStats // Merge fallback stats if available
-             };
+                displayName: "Unknown (Fallback)",
+                aiType: 'seekCenter',
+                color: 'purple',
+                width_BLOCKS: Config.DEFAULT_ENEMY_WIDTH, // Use block dimensions for fallback
+                height_BLOCKS: Config.DEFAULT_ENEMY_HEIGHT,
+                maxSpeedX_BLOCKS_PER_SEC: 30, 
+                maxSpeedY_BLOCKS_PER_SEC: 50,
+                swimSpeed_BLOCKS_PER_SEC: 50,
+                health: 1,
+                contactDamage: 1,
+                applyGravity: true,
+                gravityFactor: 1.0,
+                canJump: false,
+                jumpVelocity_BLOCKS_PER_SEC: 0,
+                canSwim: false,
+                canFly: false,
+                separationFactor: Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR, // Added for fallback
+                separationStrength_BLOCKS_PER_SEC: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH / Config.BLOCK_WIDTH,
+                landHopHorizontalVelocity_BLOCKS_PER_SEC: 0,
+                dropTable: [],
+                ...fallbackStats // Merge fallback stats if available
+            };
         } else {
-             rawStats = { ...stats }; // Copy stats from config
+            rawStats = { ...stats }; // Copy stats from config
         }
-        this.stats = rawStats; // Keep a copy of the raw stats (relative to 4px)
-        const blockWidthRatio = Config.BLOCK_WIDTH / Config.BASE_BLOCK_PIXEL_SIZE; // Calculate scaling ratios based on the current block size and the base size
-        const blockHeightRatio = Config.BLOCK_HEIGHT / Config.BASE_BLOCK_PIXEL_SIZE;
-        this.width = this.stats.width_BLOCKS * Config.BLOCK_WIDTH; // Dimensions are defined in blocks in config, scale them here to pixels
+        this.stats = rawStats;
+        
+        this.width = this.stats.width_BLOCKS * Config.BLOCK_WIDTH;
         this.height = this.stats.height_BLOCKS * Config.BLOCK_HEIGHT;
-        this.x = x; // Initial x position (assumed to be in pixels)
-        this.y = y; // Initial y position (assumed to be in pixels)
+        this.x = x;
+        this.y = y;
         this.color = this.stats.color;
         this.health = this.stats.health;
         this.displayName = this.stats.displayName;
-        this.maxSpeedX = this.stats.maxSpeedX_BLOCKS_PER_SEC * Config.BLOCK_WIDTH; // Scale speed/velocity values by the appropriate block ratio
+        this.maxSpeedX = this.stats.maxSpeedX_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
         this.maxSpeedY = this.stats.maxSpeedY_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
         this.swimSpeed = this.stats.swimSpeed_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
         this.jumpVelocity = this.stats.jumpVelocity_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
-        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * Config.BLOCK_WIDTH; // Scale separation strength by Block Width ratio
-        this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * Config.BLOCK_WIDTH; // Scale Tetrapod specific velocities/forces if they were added to stats
-        // --- Store Movement Capabilities ---
-        this.canSwim = this.stats.canSwim ?? false; // Default to false if undefined
-        this.canFly = this.stats.canFly ?? false;   // Default to false if undefined
-        this.applyGravityDefault = this.stats.applyGravity ?? !(this.canFly); // Default to true unless canFly
-        this.canJump = this.stats.canJump ?? false; // Default to false
-        // --- Physics State ---
+        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * Config.BLOCK_WIDTH; 
+        this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
+        this.canSwim = this.stats.canSwim ?? false;
+        this.canFly = this.stats.canFly ?? false;
+        this.applyGravityDefault = this.stats.applyGravity ?? !(this.canFly);
+        this.canJump = this.stats.canJump ?? false;
         this.vx = 0;
         this.vy = 0;
         this.isOnGround = false;
-        this.isActive = true; // This flag means the enemy exists and participates in game logic/collisions (until death anim ends)
+        this.isActive = true;
         this.isInWater = false;
-        this.waterJumpCooldown = 0; // Keep for non-swimming jumpers
-        // AI-controlled state flag(s) - specific AIs can set these
-        this.isFlopAttacking = false; // Specifically for Tetrapod's land hop attack
-        // --- Visual Feedback State ---
+        this.waterJumpCooldown = 0;
+        this.isFlopAttacking = false;
         this.isFlashing = false;
         this.flashTimer = 0;
-        this.flashDuration = Config.ENEMY_FLASH_DURATION; // Time-based, no scaling needed
-        // --- Animation State ---
-        this.isDying = false; // New flag: Is the death animation playing?
-        this.deathAnimationTimer = 0; // Timer for the death animation duration
+        this.flashDuration = Config.ENEMY_FLASH_DURATION;
+        this.isDying = false;
+        this.deathAnimationTimer = 0;
         this.isBeingAbsorbed = false;
-        this.absorptionProgress = 0; // For the portal to potentially control animation details if needed directly on enemy
-        // --- Instantiate AI Strategy ---
+        this.absorptionProgress = 0;
         const AIStrategyClass = aiStrategyMap[this.stats.aiType];
         if (AIStrategyClass) {
-            // Pass 'this' (the enemy instance) to the AI strategy constructor so the strategy can access the enemy's state and properties.
             this.aiStrategy = new AIStrategyClass(this);
         } else {
-            // Assign a dummy strategy to prevent errors during update
             console.error(`>>> Enemy CONSTRUCTOR: AI strategy type "${this.stats.aiType}" not found for enemy "${this.displayName}".`);
             this.aiStrategy = {
-                decideMovement: () => ({ targetVx: 0, jump: false, targetVy: 0 }), // Add targetVy default
+                decideMovement: () => ({ targetVx: 0, jump: false, targetVy: 0 }),
                 reactToCollision: () => {},
-                // Add dummy methods for any flags AI controls, or ensure AI doesn't try to set them
-                // For now, isFlopAttacking is a public property AI can set.
             };
         }
-        // --- Initial Position Validation ---
+        
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Enemy CONSTRUCTOR ERROR: NaN coordinates! Type: ${this.type}. Resetting.`);
             this.x = Config.CANVAS_WIDTH / 2;
             this.y = 50;
         }
     }
-    // --- Updates the enemy's state, delegating behavioral decisions to its AI strategy ---
-    update(dt, playerPosition, allEnemies) {
-        // Check if the enemy is truly inactive or is currently dying
+
+    update(dt, playerPosition, allEnemies) { // allEnemies parameter is now passed by EnemyManager
         if (!this.isActive && !this.isDying) return;
         if (this.isBeingAbsorbed) {
-            // Position and scale will be directly manipulated by the Portal's absorption animation logic
             return;
         }
-        // Ensure dt is valid
+        
         if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
             console.warn(`Enemy(${this.displayName}) Update: Invalid delta time.`, dt);
-            // If dt is invalid during dying, just let the timer slowly decrement or eventually expire.
-            // Or, if timer is already <= 0, ensure it's removed.
             if (this.isDying && this.deathAnimationTimer <= 0) {
-                this.isActive = false; // Mark as fully inactive if animation finished but dt was bad
+                this.isActive = false;
                 this.isDying = false;
             }
-            if (!this.isActive && !this.isDying) return; // Exit if now truly inactive
+            if (!this.isActive && !this.isDying) return;
         }
-        // --- Handle Dying State ---
+        
         if (this.isDying) {
-            this.deathAnimationTimer -= dt; // Decrement death timer
+            this.deathAnimationTimer -= dt;
             if (this.deathAnimationTimer <= 0) {
-                // Animation is finished, mark as inactive for removal
                 this.isActive = false;
-                this.isDying = false; // Clear dying flag
-                // console.log(`[Enemy] Death animation finished for ${this.displayName}. Marking inactive.`);
+                this.isDying = false;
             }
-            // Stop any other updates while dying
-            return; // Stop normal update logic while dying
+            return;
         }
-        // --- Normal Active Update Logic (Only if NOT dying) ---
-        // Ensure isFlopAttacking is reset if we are NOT dying but it was somehow stuck true (safety)
-        if (this.isFlopAttacking) {
-            // Logic to turn off isFlopAttacking is now in FlopAI, tied to flopAttackTimer
-            // The Enemy.js update handles the timer check and setting the flag.
-            // Let's move the flopAttackTimer handling from FlopAI back to Enemy.update
-            // if the Enemy class is meant to manage this state flag internally.
-            // Or, ensure the AI explicitly turns it off. FlopAI now manages the flag via `this.enemy.isFlopAttacking`.
-            // The timer logic for this flag needs to be in the FlopAI's update method.
-            // Let's assume FlopAI correctly sets/unsets `this.enemy.isFlopAttacking`.
-        }
-        // --- Determine Current Environment State ---
-        this.isInWater = GridCollision.isEntityInWater(this);
-
-        // NEW: Handle out-of-water damage (specific to Dunkleosteus)
-        if (this.type === Config.ENEMY_TYPE_DUNKLEOSTEUS && !this.isInWater && this.health > 0) {
-            const damagePerSecond = this.stats.outOfWaterDamagePerSecond ?? 0;
-            if (damagePerSecond > 0) {
-                const damageThisFrame = damagePerSecond * dt;
-                this.takeDamage(damageThisFrame); // Take damage directly
-            }
-        }
-
-        // Note: isOnGround is updated by collideAndResolve later, but we might need its state *from the previous frame* here.
-        // Let's assume collisionResult.isOnGround is the most up-to-date check.
-        // --- Reset water jump cooldown if just exited water (for non-swimmers) ---
-        if (!this.isInWater && this.waterJumpCooldown > 0) {
-            this.waterJumpCooldown = 0;
-        }
-        if (isNaN(this.x) || isNaN(this.y)) {
-            console.error(`>>> Enemy UPDATE ERROR (${this.displayName}): Skipping update due to NaN coordinates!`);
-            return; // Skip update if invalid
-        }
-        // --- Update Flash Timer ---
+        
         if (this.isFlashing) {
             this.flashTimer -= dt;
             if (this.flashTimer <= 0) {
@@ -187,111 +136,49 @@ export class Enemy {
             }
         }
         if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt;
-        // --- 1. Get Movement Intent from AI Strategy ---
-        // AI now potentially returns { targetVx, targetVy, jump }
+        
+        this.isInWater = GridCollision.isEntityInWater(this);
+        
+        if (this.type === Config.ENEMY_TYPE_DUNKLEOSTEUS && !this.isInWater && this.health > 0) {
+            const damagePerSecond = this.stats.outOfWaterDamagePerSecond ?? 0;
+            if (damagePerSecond > 0) {
+                const damageThisFrame = damagePerSecond * dt;
+                this.takeDamage(damageThisFrame);
+            }
+        }
+        
+        if (isNaN(this.x) || isNaN(this.y)) {
+            console.error(`>>> Enemy UPDATE ERROR (${this.displayName}): Skipping update due to NaN coordinates!`);
+            return;
+        }
+        
         const aiDecision = this.aiStrategy.decideMovement(playerPosition, allEnemies, dt);
         let targetVx = aiDecision?.targetVx ?? 0;
-        let targetVy = aiDecision?.targetVy ?? 0; // AI controls vertical for swim/fly
-        let wantsJump = aiDecision?.jump ?? false; // For ground/water jumps
-        // --- 2. Apply Physics & Movement Based on Mode ---
-        // Gravity scales with BLOCK_HEIGHT, but this.stats.gravityFactor is just a multiplier.
-        let currentGravity = Config.GRAVITY_ACCELERATION * (this.stats.gravityFactor ?? 1.0);
-        let useStandardGravity = this.applyGravityDefault; // Start with default
-        let applyWaterEffects = false; // Flag for standard water physics (damping, buoyancy)
-        // --- Mode Switching ---
-        if (this.canFly && !this.isOnGround) { // FLYING MODE (if not landed)
-            useStandardGravity = false; // Override gravity for flyers
-            // Apply AI's vertical target directly (potentially with limits/smoothing)
-            this.vy = targetVy; // Simplest: Directly set velocity based on AI
-            // Could add acceleration: this.vy += (targetVy - this.vy) * flyAccel * dt;
-            this.vy = Math.max(-this.maxSpeedY, Math.min(this.maxSpeedY, this.vy)); // Clamp vertical speed (Use scaled maxSpeedY stat)
-            // Horizontal movement
-            this.vx = targetVx; // Directly set based on AI
-            // Apply some air friction/damping? (Optional)
-            // this.vx *= Math.pow(AIR_DAMPING, dt);
-        } else if (this.canSwim && this.isInWater) { // SWIMMING MODE
-            useStandardGravity = false; // Override gravity/buoyancy for smooth swimmers
-            // Apply AI's vertical target directly
-            this.vy = targetVy;
-            this.vy = Math.max(-this.swimSpeed, Math.min(this.swimSpeed, this.vy)); // Clamp vertical speed using scaled swimSpeed
-            // Apply AI's horizontal target
-            this.vx = targetVx;
-            // Apply standard water damping to horizontal movement
-            this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
-            // Apply some vertical damping too?
-            this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt); // Less aggressive damping maybe?
-        } else { // STANDARD MODE (Ground or Non-Flyer Airborne or Non-Swimmer in Water)
-            applyWaterEffects = this.isInWater; // Standard water physics apply if submerged
-            // Apply Buoyancy (only for non-swimmers in water)
-            // Buoyancy acceleration scales with BLOCK_HEIGHT
-            if (applyWaterEffects) { // Implicitly !this.canSwim here
-                this.vy -= Config.ENEMY_WATER_BUOYANCY_ACCEL * dt;
-            }
-            // Apply Gravity (potentially reduced in water)
-            if (useStandardGravity && !this.isOnGround) {
-                const gravityMultiplier = applyWaterEffects ? Config.WATER_GRAVITY_FACTOR : 1.0;
-                this.vy += currentGravity * gravityMultiplier * dt;
-            } else if (this.isOnGround && this.vy > E_EPSILON) { // Use epsilon for float comparison
-                this.vy = 0; // Clamp on ground
-            }
-            // Apply Standard Vertical Damping (only for non-swimmers in water)
-            if (applyWaterEffects) { // Implicitly !this.canSwim here
-                this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
-            }
-            // Handle Jumps (Ground or Water Strokes for non-swimmers)
-            if (wantsJump && this.canJump) { // Check entity's canJump stat
-                // Use scaled jumpVelocity
-                if (applyWaterEffects) { // Water Stroke (for non-swimmer)
-                    if (this.waterJumpCooldown <= 0) {
-                        this.vy = -(this.jumpVelocity * 0.8); // Impulse (Use scaled stat)
-                        this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION;
-                        this.isOnGround = false;
-                    }
-                } else if (this.isOnGround) { // Ground Jump
-                    this.vy = -this.jumpVelocity; // Use scaled stat
-                    this.isOnGround = false;
-                }
-            }
-            // Apply Horizontal Movement & Damping
-            this.vx = targetVx; // Base horizontal speed from AI
-            if (applyWaterEffects) {
-                this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
-            }
-            // Add ground friction here if desired (if !applyWaterEffects && this.isOnGround)
-        }
-        // --- Clamp Speeds (After potential jumps/mode changes) ---
-        // Clamp horizontal speed using scaled maxSpeedX
-        const currentMaxSpeedX = this.isInWater && !this.canSwim ? this.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.maxSpeedX;
-        this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
-        // Clamp vertical speed for non-swimmers/flyers
-        if (applyWaterEffects) { // Non-swimmer in water - uses scaled water specific speeds
-            this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED); // Limit stroke upward speed (scaled)
-            this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED); // Limit sink speed (scaled)
-        } else if (!this.canFly && !this.isInWater) { // Standard air fall - uses scaled max fall speed
-            this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
-        }
-        // Flyers/Swimmers already had vy clamped in their blocks using scaled stats
+        let targetVy = aiDecision?.targetVy ?? 0;
+        let wantsJump = aiDecision?.jump ?? false;
 
-        // --- 3. Separation Behavior (Apply after primary movement/physics) ---
+        // --- Separation Behavior (Apply after primary movement/physics) ---
+        // Calculate separation force from other enemies
         let separationForceX = 0;
         let separationForceY = 0;
         let neighborsCount = 0;
         // Separation radius scales with entity width (which already scales with BLOCK_WIDTH) and separationFactor (remains factor)
-        const separationRadius = this.width * this.stats.separationFactor;
+        const separationRadius = this.width * (this.stats.separationFactor ?? Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR); 
         const separationRadiusSq = separationRadius * separationRadius;
-        if (allEnemies) { // Check if the list was provided
+
+        if (allEnemies) { // Ensure allEnemies list is provided
             for (const otherEnemy of allEnemies) {
-                // Separation should only happen with *active* enemies that are *not* dying
-                if (otherEnemy === this || !otherEnemy.isActive || otherEnemy.isDying) continue;
+                // Exclude self, inactive, dying, or being absorbed enemies
+                if (otherEnemy === this || !otherEnemy.isActive || otherEnemy.isDying || otherEnemy.isBeingAbsorbed) continue; 
+
                 const dx = this.x - otherEnemy.x;
                 const dy = this.y - otherEnemy.y;
                 const distSq = dx * dx + dy * dy;
-                // Check distance and avoid self-collision check edge case
-                if (distSq > 0 && distSq < separationRadiusSq) {
+
+                if (distSq > 0 && distSq < separationRadiusSq) { // Only repel if within radius and not at exact same spot
                     const dist = Math.sqrt(distSq);
-                    // Avoid division by zero if dist is somehow extremely small
-                    if (dist > 1e-5) {
-                        const repelStrength = (1.0 - (dist / separationRadius));
+                    if (dist > E_EPSILON) { // Avoid division by zero for very small distances
+                        const repelStrength = (1.0 - (dist / separationRadius)); // Stronger repulsion when closer
                         separationForceX += (dx / dist) * repelStrength;
                         separationForceY += (dy / dist) * repelStrength * 0.5; // Weaker vertical push
                         neighborsCount++;
@@ -299,53 +186,105 @@ export class Enemy {
                 }
             }
         }
-        // Calculate the actual boost vectors AFTER iterating through all enemies
-        // Use scaled separation strength
-        const separationBoostX = (neighborsCount > 0) ? separationForceX * this.separationStrength : 0;
-        const separationBoostY = (neighborsCount > 0) ? separationForceY * this.separationStrength : 0;
+
         // Apply separation velocity adjustment
         if (neighborsCount > 0) {
-            // Be careful applying separation in fly/swim modes - might need adjustment
-            if (!this.canFly && !(this.canSwim && this.isInWater)) { // Only apply full separation on ground/air (non-swim)
-                this.vx += separationBoostX;
-                // Apply vertical boost only if on ground, or if the boost is significant, or in water
-                if (this.isOnGround || Math.abs(separationBoostY) > 10 || this.isInWater) {
-                    this.vy += separationBoostY;
+            // Use scaled separation strength from constructor
+            const separationBoostX = separationForceX * this.separationStrength * dt; // Apply as acceleration
+            const separationBoostY = separationForceY * this.separationStrength * dt; // Apply as acceleration
+
+            // Apply separation. May need different application based on enemy type (e.g. flying, swimming)
+            // For simplicity, apply directly to vx/vy for all types. This influences the target velocity.
+            this.vx += separationBoostX;
+            this.vy += separationBoostY;
+        }
+        
+        // ... (rest of the _applyPhysics logic as it was, unchanged) ...
+        let currentGravity = Config.GRAVITY_ACCELERATION * (this.stats.gravityFactor ?? 1.0);
+        let useStandardGravity = this.applyGravityDefault;
+        let applyWaterEffects = false;
+
+        if (this.canFly && !this.isOnGround) {
+            useStandardGravity = false;
+            this.vy = targetVy;
+            this.vy = Math.max(-this.maxSpeedY, Math.min(this.maxSpeedY, this.vy));
+            this.vx = targetVx;
+        } else if (this.canSwim && this.isInWater) {
+            useStandardGravity = false;
+            this.vy = targetVy;
+            this.vy = Math.max(-this.swimSpeed, Math.min(this.swimSpeed, this.vy));
+            this.vx = targetVx;
+            this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
+            this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
+        } else {
+            applyWaterEffects = this.isInWater;
+            
+            if (applyWaterEffects) {
+                this.vy -= Config.ENEMY_WATER_BUOYANCY_ACCEL * dt;
+            }
+            
+            if (useStandardGravity && !this.isOnGround) {
+                const gravityMultiplier = applyWaterEffects ? Config.WATER_GRAVITY_FACTOR : 1.0;
+                this.vy += currentGravity * gravityMultiplier * dt;
+            } else if (this.isOnGround && this.vy > E_EPSILON) {
+                this.vy = 0;
+            }
+            
+            if (applyWaterEffects) {
+                this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
+            }
+            
+            if (wantsJump && this.canJump) {
+                if (applyWaterEffects) {
+                    if (this.waterJumpCooldown <= 0) {
+                        this.vy = -(this.jumpVelocity * 0.8);
+                        this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION;
+                        this.isOnGround = false;
+                    }
+                } else if (this.isOnGround) {
+                    this.vy = -this.jumpVelocity;
+                    this.isOnGround = false;
                 }
-            } else if (this.canSwim && this.isInWater) { // Swimming: Apply separation differently?
-                // Maybe only apply horizontal separation boost?
-                this.vx += separationBoostX * 0.5; // Reduced horizontal effect in water?
-                // vertical separation might make sense if swimming side-by-side
-                this.vy += separationBoostY * 0.5; // Reduced vertical effect in water?
-            } else if (this.canFly) { // Flying: Apply separation differently?
-                this.vx += separationBoostX * 0.5; // Reduced horizontal effect?
-                this.vy += separationBoostY * 0.5; // Apply vertical separation boost
+            }
+            
+            this.vx = targetVx;
+            if (applyWaterEffects) {
+                this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
             }
         }
-        // --- 4. Physics: Grid Collision ---
+        
+        const currentMaxSpeedX = this.isInWater && !this.canSwim ? this.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.maxSpeedX;
+        this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
+        
+        if (applyWaterEffects) {
+            this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
+            this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);
+        } else if (!this.canFly && !this.isInWater) {
+            this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
+        }
+
         const potentialMoveX = this.vx * dt;
         const potentialMoveY = this.vy * dt;
-        // GridCollision.collideAndResolve handles entity dimensions and movement amounts (both in pixels)
+        
         const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
-        this.isOnGround = collisionResult.isOnGround; // Update ground status
-        // Flyers shouldn't get stuck on ground if they are trying to fly up
+        this.isOnGround = collisionResult.isOnGround;
+        
         if (this.canFly && targetVy < 0 && collisionResult.collidedY && this.vy >= 0) {
-            // This needs careful thought - maybe just let collision handle it.
+            // Keep existing logic for flyers, if any specific handling is desired.
         } else {
             if (collisionResult.collidedX) this.vx = 0;
             if (collisionResult.collidedY) this.vy = 0;
         }
-        // --- 5. AI Reaction to Collision ---
-        this.aiStrategy.reactToCollision(collisionResult); // Pass result to AI
-        // --- 6. Final Checks ---
+        
+        this.aiStrategy.reactToCollision(collisionResult);
+        
         if (this.x < 0) { this.x = 0; if (this.vx < 0) this.vx = 0; }
         if (this.x + this.width > Config.CANVAS_WIDTH) { this.x = Config.CANVAS_WIDTH - this.width; if (this.vx > 0) this.vx = 0; }
         if (this.y > Config.CANVAS_HEIGHT + 200) {
-            // Falling out of world now triggers the die function to start animation
-            this.die(false); // Fell out
+            this.die(false);
         }
     }
-    takeDamage(amount) {
+       takeDamage(amount) {
         // Do not take damage if already inactive, getting absorbed OR currently in the dying animation state
         if (this.isBeingAbsorbed || !this.isActive || this.isDying || this.isFlashing) return;
         const healthBefore = this.health;

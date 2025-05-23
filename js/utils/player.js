@@ -1,6 +1,4 @@
-// -----------------------------------------------------------------------------
-// root/js/utils/player.js - Player Character Class
-// -----------------------------------------------------------------------------
+// root/js/utils/player.js
 
 import * as Config from './config.js';
 import * as GridCollision from './gridCollision.js';
@@ -8,76 +6,49 @@ import * as WorldManager from '../worldManager.js';
 import * as World from './world.js';
 
 export class Player {
-    constructor(x, y, width, height, color) {
-        this.x = x; // Initial x position (assumed pixels)
-        this.y = y; // Initial y position (assumed pixels)
+    constructor(x, y, width, height, color) { // 'color' param is now effectively ignored
+        this.x = x; 
+        this.y = y; 
         this.width = Config.PLAYER_WIDTH;
         this.height = Config.PLAYER_HEIGHT;
-        this.vx = 0; // velocity in pixels per second
+        this.vx = 0; 
         this.vy = 0;
         this.isOnGround = false;
         this.isInWater = false;
-        this.waterJumpCooldown = 0; // cooldown for water jumps/strokes
+        this.waterJumpCooldown = 0;
         this.isOnRope = false;
-        this.ropeCol = -1; // column of the rope the player is currently on
-        this.canGrabRopeTimer = 0; // cooldown after detaching before auto-grabbing again
-        this.hasShovel = false; // set true in reset
+        this.ropeCol = -1;
+        this.canGrabRopeTimer = 0;
+        this.hasShovel = false; 
         this.hasSword = false;
         this.hasSpear = false;
-        this.selectedItem = Config.WEAPON_TYPE_UNARMED; // start unarmed
-        this.inventory = {}; // store material counts of materials
-        this.partialCollection = {}; // store partial collection counts
-        this.placementCooldown = 0; // timer delaying consecutive block placements 
-        // --- Combat State ---
-        this.isAttacking = false; // Is the attack animation/hitbox active? (Controlled by attackTimer now)
-        this.attackTimer = 0; // Duration timer for the current attack 
-        this.attackCooldown = 0; // Cooldown timer until the next weapon attack is possible 
-        this.hitEnemiesThisSwing = []; // Tracks enemies hit during the current attack swing
-        this.hitBlocksThisSwing = []; // Tracks blocks hit during the current attack swing ("col,row" keys)
-        // --- Health State ---
-        this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY; // Max health for UI display (remain fixed)
-        this.currentHealth = Config.PLAYER_INITIAL_HEALTH; // Starting health (remain fixed)
-        this.isInvulnerable = false; // Is the player currently immune to damage?
-        this.invulnerabilityTimer = 0; // Timer for invulnerability duration 
-        // --- Targeting State ---
-        this.targetWorldPos = { x: 0, y: 0 }; // Mouse position in world coordinates
-        this.targetGridCell = { col: 0, row: 0 }; // Grid cell the mouse is over
-        this.lastDirection = 1; // Facing direction (1 for right, -1 for left), used as fallback for aiming
-        // Store last valid target positions/cells for fallback
+        this.selectedItem = Config.WEAPON_TYPE_UNARMED;
+        this.inventory = {};
+        this.partialCollection = {};
+        this.placementCooldown = 0; 
+        this.isAttacking = false; 
+        this.attackTimer = 0; 
+        this.attackCooldown = 0; 
+        this.hitEnemiesThisSwing = [];
+        this.hitBlocksThisSwing = [];
+        this.maxHealth = Config.PLAYER_MAX_HEALTH_DISPLAY;
+        this.currentHealth = Config.PLAYER_INITIAL_HEALTH;
+        this.isInvulnerable = false;
+        this.invulnerabilityTimer = 0;
+        this.targetWorldPos = { x: 0, y: 0 };
+        this.targetGridCell = { col: 0, row: 0 };
+        this.lastDirection = 1; 
         this._lastValidTargetWorldPos = null;
         this._lastValidTargetGridCell = null;
-        // --- Animation State ---
-        this.isDying = false; // New flag: Is the death animation playing?
-        this.deathAnimationTimer = 0; // Timer for the death animation duration 
-        this.deathAnimationFrame = 0; // For discrete spin animation steps
-        // Player is active by default at start
+        this.isDying = false;
+        this.deathAnimationTimer = 0;
+        this.deathAnimationFrame = 0;
         this.isActive = true;
         // Initial position validation
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(">>> Player CONSTRUCTOR ERROR: NaN initial coordinates! Resetting to center.");
             this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;
             this.y = Config.CANVAS_HEIGHT / 2 - this.height / 2;
-        }
-        this.image = new Image(); // player Image
-        this.imageLoaded = false;
-        this.image.onload = () => {
-            this.imageLoaded = true;
-            console.log("Player image loaded.");
-        };
-        this.image.onerror = () => {
-            console.error("Player image failed to load from: " + Config.PLAYER_IMAGE_PATH);
-            this.imageLoaded = false; // Explicitly set to false on error
-        };
-        try {
-            if (typeof Config.PLAYER_IMAGE_PATH === 'string') { // Ensure PLAYER_IMAGE_PATH is a string.
-                this.image.src = Config.PLAYER_IMAGE_PATH;
-            } else {
-                console.error("Player image path is not a string:", Config.PLAYER_IMAGE_PATH);
-                this.imageLoaded = false;
-            }
-        } catch (e) {
-            console.error("Synchronous error setting player image src (e.g. invalid path format):", e);
-            this.imageLoaded = false; // Ensure loaded is false
         }
     }
     update(dt, inputState, targetWorldPos, targetGridCell) {
@@ -120,7 +91,10 @@ export class Player {
             return; 
         }
         if (typeof targetWorldPos !== 'object' || targetWorldPos === null || typeof targetWorldPos.x !== 'number' || typeof targetWorldPos.y !== 'number' || isNaN(targetWorldPos.x) || isNaN(targetWorldPos.y)) {
-            this.targetWorldPos = this._lastValidTargetWorldPos || { x: this.x + this.width / 2 + this.lastDirection * 50, y: this.y + this.height / 2 }; 
+            // Fallback: If targetWorldPos is invalid, use player's facing direction to estimate a target
+            const playerCenterX = this.x + this.width / 2;
+            const playerCenterY = this.y + this.height / 2;
+            this.targetWorldPos = this._lastValidTargetWorldPos || { x: playerCenterX + this.lastDirection * 50, y: playerCenterY }; 
         } else {
             this.targetWorldPos = targetWorldPos;
             this._lastValidTargetWorldPos = { ...targetWorldPos }; 
@@ -130,7 +104,7 @@ export class Player {
             this._lastValidTargetGridCell = { ...this.targetGridCell }; 
         } else {
             this.targetGridCell = targetGridCell;
-            this._lastValidTargetGridCell = { ...this.targetGridCell }; 
+            this._lastValidTargetGridCell = { ...targetGridCell }; 
         }
         const playerCenterX = this.x + this.width / 2;
         const targetDeltaX = this.targetWorldPos.x - playerCenterX;
@@ -182,23 +156,15 @@ export class Player {
                     this.isAttacking = true; 
                     this.hitEnemiesThisSwing = []; 
                     this.hitBlocksThisSwing = [];
-                    switch (this.selectedItem) {
-                        case Config.WEAPON_TYPE_SWORD:
-                            this.attackTimer = Config.PLAYER_SWORD_ATTACK_DURATION;
-                            this.attackCooldown = Config.PLAYER_SWORD_ATTACK_COOLDOWN;
-                            break;
-                        case Config.WEAPON_TYPE_SPEAR:
-                            this.attackTimer = Config.PLAYER_SPEAR_ATTACK_DURATION;
-                            this.attackCooldown = Config.PLAYER_SPEAR_ATTACK_COOLDOWN;
-                            break;
-                        case Config.WEAPON_TYPE_SHOVEL:
-                            this.attackTimer = Config.PLAYER_SHOVEL_ATTACK_DURATION;
-                            this.attackCooldown = Config.PLAYER_SHOVEL_ATTACK_COOLDOWN;
-                            break;
-                        default:
-                            this.attackTimer = 0.1;
-                            this.attackCooldown = 0.2;
-                            break;
+
+                    const weaponStats = Config.WEAPON_STATS[this.selectedItem];
+                    if (weaponStats) {
+                        this.attackTimer = weaponStats.attackDuration;
+                        this.attackCooldown = weaponStats.attackCooldown;
+                    } else {
+                        // Fallback for unknown weapon
+                        this.attackTimer = 0.1;
+                        this.attackCooldown = 0.2;
                     }
                 }
             }
@@ -302,7 +268,7 @@ export class Player {
         }
     }
     _applyPhysics(dt) {
-        if (!this.isOnRope && this.canGrabRopeTimer <= 0) { // Check for Rope Interaction BEFORE standard physics
+        if (!this.isOnRope && this.canGrabRopeTimer <= 0) { 
             const playerRect = this.getRect();
             const minCheckCol = Math.max(0, Math.floor(playerRect.x / Config.BLOCK_WIDTH));
             const maxCheckCol = Math.min(Config.GRID_COLS - 1, Math.floor((playerRect.x + playerRect.width - GridCollision.E_EPSILON) / Config.BLOCK_WIDTH));
@@ -335,7 +301,7 @@ export class Player {
                 this.canGrabRopeTimer = 0.1; 
             }
         }
-        if (this.isOnRope) { // --- Standard Physics (modified by isOnRope) ---
+        if (this.isOnRope) { 
             this.y += this.vy * dt;
             const headCheckY = this.y;
             const feetCheckY = this.y + this.height;
@@ -356,7 +322,7 @@ export class Player {
                     this.isOnRope = false;
                 }
             }
-        } else { // --- Not on Rope: Apply normal physics ---
+        } else { 
             const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
             const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
             if (!this.isOnGround) {
@@ -375,8 +341,8 @@ export class Player {
             }
             const potentialMoveX = this.vx * dt;
             const potentialMoveY = this.vy * dt;
-            const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY); //  directly modifies this.x, this.y, this.vx, this.vy
-            this.isOnGround = collisionResult.isOnGround; // Update player state flags based on the collision result
+            const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+            this.isOnGround = collisionResult.isOnGround; 
         }
         this._checkBoundaries();
         this.currentHealth = Math.max(0, this.currentHealth);
@@ -441,12 +407,12 @@ export class Player {
         const selectedMaterialType = this.selectedItem;
         if (selectedMaterialType === 'vegetation') {
             const blockAboveType = World.getBlockType(col, row - 1);
-            const blockAboveData = World.getBlock(col, row - 1);
+            const blockAboveData = World.getBlock(col, row - 1); 
             const canAttachToSolid = blockAboveData !== null && GridCollision.isSolid(col, row - 1);
             const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
             if (canAttachToSolid || canExtendRope) {
                 const ropeProps = Config.BLOCK_PROPERTIES[Config.BLOCK_ROPE];
-                return { col: col, row: row, color: ropeProps?.color || Config.PLAYER_HITBOX_COLOR };
+                return { col: col, row: row, color: ropeProps?.color || Config.PLAYER_BODY_COLOR }; // Use a fallback color
             }
             return null; 
         } else { 
@@ -467,7 +433,7 @@ export class Player {
         }
         if (this.isDying) {
             ctx.save(); 
-            const pivotX = this.x + this.width / 2;
+            const pivotX = this.x + this.width / 2; // death animation
             const pivotY = this.y + this.height / 2;
             const totalAnimationDuration = Config.PLAYER_DEATH_ANIMATION_DURATION;
             const spinDuration = Config.PLAYER_SPIN_DURATION;
@@ -479,16 +445,12 @@ export class Player {
             } else if (timeElapsed >= spinDuration && timeElapsed < totalAnimationDuration) { 
                 const swellDuration = totalAnimationDuration - spinDuration;
                 if (swellDuration > 0) {
-                    const swellElapsed = timeElapsed - spinDuration;
-                    const swellProgress = swellElapsed / swellDuration; 
+                    const swellProgress = (timeElapsed - spinDuration) / swellDuration; // Corrected progress calculation
                     currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress; 
                 } else {
                     currentScale = 1.0; 
                 }
                 rotationAngle = 0; 
-            } else if (timeElapsed >= totalAnimationDuration) { 
-                ctx.restore();
-                return; 
             } else {
                 currentScale = 1.0; rotationAngle = 0;
             } 
@@ -496,50 +458,195 @@ export class Player {
             ctx.rotate(rotationAngle);
             ctx.scale(currentScale, currentScale);
             ctx.translate(-pivotX, -pivotY);
-            if (this.imageLoaded && this.image.complete && this.image.naturalWidth > 0) {
-                ctx.drawImage(this.image, Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-            } else { 
-                ctx.fillStyle = Config.PLAYER_HITBOX_COLOR; 
-                ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-            }
+            ctx.fillStyle = Config.PLAYER_BODY_COLOR;
+            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
             ctx.restore(); 
             return; 
         }
-        let shouldDrawPlayer = true;
-        if (this.isInvulnerable) {
-            shouldDrawPlayer = Math.floor(performance.now() / 100) % 2 === 0;
+        if (this.isInvulnerable && Math.floor(performance.now() / 100) % 2 !== 0) { // Draw player body, with invulnerability flashing // Skip drawing player body to create flash effect
+        } else {
+            ctx.fillStyle = Config.PLAYER_BODY_COLOR; // --- Normal Active Drawing (Player Body, Arms, Weapon) ---
+            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
         }
-        ctx.fillStyle = Config.PLAYER_HITBOX_COLOR;
-        ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-        if (shouldDrawPlayer && this.imageLoaded && this.image.complete && this.image.naturalWidth > 0) {
-            ctx.drawImage(this.image, Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-        }
+
+        // Check if a weapon is selected and not in attack animation
         if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
-            ctx.save(); 
             const playerCenterX = this.x + this.width / 2;
             const playerCenterY = this.y + this.height / 2;
+            const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; 
+            
+            // --- NEW WEAPON POSITIONING LOGIC ---
             let weaponStats = Config.WEAPON_STATS[this.selectedItem];
-            let visualOffsetX = 0; 
-            if (this.selectedItem === Config.WEAPON_TYPE_SWORD) visualOffsetX = this.width * 0.6; 
-            else if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) visualOffsetX = this.width * 0.7; 
-            else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) visualOffsetX = this.width * 0.5; 
-            if (weaponStats) {
-                const weaponWidth = weaponStats.width * 0.8;
-                const weaponHeight = weaponStats.height * 0.8;
-                const weaponColor = weaponStats.color;
-                const targetForDrawing = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; 
-                const targetDeltaX = targetForDrawing.x - playerCenterX;
-                const targetDeltaY = targetForDrawing.y - playerCenterY;
-                const angle = Math.atan2(targetDeltaY, targetDeltaX); 
-                const weaponPosX = playerCenterX + Math.cos(angle) * visualOffsetX;
-                const weaponPosY = playerCenterY + Math.sin(angle) * visualOffsetX; 
-                ctx.translate(weaponPosX, weaponPosY);
-                ctx.rotate(angle); 
-                ctx.fillStyle = weaponColor;
-                ctx.fillRect(Math.floor(-weaponWidth / 2), Math.floor(-weaponHeight / 2), Math.ceil(weaponWidth), Math.ceil(weaponHeight));
+            if (!weaponStats || !weaponStats.shape || !weaponStats.visualAnchorOffset) {
+                // Should not happen if config is properly defined
+                console.warn(`Player.draw: Missing weapon stats or shape/anchor for ${this.selectedItem}.`);
+                return;
             }
-            ctx.restore(); 
+
+            const visualAnchorOffsetX = weaponStats.visualAnchorOffset.x;
+            const visualAnchorOffsetY = weaponStats.visualAnchorOffset.y;
+
+            const dx_to_raw = rawTargetWorldPos.x - playerCenterX;
+            const dy_to_raw = rawTargetWorldPos.y - playerCenterY;
+            
+            // Calculate the effective maximum reach for the visual weapon.
+            // For weapons with attackReachY defined (sword/shovel), it's the hypotenuse from player center to attackReachX,Y.
+            // For weapons with attackReachY undefined (spear), it's just attackReachX.
+            let maxVisualReach;
+            if (weaponStats.attackReachY === undefined) { // Spear-like logic (distance from player center to hitbox center)
+                maxVisualReach = weaponStats.attackReachX;
+            } else { // Shovel/Sword-like logic (horizontal and vertical offsets from player center to hitbox center)
+                maxVisualReach = Math.sqrt(
+                    (weaponStats.attackReachX * weaponStats.attackReachX) +
+                    (weaponStats.attackReachY * weaponStats.attackReachY)
+                );
+            }
+            // Ensure some minimal distance if the weapon's configured attack reach is very small.
+            // This prevents the weapon from visually "disappearing" or sitting too close to the player center
+            // if its attackReach is tiny, while still respecting its actual range.
+            maxVisualReach = Math.max(maxVisualReach, weaponStats.width, weaponStats.height, Config.BLOCK_WIDTH * 2); // Use a small default minimum size
+
+            let clampedTargetX = rawTargetWorldPos.x;
+            let clampedTargetY = rawTargetWorldPos.y;
+            const dist_to_raw = Math.sqrt(dx_to_raw * dx_to_raw + dy_to_raw * dy_to_raw);
+
+            // Clamp the target position to the maxVisualReach from the player's center.
+            if (dist_to_raw > maxVisualReach + GridCollision.E_EPSILON) {
+                if (dist_to_raw > GridCollision.E_EPSILON) {
+                    const normalizedDx = dx_to_raw / dist_to_raw;
+                    const normalizedDy = dy_to_raw / dist_to_raw;
+                    clampedTargetX = playerCenterX + normalizedDx * maxVisualReach;
+                    clampedTargetY = playerCenterY + normalizedDy * maxVisualReach;
+                } else {
+                    // If cursor is on player, point straight forward at maxVisualReach
+                    clampedTargetX = playerCenterX + this.lastDirection * maxVisualReach;
+                    clampedTargetY = playerCenterY;
+                }
+            } else if (dist_to_raw < GridCollision.E_EPSILON) {
+                 // If cursor is very close to player, point straight forward at a fraction of maxVisualReach
+                 clampedTargetX = playerCenterX + this.lastDirection * (maxVisualReach * 0.1);
+                 clampedTargetY = playerCenterY;
+            }
+            
+            // Calculate the angle from player's center to the CLAMPED target
+            let angle = Math.atan2(clampedTargetY - playerCenterY, clampedTargetX - playerCenterX);
+            
+            // Calculate the weapon's rotational center (weaponCenterX, weaponCenterY)
+            // so that its visualAnchorOffset point aligns with the clampedTarget.
+            // This involves inverse rotation and translation:
+            // (clampedTargetX, clampedTargetY) = (weaponCenterX, weaponCenterY) + (rotatedAnchorOffsetX, rotatedAnchorOffsetY)
+            // Where rotatedAnchorOffset = (visualAnchorOffsetX * cos(angle) - visualAnchorOffsetY * sin(angle),
+            //                              visualAnchorOffsetX * sin(angle) + visualAnchorOffsetY * cos(angle))
+            // So:
+            // weaponCenterX = clampedTargetX - rotatedAnchorOffsetX
+            // weaponCenterY = clampedTargetY - rotatedAnchorOffsetY
+            const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(angle) - visualAnchorOffsetY * Math.sin(angle);
+            const rotatedAnchorOffsetY = visualAnchorOffsetX * Math.sin(angle) + visualAnchorOffsetY * Math.cos(angle);
+
+            const weaponCenterX = clampedTargetX - rotatedAnchorOffsetX;
+            const weaponCenterY = clampedTargetY - rotatedAnchorOffsetY;
+
+            // --- END NEW WEAPON POSITIONING LOGIC ---
+
+            // --- Arm Calculations ---
+            const shoulderOffsetPxX = this.width * Config.PLAYER_SHOULDER_OFFSET_X_FACTOR;
+            const shoulderOffsetPxY = this.height * Config.PLAYER_SHOULDER_OFFSET_Y_FACTOR;
+            const shoulderRightX = this.x + (this.width - shoulderOffsetPxX);
+            const shoulderRightY = this.y + shoulderOffsetPxY;
+            const shoulderLeftX = this.x + shoulderOffsetPxX;
+            const shoulderLeftY = this.y + shoulderOffsetPxY;
+            
+            let holdingArmOriginX, holdingArmOriginY;
+            let otherArmOriginX, otherArmOriginY;
+
+            if (this.lastDirection === 1) { // Player facing right
+                holdingArmOriginX = shoulderRightX;
+                holdingArmOriginY = shoulderRightY;
+                otherArmOriginX = shoulderLeftX;
+                otherArmOriginY = shoulderLeftY;
+            } else { // Player facing left
+                holdingArmOriginX = shoulderLeftX;
+                holdingArmOriginY = shoulderLeftY;
+                otherArmOriginX = shoulderRightX;
+                otherArmOriginY = shoulderRightY;
+            }
+
+            // Calculate angle and length for the holding arm (connects its shoulder to weapon center)
+            const holdingArmAngle = Math.atan2(weaponCenterY - holdingArmOriginY, weaponCenterX - holdingArmOriginX);
+            let holdingArmLength = Math.sqrt(
+                Math.pow(weaponCenterX - holdingArmOriginX, 2) + 
+                Math.pow(weaponCenterY - holdingArmOriginY, 2)
+            );
+            // Calculate angle and length for the other arm (connects its shoulder to weapon center)
+            const otherArmAngle = Math.atan2(weaponCenterY - otherArmOriginY, weaponCenterX - otherArmOriginX);
+            let otherArmLength = Math.sqrt(
+                Math.pow(weaponCenterX - otherArmOriginX, 2) + 
+                Math.pow(weaponCenterY - otherArmOriginY, 2)
+            );
+            
+            const maxArmLength = this.width * 2; 
+            holdingArmLength = Math.min(holdingArmLength, maxArmLength);
+            otherArmLength = Math.min(otherArmLength, maxArmLength * 0.8); 
+            
+            holdingArmLength = Math.max(0, holdingArmLength);
+            otherArmLength = Math.max(0, otherArmLength);
+
+            // --- Drawing Order for Arms and Weapon ---
+            // Draw back arm (always the arm on the "inside" relative to facing direction)
+            ctx.save();
+            ctx.translate(otherArmOriginX, otherArmOriginY);
+            ctx.rotate(otherArmAngle);
+            ctx.fillStyle = Config.ARM_COLOR;
+            ctx.fillRect(0, -Config.ARM_THICKNESS / 2, otherArmLength, Config.ARM_THICKNESS);
+            ctx.restore();
+
+            ctx.save(); // Translate to weapon's rotational center
+            ctx.translate(weaponCenterX, weaponCenterY); 
+            ctx.rotate(angle); // Rotate around its center
+
+            // Draw each primitive defined in the weapon's shape
+            weaponStats.shape.forEach(shapeDef => {
+                if (shapeDef.type === 'rect') {
+                    ctx.fillStyle = weaponStats.color;
+                    ctx.fillRect(Math.floor(shapeDef.x), Math.floor(shapeDef.y), Math.ceil(shapeDef.w), Math.ceil(shapeDef.h));
+                    if (weaponStats.outlineColor && weaponStats.outlineWidth) {
+                        ctx.strokeStyle = weaponStats.outlineColor;
+                        ctx.lineWidth = weaponStats.outlineWidth;
+                        const inset = ctx.lineWidth / 2;
+                        ctx.strokeRect(
+                            Math.floor(shapeDef.x) + inset, 
+                            Math.floor(shapeDef.y) + inset, 
+                            Math.ceil(shapeDef.w) - ctx.lineWidth, 
+                            Math.ceil(shapeDef.h) - ctx.lineWidth
+                        );
+                    }
+                } else if (shapeDef.type === 'triangle') {
+                    ctx.fillStyle = weaponStats.color;
+                    ctx.beginPath();
+                    ctx.moveTo(Math.floor(shapeDef.p1.x), Math.floor(shapeDef.p1.y));
+                    ctx.lineTo(Math.floor(shapeDef.p2.x), Math.floor(shapeDef.p2.y));
+                    ctx.lineTo(Math.floor(shapeDef.p3.x), Math.floor(shapeDef.p3.y));
+                    ctx.closePath();
+                    ctx.fill();
+                    if (weaponStats.outlineColor && weaponStats.outlineWidth) {
+                        ctx.strokeStyle = weaponStats.outlineColor;
+                        ctx.lineWidth = weaponStats.outlineWidth;
+                        ctx.stroke(); // Stroke the path defined by beginPath/lineTo/closePath
+                    }
+                }
+            });
+            ctx.restore();
+
+            // Draw front arm (always the arm on the "outside" relative to facing direction)
+            ctx.save(); 
+            ctx.translate(holdingArmOriginX, holdingArmOriginY);
+            ctx.rotate(holdingArmAngle);
+            ctx.fillStyle = Config.ARM_COLOR;
+            ctx.fillRect(0, -Config.ARM_THICKNESS / 2, holdingArmLength, Config.ARM_THICKNESS);
+            ctx.restore();
         }
+        // ... rest of draw() (attack hitbox) ...
+        // --- Attack Hitbox ---
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             const hitbox = this.getAttackHitbox(); 
             if (hitbox) {
@@ -547,9 +654,9 @@ export class Player {
                     typeof hitbox.width === 'number' && typeof hitbox.height === 'number' &&
                     !isNaN(hitbox.x) && !isNaN(hitbox.y) && !isNaN(hitbox.width) && !isNaN(hitbox.height))
                 {
-                    let hitboxColor = Config.PLAYER_SWORD_ATTACK_COLOR; 
-                    if (this.selectedItem === Config.WEAPON_TYPE_SPEAR) hitboxColor = Config.PLAYER_SPEAR_ATTACK_COLOR;
-                    else if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) hitboxColor = Config.PLAYER_SHOVEL_ATTACK_COLOR;
+                    const weaponStats = Config.WEAPON_STATS[this.selectedItem];
+                    let hitboxColor = weaponStats?.attackColor || 'rgba(255, 0, 0, 0.5)'; // Fallback color
+                    
                     ctx.fillStyle = hitboxColor;
                     ctx.fillRect(Math.floor(hitbox.x), Math.floor(hitbox.y), Math.ceil(hitbox.width), Math.ceil(hitbox.height));
                 } else {
@@ -654,55 +761,46 @@ export class Player {
         const dx = targetX - playerCenterX;
         const dy = targetY - playerCenterY;
         const dist = Math.sqrt(dx * dx + dy * dy); 
-        let hitboxWidth, hitboxHeight, reachX, reachY_config;
-        let tempHitboxCenterX, tempHitboxCenterY; // Temporary variables for hitbox center calculation within the switch
-        switch (this.selectedItem) {
-            case Config.WEAPON_TYPE_SWORD:
-                hitboxWidth = Config.PLAYER_SWORD_ATTACK_WIDTH; hitboxHeight = Config.PLAYER_SWORD_ATTACK_HEIGHT;
-                reachX = Config.PLAYER_SWORD_ATTACK_REACH_X; reachY_config = Config.PLAYER_SWORD_ATTACK_REACH_Y;
-                if (dist > GridCollision.E_EPSILON) {
-                    const normX = dx / dist;
-                    // const normY = dy / dist; // normY not used for sword's vertical placement
-                    tempHitboxCenterX = playerCenterX + normX * reachX;
-                    tempHitboxCenterY = playerCenterY + reachY_config; // Sword swings at a fixed vertical offset
-                } else {
-                    tempHitboxCenterX = playerCenterX + this.lastDirection * reachX;
-                    tempHitboxCenterY = playerCenterY + reachY_config;
-                }
-                break;
-            case Config.WEAPON_TYPE_SPEAR:
-                hitboxWidth = Config.PLAYER_SPEAR_ATTACK_WIDTH; 
-                hitboxHeight = Config.PLAYER_SPEAR_ATTACK_HEIGHT;
-                const spearReachDistance = Config.PLAYER_SPEAR_ATTACK_REACH_X; // Primary reach distance for spear
-                if (dist > GridCollision.E_EPSILON) {
-                    const normX = dx / dist;
-                    const normY = dy / dist;
-                    // Spear thrusts along the aim vector
-                    tempHitboxCenterX = playerCenterX + normX * spearReachDistance;
-                    tempHitboxCenterY = playerCenterY + normY * spearReachDistance; // Use normY for thrust
-                } else {
-                    // If aiming at self, thrust horizontally based on last direction
-                    tempHitboxCenterX = playerCenterX + this.lastDirection * spearReachDistance;
-                    tempHitboxCenterY = playerCenterY; // Keep it level
-                }
-                break;
-            case Config.WEAPON_TYPE_SHOVEL:
-                hitboxWidth = Config.PLAYER_SHOVEL_ATTACK_WIDTH; hitboxHeight = Config.PLAYER_SHOVEL_ATTACK_HEIGHT;
-                reachX = Config.PLAYER_SHOVEL_ATTACK_REACH_X; reachY_config = Config.PLAYER_SHOVEL_ATTACK_REACH_Y;
-                 if (dist > GridCollision.E_EPSILON) {
-                    const normX = dx / dist;
-                    // const normY = dy / dist; // normY not used for shovel's vertical placement
-                    tempHitboxCenterX = playerCenterX + normX * reachX;
-                    tempHitboxCenterY = playerCenterY + reachY_config; // Shovel swings at a fixed vertical offset
-                } else {
-                    tempHitboxCenterX = playerCenterX + this.lastDirection * reachX;
-                    tempHitboxCenterY = playerCenterY + reachY_config;
-                }
-                break;
-            default: return null; 
+        
+        const weaponStats = Config.WEAPON_STATS[this.selectedItem];
+        if (!weaponStats) return null; // Should not happen if isWeaponSelected() is true
+
+        const hitboxWidth = weaponStats.attackWidth;
+        const hitboxHeight = weaponStats.attackHeight;
+        const attackReachX = weaponStats.attackReachX;
+        const attackReachY = weaponStats.attackReachY; // Can be undefined for direct vector
+
+        let tempHitboxCenterX, tempHitboxCenterY; 
+        
+        // Calculate the center of the hitbox based on weapon type logic
+        if (attackReachY === undefined) { // For weapons that use a direct vector to target (e.g., spear)
+            const reachDistance = attackReachX; // attackReachX is the full distance for this type
+            if (dist > GridCollision.E_EPSILON) {
+                const normX = dx / dist;
+                const normY = dy / dist;
+                tempHitboxCenterX = playerCenterX + normX * reachDistance;
+                tempHitboxCenterY = playerCenterY + normY * reachDistance; 
+            } else {
+                tempHitboxCenterX = playerCenterX + this.lastDirection * reachDistance;
+                tempHitboxCenterY = playerCenterY; 
+            }
+        } else { // For weapons that use a fixed offset relative to player (e.g., sword, shovel)
+            if (dist > GridCollision.E_EPSILON) {
+                const normX = dx / dist;
+                // AttackReachX is the horizontal offset from player center along the normalized vector
+                tempHitboxCenterX = playerCenterX + normX * attackReachX; 
+                // AttackReachY is a fixed vertical offset from playerCenterY
+                tempHitboxCenterY = playerCenterY + attackReachY; 
+            } else {
+                // If cursor is on player, use lastDirection for horizontal offset
+                tempHitboxCenterX = playerCenterX + this.lastDirection * attackReachX;
+                tempHitboxCenterY = playerCenterY + attackReachY;
+            }
         }
-        const hitboxX = tempHitboxCenterX - hitboxWidth / 2; // Calculate final hitbox top-left from its center, width, and height
+
+        const hitboxX = tempHitboxCenterX - hitboxWidth / 2;
         const hitboxY = tempHitboxCenterY - hitboxHeight / 2;
+
         if (typeof hitboxX !== 'number' || typeof hitboxY !== 'number' ||
             typeof hitboxWidth !== 'number' || typeof hitboxHeight !== 'number' ||
             isNaN(hitboxX) || isNaN(hitboxY) || isNaN(hitboxWidth) || isNaN(hitboxHeight)) {
@@ -720,7 +818,6 @@ export class Player {
         let pickedUp = false;
         const materialType = item.type;
         const GATHER_REQUIREMENT = 4; 
-
         if (materialType === 'dirt' || materialType === 'vegetation') {
             this.partialCollection[materialType] = (this.partialCollection[materialType] || 0) + 1;
             pickedUp = true; 
@@ -789,9 +886,10 @@ export class Player {
         return false; 
     }
     craftItem(itemType) {
-        const recipe = Config.CRAFTING_RECIPES[itemType];
-        if (!recipe) {
-            console.warn(`Attempted to craft non-craftable item type: ${itemType}`);
+        const weaponStats = Config.WEAPON_STATS[itemType];
+        const recipe = weaponStats?.recipe;
+        if (!recipe || recipe.length === 0) { // Check if recipe exists and is not empty
+            console.warn(`Attempted to craft non-craftable item type or item with no recipe: ${itemType}`);
             return false; 
         }
         if (this.isWeaponType(itemType) && this.hasWeapon(itemType)) {
@@ -832,18 +930,10 @@ export class Player {
         }
         return craftedSuccessfully;
     }
-    getPartialCollection(materialType) {
-        return this.partialCollection[materialType] || 0;
-    }
-    isWeaponType(itemType) {
-        return [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL].includes(itemType);
-    }
-    isWeaponSelected() {
-        return this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.isWeaponType(this.selectedItem);
-    }
-    isMaterialSelected() {
-        return Config.INVENTORY_MATERIALS.includes(this.selectedItem);
-    }
+    getPartialCollection(materialType) { return this.partialCollection[materialType] || 0;    }
+    isWeaponType(itemType) { return [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL].includes(itemType); }
+    isWeaponSelected() { return this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.isWeaponType(this.selectedItem); }
+    isMaterialSelected() { return Config.INVENTORY_MATERIALS.includes(this.selectedItem); }
     getRect() {
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
@@ -863,25 +953,17 @@ export class Player {
     getSwordStatus() { return this.hasSword; }
     getSpearStatus() { return this.hasSpear; }
     getCurrentlySelectedItem() { return this.selectedItem; }
-    getActiveInventoryMaterial() {
-        return this.isMaterialSelected() ? this.selectedItem : null;
-    }
-    getActiveWeaponType() {
-        return this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED ? this.selectedItem : null;
-    }
+    getActiveInventoryMaterial() { return this.isMaterialSelected() ? this.selectedItem : null; }
+    getActiveWeaponType() { return this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED ? this.selectedItem : null; }
     getCurrentAttackDamage() {
         if (!this.isWeaponSelected() || this.isDying) return 0;
-        switch (this.selectedItem) {
-            case Config.WEAPON_TYPE_SWORD: return Config.PLAYER_SWORD_ATTACK_DAMAGE;
-            case Config.WEAPON_TYPE_SPEAR: return Config.PLAYER_SPEAR_ATTACK_DAMAGE;
-            case Config.WEAPON_TYPE_SHOVEL: return Config.PLAYER_SHOVEL_ATTACK_DAMAGE; 
-            default: return 0;
-        }
+        const weaponStats = Config.WEAPON_STATS[this.selectedItem];
+        return weaponStats?.attackDamage ?? 0;
     }
     getCurrentBlockDamage() {
         if (this.isDying) return 0;
-        if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) return Config.PLAYER_SHOVEL_BLOCK_DAMAGE;
-        return 0;
+        const weaponStats = Config.WEAPON_STATS[this.selectedItem];
+        return weaponStats?.blockDamage ?? 0;
     }
     setActiveInventoryMaterial(materialType) {
         if (this.isDying) return false;
@@ -906,8 +988,9 @@ export class Player {
             if (this.hasWeapon(weaponType)) {
                 return this.equipItem(weaponType); 
             } else {
-                const recipe = Config.CRAFTING_RECIPES[weaponType];
-                if (recipe) { 
+                const weaponStats = Config.WEAPON_STATS[weaponType]; // Use correct weapon type to get stats
+                const recipe = weaponStats?.recipe; // Get recipe from weaponStats
+                if (recipe && recipe.length > 0) { // Check if recipe exists and is not empty
                     const crafted = this.craftItem(weaponType); 
                     if (crafted) {
                         return this.equipItem(weaponType);
@@ -963,22 +1046,7 @@ export class Player {
             this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;
             this.y = Config.CANVAS_HEIGHT / 2 - this.height / 2;
         }
-        this.imageLoaded = false;
-        if (this.image.src !== Config.PLAYER_IMAGE_PATH) { 
-            if (typeof Config.PLAYER_IMAGE_PATH === 'string') {
-                this.image.src = Config.PLAYER_IMAGE_PATH;
-            } else {
-                console.error("Player image path is not a string during reset:", Config.PLAYER_IMAGE_PATH);
-                this.imageLoaded = false;
-            }
-        } else if (this.image.complete && this.image.naturalWidth > 0) {
-            this.imageLoaded = true; 
-        }
     }
-    resetPosition() {
-        this.die(); 
-    }
-    isActive() {
-        return this.isActive;
-    }
+    resetPosition() { this.die(); }
+    isActive() { return this.isActive; }
 }

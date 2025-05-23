@@ -14,8 +14,14 @@ let items = []; // array containing active item instances
 export function init() {
     items = [];
     const meanGroundWorldY = Config.MEAN_GROUND_LEVEL * Config.BLOCK_HEIGHT; // get the Y coordinate of the mean ground level in world pixels
-    const shovelSpawnX = Config.CANVAS_WIDTH * 0.5 - Config.SHOVEL_WIDTH / 2; // spawn shovel at center
-    const shovelSpawnY = meanGroundWorldY - Config.SHOVEL_HEIGHT - (15 * Config.BLOCK_HEIGHT); // TODO: calibrate to portal - currently 15 blocks above mean ground
+
+    // Retrieve shovel dimensions from Config.WEAPON_STATS
+    const shovelStats = Config.WEAPON_STATS[Config.WEAPON_TYPE_SHOVEL];
+    const shovelWidth = shovelStats ? shovelStats.width : Config.BLOCK_WIDTH;
+    const shovelHeight = shovelStats ? shovelStats.height : Config.BLOCK_HEIGHT * 2;
+
+    const shovelSpawnX = Config.CANVAS_WIDTH * 0.5 - shovelWidth / 2; // spawn shovel at center
+    const shovelSpawnY = meanGroundWorldY - shovelHeight - (15 * Config.BLOCK_HEIGHT); // TODO: calibrate to portal - currently 15 blocks above mean ground
     if (!isNaN(shovelSpawnX) && !isNaN(shovelSpawnY)) { // ensure spawn points are valid numbers after calculation
         spawnItem(shovelSpawnX, shovelSpawnY, Config.WEAPON_TYPE_SHOVEL);
     } else {

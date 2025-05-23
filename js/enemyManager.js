@@ -11,10 +11,7 @@ let enemies = [];
 export function init() {
     enemies = [];
 }
-
-// --- Attempts to spawn enemy of a specific type,  and  ---
 export function trySpawnEnemy(enemyType) {
-// check MAX_ENEMIES limit
     if (enemies.length >= Config.MAX_ENEMIES) {
         console.error("trySpawnEnemy: Max enemy limit reached.");
         return false;
@@ -114,8 +111,8 @@ export function trySpawnEnemy(enemyType) {
 // --- Update active and remove inactive enemies ... ---
 export function update(dt, playerPosition) {
     // Filter active enemies ONCE to pass to individual updates for separation checks
-    // Separation should only consider enemies that are *not* dying.
-    const activeEnemiesForSeparation = enemies.filter(enemy => enemy && enemy.isActive && !enemy.isDying);
+    // Separation should only consider enemies that are *not* dying or being absorbed.
+    const activeEnemiesForSeparation = enemies.filter(enemy => enemy && enemy.isActive && !enemy.isDying && !enemy.isBeingAbsorbed);
 
     // Update loop (iterate backwards for safe removal)
     for (let i = enemies.length - 1; i >= 0; i--) {

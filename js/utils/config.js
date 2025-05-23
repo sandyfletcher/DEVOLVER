@@ -17,6 +17,7 @@ export const CUTSCENE_SLIDES = [
 export const MIN_CAMERA_SCALE = 0.25; // min zoom level (zoomed out to 1/4 size)
 export const MAX_CAMERA_SCALE = 3.0; // max zoom level (zoomed in 3x)
 export const ZOOM_SPEED_FACTOR = 0.001; // sensitivity of mouse wheel
+// PLAYER_INTERACTION_RANGE_MIN_VISUAL_CLAMP is no longer directly used for weapon drawing
 
 // --- Game Grid ---
 
@@ -39,7 +40,6 @@ export const GHOST_BLOCK_ALPHA = 0.5; // placement preview transparency
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 3; // in pixels
 export const VEGETATION_PIXEL_DENSITY = 0.6;
-
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
 export const BLOCK_SAND = 2;
@@ -50,7 +50,6 @@ export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
-
 export const BLOCK_PROPERTIES = {
     [BLOCK_AIR]: {
         name: 'AIR',
@@ -270,7 +269,6 @@ export const TREE_MAX_CANOPY_RADIUS = 4; // max radius canopy can reach
 export const AGING_STONEIFICATION_DEPTH_THRESHOLD = Math.floor(GRID_ROWS * 0.45) * BLOCK_HEIGHT; // threshold for stoneification
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // max contiguous water blocks influencing probabilities
 export const AGING_INITIAL_PASSES = 10; // aging passes on initial world generation
-
 export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // probability per eligible block per pass
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
 export const AGING_PROB_WATER_EROSION_DIRT_VEGETATION = 0.9;
@@ -293,8 +291,7 @@ export const AGING_PROB_TREE_TRUNK_DECAY = 0.001;
 export const MAX_FALLING_BLOCKS_AT_ONCE = 10000;
 export const NEW_GRAVITY_ANIM_DELAY = 0.00001;
 export const GRAVITY_ANIMATION_FALL_SPEED = 1000;
-
-export const AGING_ANIMATION_BLOCKS_AT_ONCE = 10000; // number of simultaneous animations 
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 10000; // number of simultaneous animations
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.00001; // seconds before starting next animation in queue
 export const AGING_ANIMATION_SWELL_DURATION = 0.005;
 export const AGING_ANIMATION_POP_DURATION = 0.005;
@@ -315,7 +312,6 @@ export const MIN_LIGHT_LEVEL_COLOR_FACTOR = 0.7; // 70% of base colour
 export const MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR = 1.3; // 130% of base colour
 export const INITIAL_LIGHT_RAY_POWER = 1.0; // starting power of a light ray
 export const MIN_LIGHT_THRESHOLD = 0.01; // ray stops if power drops below this
-
 export const SUN_ANIMATION_ENABLED = true; // toggle animation
 export const SUN_ANIMATION_COLOR = "rgba(255, 200, 100, 0.9)";
 export const SUN_ANIMATION_OUTLINE_COLOR = "rgba(255, 255, 0, 0.7)";
@@ -370,11 +366,15 @@ export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above me
 
 // --- Player Parameters ---
 
-export const PLAYER_IMAGE_PATH = 'assets/player.png'; // path to player image
-export const PLAYER_HITBOX_COLOR = 'rgba(200, 50, 50, 0.3)';
-export const PLAYER_COLOR = 'rgb(200, 50, 50)';
+// export const PLAYER_IMAGE_PATH = 'assets/player.png'; // Will be removed
+// export const PLAYER_HITBOX_COLOR = 'rgba(200, 50, 50, 0.3)'; // Will be removed
+export const PLAYER_BODY_COLOR = 'rgb(200, 50, 50)'; // Solid color for player's body
 export const PLAYER_WIDTH = 3 * BLOCK_WIDTH;
 export const PLAYER_HEIGHT = 6 * BLOCK_HEIGHT;
+export const PLAYER_SHOULDER_OFFSET_X_FACTOR = 0.25; // How far from the player's edge
+export const PLAYER_SHOULDER_OFFSET_Y_FACTOR = 0.25; // How far down from the player's top
+export const ARM_COLOR = 'rgb(180, 100, 50)'; // Color for the player's arms
+export const ARM_THICKNESS = 6; // Thickness of the arm rectangles in pixels
 export const PLAYER_START_X = CANVAS_WIDTH / 2 - PLAYER_WIDTH / 2; // Player start position (pixels, derived from block-based world constants).
 export const PLAYER_START_Y = (MEAN_GROUND_LEVEL * BLOCK_HEIGHT) - PLAYER_HEIGHT - (5 * BLOCK_HEIGHT);
 export const PLAYER_INITIAL_HEALTH = 100;
@@ -405,71 +405,107 @@ export const AUDIO_DEFAULT_GAME_VOLUME = 0.4;
 export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
 export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
 export const AUDIO_TRACKS = {
-    MENU: 'assets/audio/music/Menu.mp3',
-    pause: 'assets/audio/music/Pause.mp3',
-    gameOver: 'assets/audio/music/GameOver.mp3',
-    victory: 'assets/audio/music/Victory.mp3',
-    CUTSCENE: 'assets/audio/music/Cutscene.mp3',
-    wave1: 'assets/audio/music/Wave1-350.mp3',
-    wave2: 'assets/audio/music/Wave2-300.mp3',
-    wave3: 'assets/audio/music/wave3.mp3',
-    // SFX placeholders
-    // player_hit: 'assets/audio/sfx/player_hit.wav',
+MENU: 'assets/audio/music/Menu.mp3',
+pause: 'assets/audio/music/Pause.mp3',
+gameOver: 'assets/audio/music/GameOver.mp3',
+victory: 'assets/audio/music/Victory.mp3',
+CUTSCENE: 'assets/audio/music/Cutscene.mp3',
+wave1: 'assets/audio/music/Wave1-350.mp3',
+wave2: 'assets/audio/music/Wave2-300.mp3',
+wave3: 'assets/audio/music/wave3.mp3',
+// SFX placeholders
+// player_hit: 'assets/audio/sfx/player_hit.wav',
 };
 
 // --- Items & Weapons ---
 
 export const ITEM_BOBBLE_AMOUNT = 0.15; // factor relative to item height
 export const ITEM_BOBBLE_SPEED = 2.0; // radians per second for bobbing cycle
-export const WEAPON_TYPE_UNARMED = 'unarmed'; // weapon type string constants
+export const WEAPON_TYPE_UNARMED = 'unarmed';
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
 export const WEAPON_TYPE_SPEAR = 'spear';
-export const SHOVEL_WIDTH = 1 * BLOCK_WIDTH;
-export const SHOVEL_HEIGHT = 2 * BLOCK_HEIGHT;
-export const SWORD_WIDTH = 3 * BLOCK_WIDTH;
-export const SWORD_HEIGHT = 1 * BLOCK_HEIGHT;
-export const SPEAR_WIDTH = 4 * BLOCK_WIDTH;
-export const SPEAR_HEIGHT = 1 * BLOCK_HEIGHT;
-export const SHOVEL_COLOR = 'rgb(160, 160, 160)';
-export const SWORD_COLOR = 'rgb(180, 180, 190)';
-export const SPEAR_COLOR = 'rgb(210, 180, 140)';
-export const PLAYER_SHOVEL_ATTACK_DAMAGE = 5;
-export const PLAYER_SHOVEL_BLOCK_DAMAGE = 25;
-export const PLAYER_SHOVEL_ATTACK_REACH_X = PLAYER_WIDTH / 2 + SHOVEL_WIDTH * 1.5;
-export const PLAYER_SHOVEL_ATTACK_REACH_Y = PLAYER_HEIGHT *0.4;
-export const PLAYER_SHOVEL_ATTACK_WIDTH = SHOVEL_WIDTH * 2;
-export const PLAYER_SHOVEL_ATTACK_HEIGHT = SHOVEL_HEIGHT * 2;
-export const PLAYER_SHOVEL_ATTACK_DURATION = 0.3;
-export const PLAYER_SHOVEL_ATTACK_COOLDOWN = 0.4;
-export const PLAYER_SHOVEL_ATTACK_COLOR = 'rgba(180, 180, 180, 0.5)';
-export const PLAYER_SWORD_ATTACK_DAMAGE = 15;
-export const PLAYER_SWORD_BLOCK_DAMAGE = 0;
-export const PLAYER_SWORD_ATTACK_REACH_X = PLAYER_WIDTH * 0.8;
-export const PLAYER_SWORD_ATTACK_REACH_Y = PLAYER_HEIGHT * 0;
-export const PLAYER_SWORD_ATTACK_WIDTH = PLAYER_WIDTH * 1.5;
-export const PLAYER_SWORD_ATTACK_HEIGHT = PLAYER_HEIGHT * 0.9;
-export const PLAYER_SWORD_ATTACK_DURATION = 0.2;
-export const PLAYER_SWORD_ATTACK_COOLDOWN = 0.3;
-export const PLAYER_SWORD_ATTACK_COLOR = 'rgba(255, 255, 255, 0.5)';
-export const PLAYER_SPEAR_ATTACK_DAMAGE = 8;
-export const PLAYER_SPEAR_BLOCK_DAMAGE = 0;
-export const PLAYER_SPEAR_ATTACK_REACH_X = BLOCK_WIDTH * 6;
-export const PLAYER_SPEAR_ATTACK_WIDTH = BLOCK_WIDTH * 0.5;
-export const PLAYER_SPEAR_ATTACK_HEIGHT = BLOCK_HEIGHT * 1.5;
-export const PLAYER_SPEAR_ATTACK_DURATION = 0.3;
-export const PLAYER_SPEAR_ATTACK_COOLDOWN = 0.5;
-export const PLAYER_SPEAR_ATTACK_COLOR = 'rgba(220, 220, 180, 0.5)';
-
 export const WEAPON_STATS = {
-    [WEAPON_TYPE_SHOVEL]: { width: SHOVEL_WIDTH, height: SHOVEL_HEIGHT, color: SHOVEL_COLOR },
-    [WEAPON_TYPE_SWORD]: { width: SWORD_WIDTH, height: SWORD_HEIGHT, color: SWORD_COLOR },
-    [WEAPON_TYPE_SPEAR]: { width: SPEAR_WIDTH, height: SPEAR_HEIGHT, color: SPEAR_COLOR },
-};
-
-export const CRAFTING_RECIPES = { // fixed material types and amounts
-    [WEAPON_TYPE_SWORD]: [{ type: 'stone', amount: 5 }],
-    [WEAPON_TYPE_SPEAR]: [{ type: 'wood', amount: 2 }, { type: 'stone', amount: 1 }],
+    [WEAPON_TYPE_UNARMED]: {
+        displayName: "Unarmed",
+        symbol: "👊",
+        width: 1 * BLOCK_WIDTH, // Placeholder dimensions
+        height: 1 * BLOCK_HEIGHT,
+        color: 'transparent',
+        attackDamage: 1, // Minimal damage
+        blockDamage: 0,
+        attackReachX: PLAYER_WIDTH * 0.2, // Small reach
+        attackReachY: 0,
+        attackWidth: PLAYER_WIDTH * 0.5,
+        attackHeight: PLAYER_HEIGHT * 0.5,
+        attackDuration: 0.1,
+        attackCooldown: 0.2,
+        attackColor: 'rgba(255, 255, 255, 0.2)',
+        visualAnchorOffset: { x: 0, y: 0 }, // Center of weapon
+        shape: [{ type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT }] // Placeholder visual
+    },
+    [WEAPON_TYPE_SHOVEL]: {
+        displayName: "Shovel",
+        symbol: "⛏️",
+        width: 2 * BLOCK_WIDTH, // 32px (bounding box width)
+        height: 3 * BLOCK_HEIGHT, // 48px (bounding box height)
+        color: 'rgb(0, 0, 0)', // Pitch-black
+        outlineColor: 'rgb(128, 0, 128)', // Bright purple
+        outlineWidth: 3, // Custom outline width for shovel
+        attackDamage: 5,
+        blockDamage: 25,
+        attackReachX: 3 * BLOCK_WIDTH, // Distance from player center to hitbox center (48px)
+        attackReachY: PLAYER_HEIGHT * 0.4, // Vertical offset from player center to hitbox center (38.4px)
+        attackWidth: (1 * BLOCK_WIDTH) * 2, // 32px
+        attackHeight: (2 * BLOCK_HEIGHT) * 2, // 64px
+        attackDuration: 0.3,
+        attackCooldown: 0.4,
+        attackColor: 'rgba(180, 180, 180, 0.5)',
+        recipe: [], // Shovel is usually starting item, not crafted
+        visualAnchorOffset: { x: 0, y: 1.5 * BLOCK_HEIGHT }, // The tip of the blade (bottom center of weapon's bounding box)
+        shape: [
+            // Handle (rectangle) - x,y are relative to shovel's rotational center (0,0)
+            { type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -1.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1.5 * BLOCK_HEIGHT },
+            // Blade (triangle) - points are relative to shovel's rotational center (0,0)
+            {
+                type: 'triangle',
+                p1: { x: -1 * BLOCK_WIDTH, y: 0 * BLOCK_HEIGHT },    // Top-left corner of blade base
+                p2: { x: 1 * BLOCK_WIDTH, y: 0 * BLOCK_HEIGHT },     // Top-right corner of blade base
+                p3: { x: 0 * BLOCK_WIDTH, y: 1.5 * BLOCK_HEIGHT }    // Bottom-center point (the tip)
+            }
+        ]
+    },
+    [WEAPON_TYPE_SWORD]: {
+        displayName: "Sword",
+        symbol: "⚔️",
+        width: 3 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: 'rgb(180, 180, 190)',
+        attackDamage: 15, blockDamage: 0,
+        attackReachX: PLAYER_WIDTH * 0.8, attackReachY: 0, // Y is fixed relative to player center.
+        attackWidth: PLAYER_WIDTH * 1.5, attackHeight: PLAYER_HEIGHT * 0.9,
+        attackDuration: 0.2, attackCooldown: 0.3, attackColor: 'rgba(255, 255, 255, 0.5)',
+        recipe: [ { type: 'stone', amount: 5 } ],
+        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 }, // Tip of the sword (right edge, centered vertically)
+        shape: [
+            { type: 'rect', x: -1.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 3 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT }
+        ]
+    },
+    [WEAPON_TYPE_SPEAR]: {
+        displayName: "Spear",
+        symbol: "↑",
+        width: 4 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, color: 'rgb(210, 180, 140)',
+        attackDamage: 8, blockDamage: 0,
+        attackReachX: BLOCK_WIDTH * 6, // Total distance from player center to spear tip, then hitbox is placed around it.
+        attackReachY: undefined, // undefined means it's a direct vector from player to target for reach.
+        attackWidth: BLOCK_WIDTH * 0.5, attackHeight: BLOCK_HEIGHT * 1.5,
+        attackDuration: 0.3,
+        attackCooldown: 0.5,
+        attackColor: 'rgba(220, 220, 180, 0.5)',
+        recipe: [ { type: 'wood', amount: 2 }, { type: 'stone', amount: 1 } ],
+        visualAnchorOffset: { x: 2 * BLOCK_WIDTH, y: 0 }, // Tip of the spear (right edge, centered vertically)
+        shape: [
+            { type: 'rect', x: -2 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 4 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT }
+        ]
+    }
 };
 
 // --- Enemy Parameters ---
@@ -481,19 +517,16 @@ export const DEFAULT_ENEMY_WIDTH = 2;
 export const DEFAULT_ENEMY_HEIGHT = 2;
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // Factor of enemy's own width.
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 15 * BLOCK_WIDTH; // Base push strength
-
 export const ENEMY_TYPE_DUNKLEOSTEUS = 'dunkleosteus';
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
-
 export const TETRAPOD_WATER_CONTACT_DAMAGE = 1;
 export const TETRAPOD_LAND_FLOP_DAMAGE = 1;
 export const TETRAPOD_LAND_STILL_DAMAGE = 0;
 export const TETRAPOD_FLOP_ATTACK_DURATION = 0.2;
 export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5;
 export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0;
-
 export const ENEMY_STATS = {
     [ENEMY_TYPE_TETRAPOD]: {
         displayName: "Tetrapod", aiType: 'flopAI', color: 'rgb(100, 120, 80)',
@@ -501,7 +534,7 @@ export const ENEMY_STATS = {
         height_BLOCKS: DEFAULT_ENEMY_HEIGHT,
         health: 1, contactDamage: 0, applyGravity: true, gravityFactor: 1.0,
         maxSpeedX_BLOCKS_PER_SEC: 3.75,
-        maxSpeedY_BLOCKS_PER_SEC: 12.5, 
+        maxSpeedY_BLOCKS_PER_SEC: 12.5,
         swimSpeed_BLOCKS_PER_SEC: 17.5,
         canJump: true,
         jumpVelocity_BLOCKS_PER_SEC: 12.5,
@@ -565,94 +598,92 @@ export const ENEMY_STATS = {
         outOfWaterDamagePerSecond: 15, // damage per second when out of water
     },
 };
-
 // --- Wave Scripting ---
-
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const MYA_TRANSITION_ANIMATION_DURATION = 6.0; // seconds for the MYA number to animate
 export const WAVES = [
     {
-        mainWaveNumber: 1,
-        mya: 350,
-        duration: 117,
-        intermissionDuration: 15.0,
-        audioTrack: AUDIO_TRACKS.wave1,
-        agingPasses: 5,
-        subWaves: [
-            { enemyGroups: [
-                { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
-                { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 },
-                { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
-                { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
-            ]},
-            { enemyGroups: [
-                { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
-                { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
-            ]},
-            { enemyGroups: [
-                { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
-                { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
-            ]}
-        ]
+    mainWaveNumber: 1,
+    mya: 350,
+    duration: 117,
+    intermissionDuration: 15.0,
+    audioTrack: AUDIO_TRACKS.wave1,
+    agingPasses: 5,
+    subWaves: [
+    { enemyGroups: [
+    { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
+    { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 },
+    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
+    { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
+    ]},
+    { enemyGroups: [
+    { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
+    { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
+    ]},
+    { enemyGroups: [
+    { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
+    { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
+    ]}
+    ]
     },
     {
-        mainWaveNumber: 2,
-        mya: 300,
-        duration: 137,
-        intermissionDuration: 15.0,
-        audioTrack: AUDIO_TRACKS.wave2,
-        agingPasses: 5,
-        subWaves: [
-            { enemyGroups: [
-                { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
-                { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
-            ]},
-            { enemyGroups: [
-                { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
-                { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
-            ]},
-            { enemyGroups: [
-                { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
-                { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
-                { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
-            ]}
-        ]
+    mainWaveNumber: 2,
+    mya: 300,
+    duration: 137,
+    intermissionDuration: 15.0,
+    audioTrack: AUDIO_TRACKS.wave2,
+    agingPasses: 5,
+    subWaves: [
+    { enemyGroups: [
+    { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
+    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
+    ]},
+    { enemyGroups: [
+    { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
+    { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
+    ]},
+    { enemyGroups: [
+    { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
+    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
+    { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
+    ]}
+    ]
     },
     {
-        mainWaveNumber: 3,
-        mya: 250,
-        duration: 30,
-        intermissionDuration: 15.0,
-        audioTrack: AUDIO_TRACKS.wave3,
-        agingPasses: 5,
-        subWaves: [
-            { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
-            { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
-        ]
+    mainWaveNumber: 3,
+    mya: 250,
+    duration: 30,
+    intermissionDuration: 15.0,
+    audioTrack: AUDIO_TRACKS.wave3,
+    agingPasses: 5,
+    subWaves: [
+    { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+    { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+    ]
     },
     {
-        mainWaveNumber: 4,
-        mya: 200,
-        duration: 30,
-        intermissionDuration: 15.0,
-        audioTrack: AUDIO_TRACKS.wave3,
-        agingPasses: 5,
-        subWaves: [
-            { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
-            { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
-        ]
+    mainWaveNumber: 4,
+    mya: 200,
+    duration: 30,
+    intermissionDuration: 15.0,
+    audioTrack: AUDIO_TRACKS.wave3,
+    agingPasses: 5,
+    subWaves: [
+    { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+    { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+    ]
     },
     {
-        mainWaveNumber: 5,
-        customEpochText: "Present Day!", // sub out mya for custom text
-        duration: 30,
-        intermissionDuration: 15.0,
-        audioTrack: AUDIO_TRACKS.wave3,
-        agingPasses: 5,
-        subWaves: [
-            { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
-            { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
-        ]
+    mainWaveNumber: 5,
+    customEpochText: "Present Day!", // sub out mya for custom text
+    duration: 30,
+    intermissionDuration: 15.0,
+    audioTrack: AUDIO_TRACKS.wave3,
+    agingPasses: 5,
+    subWaves: [
+    { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+    { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+    ]
     }
 ];
