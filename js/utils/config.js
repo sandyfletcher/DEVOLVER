@@ -447,8 +447,8 @@ export const WEAPON_STATS = {
 [WEAPON_TYPE_SHOVEL]: {
         displayName: "Shovel",
         symbol: "⛏️",
-        width: 2 * BLOCK_WIDTH,         // Bounding box width (blade is 2BW wide)
-        height: 4.5 * BLOCK_HEIGHT,      // UPDATED: Bounding box height (handle 3BH + blade 1.5BH)
+        width: 5 * BLOCK_WIDTH,         // Bounding box width (blade is 2BW wide)
+        height: 2 * BLOCK_HEIGHT,      // UPDATED: Bounding box height (handle 3BH + blade 1.5BH)
         outlineColor: 'rgb(75, 75, 75)', 
         outlineWidth: 2,                 
         attackDamage: 5,
@@ -461,27 +461,27 @@ export const WEAPON_STATS = {
         attackCooldown: 0.4,
         attackColor: 'rgba(180, 180, 180, 0.5)',
         recipe: [], 
-        visualAnchorOffset: { x: 0, y: 1.5 * BLOCK_HEIGHT }, // Tip of the blade aims at target (STAYS THE SAME)
+        visualAnchorOffset: { x: 1.5 * BLOCK_HEIGHT, y: 0 }, // Tip of the blade aims at target
         handPositions: { // Local coords relative to weapon's rotational center (pivot)
-            back: { x: 0, y: -3.0 * BLOCK_HEIGHT },  // UPDATED: End of the longer handle (top)
-            front: { x: 0, y: -1.5 * BLOCK_HEIGHT } // UPDATED: Midpoint of the longer handle
+            back: { x: -3.0 * BLOCK_HEIGHT, y: 0 },  // End of the longer handle (top)
+            front: { x: -1.5 * BLOCK_HEIGHT, y: 0 } // Midpoint of the longer handle
         },
         shape: [
             // Handle (rectangle)
             { 
                 type: 'rect', 
-                x: -0.5 * BLOCK_WIDTH,      // Centered horizontally
-                y: -3.0 * BLOCK_HEIGHT,     // UPDATED: Starts 3BH above the pivot
-                w: 1 * BLOCK_WIDTH, 
-                h: 3.0 * BLOCK_HEIGHT,      // UPDATED: Length of handle
+                x: -3.0 * BLOCK_WIDTH,      // Centered horizontally
+                y: -0.5 * BLOCK_HEIGHT,     // UPDATED: Starts 3BH above the pivot
+                w: 3 * BLOCK_WIDTH, 
+                h: 0.5 * BLOCK_HEIGHT,      // UPDATED: Length of handle
                 color: 'rgb(139, 69, 19)'   // SaddleBrown color for handle
             },
-            // Blade (triangle) - STAYS THE SAME relative to the pivot
+            // Blade (triangle)
             {
                 type: 'triangle',
-                p1: { x: -1 * BLOCK_WIDTH, y: 0 * BLOCK_HEIGHT },
-                p2: { x: 1 * BLOCK_WIDTH, y: 0 * BLOCK_HEIGHT },
-                p3: { x: 0 * BLOCK_WIDTH, y: 1.5 * BLOCK_HEIGHT },
+                p1: { x: 0, y: -1 * BLOCK_WIDTH / 2 }, // Base of blade, top point
+                p2: { x: 0, y: 1 * BLOCK_WIDTH / 2 },  // Base of blade, bottom point
+                p3: { x: 1.5 * BLOCK_HEIGHT, y: 0 },   // Tip of blade
                 color: 'rgb(128, 128, 128)'
             }
         ]
