@@ -103,6 +103,7 @@ function endWave() {
 
 function triggerWarpCleanupAndCalculations() {
     console.log("[WaveMgr] End of BUILDPHASE. Triggering entity cleanup, calculations, and animation queuing...");
+    console.time("WarpPhaseCalculationsAndQueuing"); // Start timing for the entire logical calculation phase
     if (!portalRef) {
         console.error("[WaveMgr] Warp process failed: Portal reference is null.");
         return;
@@ -110,8 +111,10 @@ function triggerWarpCleanupAndCalculations() {
     // 0. Clear any existing visual animations from previous states (IMPORTANT)
     WorldManager.finalizeAllGravityAnimations(); // Clear out any stragglers
     WorldManager.finalizeAllTransformAnimations(); // Clear out any stragglers
+
     // 1. Snapshot initial grid state
     console.log("[WaveMgr] Snapshotting initial grid state...");
+    console.time("SnapshotInitialGrid");
     const initialGridState = World.getGrid().map(row =>
         row.map(block => {
             if (typeof block === 'object' && block !== null) {
@@ -120,6 +123,7 @@ function triggerWarpCleanupAndCalculations() {
             return block; // Keep BLOCK_AIR (0) as is
         })
     );
+    console.timeEnd("SnapshotInitialGrid");
     // 2. Entity Clearing & Portal Radius
     portalRef.setSafetyRadius(portalRef.safetyRadius + Config.PORTAL_RADIUS_GROWTH_PER_WAVE);
     const portalCenter = portalRef.getPosition();
@@ -127,10 +131,14 @@ function triggerWarpCleanupAndCalculations() {
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     console.log("[WaveMgr] Entity cleanup and portal radius update complete.");
+
     // 3. Logical Gravity Settlement (Done once before aging/lighting loop)
     console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
+    console.time("LogicalGravitySettlement");
     let allGravityChangesForAnimation = WorldManager.applyGravitySettlement(portalRef); // Returns changes for animation
     console.log(`[WaveMgr] Gravity settlement (LOGICAL) complete. ${allGravityChangesForAnimation.length} blocks potentially moved.`);
+    console.timeEnd("LogicalGravitySettlement");
+
     // MYA Transition (UI)
     const currentWaveData = getCurrentWaveData();
     const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
@@ -150,6 +158,7 @@ function triggerWarpCleanupAndCalculations() {
     }
     // 4. Interleaved Lighting and Aging Process (LOGICAL UPDATES ONLY)
     console.log("[WaveMgr] Starting interleaved lighting and aging process (LOGICAL)...");
+    console.time("InterleavedAgingAndLighting");
     if (nextWaveData && typeof nextWaveData === 'object') {
         const passes = nextWaveData.agingPasses ?? Config.AGING_DEFAULT_PASSES_PER_WAVE;
         for (let i = 0; i < passes; i++) {
@@ -173,8 +182,10 @@ function triggerWarpCleanupAndCalculations() {
     } else {
         console.warn("[WaveMgr] No next wave data found for aging/lighting process. This might be the last wave transition before victory.");
     }
+    console.timeEnd("InterleavedAgingAndLighting");
     // 5. Final Lighting Pass (LOGICAL)
     console.log("[WaveMgr] Applying final lighting pass after warp phase aging (LOGICAL)...");
+    console.time("FinalLightingPass");
     World.resetAllBlockLighting();
     const finalWarpLightingChanges = WorldManager.applyLightingPass(false, 1);
     if (finalWarpLightingChanges.length > 0) {
@@ -186,13 +197,16 @@ function triggerWarpCleanupAndCalculations() {
         });
         console.log(`[WaveMgr] Final warp lighting pass lit ${finalWarpLightingChanges.length} additional blocks.`);
     }
+    console.timeEnd("FinalLightingPass");
     // 6. Diff and Queue Transform Animations
     console.log("[WaveMgr] Diffing grid and queuing transform animations...");
+    // diffGridAndQueueTransformAnimations now has its own console.time
     WorldManager.diffGridAndQueueTransformAnimations(initialGridState, World.getGrid());
+
     // 7. Queue All Collected Gravity Animations
     if (allGravityChangesForAnimation.length > 0) {
         console.log(`[WaveMgr] Queuing ${allGravityChangesForAnimation.length} gravity changes for animation.`);
-        WorldManager.addProposedGravityChanges(allGravityChangesForAnimation);
+        WorldManager.addProposedGravityChanges(allGravityChangesForAnimation); // This function logs its additions now
     }
     // 8. Sun Animation (Visual)
     if (Config.SUN_ANIMATION_ENABLED) {
@@ -201,6 +215,17 @@ function triggerWarpCleanupAndCalculations() {
         sunAnimationTimer = sunAnimationDuration;
         console.log(`[WaveMgr] Started visual sun animation for ${sunAnimationDuration}s.`);
     }
+    
+    // 9. Seed Water Update Queue
+    console.time("SeedWaterUpdateQueue");
+    WorldManager.seedWaterUpdateQueue(); // This function logs its size now
+    console.timeEnd("SeedWaterUpdateQueue");
+
+    console.timeEnd("WarpPhaseCalculationsAndQueuing"); // End timing for the entire logical calculation phase
+
+    state = 'WARP_ANIMATING';
+    console.log("[WaveMgr] Transitioned from BUILDPHASE to WARP_ANIMATING. Waiting for animations.");
+    currentMaxTimer = sunAnimationDuration; // Or the longer of sun/mya animation, or actual block animation time
 }
 
 // --- Exported Functions ---
@@ -268,12 +293,17 @@ export function update(dt, gameState) {
             }
             break;
         case 'WARP_ANIMATING':
-            if (WorldManager.areGravityAnimationsComplete() &&
-                WorldManager.areTransformAnimationsComplete() && // CHANGED HERE
-                !isSunAnimationActive) {
-                console.log("[WaveMgr] All world block animations complete (Gravity, Transform) during WARP_ANIMATING.");
+            const gravityComplete = WorldManager.areGravityAnimationsComplete();
+            const transformComplete = WorldManager.areTransformAnimationsComplete();
+            const sunComplete = !isSunAnimationActive;
+
+            // Log current animation states
+            // console.log(`[WaveMgr.WARP_ANIMATING] Gravity: ${gravityComplete} (Active: ${WorldManager.activeGravityAnimations.length}, Queued: ${WorldManager.gravityAnimationQueue.length}), Transform: ${transformComplete} (Active: ${WorldManager.activeTransformAnimations.length}, Queued: ${WorldManager.transformAnimationQueue.length}), Sun: ${sunComplete}`);
+
+            if (gravityComplete && transformComplete && sunComplete) {
+                console.log("[WaveMgr] All animations complete. Transitioning to next wave.");
                 WorldManager.renderStaticWorldToGridCanvas();
-                WorldManager.seedWaterUpdateQueue();
+                WorldManager.seedWaterUpdateQueue(); // Re-seed water after all changes are static
                 startNextWave();
             }
             break;

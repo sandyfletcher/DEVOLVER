@@ -17,12 +17,12 @@ let waterPropagationTimer = 0; // timer to control spread speed
 
 // --- Transform Animation State (replaces aging and lighting specific animations) ---
 let transformAnimationQueue = []; // Stores { c, r, oldBlockData, newBlockData }
-let activeTransformAnimations = []; // Stores { c, r, oldBlockData, newBlockData, timer, phase, currentScale }
+export let activeTransformAnimations = []; // Expose for logging // Stores { c, r, oldBlockData, newBlockData, timer, phase, currentScale }
 let newTransformAnimationStartTimer = 0; // Timer to delay starting new transform animations
 
 // Gravity Animation State
 let gravityAnimationQueue = []; // Stores { c, r_start, r_end, blockData }
-let activeGravityAnimations = []; // Stores { c, r_current_pixel_y, r_end_pixel_y, blockData, fallSpeed }
+export let activeGravityAnimations = []; // Expose for logging // Stores { c, r_current_pixel_y, r_end_pixel_y, blockData, fallSpeed }
 let newGravityAnimationStartTimer = 0; // Timer for staggering gravity animations
 
 const MAX_FALLING_BLOCKS_AT_ONCE = Config.MAX_FALLING_BLOCKS_AT_ONCE ?? 20;
@@ -31,6 +31,36 @@ const NEW_GRAVITY_ANIM_DELAY = Config.NEW_GRAVITY_ANIM_DELAY ?? 0.02;
 
 // Constants for lighting pass (re-used for visual sun rays)
 const SUN_MOVEMENT_Y_ROW_OFFSET = Config.SUN_MOVEMENT_Y_ROW_OFFSET ?? -3; // Use Config value or default
+
+
+// Helper function to adjust RGB color by a light level.
+// Assumes input color is 'rgb(r, g, b)' string.
+function adjustColorByLightLevel(rgbString, lightLevel) {
+    if (!rgbString || !rgbString.startsWith('rgb(')) {
+        return rgbString; // Return original if not in expected format
+    }
+    const parts = rgbString.substring(4, rgbString.length - 1).split(',').map(s => parseInt(s.trim(), 10));
+    if (parts.length !== 3 || parts.some(isNaN)) {
+        return rgbString; // Return original if parsing fails
+    }
+
+    const baseR = parts[0];
+    const baseG = parts[1];
+    const baseB = parts[2];
+
+    // Map lightLevel (0.0 to 1.0) to a brightness factor range.
+    // At lightLevel 0.0, factor is MIN_LIGHT_LEVEL_COLOR_FACTOR.
+    // At lightLevel 1.0, factor is MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR.
+    // Linear interpolation: factor = MIN + (MAX - MIN) * lightLevel
+    const brightnessFactor = Config.MIN_LIGHT_LEVEL_COLOR_FACTOR +
+                             (Config.MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR - Config.MIN_LIGHT_LEVEL_COLOR_FACTOR) * lightLevel;
+
+    const r = Math.min(255, Math.floor(baseR * brightnessFactor));
+    const g = Math.min(255, Math.floor(baseG * brightnessFactor));
+    const b = Math.min(255, Math.floor(baseB * brightnessFactor));
+
+    return `rgb(${r}, ${g}, ${b})`;
+}
 
 // This function will take the output of `diffGrids` and try to identify falling blocks.
 function parseGravityDiffsIntoFallingBlocks(diffs) {
@@ -81,9 +111,11 @@ export function addProposedGravityChanges(changes) {
     changes.forEach(change => {
         gravityAnimationQueue.push(change);
     });
+    console.log(`[WorldManager] Added ${changes.length} gravity changes to queue. Total gravity animations queued: ${gravityAnimationQueue.length}`);
 }
 
 function updateGravityAnimations(dt) {
+    // console.log(`[WorldManager.updateGravityAnimations] Active: ${activeGravityAnimations.length}, Queued: ${gravityAnimationQueue.length}`); // Log active/queued
     if (dt <= 0) return;
     newGravityAnimationStartTimer -= dt;
     if (newGravityAnimationStartTimer <= 0 && gravityAnimationQueue.length > 0 && activeGravityAnimations.length < MAX_FALLING_BLOCKS_AT_ONCE) {
@@ -112,7 +144,7 @@ function updateGravityAnimations(dt) {
         anim.r_current_pixel_y += anim.fallSpeed * dt;
         if (anim.r_current_pixel_y >= anim.r_end_pixel_y) {
             const end_row = Math.round(anim.r_end_pixel_y / Config.BLOCK_HEIGHT);
-            updateStaticWorldAt(anim.c, end_row);
+            updateStaticWorldAt(anim.c, end_row); // This is where the block is added to static world
             queueWaterCandidatesAroundChange(anim.c, anim.r_start);
             queueWaterCandidatesAroundChange(anim.c, end_row);
             activeGravityAnimations.splice(i, 1);
@@ -157,6 +189,8 @@ export function areGravityAnimationsComplete() {
 }
 
 export function finalizeAllGravityAnimations() {
+    console.log("[WorldManager] Finalizing all gravity animations...");
+    console.time("finalizeAllGravityAnimations");
     while (gravityAnimationQueue.length > 0) {
         const change = gravityAnimationQueue.shift();
         // If r_end_pixel_y is not defined, calculate from r_end
@@ -180,6 +214,8 @@ export function finalizeAllGravityAnimations() {
     }
     gravityAnimationQueue = [];
     activeGravityAnimations = [];
+    console.log("[WorldManager] All gravity animations finalized.");
+    console.timeEnd("finalizeAllGravityAnimations");
 }
 
 function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
@@ -220,7 +256,8 @@ function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
             continue;
         }
         const neighbors = [
-            { dc: 0, dr: -1 }, { dc: 0, dr: 1 }, { dc: -1, dr: 0 }, { dc: 1, dr: 0 }
+            { dc: 0, dr: -1 }, { dc: 0, dr: 1 },
+            { dc: -1, dr: 0 }, { dc: 1, dr: 0 }
         ];
         for (const offset of neighbors) {
             const nc = c + offset.dc;
@@ -295,7 +332,9 @@ export function applyGravitySettlement(portalRef) {
                         let currentFall = 0;
                         for (let fall_r = chunkBlock.r + 1; fall_r < Config.GRID_ROWS; fall_r++) {
                             const blockAtFallTargetData = World.getBlock(chunkBlock.c, fall_r);
-                            const typeAtFallTarget = (typeof blockAtFallTargetData === 'object' && blockAtFallTargetData !== null) ? blockAtFallTargetData.type : blockAtFallTargetData;
+                            const typeAtFallTarget = (typeof blockAtFallTargetData === 'object' && blockAtFallTargetData !== null)
+                                ? blockAtFallTargetData.type
+                                : blockAtFallTargetData;
                             const isTargetBelowPartOfChunk = chunk.some(b => b.c === chunkBlock.c && b.r === fall_r);
                             if (isTargetBelowPartOfChunk) {
                                 currentFall++;
@@ -509,34 +548,6 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
     return proposedChanges;
 }
 
-// Helper function to adjust RGB color by a light level.
-// Assumes input color is 'rgb(r, g, b)' string.
-function adjustColorByLightLevel(rgbString, lightLevel) {
-    if (!rgbString || !rgbString.startsWith('rgb(')) {
-        return rgbString; // Return original if not in expected format
-    }
-    const parts = rgbString.substring(4, rgbString.length - 1).split(',').map(s => parseInt(s.trim(), 10));
-    if (parts.length !== 3 || parts.some(isNaN)) {
-        return rgbString; // Return original if parsing fails
-    }
-
-    const baseR = parts[0];
-    const baseG = parts[1];
-    const baseB = parts[2];
-
-    // Map lightLevel (0.0 to 1.0) to a brightness factor range.
-    // At lightLevel 0.0, factor is MIN_LIGHT_LEVEL_COLOR_FACTOR.
-    // At lightLevel 1.0, factor is MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR.
-    // Linear interpolation: factor = MIN + (MAX - MIN) * lightLevel
-    const brightnessFactor = Config.MIN_LIGHT_LEVEL_COLOR_FACTOR +
-                             (Config.MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR - Config.MIN_LIGHT_LEVEL_COLOR_FACTOR) * lightLevel;
-
-    const r = Math.min(255, Math.floor(baseR * brightnessFactor));
-    const g = Math.min(255, Math.floor(baseG * brightnessFactor));
-    const b = Math.min(255, Math.floor(baseB * brightnessFactor));
-
-    return `rgb(${r}, ${g}, ${b})`;
-}
 
 // -----------------------------------------------------------------------------
 // --- Initialization ---
@@ -618,7 +629,8 @@ export function seedWaterUpdateQueue() {
         }
     }
     console.log(`WorldManager: Seeded Water Update Queue with ${waterUpdateQueue.size} candidates.`);
-    waterPropagationTimer = 0;
+    // waterPropagationTimer is reset by waveManager to ensure water doesn't start flowing until later
+    // waterPropagationTimer = 0; 
 }
 
 // -----------------------------------------------------------------------------
@@ -672,8 +684,10 @@ export function damageBlock(col, row, damageAmount) {
 
 // --- NEW: Transform Animation Functions ---
 export function diffGridAndQueueTransformAnimations(initialGrid, finalGrid) {
+    console.time("diffGridAndQueueTransformAnimations");
     if (!initialGrid || !finalGrid || initialGrid.length !== finalGrid.length || (initialGrid.length > 0 && initialGrid[0]?.length !== finalGrid[0]?.length)) {
         console.error("[WorldManager] Diff Grids: Invalid grids provided for diffing.", initialGrid?.length, finalGrid?.length, initialGrid[0]?.length, finalGrid[0]?.length);
+        console.timeEnd("diffGridAndQueueTransformAnimations");
         return;
     }
     transformAnimationQueue = []; // Clear previous queue
@@ -704,9 +718,11 @@ export function diffGridAndQueueTransformAnimations(initialGrid, finalGrid) {
         }
     }
     console.log(`[WorldManager] Queued ${transformAnimationQueue.length} transform animations after diff.`);
+    console.timeEnd("diffGridAndQueueTransformAnimations");
 }
 
 function updateTransformAnimations(dt) {
+    // console.log(`[WorldManager.updateTransformAnimations] Active: ${activeTransformAnimations.length}, Queued: ${transformAnimationQueue.length}`); // Log active/queued
     if (dt <= 0) return;
 
     newTransformAnimationStartTimer -= dt;
@@ -756,7 +772,7 @@ function updateTransformAnimations(dt) {
             }
         } else if (anim.phase === 'pop') {
             if (anim.timer <= 0) {
-                updateStaticWorldAt(anim.c, anim.r);
+                updateStaticWorldAt(anim.c, anim.r); // This is where the block is added to static world
                 queueWaterCandidatesAroundChange(anim.c, anim.r);
                 activeTransformAnimations.splice(i, 1);
             }
@@ -815,6 +831,8 @@ export function areTransformAnimationsComplete() {
 }
 
 export function finalizeAllTransformAnimations() {
+    console.log("[WorldManager] Finalizing all transform animations...");
+    console.time("finalizeAllTransformAnimations");
     while (transformAnimationQueue.length > 0) {
         const change = transformAnimationQueue.shift();
         updateStaticWorldAt(change.c, change.r);
@@ -825,6 +843,10 @@ export function finalizeAllTransformAnimations() {
         updateStaticWorldAt(anim.c, anim.r);
         queueWaterCandidatesAroundChange(anim.c, anim.r);
     }
+    transformAnimationQueue = [];
+    activeTransformAnimations = [];
+    console.log("[WorldManager] All transform animations finalized.");
+    console.timeEnd("finalizeAllTransformAnimations");
 }
 
 // -----------------------------------------------------------------------------
@@ -898,8 +920,10 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
     }
 }
 export function updateStaticWorldAt(col, row) {
+    // console.time(`updateStaticWorldAt ${col},${row}`); // Only enable this for focused debugging if needed, can spam the console
     const gridCtx = Renderer.getGridContext();
     if (!gridCtx) {
+        // console.timeEnd(`updateStaticWorldAt ${col},${row}`);
         return;
     }
 
@@ -915,7 +939,10 @@ export function updateStaticWorldAt(col, row) {
         const currentBlockType = typeof block === 'object' && block !== null ? block.type : block;
         const blockProps = Config.BLOCK_PROPERTIES[currentBlockType];
 
-        if (currentBlockType === Config.BLOCK_AIR || !blockProps || !blockProps.color) return;
+        if (currentBlockType === Config.BLOCK_AIR || !blockProps || !blockProps.color) {
+            // console.timeEnd(`updateStaticWorldAt ${col},${row}`);
+            return;
+        }
 
         let baseColor = blockProps.color;
         let finalColor = baseColor;
@@ -1016,19 +1043,23 @@ export function updateStaticWorldAt(col, row) {
             }
         }
     }
+    // console.timeEnd(`updateStaticWorldAt ${col},${row}`);
 }
 export function renderStaticWorldToGridCanvas() {
     console.log("WorldManager: Rendering static world to grid canvas...");
+    console.time("renderStaticWorldToGridCanvas");
     const gridCtx = Renderer.getGridContext();
     const gridCanvas = Renderer.getGridCanvas();
     if (!gridCtx || !gridCanvas) {
         console.error("WorldManager: Cannot render static world - grid canvas/context missing!");
+        console.timeEnd("renderStaticWorldToGridCanvas");
         return;
     }
     gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
     const worldGridData = World.getGrid();
     if (!worldGridData || !Array.isArray(worldGridData)) {
         console.error("WorldManager: Cannot render, worldGridData is invalid.");
+        console.timeEnd("renderStaticWorldToGridCanvas");
         return;
     }
     for (let r = 0; r < Config.GRID_ROWS; r++) {
@@ -1038,6 +1069,7 @@ export function renderStaticWorldToGridCanvas() {
         }
     }
     console.log("WorldManager: Static world render complete.");
+    console.timeEnd("renderStaticWorldToGridCanvas");
 }
 
 export function draw(ctx) {
