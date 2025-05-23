@@ -32,11 +32,10 @@ export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
 // --- Block Parameters ---
 
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
-export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2; // fixed pixel thickness for visual consistency
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show slash when HP <= 70%
+export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2;
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show / when HP <= 70%
 export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // show X when HP <= 30%
-export const GHOST_BLOCK_ALPHA = 0.5; // transparency for placement preview
-export const CAN_PLACE_IN_WATER = false;
+export const GHOST_BLOCK_ALPHA = 0.5; // placement preview transparency
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
 export const VEGETATION_PIXEL_DENSITY = 0.6;
@@ -85,7 +84,7 @@ export const BLOCK_PROPERTIES = {
         name: 'SAND',
         hp: 30,
         color: 'rgb(210, 180, 140)',
-        translucency: 0.0,
+        translucency: 0.1,
         isSolidForPhysics: true,
         isSolidForPlacementSupport: true,
         isRope: false,
@@ -99,7 +98,7 @@ export const BLOCK_PROPERTIES = {
         name: 'DIRT',
         hp: 50,
         color: 'rgb(130, 82, 45)',
-        translucency: 0.0,
+        translucency: 0.1,
         isSolidForPhysics: true,
         isSolidForPlacementSupport: true,
         isRope: false,
@@ -258,78 +257,78 @@ export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 15; // Target stone level offs
 export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 20; // Target floor level offset (in rows) at the absolute world edge
 export const ISLAND_CENTER_TAPER_WIDTH_COLS = 80; // Width in columns for tapering from island edge inward
 
-// --- Aging Parameters ---
+// --- Tree Parameters ---
 
-export const AGING_STONEIFICATION_DEPTH_THRESHOLD = Math.floor(GRID_ROWS * 0.45) * BLOCK_HEIGHT; // threshold for stoneification.
-export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
-export const AGING_INITIAL_PASSES = 10; // Number of aging passes on initial world generation.
+export const MIN_TREE_SPACING_RADIUS = 8; // minimum block distance between tree trunk formation
+export const TREE_MIN_HEIGHT_TO_FORM_ORGANIC = 4; // trunk height for canopy formation
+export const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 10;
+export const TREE_INITIAL_CANOPY_RADIUS = 2; // block radius of initial canopy vegetation
+export const TREE_MAX_CANOPY_RADIUS = 4; // max radius canopy can reach
 
-export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Probabilities (chance per eligible block per pass)
+// --- Aging Rules ---
+
+export const AGING_STONEIFICATION_DEPTH_THRESHOLD = Math.floor(GRID_ROWS * 0.45) * BLOCK_HEIGHT; // threshold for stoneification
+export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // max contiguous water blocks influencing probabilities
+export const AGING_INITIAL_PASSES = 10; // aging passes on initial world generation
+
+export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // probability per eligible block per pass
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
 export const AGING_PROB_WATER_EROSION_DIRT_VEGETATION = 0.9;
 export const AGING_PROB_STONEIFICATION_DEEP = 0.000001;
-export const AGING_PROB_HORIZONTAL_SAND_SPREAD = 0.85; // Chance for dirt/VEGETATION/stone next to "wet" sand to become sand
-export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001; // Probability for surface stone to erode to air
+export const AGING_PROB_HORIZONTAL_SAND_SPREAD = 0.85;
+export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001;
 export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
 export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
-export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_DIRT = 0.60; // Chance for AIR above lit DIRT to become VEGETATION
-export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_VEGETATION = 0.50; // Chance for AIR above lit VEGETATION to become VEGETATION
-export const AGING_PROB_UNLIT_VEGETATION_DECAY = 0.80; // Chance for unlit VEGETATION to decay to AIR
-
-// --- Tree Parameters ---
-
-export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // Chance for VEG surrounded by VEG to become a "tiny tree"
-export const MIN_TREE_SPACING_RADIUS = 8; // Minimum distance (in blocks) between tree trunks for tiny tree formation
+export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_DIRT = 0.60;
+export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_VEGETATION = 0.50;
+export const AGING_PROB_UNLIT_VEGETATION_DECAY = 0.9;
+export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // chance for vegetation chunk to become tree
 export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.3;
-export const TREE_MIN_HEIGHT_TO_FORM_ORGANIC = 4; // Min trunk height for organic canopy formation (from wood growth)
-export const MAX_NATURAL_TRUNK_HEIGHT_BEFORE_COLLAPSE = 15;
-export const TREE_INITIAL_CANOPY_RADIUS = 2; // Radius (in blocks) of the initial VEGETATION canopy
 export const AGING_PROB_TREE_CANOPY_GROW = 0.1;
-export const TREE_MAX_CANOPY_RADIUS = 4; // Maximum radius (in blocks) a tree canopy can reach
-export const AGING_PROB_TREE_TRUNK_DECAY = 0.005;
 export const AGING_PROB_TREE_CANOPY_DECAY = 0.01;
+export const AGING_PROB_TREE_TRUNK_DECAY = 0.001;
 
 // --- Animation Constants ---
 
-export const AGING_ANIMATION_BLOCKS_AT_ONCE = 50; // number of simultaneous animations 
-export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.01; // Delay (seconds) before starting the next block animation in the queue
-export const AGING_ANIMATION_SWELL_DURATION = 0.1; // Duration (seconds) of the "swell" part
-export const AGING_ANIMATION_POP_DURATION = 0.05; // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
-export const AGING_ANIMATION_SWELL_SCALE = 1.5; // Max scale factor during swell (e.g., 1.5x size)
-export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
-export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (briefly)
-export const WARPPHASE_DURATION = 8.0; // Fixed duration of WARP PHASE in seconds .
-export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // Total time in seconds for enemy death animation.
-export const ENEMY_SWELL_DURATION = 0.3; // Time in seconds for the swell part of enemy death.
-export const ENEMY_SWELL_SCALE = 1.5; // Max scale factor during enemy swell (e.g., 1.5x size).
-export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time in seconds for player death animation.
-export const PLAYER_SPIN_DURATION = 1.0; // Time in seconds for the spin part of player death.
-export const PLAYER_SPIN_FRAMES = 6; // Number of visual steps in the player spin animation.
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 200; // number of simultaneous animations 
+export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.001; // seconds before starting next animation in queue
+export const AGING_ANIMATION_SWELL_DURATION = 0.1;
+export const AGING_ANIMATION_POP_DURATION = 0.05;
+export const AGING_ANIMATION_SWELL_SCALE = 1.5;
+export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // swell old block
+export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // briefly flash new block
+export const WARPPHASE_DURATION = 8.0; // duration of warp phase
+export const ENEMY_DEATH_ANIMATION_DURATION = 0.5; // enemy death animation time in seconds
+export const ENEMY_SWELL_DURATION = 0.3;
+export const ENEMY_SWELL_SCALE = 1.5;
+export const PLAYER_DEATH_ANIMATION_DURATION = 1.5;
+export const PLAYER_SPIN_DURATION = 1.0;
+export const PLAYER_SPIN_FRAMES = 6;
 
 // --- Lighting Parameters ---
 
-export const MIN_LIGHT_LEVEL_COLOR_FACTOR = 0.7; // (new setup:) Blocks at lightLevel 0.0 (darkest) will be 30% of their base color
-export const MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR = 1.3; // Blocks at lightLevel 1.0 (brightest) will be 130% of their base color
-export const INITIAL_LIGHT_RAY_POWER = 1.0; // Starting power of a light ray (max brightness)
-export const MIN_LIGHT_THRESHOLD = 0.01; // Ray stops propagating if its power drops below this; also, lightLevel below this is considered "unlit" for decay
+export const MIN_LIGHT_LEVEL_COLOR_FACTOR = 0.7; // 70% of base colour
+export const MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR = 1.3; // 130% of base colour
+export const INITIAL_LIGHT_RAY_POWER = 1.0; // starting power of a light ray
+export const MIN_LIGHT_THRESHOLD = 0.01; // ray stops if power drops below this
 
-export const SUN_ANIMATION_ENABLED = true; // To easily toggle this new effect
-export const SUN_ANIMATION_COLOR = "rgba(255, 200, 100, 0.9)"; // Light orange fill, slightly transparent
-export const SUN_ANIMATION_OUTLINE_COLOR = "rgba(255, 255, 0, 0.7)"; // Yellow for outline
-export const SUN_ANIMATION_OUTLINE_WIDTH = 5; // Thickness of the outline
-export const SUN_ANIMATION_OUTLINE_BLUR = 15; // Blur radius for the outline glow
-export const SUN_ANIMATION_RADIUS_BLOCKS = 6; // Visual radius of the sun
-export const SUN_ANIMATION_RAY_COLOR_INNER = "rgba(255, 255, 180, 0.35)"; // Pale yellow, more opaque core
-export const SUN_ANIMATION_RAY_COLOR_OUTER = "rgba(255, 220, 150, 0.15)"; // Light orange, more transparent halo
-export const SUN_ANIMATION_RAY_LINE_WIDTH = 2; // Base thickness for the inner ray
-export const SUN_ANIMATION_RAY_OUTER_WIDTH_FACTOR = 2.0; // Outer ray will be this factor * base line width
+export const SUN_ANIMATION_ENABLED = true; // toggle animation
+export const SUN_ANIMATION_COLOR = "rgba(255, 200, 100, 0.9)";
+export const SUN_ANIMATION_OUTLINE_COLOR = "rgba(255, 255, 0, 0.7)";
+export const SUN_ANIMATION_OUTLINE_WIDTH = 5;
+export const SUN_ANIMATION_OUTLINE_BLUR = 15; // blur radius for outline glow
+export const SUN_ANIMATION_RADIUS_BLOCKS = 6; // radius of sun
+export const SUN_ANIMATION_RAY_COLOR_INNER = "rgba(255, 255, 180, 0.35)";
+export const SUN_ANIMATION_RAY_COLOR_OUTER = "rgba(255, 220, 150, 0.15)";
+export const SUN_ANIMATION_RAY_LINE_WIDTH = 2;
+export const SUN_ANIMATION_RAY_OUTER_WIDTH_FACTOR = 2.0;
 export const SUN_ANIMATION_START_X_OFFSET_BLOCKS = 10;
 export const SUN_ANIMATION_END_X_OFFSET_BLOCKS = 10;
 export const FIXED_SUN_ANIMATION_DURATION = 8.0;
 export const SUN_MOVEMENT_Y_ROW_OFFSET = 20;
 export const SUN_MOVEMENT_STEP_COLUMNS = 2;
 export const MAX_LIGHT_RAY_LENGTH_BLOCKS = Math.floor(GRID_ROWS * 1.2);
-export const SUN_RAYS_PER_POSITION = 72; // increased for more plentiful rays
+export const SUN_RAYS_PER_POSITION = 72;
 
 // --- Delta-Time Physics ---
 
@@ -348,9 +347,9 @@ export const WATER_SWIM_VELOCITY = 50 * BLOCK_HEIGHT; // Pixels per second.
 export const WATER_MAX_SWIM_UP_SPEED = 20 * BLOCK_HEIGHT; // Pixels per second.
 export const WATER_MAX_SINK_SPEED = 25 * BLOCK_HEIGHT; // Pixels per second.
 export const ENEMY_WATER_BUOYANCY_ACCEL = 45 * BLOCK_HEIGHT; // Pixels/sec^2.
-export const WATER_JUMP_COOLDOWN_DURATION = 0.2; // Time in seconds.
-export const WATER_PROPAGATION_DELAY = 0.05; // Time in seconds between water simulation ticks.
-export const WATER_UPDATES_PER_FRAME = 500; // Max number of water cells to process per simulation tick.
+export const WATER_JUMP_COOLDOWN_DURATION = 0.2;
+export const WATER_PROPAGATION_DELAY = 0.05;
+export const WATER_UPDATES_PER_FRAME = 10;
 
 // --- Portal Parameters ---
 
@@ -389,7 +388,7 @@ export const PLAYER_ITEM_ATTRACT_SPEED = 60 * BLOCK_WIDTH; // Base speed for att
 export const PLAYER_PLACEMENT_COOLDOWN = 0.01; // seconds between block placement
 export const PLAYER_ROPE_CLIMB_SPEED = 30 * BLOCK_HEIGHT;
 export const PLAYER_ROPE_SLIDE_SPEED = 45 * BLOCK_HEIGHT;
-export const PLAYER_ROPE_HORIZONTAL_DAMPING = 0.001; // Very strong damping while on rope
+export const PLAYER_ROPE_HORIZONTAL_DAMPING = 0.001; // very strong damping while on rope
 export const PLAYER_ROPE_DETACH_IMPULSE_X = 20 * BLOCK_WIDTH;
 export const PLAYER_ROPE_DETACH_JUMP_MULTIPLIER = 0.9; // 90% of normal jump velocity
 export const PLAYER_PLACEMENT_RANGE_COLOR = 'rgba(255, 255, 0, 0.3)'; // semi-transparent yellow

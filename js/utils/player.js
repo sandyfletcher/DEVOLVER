@@ -273,7 +273,7 @@ export class Player {
         const targetRow = targetCellForPlacement.row;
         const targetBlockType = World.getBlockType(targetCol, targetRow);
         if (targetBlockType === null) return; 
-        const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
+        const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR;
         if (!canPlaceInTargetCell) return;
         if (this.checkPlacementOverlap(targetCol, targetRow)) return;
         if (selectedMaterialType === 'vegetation') {
@@ -435,7 +435,7 @@ export class Player {
         if (!targetWorldPosForCheck || !this._isTargetWithinRange(targetWorldPosForCheck)) return null;
         const targetBlockType = World.getBlockType(col, row);
         if (targetBlockType === null) return null;
-        const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR || (Config.CAN_PLACE_IN_WATER && targetBlockType === Config.BLOCK_WATER);
+        const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR;
         if (!canPlaceInTargetCell) return null;
         if (this.checkPlacementOverlap(col, row)) return null;
         const selectedMaterialType = this.selectedItem;
