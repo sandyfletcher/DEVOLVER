@@ -208,10 +208,10 @@ export function applyAging(portalRef) { // applies aging effects (erosion, growt
             }
             // Unlit VEGETATION -> AIR (Decay) 
             if (!tinyTreeFormedThisCell && newType === originalType && originalType === Config.BLOCK_VEGETATION) {
-                // blockBeforeChange is the state of the block at (c,r) at the start of this aging pass for this cell.
-                // If newType hasn't changed yet, blockBeforeChange.isLit is the correct lighting state to check.
-                const isBlockLit = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? (blockBeforeChange.isLit ?? false) : false;
-                if (!isBlockLit) { // If the vegetation block itself is not lit
+                // blockBeforeChange is the state of the block at (c,r) at the start of this aging pass for this cell.                 
+                // Check lightLevel for decay: if it's below a threshold, consider it "unlit"
+                const currentLightLevel = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? (blockBeforeChange.lightLevel ?? 0.0) : 0.0;
+                if (currentLightLevel < Config.MIN_LIGHT_THRESHOLD) { // If the vegetation block is considered "unlit"
                     if (Math.random() < Config.AGING_PROB_UNLIT_VEGETATION_DECAY) { // Use the new config constant
                         newType = Config.BLOCK_AIR;
                     }
@@ -221,8 +221,8 @@ export function applyAging(portalRef) { // applies aging effects (erosion, growt
             if (newType === originalType && originalType === Config.BLOCK_AIR) {
                 const blockBelowData = World.getBlock(c, r + 1);
                 if (blockBelowData !== null && r < Config.GRID_ROWS - 1) {
-                    const blockBelowType = (typeof blockBelowData === 'object') ? blockBelowData.type : blockBelowData;
-                    const blockBelowIsLit = (typeof blockBelowData === 'object') ? (blockBelowData.isLit ?? false) : false;
+                    const blockBelowType = (typeof blockBelowData === 'object' && blockBelowData !== null) ? blockBelowData.type : blockBelowData;
+                    const blockBelowIsLit = (typeof blockBelowData === 'object' && blockBelowData !== null) ? (blockBelowData.lightLevel ?? 0.0) >= Config.MIN_LIGHT_THRESHOLD : false;
 
                     if (blockBelowIsLit) {
                         if (blockBelowType === Config.BLOCK_DIRT) {

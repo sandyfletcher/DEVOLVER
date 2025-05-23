@@ -83,8 +83,8 @@ async function performBackgroundWorldGeneration() {
                 if (proposedLightingChangesThisPass.length > 0) {
                     proposedLightingChangesThisPass.forEach(change => {
                         const block = World.getBlock(change.c, change.r);
-                        if (block && typeof block === 'object') {
-                            block.isLit = change.newLitState;
+                        if (block && typeof block === 'object' && typeof block.lightLevel === 'number') {
+                            block.lightLevel = change.newLightLevel;
                         }
                     });
                 }
@@ -98,9 +98,9 @@ async function performBackgroundWorldGeneration() {
             const finalLightingChanges = WorldManager.applyLightingPass(false, 1); // false to skip debug, 1 for full scan
             if (finalLightingChanges.length > 0) {
                 finalLightingChanges.forEach(change => {
-                    const block = World.getBlock(change.c, change.r); // Use World.getBlock
-                    if (block && typeof block === 'object') {
-                        block.isLit = change.newLitState;
+                    const block = World.getBlock(change.c, change.r);
+                    if (block && typeof block === 'object' && typeof block.lightLevel === 'number') {
+                        block.lightLevel = change.newLightLevel;
                     }
                 });
                 console.log(`[Main] Final lighting pass lit ${finalLightingChanges.length} additional blocks.`);

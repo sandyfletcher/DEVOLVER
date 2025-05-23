@@ -377,15 +377,14 @@ function applyInitialFloodFill() {
 }
 
 export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride = null) {
-    let proposedChanges = [];
-    // The `blocksToAnimateThisPass` set is not directly used in this logical lighting pass,
-    // but rather in the diffing logic that comes after, so it's commented out here to avoid confusion.
-    // const blocksToAnimateThisPass = new Set(); 
+    // This map will store the maximum light level reached for each block.
+    // Key: "c,r", Value: maxLightLevel (0.0 to 1.0)
+    const maxLightLevels = new Map();
 
     const grid = World.getGrid();
     if (!grid || grid.length === 0) {
         console.error("[WorldManager] applyLightingPass: World grid not available for calculation.");
-        return proposedChanges;
+        return [];
     }
 
     let mainCtxForDebug;
@@ -439,11 +438,11 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
             let currentRayBlockLength = 0;
 
             // Initialize light ray power for each new ray
-            let currentLightPower = Config.INITIAL_LIGHT_RAY_POWER;
+            let currentLightPower = Config.INITIAL_LIGHT_RAY_POWER; // Ray starts with full power
 
             while (currentRayBlockLength < Config.MAX_LIGHT_RAY_LENGTH_BLOCKS) {
                 // If light power drops below threshold, the ray stops
-                if (currentLightPower < Config.MIN_LIGHT_THRESHOLD) {
+                if (currentLightPower < Config.MIN_LIGHT_THRESHOLD) { // Stop if light is too dim
                     break;
                 }
 
@@ -453,23 +452,29 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
                     const blockProps = Config.BLOCK_PROPERTIES[block?.type ?? Config.BLOCK_AIR];
 
                     // If the block is fully opaque (translucency 0.0), it blocks the ray entirely
-                    if (blockProps && blockProps.translucency === 0.0) {
-                        // The block gets lit if it wasn't already and has enough power
-                        if (typeof block === 'object' && block !== null && !block.isLit) {
-                             proposedChanges.push({ c: rayCurrentGridCol, r: rayCurrentGridRow, newLitState: true });
+                    if (blockProps && blockProps.translucency !== undefined) { // Check for defined translucency
+                        if (blockProps.translucency === 0.0) { // Fully opaque block
+                            // The block gets lit with current light power
+                            const blockKey = `${rayCurrentGridCol},${rayCurrentGridRow}`;
+                            const existingMaxLight = maxLightLevels.get(blockKey) || 0.0;
+                            if (currentLightPower > existingMaxLight) {
+                                maxLightLevels.set(blockKey, currentLightPower);
+                            }
+                            break; // Ray stops here
                         }
-                        break; // Ray stops here
                     }
 
                     // If the block is air or fully transparent (translucency 1.0), it does not reduce light power
-                    if (block === Config.BLOCK_AIR || (blockProps && blockProps.translucency === 1.0)) {
+                    if (block === Config.BLOCK_AIR || (blockProps && blockProps.translucency === 1.0) || block === null) {
                         // Ray passes without power reduction
                     } 
                     // If the block is a solid object (not air/water, not fully opaque), reduce light power based on its translucency
                     else if (typeof block === 'object' && block !== null && blockProps) {
-                        // Light the block if it's not already lit and has sufficient incoming light power
-                        if (!block.isLit) {
-                            proposedChanges.push({ c: rayCurrentGridCol, r: rayCurrentGridRow, newLitState: true });
+                        // Update block's light level, taking the MAX light level from any ray that hits it
+                        const blockKey = `${rayCurrentGridCol},${rayCurrentGridRow}`;
+                        const existingMaxLight = maxLightLevels.get(blockKey) || 0.0;
+                        if (currentLightPower > existingMaxLight) {
+                            maxLightLevels.set(blockKey, currentLightPower);
                         }
                         // Reduce light power by the block's translucency factor
                         currentLightPower *= blockProps.translucency;
@@ -493,17 +498,44 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
             if (DEBUG_DRAW_LIGHTING && mainCtxForDebug) { /* ... debug ray drawing ... */ }
         }
     }
-    // Deduplicate proposedChanges before returning, as multiple rays might hit the same block
-    const uniqueProposedChanges = [];
-    const seenChanges = new Set();
-    for (const change of proposedChanges) {
-        const key = `${change.c},${change.r}`;
-        if (!seenChanges.has(key)) {
-            uniqueProposedChanges.push(change);
-            seenChanges.add(key);
-        }
+
+    // Convert maxLightLevels map to proposedChanges array
+    const proposedChanges = [];
+    maxLightLevels.forEach((lightLevel, key) => {
+        const [c, r] = key.split(',').map(Number);
+        proposedChanges.push({ c, r, newLightLevel: lightLevel });
+    });
+
+    return proposedChanges;
+}
+
+// Helper function to adjust RGB color by a light level.
+// Assumes input color is 'rgb(r, g, b)' string.
+function adjustColorByLightLevel(rgbString, lightLevel) {
+    if (!rgbString || !rgbString.startsWith('rgb(')) {
+        return rgbString; // Return original if not in expected format
     }
-    return uniqueProposedChanges;
+    const parts = rgbString.substring(4, rgbString.length - 1).split(',').map(s => parseInt(s.trim(), 10));
+    if (parts.length !== 3 || parts.some(isNaN)) {
+        return rgbString; // Return original if parsing fails
+    }
+
+    const baseR = parts[0];
+    const baseG = parts[1];
+    const baseB = parts[2];
+
+    // Map lightLevel (0.0 to 1.0) to a brightness factor range.
+    // At lightLevel 0.0, factor is MIN_LIGHT_LEVEL_COLOR_FACTOR.
+    // At lightLevel 1.0, factor is MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR.
+    // Linear interpolation: factor = MIN + (MAX - MIN) * lightLevel
+    const brightnessFactor = Config.MIN_LIGHT_LEVEL_COLOR_FACTOR +
+                             (Config.MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR - Config.MIN_LIGHT_LEVEL_COLOR_FACTOR) * lightLevel;
+
+    const r = Math.min(255, Math.floor(baseR * brightnessFactor));
+    const g = Math.min(255, Math.floor(baseG * brightnessFactor));
+    const b = Math.min(255, Math.floor(baseB * brightnessFactor));
+
+    return `rgb(${r}, ${g}, ${b})`;
 }
 
 // -----------------------------------------------------------------------------
@@ -515,13 +547,13 @@ export function executeInitialWorldGenerationSequence() {
     applyGravitySettlement(null);
     applyInitialFloodFill();
 
-    World.resetAllBlockLighting();
-    const initialProposedLighting = applyLightingPass(false);
+    World.resetAllBlockLighting(); // This sets all lightLevel to 0.0
+    const initialProposedLighting = applyLightingPass(false); // Calculates light levels
 
     initialProposedLighting.forEach(change => {
         const block = World.getBlock(change.c, change.r);
-        if (block && typeof block === 'object') {
-            block.isLit = change.newLitState;
+        if (block && typeof block === 'object' && typeof block.lightLevel === 'number') { // Ensure it's a block object and has lightLevel
+            block.lightLevel = change.newLightLevel; // Apply the new light level
         }
     });
     console.log(`[WorldManager] Initial lighting calculated and applied directly: ${initialProposedLighting.length} blocks lit.`);
@@ -653,12 +685,13 @@ export function diffGridAndQueueTransformAnimations(initialGrid, finalGrid) {
             const newBlock = finalGrid[r][c];
 
             const oldType = (typeof oldBlock === 'object' && oldBlock !== null) ? oldBlock.type : oldBlock;
-            const oldIsLit = (typeof oldBlock === 'object' && oldBlock !== null) ? (oldBlock.isLit ?? false) : false;
+            const oldLightLevel = (typeof oldBlock === 'object' && oldBlock !== null) ? (oldBlock.lightLevel ?? 0.0) : 0.0; // Use lightLevel
 
             const newType = (typeof newBlock === 'object' && newBlock !== null) ? newBlock.type : newBlock;
-            const newIsLit = (typeof newBlock === 'object' && newBlock !== null) ? (newBlock.isLit ?? false) : false;
+            const newLightLevel = (typeof newBlock === 'object' && newBlock !== null) ? (newBlock.lightLevel ?? 0.0) : 0.0; // Use lightLevel
 
-            if (oldType !== newType || oldIsLit !== newIsLit) {
+            // Check if type or lightLevel changed
+            if (oldType !== newType || oldLightLevel !== newLightLevel) {
                 const oldBlockDataForAnim = (typeof oldBlock === 'object' && oldBlock !== null) ? { ...oldBlock } : createBlock(oldType, false);
                 const newBlockDataForAnim = (typeof newBlock === 'object' && newBlock !== null) ? { ...newBlock } : createBlock(newType, false);
 
@@ -748,14 +781,9 @@ function drawTransformAnimations(ctx) {
             const oldBlockProps = Config.BLOCK_PROPERTIES[oldBlockType];
             if (oldBlockType !== Config.BLOCK_AIR && oldBlockProps && oldBlockProps.color) {
                 let swellColor = oldBlockProps.color;
-                if (anim.oldBlockData.isLit && swellColor && swellColor.startsWith('rgb(')) { // Added null check for swellColor
-                     try {
-                        const parts = swellColor.substring(4, swellColor.length - 1).split(',').map(s => parseInt(s.trim(), 10));
-                        const r_val = Math.min(255, Math.floor(parts[0] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                        const g_val = Math.min(255, Math.floor(parts[1] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                        const b_val = Math.min(255, Math.floor(parts[2] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                        swellColor = `rgb(${r_val}, ${g_val}, ${b_val})`;
-                    } catch (e) { /* fallback to base color */ }
+                // Adjust color based on old block's lightLevel
+                if (typeof anim.oldBlockData.lightLevel === 'number') {
+                    swellColor = adjustColorByLightLevel(swellColor, anim.oldBlockData.lightLevel);
                 }
                 ctx.fillStyle = swellColor;
                 ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
@@ -766,18 +794,13 @@ function drawTransformAnimations(ctx) {
             if (newBlockType !== Config.BLOCK_AIR && newBlockProps && newBlockProps.color) {
                 const popDuration = Config.AGING_ANIMATION_POP_DURATION ?? 0.06;
                 const popProgress = Math.max(0, 1.0 - (anim.timer / popDuration));
-                const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI);
+                const alpha = 0.6 + 0.4 * Math.sin(popProgress * Math.PI); // Keep alpha for pop effect
                 ctx.globalAlpha = alpha;
 
                 let popColor = newBlockProps.color;
-                if (anim.newBlockData.isLit && popColor && popColor.startsWith('rgb(')) { // Added null check for popColor
-                    try {
-                        const parts = popColor.substring(4, popColor.length - 1).split(',').map(s => parseInt(s.trim(), 10));
-                        const r_val = Math.min(255, Math.floor(parts[0] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                        const g_val = Math.min(255, Math.floor(parts[1] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                        const b_val = Math.min(255, Math.floor(parts[2] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                        popColor = `rgb(${r_val}, ${g_val}, ${b_val})`;
-                    } catch (e) { /* fallback to base color */ }
+                // Adjust color based on new block's lightLevel
+                if (typeof anim.newBlockData.lightLevel === 'number') {
+                    popColor = adjustColorByLightLevel(popColor, anim.newBlockData.lightLevel);
                 }
                 ctx.fillStyle = popColor;
                 ctx.fillRect(Math.floor(blockPixelX), Math.floor(blockPixelY), Math.ceil(blockWidth), Math.ceil(blockHeight));
@@ -817,6 +840,7 @@ function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
     ctx.lineWidth = Config.SUN_ANIMATION_OUTLINE_WIDTH;
     ctx.beginPath();
     ctx.arc(sunWorldX, sunWorldY, sunRadius, 0, Math.PI * 2);
+    ctx.fill();
     ctx.stroke();
     ctx.restore();
     ctx.fillStyle = Config.SUN_ANIMATION_COLOR;
@@ -896,14 +920,9 @@ export function updateStaticWorldAt(col, row) {
         let baseColor = blockProps.color;
         let finalColor = baseColor;
 
-        if (typeof block === 'object' && block !== null && block.isLit && baseColor && baseColor.startsWith('rgb(')) {
-            try {
-                const parts = baseColor.substring(4, baseColor.length - 1).split(',').map(s => parseInt(s.trim(), 10));
-                const r_val = Math.min(255, Math.floor(parts[0] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                const g_val = Math.min(255, Math.floor(parts[1] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                const b_val = Math.min(255, Math.floor(parts[2] * Config.LIT_BLOCK_BRIGHTNESS_FACTOR));
-                finalColor = `rgb(${r_val}, ${g_val}, ${b_val})`;
-            } catch (e) { finalColor = baseColor; }
+        // Apply light level to color if it's a block object and has lightLevel
+        if (typeof block === 'object' && block !== null && typeof block.lightLevel === 'number') {
+            finalColor = adjustColorByLightLevel(baseColor, block.lightLevel);
         }
 
         // --- Primary block fill based on type ---

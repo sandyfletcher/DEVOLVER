@@ -332,8 +332,8 @@ export const PLAYER_SPIN_DURATION = 1.0; // Time in seconds for the spin part of
 export const PLAYER_SPIN_FRAMES = 6; // Number of visual steps in the player spin animation.
 
 // Lighting Parameters
-export const LIT_BLOCK_BRIGHTNESS_FACTOR = 1.3; // brightness multiplier for base colour to depict lit block (being phased out)
-export const MIN_LIGHT_LEVEL_COLOR_FACTOR = 0.3; // (new setup:) Blocks at lightLevel 0.0 (darkest) will be 30% of their base color
+
+export const MIN_LIGHT_LEVEL_COLOR_FACTOR = 0.7; // (new setup:) Blocks at lightLevel 0.0 (darkest) will be 30% of their base color
 export const MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR = 1.3; // Blocks at lightLevel 1.0 (brightest) will be 130% of their base color
 export const INITIAL_LIGHT_RAY_POWER = 1.0; // Starting power of a light ray (max brightness)
 export const MIN_LIGHT_THRESHOLD = 0.01; // Ray stops propagating if its power drops below this; also, lightLevel below this is considered "unlit" for decay

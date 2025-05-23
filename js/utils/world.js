@@ -64,8 +64,8 @@ export function resetAllBlockLighting() {
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             const block = worldGrid[r]?.[c];
-            if (typeof block === 'object' && block !== null && block.type !== Config.BLOCK_AIR && block.type !== Config.BLOCK_WATER) {
-                block.isLit = false;
+            if (typeof block === 'object' && block !== null && block.type !== Config.BLOCK_AIR && block.type !== Config.BLOCK_WATER && typeof block.lightLevel === 'number') {
+                block.lightLevel = 0.0;
             }
         }
     }

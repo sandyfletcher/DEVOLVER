@@ -24,8 +24,7 @@ export function createBlock(type, isPlayerPlaced = false) {
         maxHp: properties.hp, // maxHp is the same as initial hp from properties
         translucency: properties.translucency,
         isPlayerPlaced: isPlayerPlaced,
-        isLit: false,
-        lightLevel: 0.0, // transitioning to having light be a range instead of binary
+        lightLevel: 0.0, // light now a range not a binary
         isBurnt: false // future use
     };
 }

@@ -159,8 +159,8 @@ function triggerWarpCleanupAndCalculations() {
             if (proposedLightingChangesThisPass.length > 0) {
                 proposedLightingChangesThisPass.forEach(change => {
                     const block = World.getBlock(change.c, change.r);
-                    if (block && typeof block === 'object') {
-                        block.isLit = change.newLitState; // Directly update world data
+                    if (block && typeof block === 'object' && typeof block.lightLevel === 'number') {
+                        block.lightLevel = change.newLightLevel; // Directly update world data
                     }
                 });
             }
@@ -180,8 +180,8 @@ function triggerWarpCleanupAndCalculations() {
     if (finalWarpLightingChanges.length > 0) {
         finalWarpLightingChanges.forEach(change => {
             const block = World.getBlock(change.c, change.r);
-            if (block && typeof block === 'object') {
-                block.isLit = change.newLitState; // Apply directly to world data
+            if (block && typeof block === 'object' && typeof block.lightLevel === 'number') {
+                block.lightLevel = change.newLightLevel; // Apply directly to world data
             }
         });
         console.log(`[WaveMgr] Final warp lighting pass lit ${finalWarpLightingChanges.length} additional blocks.`);
