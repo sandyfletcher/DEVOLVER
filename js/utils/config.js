@@ -444,11 +444,11 @@ export const WEAPON_STATS = {
         visualAnchorOffset: { x: 0, y: 0 }, // Center of weapon
         shape: [{ type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'transparent' }] // Placeholder visual, transparent
     },
-[WEAPON_TYPE_SHOVEL]: {
+    [WEAPON_TYPE_SHOVEL]: {
         displayName: "Shovel",
         symbol: "⛏️",
-        width: 5 * BLOCK_WIDTH,         // Bounding box width (blade is 2BW wide)
-        height: 2 * BLOCK_HEIGHT,      // UPDATED: Bounding box height (handle 3BH + blade 1.5BH)
+        width: 5 * BLOCK_WIDTH,         // Bounding box width 
+        height: 2 * BLOCK_HEIGHT,      // Bounding box height
         outlineColor: 'rgb(75, 75, 75)', 
         outlineWidth: 2,                 
         attackDamage: 5,
