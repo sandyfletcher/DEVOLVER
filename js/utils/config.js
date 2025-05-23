@@ -2,31 +2,6 @@
 // root/js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
-// --- Audio Constants ---
-
-export const AUDIO_SFX_POOL_SIZE = 8;
-export const AUDIO_DEFAULT_GAME_VOLUME = 0.4;
-export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
-export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
-export const AUDIO_TRACKS = {
-    MENU: 'assets/audio/music/Menu.mp3',
-    pause: 'assets/audio/music/Pause.mp3',
-    gameOver: 'assets/audio/music/GameOver.mp3',
-    victory: 'assets/audio/music/Victory.mp3',
-    CUTSCENE: 'assets/audio/music/Cutscene.mp3',
-    wave1: 'assets/audio/music/Wave1-350.mp3',
-    wave2: 'assets/audio/music/Wave2-300.mp3',
-    wave3: 'assets/audio/music/wave3.mp3',
-    // SFX placeholders
-    // player_hit: 'assets/audio/sfx/player_hit.wav',
-};
-
-// --- Camera / Viewport ---
-
-export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (e.g., 0.25 means zoomed out to 1/4 size).
-export const MAX_CAMERA_SCALE = 3.0; // Max zoom level (e.g., 3.0 means zoomed in 3x).
-export const ZOOM_SPEED_FACTOR = 0.001; // Sensitivity of mouse wheel zoom.
-
 // --- Cutscene Parameters ---
 
 export const CUTSCENE_IMAGE_DURATION = 3.0; // seconds image displayed
@@ -36,6 +11,12 @@ export const CUTSCENE_SLIDES = [
     { imagePath: 'assets/cut3.png', text: "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position." },
     { imagePath: 'assets/cut4.png', text: "Only one thing has followed you back in time - a simple shovel. Will that be enough?" }
 ];
+
+// --- Camera / Viewport ---
+
+export const MIN_CAMERA_SCALE = 0.25; // Min zoom level (e.g., 0.25 means zoomed out to 1/4 size).
+export const MAX_CAMERA_SCALE = 3.0; // Max zoom level (e.g., 3.0 means zoomed in 3x).
+export const ZOOM_SPEED_FACTOR = 0.001; // Sensitivity of mouse wheel zoom.
 
 // --- Game Grid ---
 
@@ -60,8 +41,6 @@ export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 2; // fixed pixel thickness
 export const VEGETATION_PIXEL_DENSITY = 0.6;
 
-// Block Type IDs (numeric constants)
-
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
 export const BLOCK_SAND = 2;
@@ -72,8 +51,6 @@ export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
-
-// --- Centralized Block Properties ---
 
 export const BLOCK_PROPERTIES = {
     [BLOCK_AIR]: {
@@ -94,7 +71,7 @@ export const BLOCK_PROPERTIES = {
         name: 'WATER',
         hp: Infinity,
         color: 'rgb(38, 77, 154)',
-        translucency: 0.8,
+        translucency: 0.9,
         isSolidForPhysics: false,
         isSolidForPlacementSupport: false,
         isRope: false,
@@ -136,7 +113,7 @@ export const BLOCK_PROPERTIES = {
         name: 'VEGETATION',
         hp: 25,
         color: 'rgb(80, 180, 80)',
-        translucency: 0.4,
+        translucency: 0.5,
         isSolidForPhysics: false, // Vegetation is not solid for physics
         isSolidForPlacementSupport: false, // Vegetation does not support other blocks
         isRope: false,
@@ -257,7 +234,7 @@ export const STONE_NOISE_OCTAVES = 3; // Number of octaves for stone layer noise
 export const STONE_NOISE_PERSISTENCE = 0.45;
 export const STONE_NOISE_LACUNARITY = 2.2;
 
-// --- Cave Generation ---
+// --- Cave Formation ---
 
 export const ENABLE_CAVES = true;
 export const CAVE_NOISE_SCALE_X = 0.08; // Scale for 2D Perlin noise for caves (adjust for smaller/larger caves)
@@ -283,11 +260,10 @@ export const ISLAND_CENTER_TAPER_WIDTH_COLS = 80; // Width in columns for taperi
 
 // --- Aging Parameters ---
 
-export const AGING_NOISE_SCALE = 0.03; // Scale for Perlin noise used in aging.
-export const AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS = Math.floor(GRID_ROWS * 0.45); // Threshold in rows for stoneification.
-export const AGING_STONEIFICATION_DEPTH_THRESHOLD = AGING_STONEIFICATION_DEPTH_THRESHOLD_ROWS * BLOCK_HEIGHT; // Threshold in pixels.
+export const AGING_STONEIFICATION_DEPTH_THRESHOLD = Math.floor(GRID_ROWS * 0.45) * BLOCK_HEIGHT; // threshold for stoneification.
 export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // Max contiguous water depth (in blocks) influencing probabilities.
 export const AGING_INITIAL_PASSES = 10; // Number of aging passes on initial world generation.
+
 export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // Probabilities (chance per eligible block per pass)
 export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
 export const AGING_PROB_WATER_EROSION_DIRT_VEGETATION = 0.9;
@@ -300,9 +276,8 @@ export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_DIRT = 0.60; // Chance for A
 export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_VEGETATION = 0.50; // Chance for AIR above lit VEGETATION to become VEGETATION
 export const AGING_PROB_UNLIT_VEGETATION_DECAY = 0.80; // Chance for unlit VEGETATION to decay to AIR
 
-// --- Tree Generation & Aging ---
+// --- Tree Parameters ---
 
-export const TREE_MIN_HEIGHT_TO_FORM = 5; // Minimum contiguous VEGETATION blocks required to form a tree (Old rule, might be obsolete if tiny tree is main form)
 export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // Chance for VEG surrounded by VEG to become a "tiny tree"
 export const MIN_TREE_SPACING_RADIUS = 8; // Minimum distance (in blocks) between tree trunks for tiny tree formation
 export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.3;
@@ -314,13 +289,13 @@ export const TREE_MAX_CANOPY_RADIUS = 4; // Maximum radius (in blocks) a tree ca
 export const AGING_PROB_TREE_TRUNK_DECAY = 0.005;
 export const AGING_PROB_TREE_CANOPY_DECAY = 0.01;
 
-// --- Animation Parameters ---
+// --- Animation Constants ---
 
-export const AGING_ANIMATION_BLOCKS_AT_ONCE = 20; // Max number of blocks animating simultaneously
-export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.03; // Delay (seconds) before starting the next block animation in the queue
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 50; // number of simultaneous animations 
+export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.01; // Delay (seconds) before starting the next block animation in the queue
 export const AGING_ANIMATION_SWELL_DURATION = 0.1; // Duration (seconds) of the "swell" part
 export const AGING_ANIMATION_POP_DURATION = 0.05; // Duration (seconds) of the "pop" (e.g., quick shrink/disappear of old, appear of new)
-export const AGING_ANIMATION_SWELL_SCALE = 2; // Max scale factor during swell (e.g., 1.5x size)
+export const AGING_ANIMATION_SWELL_SCALE = 1.5; // Max scale factor during swell (e.g., 1.5x size)
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // Color for swelling old block
 export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // Color for appearing new block (briefly)
 export const WARPPHASE_DURATION = 8.0; // Fixed duration of WARP PHASE in seconds .
@@ -331,14 +306,12 @@ export const PLAYER_DEATH_ANIMATION_DURATION = 1.5; // Total time in seconds for
 export const PLAYER_SPIN_DURATION = 1.0; // Time in seconds for the spin part of player death.
 export const PLAYER_SPIN_FRAMES = 6; // Number of visual steps in the player spin animation.
 
-// Lighting Parameters
+// --- Lighting Parameters ---
 
 export const MIN_LIGHT_LEVEL_COLOR_FACTOR = 0.7; // (new setup:) Blocks at lightLevel 0.0 (darkest) will be 30% of their base color
 export const MAX_LIGHT_LEVEL_BRIGHTNESS_FACTOR = 1.3; // Blocks at lightLevel 1.0 (brightest) will be 130% of their base color
 export const INITIAL_LIGHT_RAY_POWER = 1.0; // Starting power of a light ray (max brightness)
 export const MIN_LIGHT_THRESHOLD = 0.01; // Ray stops propagating if its power drops below this; also, lightLevel below this is considered "unlit" for decay
-
-// --- Sun Animation ---
 
 export const SUN_ANIMATION_ENABLED = true; // To easily toggle this new effect
 export const SUN_ANIMATION_COLOR = "rgba(255, 200, 100, 0.9)"; // Light orange fill, slightly transparent
@@ -404,8 +377,7 @@ export const PLAYER_START_Y = (MEAN_GROUND_LEVEL * BLOCK_HEIGHT) - PLAYER_HEIGHT
 export const PLAYER_INITIAL_HEALTH = 100;
 export const PLAYER_MAX_HEALTH_DISPLAY = 100;
 export const PLAYER_INVULNERABILITY_DURATION = 1.5; // seconds
-export const PLAYER_MOVE_ACCELERATION_BLOCKS_PER_SEC_SQ = 200; // Base acceleration in block widths/sec^2.
-export const PLAYER_MOVE_ACCELERATION = PLAYER_MOVE_ACCELERATION_BLOCKS_PER_SEC_SQ * BLOCK_WIDTH; // Pixels/sec^2.
+export const PLAYER_MOVE_ACCELERATION = 200 * BLOCK_WIDTH; // Pixels/sec^2.
 export const PLAYER_MAX_SPEED_X = 30 * BLOCK_WIDTH; // Base max horizontal speed
 export const PLAYER_FRICTION_BASE = 0.01; // Factor for ground friction (lower means stronger friction).
 export const PLAYER_JUMP_VELOCITY = 50 * BLOCK_HEIGHT; // base initial upward velocity
@@ -419,15 +391,34 @@ export const PLAYER_ROPE_CLIMB_SPEED = 30 * BLOCK_HEIGHT;
 export const PLAYER_ROPE_SLIDE_SPEED = 45 * BLOCK_HEIGHT;
 export const PLAYER_ROPE_HORIZONTAL_DAMPING = 0.001; // Very strong damping while on rope
 export const PLAYER_ROPE_DETACH_IMPULSE_X = 20 * BLOCK_WIDTH;
-export const PLAYER_ROPE_DETACH_JUMP_MULTIPLIER = 0.9; // e.g., 60% of normal jump velocity
-export const PLAYER_PLACEMENT_RANGE_COLOR = 'rgba(255, 255, 0, 0.3)'; // Semi-transparent yellow
-export const PLAYER_PLACEMENT_RANGE_LINE_WIDTH = 2; // Line thickness in pixels
+export const PLAYER_ROPE_DETACH_JUMP_MULTIPLIER = 0.9; // 90% of normal jump velocity
+export const PLAYER_PLACEMENT_RANGE_COLOR = 'rgba(255, 255, 0, 0.3)'; // semi-transparent yellow
+export const PLAYER_PLACEMENT_RANGE_LINE_WIDTH = 2; // line thickness in pixels
+
+// --- Audio Constants ---
+
+export const AUDIO_SFX_POOL_SIZE = 8;
+export const AUDIO_DEFAULT_GAME_VOLUME = 0.4;
+export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
+export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
+export const AUDIO_TRACKS = {
+    MENU: 'assets/audio/music/Menu.mp3',
+    pause: 'assets/audio/music/Pause.mp3',
+    gameOver: 'assets/audio/music/GameOver.mp3',
+    victory: 'assets/audio/music/Victory.mp3',
+    CUTSCENE: 'assets/audio/music/Cutscene.mp3',
+    wave1: 'assets/audio/music/Wave1-350.mp3',
+    wave2: 'assets/audio/music/Wave2-300.mp3',
+    wave3: 'assets/audio/music/wave3.mp3',
+    // SFX placeholders
+    // player_hit: 'assets/audio/sfx/player_hit.wav',
+};
 
 // --- Items & Weapons ---
 
-export const ITEM_BOBBLE_AMOUNT = 0.15; // Factor relative to item height.
-export const ITEM_BOBBLE_SPEED = 2.0; // Radians per second for bobbing cycle .
-export const WEAPON_TYPE_UNARMED = 'unarmed'; // Weapon types (string constants)
+export const ITEM_BOBBLE_AMOUNT = 0.15; // factor relative to item height
+export const ITEM_BOBBLE_SPEED = 2.0; // radians per second for bobbing cycle
+export const WEAPON_TYPE_UNARMED = 'unarmed'; // weapon type string constants
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
 export const WEAPON_TYPE_SPEAR = 'spear';
@@ -488,18 +479,18 @@ export const DEFAULT_ENEMY_HEIGHT = 2;
 export const DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR = 0.9; // Factor of enemy's own width.
 export const DEFAULT_ENEMY_SEPARATION_STRENGTH = 15 * BLOCK_WIDTH; // Base push strength
 
-// NEW ENEMY TYPE
-export const ENEMY_TYPE_DUNKLEOSTEUS = 'dunkleosteus'; // New enemy constant
-
-export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker'; // Enemy types (string constants)
+export const ENEMY_TYPE_DUNKLEOSTEUS = 'dunkleosteus';
+export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
-export const TETRAPOD_WATER_CONTACT_DAMAGE = 1; // Tetrapod specific constants (damage is unitless, velocity is block units).
+
+export const TETRAPOD_WATER_CONTACT_DAMAGE = 1;
 export const TETRAPOD_LAND_FLOP_DAMAGE = 1;
 export const TETRAPOD_LAND_STILL_DAMAGE = 0;
 export const TETRAPOD_FLOP_ATTACK_DURATION = 0.2;
 export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5;
 export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0;
+
 export const ENEMY_STATS = {
     [ENEMY_TYPE_TETRAPOD]: {
         displayName: "Tetrapod", aiType: 'flopAI', color: 'rgb(100, 120, 80)',
@@ -547,28 +538,28 @@ export const ENEMY_STATS = {
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH,
         dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
     },
-    [ENEMY_TYPE_DUNKLEOSTEUS]: { // DUNKLEOSTEUS STATS
+    [ENEMY_TYPE_DUNKLEOSTEUS]: {
         displayName: "Dunkleosteus",
-        aiType: 'fishAI', // New AI type
-        color: 'rgb(80, 100, 120)', // Dark blue/grey
-        width_BLOCKS: 4, // Larger fish
+        aiType: 'fishAI',
+        color: 'rgb(80, 100, 120)',
+        width_BLOCKS: 4,
         height_BLOCKS: 2,
-        health: 3, // More health
-        contactDamage: 15, // High contact damage
-        applyGravity: true, // Yes, for when it's out of water
+        health: 3,
+        contactDamage: 15,
+        applyGravity: true,
         gravityFactor: 1.0,
-        maxSpeedX_BLOCKS_PER_SEC: 6.5, // Faster horizontally
-        maxSpeedY_BLOCKS_PER_SEC: 0, // No vertical movement from AI on land (gravity handles vertical)
-        swimSpeed_BLOCKS_PER_SEC: 15, // Fast in water
+        maxSpeedX_BLOCKS_PER_SEC: 6.5,
+        maxSpeedY_BLOCKS_PER_SEC: 0,
+        swimSpeed_BLOCKS_PER_SEC: 15,
         canJump: false,
         jumpVelocity_BLOCKS_PER_SEC: 0,
-        canSwim: true, // Crucially, it can swim
+        canSwim: true,
         canFly: false,
-        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.5, // Larger separation
+        separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.5,
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH * 1.2,
-        landHopHorizontalVelocity_BLOCKS_PER_SEC: 0, // Not applicable
+        landHopHorizontalVelocity_BLOCKS_PER_SEC: 0,
         dropTable: [{ type: 'bone', chance: 0.7, minAmount: 2, maxAmount: 3 }, { type: 'metal', chance: 0.2, minAmount: 1, maxAmount: 1 }],
-        outOfWaterDamagePerSecond: 15, // NEW STAT: damage per second when out of water
+        outOfWaterDamagePerSecond: 15, // damage per second when out of water
     },
 };
 
@@ -588,7 +579,7 @@ export const WAVES = [
         subWaves: [
             { enemyGroups: [
                 { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
-                { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 }, // ADDED DUNKLEOSTEUS HERE
+                { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 },
                 { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
                 { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
             ]},
