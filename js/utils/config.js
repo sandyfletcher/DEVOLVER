@@ -429,99 +429,93 @@ export const WEAPON_STATS = {
     [WEAPON_TYPE_UNARMED]: {
         displayName: "Unarmed",
         symbol: "👊",
-        width: 1 * BLOCK_WIDTH, // Placeholder dimensions
+        width: 1 * BLOCK_WIDTH,
         height: 1 * BLOCK_HEIGHT,
-        // color: 'transparent', // No main color needed if not drawn, or per-shape
-        attackDamage: 1, // Minimal damage
+        attackDamage: 1,
         blockDamage: 0,
-        attackReachX: PLAYER_WIDTH * 0.2, // Small reach
+        attackReachX: PLAYER_WIDTH * 0.2,
         attackReachY: 0,
         attackWidth: PLAYER_WIDTH * 0.5,
         attackHeight: PLAYER_HEIGHT * 0.5,
         attackDuration: 0.1,
         attackCooldown: 0.2,
         attackColor: 'rgba(255, 255, 255, 0.2)',
-        visualAnchorOffset: { x: 0, y: 0 }, // Center of weapon
-        shape: [{ type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'transparent' }] // Placeholder visual, transparent
+        visualAnchorOffset: { x: 0, y: 0 },
+        shape: [{ type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'transparent' }],
+        jabDistanceBlocks: 0, // Unarmed doesn't jab
     },
     [WEAPON_TYPE_SHOVEL]: {
         displayName: "Shovel",
         symbol: "⛏️",
-        width: 5 * BLOCK_WIDTH,         // Bounding box width 
-        height: 2 * BLOCK_HEIGHT,      // Bounding box height
-        outlineColor: 'rgb(75, 75, 75)', 
-        outlineWidth: 2,                 
+        width: 5 * BLOCK_WIDTH,
+        height: 2 * BLOCK_HEIGHT,
+        outlineColor: 'rgb(75, 75, 75)',
+        outlineWidth: 2,
         attackDamage: 5,
         blockDamage: 25,
-        attackReachX: 3 * BLOCK_WIDTH,  
-        attackReachY: PLAYER_HEIGHT * 0.4, 
-        attackWidth: (1 * BLOCK_WIDTH) * 2, 
-        attackHeight: (2 * BLOCK_HEIGHT) * 2, 
+        attackReachX: 3 * BLOCK_WIDTH,
+        attackReachY: PLAYER_HEIGHT * 0.4,
+        attackWidth: (1 * BLOCK_WIDTH) * 2,
+        attackHeight: (2 * BLOCK_HEIGHT) * 2,
         attackDuration: 0.3,
         attackCooldown: 0.4,
         attackColor: 'rgba(180, 180, 180, 0.5)',
-        recipe: [], 
-        visualAnchorOffset: { x: 1.5 * BLOCK_HEIGHT, y: 0 }, // Tip of the blade aims at target
-        handPositions: { // Local coords relative to weapon's rotational center (pivot)
-            back: { x: -3.0 * BLOCK_HEIGHT, y: 0 },  // End of the longer handle (top)
-            front: { x: -1.5 * BLOCK_HEIGHT, y: 0 } // Midpoint of the longer handle
+        recipe: [],
+        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 },
+        handPositions: {
+            back: { x: -2.0 * BLOCK_WIDTH, y: 0 },
+            front: { x: -0.5 * BLOCK_WIDTH, y: 0 }
         },
         shape: [
-            // Handle (rectangle)
-            { 
-                type: 'rect', 
-                x: -3.0 * BLOCK_WIDTH,      // Centered horizontally
-                y: -0.5 * BLOCK_HEIGHT,     // UPDATED: Starts 3BH above the pivot
-                w: 3 * BLOCK_WIDTH, 
-                h: 0.5 * BLOCK_HEIGHT,      // UPDATED: Length of handle
-                color: 'rgb(139, 69, 19)'   // SaddleBrown color for handle
-            },
-            // Blade (triangle)
-            {
-                type: 'triangle',
-                p1: { x: 0, y: -1 * BLOCK_WIDTH / 2 }, // Base of blade, top point
-                p2: { x: 0, y: 1 * BLOCK_WIDTH / 2 },  // Base of blade, bottom point
-                p3: { x: 1.5 * BLOCK_HEIGHT, y: 0 },   // Tip of blade
-                color: 'rgb(128, 128, 128)'
-            }
-        ]
+            { type: 'rect', x: -2.5 * BLOCK_WIDTH, y: -0.25 * BLOCK_HEIGHT, w: 2.5 * BLOCK_WIDTH, h: 0.5 * BLOCK_HEIGHT, color: 'rgb(139, 69, 19)'},
+            { type: 'triangle', p1: { x: 0, y: -0.75 * BLOCK_WIDTH }, p2: { x: 0, y: 0.75 * BLOCK_WIDTH }, p3: { x: 1.5 * BLOCK_WIDTH, y: 0 }, color: 'rgb(128, 128, 128)'}
+        ],
+        jabDistanceBlocks: 0.75, // <<< ADDED: Shovel jabs 0.75 block widths
     },
     [WEAPON_TYPE_SWORD]: {
         displayName: "Sword",
         symbol: "⚔️",
-        width: 3 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, 
-        // color: 'rgb(180, 180, 190)', // Can be fallback
+        width: 3 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT,
         outlineColor: 'rgb(100, 100, 110)',
         outlineWidth: 2,
         attackDamage: 15, blockDamage: 0,
-        attackReachX: PLAYER_WIDTH * 0.8, attackReachY: 0, 
+        attackReachX: PLAYER_WIDTH * 0.8, attackReachY: 0,
         attackWidth: PLAYER_WIDTH * 1.5, attackHeight: PLAYER_HEIGHT * 0.9,
         attackDuration: 0.2, attackCooldown: 0.3, attackColor: 'rgba(255, 255, 255, 0.5)',
         recipe: [ { type: 'stone', amount: 5 } ],
-        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 }, 
+        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 },
         shape: [
             { type: 'rect', x: -1.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 3 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'rgb(180, 180, 190)' }
-        ]
+        ],
+        jabDistanceBlocks: 0, // <<< ADDED: Sword doesn't jab with this animation style
     },
     [WEAPON_TYPE_SPEAR]: {
         displayName: "Spear",
         symbol: "↑",
-        width: 4 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT, 
-        // color: 'rgb(210, 180, 140)', // Can be fallback
-        outlineColor: 'rgb(130, 100, 60)',
-        outlineWidth: 2,
-        attackDamage: 8, blockDamage: 0,
-        attackReachX: BLOCK_WIDTH * 6, 
-        attackReachY: undefined, 
-        attackWidth: BLOCK_WIDTH * 0.5, attackHeight: BLOCK_HEIGHT * 1.5,
+        width: 6 * BLOCK_WIDTH,
+        height: 1 * BLOCK_HEIGHT,
+        outlineColor: 'rgb(100, 80, 50)',
+        outlineWidth: 1,
+        attackDamage: 8,
+        blockDamage: 0,
+        attackReachX: 5 * BLOCK_WIDTH,
+        attackReachY: undefined,
+        attackWidth: BLOCK_WIDTH * 0.5,
+        attackHeight: BLOCK_HEIGHT * 1.5,
         attackDuration: 0.3,
         attackCooldown: 0.5,
         attackColor: 'rgba(220, 220, 180, 0.5)',
         recipe: [ { type: 'wood', amount: 2 }, { type: 'stone', amount: 1 } ],
-        visualAnchorOffset: { x: 2 * BLOCK_WIDTH, y: 0 }, 
+        visualAnchorOffset: { x: 0.75 * BLOCK_WIDTH, y: 0 },
+        handPositions: {
+            back: { x: -4.0 * BLOCK_WIDTH, y: 0 },
+            front: { x: -1.5 * BLOCK_WIDTH, y: 0 }
+        },
         shape: [
-            { type: 'rect', x: -2 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 4 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'rgb(210, 180, 140)' }
-        ]
+            { type: 'rect', x: -4.75 * BLOCK_WIDTH, y: -0.20 * BLOCK_HEIGHT, w: 4.75 * BLOCK_WIDTH, h: 0.40 * BLOCK_HEIGHT, color: 'rgb(180, 130, 90)'},
+            { type: 'triangle', p1: { x: 0, y: -0.25 * BLOCK_HEIGHT }, p2: { x: 0, y: 0.25 * BLOCK_HEIGHT }, p3: { x: 0.75 * BLOCK_WIDTH, y: 0 }, color: 'rgb(160, 160, 170)'}
+        ],
+        jabDistanceBlocks: 1.0, // <<< ADDED: Spear jabs 1.0 block width
     }
 };
 

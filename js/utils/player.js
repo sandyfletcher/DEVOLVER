@@ -124,15 +124,18 @@ export class Player {
         this.currentHealth = Math.max(0, this.currentHealth);
 
         // Update jab animation state
-        if (this.isAttacking && this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
+        if (this.isAttacking && this.isWeaponSelected()) { // Check if any weapon is selected (not unarmed)
             const weaponStats = Config.WEAPON_STATS[this.selectedItem];
-            const JAB_DISTANCE = Config.BLOCK_WIDTH * 0.75; // How far the shovel jabs
-            const progress = (weaponStats.attackDuration - this.attackTimer) / weaponStats.attackDuration;
-            this.jabOffset = JAB_DISTANCE * Math.sin(progress * Math.PI); // out-and-back motion
+            if (weaponStats && weaponStats.jabDistanceBlocks && weaponStats.jabDistanceBlocks > 0) {
+                const JAB_DISTANCE_PIXELS = weaponStats.jabDistanceBlocks * Config.BLOCK_WIDTH;
+                const progress = (weaponStats.attackDuration - this.attackTimer) / weaponStats.attackDuration;
+                this.jabOffset = JAB_DISTANCE_PIXELS * Math.sin(progress * Math.PI); // out-and-back motion
+            } else {
+                this.jabOffset = 0; // No jab if property missing, zero, or negative
+            }
         } else {
             this.jabOffset = 0;
         }
-
     }
     _updateTimers(dt) {
         if (this.canGrabRopeTimer > 0) this.canGrabRopeTimer -= dt;
