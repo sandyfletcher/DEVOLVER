@@ -162,7 +162,6 @@ async function initializeAndRunGame() {
         AudioManager.setVolume('sfx', Config.AUDIO_DEFAULT_SFX_VOLUME);
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
         FlowManager.changeState(GameState.RUNNING); // Crucially, FlowManager changes state to RUNNING *after* setup
-
         gameStartTime = performance.now();
         console.log(">>> [main.js] Game Started <<<");
     } catch (error) {
@@ -316,7 +315,7 @@ function init() {
         gameOverStatsTextP = document.getElementById('gameover-stats-text');
         victoryStatsTextP = document.getElementById('victory-stats-text');
         errorOverlayMessageP = document.getElementById('error-message-text');
-        titleStartButton = document.getElementById('start-game-button'); // query button elements
+        titleStartButton = document.getElementById('title-heading-button');
         mainmenuStartGameButton = document.getElementById('mainmenu-start-game-button');
         mainmenuSettingsButton = document.getElementById('mainmenu-settings-button');
         settingsBackButton = document.getElementById('settings-back-button');
