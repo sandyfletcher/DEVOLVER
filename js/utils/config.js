@@ -461,33 +461,42 @@ export const WEAPON_STATS = {
         attackCooldown: 0.4,
         attackColor: 'rgba(180, 180, 180, 0.5)',
         recipe: [],
-        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 },
+        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 }, // Anchor at the tip of the shovel head
         handPositions: {
             back: { x: -2.0 * BLOCK_WIDTH, y: 0 },
             front: { x: -0.5 * BLOCK_WIDTH, y: 0 }
         },
         shape: [
-            { type: 'rect', x: -2.5 * BLOCK_WIDTH, y: -0.25 * BLOCK_HEIGHT, w: 2.5 * BLOCK_WIDTH, h: 0.5 * BLOCK_HEIGHT, color: 'rgb(139, 69, 19)'},
-            { type: 'triangle', p1: { x: 0, y: -0.75 * BLOCK_WIDTH }, p2: { x: 0, y: 0.75 * BLOCK_WIDTH }, p3: { x: 1.5 * BLOCK_WIDTH, y: 0 }, color: 'rgb(128, 128, 128)'}
+            { type: 'rect', x: -2.5 * BLOCK_WIDTH, y: -0.25 * BLOCK_HEIGHT, w: 2.5 * BLOCK_WIDTH, h: 0.5 * BLOCK_HEIGHT, color: 'rgb(139, 69, 19)'}, // Handle
+            { type: 'triangle', p1: { x: 0, y: -0.75 * BLOCK_WIDTH }, p2: { x: 0, y: 0.75 * BLOCK_WIDTH }, p3: { x: 1.5 * BLOCK_WIDTH, y: 0 }, color: 'rgb(128, 128, 128)', isBlade: true} // Shovel head
         ],
-        jabDistanceBlocks: 0.75, // <<< ADDED: Shovel jabs 0.75 block widths
+        jabDistanceBlocks: 0.75,
     },
     [WEAPON_TYPE_SWORD]: {
         displayName: "Sword",
         symbol: "⚔️",
-        width: 3 * BLOCK_WIDTH, height: 1 * BLOCK_HEIGHT,
+        width: 3.5 * BLOCK_WIDTH, // Adjusted for new shape
+        height: 1 * BLOCK_HEIGHT,
         outlineColor: 'rgb(100, 100, 110)',
-        outlineWidth: 2,
+        outlineWidth: 1, // Thinner outline for a sharper look
         attackDamage: 15, blockDamage: 0,
-        attackReachX: PLAYER_WIDTH * 0.8, attackReachY: 0,
-        attackWidth: PLAYER_WIDTH * 1.5, attackHeight: PLAYER_HEIGHT * 0.9,
-        attackDuration: 0.2, attackCooldown: 0.3, attackColor: 'rgba(255, 255, 255, 0.5)',
+        attackReachX: PLAYER_WIDTH * 0.8, attackReachY: 0, // Base reach for aiming
+        attackWidth: PLAYER_WIDTH * 1.5, attackHeight: PLAYER_HEIGHT * 0.9, // AABB for rough checks, true hitbox is swipe
+        attackDuration: 0.25, // Slightly longer for a swipe
+        attackCooldown: 0.35,
+        attackColor: 'rgba(200, 200, 220, 0.4)', // Lighter color for swipe
         recipe: [ { type: 'stone', amount: 5 } ],
-        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 },
+        visualAnchorOffset: {x: -0.5 * BLOCK_WIDTH, y: 0 }, // Pivot near the hilt
         shape: [
-            { type: 'rect', x: -1.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 3 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'rgb(180, 180, 190)' }
+            // Blade
+            { type: 'rect', x: 0, y: -0.15 * BLOCK_HEIGHT, w: 2.5 * BLOCK_WIDTH, h: 0.3 * BLOCK_HEIGHT, color: 'rgb(180, 180, 190)', isBlade: true},
+            // Hilt / Crossguard
+            { type: 'rect', x: -0.25 * BLOCK_WIDTH, y: -0.4 * BLOCK_HEIGHT, w: 0.25 * BLOCK_WIDTH, h: 0.8 * BLOCK_HEIGHT, color: 'rgb(100,70,50)'},
+            { type: 'rect', x: -0.75 * BLOCK_WIDTH, y: -0.1 * BLOCK_HEIGHT, w: 0.5 * BLOCK_WIDTH, h: 0.2 * BLOCK_HEIGHT, color: 'rgb(139,69,19)'}
         ],
-        jabDistanceBlocks: 0, // <<< ADDED: Sword doesn't jab with this animation style
+        swipeArcDegrees: 120, // Total arc of the swipe
+        swipeStartOffsetDegrees: -60, // Starts -60deg from aim, ends +60deg from aim
+        jabDistanceBlocks: 0, // Sword uses swipe, not jab
     },
     [WEAPON_TYPE_SPEAR]: {
         displayName: "Spear",
@@ -497,25 +506,25 @@ export const WEAPON_STATS = {
         outlineColor: 'rgb(100, 80, 50)',
         outlineWidth: 1,
         attackDamage: 8,
-        blockDamage: 0,
-        attackReachX: 5 * BLOCK_WIDTH,
+        blockDamage: 0, // Spear doesn't damage blocks
+        attackReachX: 5 * BLOCK_WIDTH, // For aiming
         attackReachY: undefined,
-        attackWidth: BLOCK_WIDTH * 0.5,
-        attackHeight: BLOCK_HEIGHT * 1.5,
+        attackWidth: BLOCK_WIDTH * 0.5, // Approx AABB
+        attackHeight: BLOCK_HEIGHT * 1.5, // Approx AABB
         attackDuration: 0.3,
         attackCooldown: 0.5,
         attackColor: 'rgba(220, 220, 180, 0.5)',
         recipe: [ { type: 'wood', amount: 2 }, { type: 'stone', amount: 1 } ],
-        visualAnchorOffset: { x: 0.75 * BLOCK_WIDTH, y: 0 },
+        visualAnchorOffset: { x: 0.75 * BLOCK_WIDTH, y: 0 }, // Anchor at the spear tip
         handPositions: {
             back: { x: -4.0 * BLOCK_WIDTH, y: 0 },
             front: { x: -1.5 * BLOCK_WIDTH, y: 0 }
         },
         shape: [
-            { type: 'rect', x: -4.75 * BLOCK_WIDTH, y: -0.20 * BLOCK_HEIGHT, w: 4.75 * BLOCK_WIDTH, h: 0.40 * BLOCK_HEIGHT, color: 'rgb(180, 130, 90)'},
-            { type: 'triangle', p1: { x: 0, y: -0.25 * BLOCK_HEIGHT }, p2: { x: 0, y: 0.25 * BLOCK_HEIGHT }, p3: { x: 0.75 * BLOCK_WIDTH, y: 0 }, color: 'rgb(160, 160, 170)'}
+            { type: 'rect', x: -4.75 * BLOCK_WIDTH, y: -0.20 * BLOCK_HEIGHT, w: 4.75 * BLOCK_WIDTH, h: 0.40 * BLOCK_HEIGHT, color: 'rgb(180, 130, 90)'}, // Shaft
+            { type: 'triangle', p1: { x: 0, y: -0.25 * BLOCK_HEIGHT }, p2: { x: 0, y: 0.25 * BLOCK_HEIGHT }, p3: { x: 0.75 * BLOCK_WIDTH, y: 0 }, color: 'rgb(160, 160, 170)', isBlade: true} // Spearhead
         ],
-        jabDistanceBlocks: 1.0, // <<< ADDED: Spear jabs 1.0 block width
+        jabDistanceBlocks: 1.0,
     }
 };
 

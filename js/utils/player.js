@@ -45,7 +45,9 @@ export class Player {
         this.deathAnimationFrame = 0;
         this.isActive = true;
         this.jabOffset = 0;
-        this.currentAttackAngle = 0; // Angle used for the current attack swing
+        this.currentAttackAngle = 0; // Angle used for the current attack (center for swipe, direction for jab)
+        this.currentSwipeProgress = 0; // For sword swipe animation (0 to 1)
+
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(">>> Player CONSTRUCTOR ERROR: NaN initial coordinates! Resetting to center.");
             this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;
@@ -92,7 +94,6 @@ export class Player {
             return; 
         }
         if (typeof targetWorldPos !== 'object' || targetWorldPos === null || typeof targetWorldPos.x !== 'number' || typeof targetWorldPos.y !== 'number' || isNaN(targetWorldPos.x) || isNaN(targetWorldPos.y)) {
-            // Fallback: If targetWorldPos is invalid, use player's facing direction to estimate a target
             const playerCenterX = this.x + this.width / 2;
             const playerCenterY = this.y + this.height / 2;
             this.targetWorldPos = this._lastValidTargetWorldPos || { x: playerCenterX + this.lastDirection * 50, y: playerCenterY }; 
@@ -123,18 +124,21 @@ export class Player {
         this._checkBoundaries();
         this.currentHealth = Math.max(0, this.currentHealth);
 
-        // Update jab animation state
-        if (this.isAttacking && this.isWeaponSelected()) { // Check if any weapon is selected (not unarmed)
+        if (this.isAttacking && this.isWeaponSelected()) {
             const weaponStats = Config.WEAPON_STATS[this.selectedItem];
-            if (weaponStats && weaponStats.jabDistanceBlocks && weaponStats.jabDistanceBlocks > 0) {
-                const JAB_DISTANCE_PIXELS = weaponStats.jabDistanceBlocks * Config.BLOCK_WIDTH;
-                const progress = (weaponStats.attackDuration - this.attackTimer) / weaponStats.attackDuration;
-                this.jabOffset = JAB_DISTANCE_PIXELS * Math.sin(progress * Math.PI); // out-and-back motion
-            } else {
-                this.jabOffset = 0; // No jab if property missing, zero, or negative
+            if (weaponStats) {
+                this.currentSwipeProgress = Math.min(1, Math.max(0, (weaponStats.attackDuration - this.attackTimer) / weaponStats.attackDuration));
+                if (weaponStats.jabDistanceBlocks && weaponStats.jabDistanceBlocks > 0) {
+                    const JAB_DISTANCE_PIXELS = weaponStats.jabDistanceBlocks * Config.BLOCK_WIDTH;
+                    // Jab motion is out and back
+                    this.jabOffset = JAB_DISTANCE_PIXELS * Math.sin(this.currentSwipeProgress * Math.PI);
+                } else {
+                    this.jabOffset = 0;
+                }
             }
         } else {
             this.jabOffset = 0;
+            this.currentSwipeProgress = 0;
         }
     }
     _updateTimers(dt) {
@@ -152,7 +156,8 @@ export class Player {
                 this.isAttacking = false;
                 this.hitEnemiesThisSwing = []; 
                 this.hitBlocksThisSwing = [];
-                this.jabOffset = 0; // Reset jab when attack ends
+                this.jabOffset = 0; 
+                this.currentSwipeProgress = 0;
             }
         }
         if (this.isInvulnerable) {
@@ -178,21 +183,24 @@ export class Player {
                         this.attackTimer = weaponStats.attackDuration;
                         this.attackCooldown = weaponStats.attackCooldown;
                         
-                        // Store the attack angle when attack begins
                         const playerCenterX = this.x + this.width / 2;
                         const playerCenterY = this.y + this.height / 2;
                         const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
                         this.currentAttackAngle = Math.atan2(rawTargetWorldPos.y - playerCenterY, rawTargetWorldPos.x - playerCenterX);
+                        this.currentSwipeProgress = 0; // Reset swipe progress at start of attack
 
-                    } else { // fallback for unknown weapon
+                    } else { 
                         this.attackTimer = 0.1;
                         this.attackCooldown = 0.2;
                         this.currentAttackAngle = (this.lastDirection === 1) ? 0 : Math.PI;
+                        this.currentSwipeProgress = 0;
                     }
                 }
             }
         }
     }
+    // ... _handleMovement, _handlePlacementHold, _applyPhysics, _checkBoundaries, _isTargetWithinRange, checkPlacementOverlap, getGhostBlockInfo remain largely the same ...
+    // (Make sure these methods use `this.width`, `this.height` if player size changes, but it's fixed by Config.PLAYER_WIDTH/HEIGHT)
     _handleMovement(dt, inputState) {
         if (this.isOnRope) {
             this.vx = 0; 
@@ -448,6 +456,7 @@ export class Player {
             return { col: col, row: row, color: blockColor };
         }
     }
+
     draw(ctx) {
         if (!this.isActive && !this.isDying || !ctx) return;
         if (isNaN(this.x) || isNaN(this.y)) {
@@ -456,7 +465,7 @@ export class Player {
         }
         if (this.isDying) {
             ctx.save(); 
-            const pivotX = this.x + this.width / 2; // death animation
+            const pivotX = this.x + this.width / 2; 
             const pivotY = this.y + this.height / 2;
             const totalAnimationDuration = Config.PLAYER_DEATH_ANIMATION_DURATION;
             const spinDuration = Config.PLAYER_SPIN_DURATION;
@@ -468,7 +477,7 @@ export class Player {
             } else if (timeElapsed >= spinDuration && timeElapsed < totalAnimationDuration) { 
                 const swellDuration = totalAnimationDuration - spinDuration;
                 if (swellDuration > 0) {
-                    const swellProgress = (timeElapsed - spinDuration) / swellDuration; // progress calculation
+                    const swellProgress = (timeElapsed - spinDuration) / swellDuration; 
                     currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress; 
                 } else {
                     currentScale = 1.0; 
@@ -487,17 +496,15 @@ export class Player {
             return; 
         }
         
-        // Draw player body, with invulnerability flashing
         if (this.isInvulnerable && Math.floor(performance.now() / 100) % 2 !== 0) { 
-            // Skip drawing player body to create flash effect
+            // Skip drawing player body for flash
         } else {
             ctx.fillStyle = Config.PLAYER_BODY_COLOR; 
             ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
         }
 
-        // --- Weapon and Arms Drawing ---
         let showWeapon = false;
-        let weaponIsAnimated = false;
+        let weaponIsAnimated = false; // True if attacking
 
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
             showWeapon = true;
@@ -552,26 +559,36 @@ export class Player {
                 clampedTargetX = playerCenterX + this.lastDirection * (maxVisualReach * 0.1);
                 clampedTargetY = playerCenterY;
             }
+            
+            let displayAngle = this.currentAttackAngle; // Base angle is always the stored attack angle for consistency
+            let effectiveJabOffset = this.jabOffset;
 
-            // Determine the angle for drawing and hitbox
-            // If attacking, use the stored attack angle. Otherwise, calculate fresh.
-            const displayAngle = weaponIsAnimated ? this.currentAttackAngle : Math.atan2(clampedTargetY - playerCenterY, clampedTargetX - playerCenterX);
+            if (weaponIsAnimated) {
+                if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
+                    const swipeArcRad = (weaponStats.swipeArcDegrees || 120) * (Math.PI / 180);
+                    const swipeStartOffsetRad = (weaponStats.swipeStartOffsetDegrees || -60) * (Math.PI / 180);
+                    // Linear swipe: progress goes 0 -> 1
+                    displayAngle = this.currentAttackAngle + swipeStartOffsetRad + (swipeArcRad * this.currentSwipeProgress);
+                    effectiveJabOffset = 0; // Sword swipe doesn't use jabOffset for position
+                }
+                // For jab weapons (shovel, spear), displayAngle remains this.currentAttackAngle, jabOffset is used
+            } else { // Not attacking, weapon is held statically
+                displayAngle = Math.atan2(clampedTargetY - playerCenterY, clampedTargetX - playerCenterX);
+                effectiveJabOffset = 0; // No jab when not attacking
+            }
             
             const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(displayAngle) - visualAnchorOffsetY * Math.sin(displayAngle);
             const rotatedAnchorOffsetY = visualAnchorOffsetX * Math.sin(displayAngle) + visualAnchorOffsetY * Math.cos(displayAngle);
 
-            let effectiveClampedTargetX = clampedTargetX;
-            let effectiveClampedTargetY = clampedTargetY;
+            let finalWeaponPivotX = clampedTargetX - rotatedAnchorOffsetX;
+            let finalWeaponPivotY = clampedTargetY - rotatedAnchorOffsetY;
 
-            if (weaponIsAnimated && this.selectedItem === Config.WEAPON_TYPE_SHOVEL) { // Jab animation only for shovel for now
-                effectiveClampedTargetX += this.jabOffset * Math.cos(displayAngle);
-                effectiveClampedTargetY += this.jabOffset * Math.sin(displayAngle);
+            // Apply jab offset to the pivot for jabbing weapons
+            if (effectiveJabOffset !== 0 && (this.selectedItem === Config.WEAPON_TYPE_SHOVEL || this.selectedItem === Config.WEAPON_TYPE_SPEAR)) {
+                finalWeaponPivotX += effectiveJabOffset * Math.cos(this.currentAttackAngle); // Jab along the original attack angle
+                finalWeaponPivotY += effectiveJabOffset * Math.sin(this.currentAttackAngle);
             }
             
-            const finalWeaponPivotX = effectiveClampedTargetX - rotatedAnchorOffsetX;
-            const finalWeaponPivotY = effectiveClampedTargetY - rotatedAnchorOffsetY;
-            
-            // --- Arm Calculations ---
             const shoulderOffsetPxX = this.width * Config.PLAYER_SHOULDER_OFFSET_X_FACTOR;
             const shoulderOffsetPxY = this.height * Config.PLAYER_SHOULDER_OFFSET_Y_FACTOR;
             const shoulderRightX = this.x + (this.width - shoulderOffsetPxX);
@@ -600,7 +617,7 @@ export class Player {
                 frontHandWorldY = finalWeaponPivotY + (localFrontHand.x * Math.sin(displayAngle) + localFrontHand.y * Math.cos(displayAngle));
                 backHandWorldX = finalWeaponPivotX + (localBackHand.x * Math.cos(displayAngle) - localBackHand.y * Math.sin(displayAngle));
                 backHandWorldY = finalWeaponPivotY + (localBackHand.x * Math.sin(displayAngle) + localBackHand.y * Math.cos(displayAngle));
-            } else {
+            } else { // Fallback if no hand positions defined (e.g. simple sword without explicit hands)
                 frontHandWorldX = finalWeaponPivotX; frontHandWorldY = finalWeaponPivotY;
                 backHandWorldX = finalWeaponPivotX; backHandWorldY = finalWeaponPivotY;
             }
@@ -652,29 +669,36 @@ export class Player {
             ctx.restore();
         }
         
-        // --- Attack Hitbox Visual (separate from weapon visual) ---
-        // This only draws the hitbox, getAttackHitbox() calculates it.
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
-            const hitboxData = this.getAttackHitbox(); // This will now use animated logic for shovel
+            const hitboxData = this.getAttackHitbox(); 
             if (hitboxData) {
                 const weaponStats = Config.WEAPON_STATS[this.selectedItem];
                 let hitboxColor = weaponStats?.attackColor || 'rgba(255, 0, 0, 0.5)';
                 ctx.fillStyle = hitboxColor;
 
-                if (hitboxData.type === 'rect') {
+                if (hitboxData.type === 'rect') { // Should only be for unarmed now
                     const { x, y, width, height } = hitboxData.bounds;
-                    if (typeof x === 'number' && typeof y === 'number' &&
-                        typeof width === 'number' && typeof height === 'number' &&
-                        !isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height)) {
+                     if (typeof x === 'number' && typeof y === 'number' && typeof width === 'number' && typeof height === 'number' && !isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height)) {
                         ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(width), Math.ceil(height));
                     }
-                } else if (hitboxData.type === 'triangle') {
+                } else if (hitboxData.type === 'triangle') { // Shovel, Spear
                     const v = hitboxData.vertices;
                     if (v && v.length === 3 && v.every(p => p && typeof p.x === 'number' && typeof p.y === 'number' && !isNaN(p.x) && !isNaN(p.y))) {
                         ctx.beginPath();
                         ctx.moveTo(Math.floor(v[0].x), Math.floor(v[0].y));
                         ctx.lineTo(Math.floor(v[1].x), Math.floor(v[1].y));
                         ctx.lineTo(Math.floor(v[2].x), Math.floor(v[2].y));
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                } else if (hitboxData.type === 'polygon' && hitboxData.vertices.length === 4) { // Sword
+                     const v = hitboxData.vertices;
+                     if (v && v.length === 4 && v.every(p => p && typeof p.x === 'number' && typeof p.y === 'number' && !isNaN(p.x) && !isNaN(p.y))) {
+                        ctx.beginPath();
+                        ctx.moveTo(Math.floor(v[0].x), Math.floor(v[0].y));
+                        for (let i = 1; i < v.length; i++) {
+                            ctx.lineTo(Math.floor(v[i].x), Math.floor(v[i].y));
+                        }
                         ctx.closePath();
                         ctx.fill();
                     }
@@ -766,6 +790,7 @@ export class Player {
         this.deathAnimationTimer = Config.PLAYER_DEATH_ANIMATION_DURATION;
         this.deathAnimationFrame = 0; 
     }
+
     getAttackHitbox() {
         if (!this.isAttacking || !this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED || this.isDying) {
             return null;
@@ -776,109 +801,106 @@ export class Player {
 
         const playerCenterX = this.x + this.width / 2;
         const playerCenterY = this.y + this.height / 2;
-
-        // Use the stored attack angle for consistency during the swing
-        const attackAngle = this.currentAttackAngle; 
-
-        // Calculate the effective target (tip of the weapon) including jab offset
-        let effectiveTargetX, effectiveTargetY;
-        const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
         
-        // For hitbox, we want to determine where the weapon's anchor *would be* if its tip is at the target + jab.
-        // This is the same logic as in draw() for `finalWeaponPivotX/Y`.
+        // Base aim angle stored at the start of the attack
+        const baseAttackAngle = this.currentAttackAngle;
+        let effectiveJabOffset = this.jabOffset;
+        let currentVisualAngle = baseAttackAngle; // For jab weapons, visual angle is the aim angle
+
+        // Calculate the weapon's pivot point based on player aim and weapon's visual anchor
+        const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
         const visualAnchorOffsetX = weaponStats.visualAnchorOffset.x;
         const visualAnchorOffsetY = weaponStats.visualAnchorOffset.y;
-
-        const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(attackAngle) - visualAnchorOffsetY * Math.sin(attackAngle);
-        const rotatedAnchorOffsetY = visualAnchorOffsetX * Math.sin(attackAngle) + visualAnchorOffsetY * Math.cos(attackAngle);
-
-        // Start with the raw target position from mouse/aim
-        let baseClampedTargetX = rawTargetWorldPos.x;
-        let baseClampedTargetY = rawTargetWorldPos.y;
         
-        // Clamp this base target to maxVisualReach (same as in draw)
         const dx_to_raw = rawTargetWorldPos.x - playerCenterX;
         const dy_to_raw = rawTargetWorldPos.y - playerCenterY;
         const dist_to_raw = Math.sqrt(dx_to_raw * dx_to_raw + dy_to_raw * dy_to_raw);
+
         let maxVisualReach;
-        if (weaponStats.attackReachY === undefined) { 
+         if (weaponStats.attackReachY === undefined) { 
             maxVisualReach = weaponStats.attackReachX;
         } else { 
             maxVisualReach = Math.sqrt((weaponStats.attackReachX**2) + (weaponStats.attackReachY**2));
         }
         maxVisualReach = Math.max(maxVisualReach, weaponStats.width, weaponStats.height, Config.BLOCK_WIDTH * 2);
 
+        let clampedTargetX = rawTargetWorldPos.x;
+        let clampedTargetY = rawTargetWorldPos.y;
+
         if (dist_to_raw > maxVisualReach + GridCollision.E_EPSILON) {
             if (dist_to_raw > GridCollision.E_EPSILON) {
-                baseClampedTargetX = playerCenterX + (dx_to_raw / dist_to_raw) * maxVisualReach;
-                baseClampedTargetY = playerCenterY + (dy_to_raw / dist_to_raw) * maxVisualReach;
+                clampedTargetX = playerCenterX + (dx_to_raw / dist_to_raw) * maxVisualReach;
+                clampedTargetY = playerCenterY + (dy_to_raw / dist_to_raw) * maxVisualReach;
             } else {
-                baseClampedTargetX = playerCenterX + this.lastDirection * maxVisualReach;
-                baseClampedTargetY = playerCenterY;
+                clampedTargetX = playerCenterX + this.lastDirection * maxVisualReach;
+                clampedTargetY = playerCenterY;
             }
         } else if (dist_to_raw < GridCollision.E_EPSILON) {
-            baseClampedTargetX = playerCenterX + this.lastDirection * (maxVisualReach * 0.1);
-            baseClampedTargetY = playerCenterY;
+             clampedTargetX = playerCenterX + this.lastDirection * (maxVisualReach * 0.1);
+             clampedTargetY = playerCenterY;
         }
-        // Now, apply jab offset to this clamped base target
-        effectiveTargetX = baseClampedTargetX;
-        effectiveTargetY = baseClampedTargetY;
-
-        if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) { // Jab only for shovel for now
-            effectiveTargetX += this.jabOffset * Math.cos(attackAngle);
-            effectiveTargetY += this.jabOffset * Math.sin(attackAngle);
+        
+        // Determine the current visual angle for the weapon (important for swipe)
+        if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
+            const swipeArcRad = (weaponStats.swipeArcDegrees || 120) * (Math.PI / 180);
+            const swipeStartOffsetRad = (weaponStats.swipeStartOffsetDegrees || -60) * (Math.PI / 180);
+            currentVisualAngle = baseAttackAngle + swipeStartOffsetRad + (swipeArcRad * this.currentSwipeProgress);
+            effectiveJabOffset = 0; // Sword swipe doesn't use jab displacement for hitbox anchor
         }
 
-        const weaponPivotX = effectiveTargetX - rotatedAnchorOffsetX;
-        const weaponPivotY = effectiveTargetY - rotatedAnchorOffsetY;
+        // Calculate the weapon's pivot in world space
+        // Anchor offset is rotated by the *visual angle* of the weapon
+        const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(currentVisualAngle) - visualAnchorOffsetY * Math.sin(currentVisualAngle);
+        const rotatedAnchorOffsetY = visualAnchorOffsetX * Math.sin(currentVisualAngle) + visualAnchorOffsetY * Math.cos(currentVisualAngle);
+        
+        let weaponPivotX = clampedTargetX - rotatedAnchorOffsetX;
+        let weaponPivotY = clampedTargetY - rotatedAnchorOffsetY;
 
-        if (this.selectedItem === Config.WEAPON_TYPE_SHOVEL) {
-            const bladeShape = weaponStats.shape.find(s => s.type === 'triangle');
-            if (!bladeShape) return null;
+        // Apply jab offset to the pivot for jabbing weapons (shovel, spear)
+        // Jab occurs along the original aim_angle (baseAttackAngle)
+        if (effectiveJabOffset !== 0 && (this.selectedItem === Config.WEAPON_TYPE_SHOVEL || this.selectedItem === Config.WEAPON_TYPE_SPEAR)) {
+            weaponPivotX += effectiveJabOffset * Math.cos(baseAttackAngle);
+            weaponPivotY += effectiveJabOffset * Math.sin(baseAttackAngle);
+        }
 
+        // Find the shape component marked as 'isBlade' for the hitbox
+        const bladeShape = weaponStats.shape.find(s => s.isBlade === true);
+        if (!bladeShape) {
+            console.warn(`No 'isBlade' shape found for weapon ${this.selectedItem}`);
+            return null;
+        }
+        
+        if (bladeShape.type === 'triangle') {
             const worldVertices = [bladeShape.p1, bladeShape.p2, bladeShape.p3].map(pLocal => {
-                const rotatedX = pLocal.x * Math.cos(attackAngle) - pLocal.y * Math.sin(attackAngle);
-                const rotatedY = pLocal.x * Math.sin(attackAngle) + pLocal.y * Math.cos(attackAngle);
+                const rotatedX = pLocal.x * Math.cos(currentVisualAngle) - pLocal.y * Math.sin(currentVisualAngle);
+                const rotatedY = pLocal.x * Math.sin(currentVisualAngle) + pLocal.y * Math.cos(currentVisualAngle);
                 return {
                     x: weaponPivotX + rotatedX,
                     y: weaponPivotY + rotatedY
                 };
             });
             return { type: 'triangle', vertices: worldVertices };
-        } else {
-            // Fallback to old rectangular hitbox logic for other weapons
-            const hitboxWidth = weaponStats.attackWidth;
-            const hitboxHeight = weaponStats.attackHeight;
-            const attackReachX = weaponStats.attackReachX;
-            const attackReachY = weaponStats.attackReachY;
-            
-            let tempHitboxCenterX, tempHitboxCenterY;
-            if (attackReachY === undefined) {
-                const reachDistance = attackReachX;
-                if (dist_to_raw > GridCollision.E_EPSILON) { // dist_to_raw uses non-jabbed target
-                    tempHitboxCenterX = playerCenterX + (dx_to_raw / dist_to_raw) * reachDistance;
-                    tempHitboxCenterY = playerCenterY + (dy_to_raw / dist_to_raw) * reachDistance;
-                } else {
-                    tempHitboxCenterX = playerCenterX + this.lastDirection * reachDistance;
-                    tempHitboxCenterY = playerCenterY;
-                }
-            } else {
-                if (dist_to_raw > GridCollision.E_EPSILON) {
-                    tempHitboxCenterX = playerCenterX + (dx_to_raw / dist_to_raw) * attackReachX;
-                    tempHitboxCenterY = playerCenterY + attackReachY;
-                } else {
-                    tempHitboxCenterX = playerCenterX + this.lastDirection * attackReachX;
-                    tempHitboxCenterY = playerCenterY + attackReachY;
-                }
-            }
-            const hitboxX = tempHitboxCenterX - hitboxWidth / 2;
-            const hitboxY = tempHitboxCenterY - hitboxHeight / 2;
-            if (typeof hitboxX !== 'number' || typeof hitboxY !== 'number' || isNaN(hitboxX) || isNaN(hitboxY)) {
-                return null;
-            }
-            return { type: 'rect', bounds: { x: hitboxX, y: hitboxY, width: hitboxWidth, height: hitboxHeight } };
+        } else if (bladeShape.type === 'rect') { // For sword's blade
+            const { x: localX, y: localY, w, h } = bladeShape;
+            const localCorners = [
+                { x: localX, y: localY },         // Top-left
+                { x: localX + w, y: localY },     // Top-right
+                { x: localX + w, y: localY + h }, // Bottom-right
+                { x: localX, y: localY + h }      // Bottom-left
+            ];
+            const worldVertices = localCorners.map(pLocal => {
+                const rotatedX = pLocal.x * Math.cos(currentVisualAngle) - pLocal.y * Math.sin(currentVisualAngle);
+                const rotatedY = pLocal.x * Math.sin(currentVisualAngle) + pLocal.y * Math.cos(currentVisualAngle);
+                return {
+                    x: weaponPivotX + rotatedX,
+                    y: weaponPivotY + rotatedY
+                };
+            });
+            return { type: 'polygon', vertices: worldVertices };
         }
+        return null; // Should not happen if bladeShape is found and is rect/triangle
     }
+    // ... (rest of Player class: hasHitEnemyThisSwing, registerHitEnemy, etc. are fine)
     hasHitEnemyThisSwing(enemy) { return this.hitEnemiesThisSwing.includes(enemy); }
     registerHitEnemy(enemy) { if (!this.hasHitEnemyThisSwing(enemy)) { this.hitEnemiesThisSwing.push(enemy); } }
     hasHitBlockThisSwing(col, row) { const blockKey = `${col},${row}`; return this.hitBlocksThisSwing.includes(blockKey); }
@@ -958,7 +980,7 @@ export class Player {
     craftItem(itemType) {
         const weaponStats = Config.WEAPON_STATS[itemType];
         const recipe = weaponStats?.recipe;
-        if (!recipe || recipe.length === 0) { // Check if recipe exists and is not empty
+        if (!recipe || recipe.length === 0) { 
             console.warn(`Attempted to craft non-craftable item type or item with no recipe: ${itemType}`);
             return false; 
         }
@@ -1058,9 +1080,9 @@ export class Player {
             if (this.hasWeapon(weaponType)) {
                 return this.equipItem(weaponType); 
             } else {
-                const weaponStats = Config.WEAPON_STATS[weaponType]; // Use correct weapon type to get stats
-                const recipe = weaponStats?.recipe; // Get recipe from weaponStats
-                if (recipe && recipe.length > 0) { // Check if recipe exists and is not empty
+                const weaponStats = Config.WEAPON_STATS[weaponType]; 
+                const recipe = weaponStats?.recipe; 
+                if (recipe && recipe.length > 0) { 
                     const crafted = this.craftItem(weaponType); 
                     if (crafted) {
                         return this.equipItem(weaponType);
@@ -1113,6 +1135,7 @@ export class Player {
         this.isActive = true;
         this.jabOffset = 0;
         this.currentAttackAngle = 0;
+        this.currentSwipeProgress = 0;
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Player RESET POSITION ERROR: NaN final coordinates! Resetting to center.`);
             this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;

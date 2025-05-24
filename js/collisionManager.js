@@ -111,11 +111,11 @@ export function checkPlayerItemCollisions(player, items, itemManager) { // check
         }
     }
 }
-export function checkPlayerAttackEnemyCollisions(player, enemies) { // check for collisions between player's attack hitbox and enemies
-    const currentEnemyDamage = player?.getCurrentAttackDamage() ?? 0; // get damage, account for null player
-    if (!player || !player.isActive || player.isDying || !enemies || !player.isAttacking || currentEnemyDamage <= 0) { return; } // exit if player isn't capable of attacking
+export function checkPlayerAttackEnemyCollisions(player, enemies) {
+    const currentEnemyDamage = player?.getCurrentAttackDamage() ?? 0;
+    if (!player || !player.isActive || player.isDying || !enemies || !player.isAttacking || currentEnemyDamage <= 0) { return; }
     const attackHitboxData = player.getAttackHitbox();
-    if (!attackHitboxData) return; // exit if player doesn't have an attack hitbox
+    if (!attackHitboxData) return;
     for (const enemy of enemies) {
         if (!enemy || !enemy.isActive || enemy.isDying) continue;
         const enemyRect = enemy.getRect();
@@ -124,22 +124,29 @@ export function checkPlayerAttackEnemyCollisions(player, enemies) { // check for
             collisionDetected = _checkRectOverlap(attackHitboxData.bounds, enemyRect);
         } else if (attackHitboxData.type === 'triangle') {
             collisionDetected = _triangleIntersectsAABB(attackHitboxData.vertices, enemyRect);
+        } else if (attackHitboxData.type === 'polygon' && attackHitboxData.vertices.length === 4) { // Handle quad polygon (e.g., sword blade)
+            const v = attackHitboxData.vertices;
+            // Check as two triangles
+            collisionDetected = _triangleIntersectsAABB([v[0], v[1], v[2]], enemyRect) || 
+                                _triangleIntersectsAABB([v[0], v[2], v[3]], enemyRect);
         }
+
         if (collisionDetected) {
-            if (!player.hasHitEnemyThisSwing(enemy)) { // prevent double-hit on single swing
-                enemy.takeDamage(currentEnemyDamage); // handles flashing/death transition
-                player.registerHitEnemy(enemy); // register hit
+            if (!player.hasHitEnemyThisSwing(enemy)) {
+                enemy.takeDamage(currentEnemyDamage);
+                player.registerHitEnemy(enemy);
             }
         }
     }
 }
-export function checkPlayerAttackBlockCollisions(player) { // checks for collisions between player's attack hitbox and world blocks
+
+export function checkPlayerAttackBlockCollisions(player) {
     const currentBlockDamage = player?.getCurrentBlockDamage() ?? 0;
     if (!player || !player.isActive || player.isDying || !player.isAttacking || currentBlockDamage <= 0) { return; }
     const attackHitboxData = player.getAttackHitbox();
     if (!attackHitboxData) return;
     let minCol, maxCol, minRow, maxRow;
-    if (attackHitboxData.type === 'rect') {
+    if (attackHitboxData.type === 'rect') { // determine broad phase check area based on hitbox AABB
         const attackRect = attackHitboxData.bounds;
         minCol = Math.max(0, Math.floor(attackRect.x / Config.BLOCK_WIDTH));
         maxCol = Math.min(Config.GRID_COLS - 1, Math.floor((attackRect.x + attackRect.width) / Config.BLOCK_WIDTH));
@@ -152,6 +159,13 @@ export function checkPlayerAttackBlockCollisions(player) { // checks for collisi
         maxCol = Math.min(Config.GRID_COLS - 1, Math.floor((triangleAABB.x + triangleAABB.width) / Config.BLOCK_WIDTH));
         minRow = Math.max(0, Math.floor(triangleAABB.y / Config.BLOCK_HEIGHT));
         maxRow = Math.min(Config.GRID_ROWS - 1, Math.floor((triangleAABB.y + triangleAABB.height) / Config.BLOCK_HEIGHT));
+    } else if (attackHitboxData.type === 'polygon' && attackHitboxData.vertices.length === 4) {
+        const polygonAABB = _getTriangleAABB(attackHitboxData.vertices); // _getTriangleAABB works for polygon vertex list too
+        if (!polygonAABB) return;
+        minCol = Math.max(0, Math.floor(polygonAABB.x / Config.BLOCK_WIDTH));
+        maxCol = Math.min(Config.GRID_COLS - 1, Math.floor((polygonAABB.x + polygonAABB.width) / Config.BLOCK_WIDTH));
+        minRow = Math.max(0, Math.floor(polygonAABB.y / Config.BLOCK_HEIGHT));
+        maxRow = Math.min(Config.GRID_ROWS - 1, Math.floor((polygonAABB.y + polygonAABB.height) / Config.BLOCK_HEIGHT));
     } else {
         return; // unknown hitbox type
     }
@@ -165,10 +179,13 @@ export function checkPlayerAttackBlockCollisions(player) { // checks for collisi
                     height: Config.BLOCK_HEIGHT
                 };
                 let blockCollisionDetected = false;
-                if (attackHitboxData.type === 'rect') {
-                    blockCollisionDetected = true; 
+                if (attackHitboxData.type === 'rect') { // This case should not be for shovel/spear/sword ideally
+                    blockCollisionDetected = _checkRectOverlap(attackHitboxData.bounds, blockRect);
                 } else if (attackHitboxData.type === 'triangle') {
                     blockCollisionDetected = _triangleIntersectsAABB(attackHitboxData.vertices, blockRect);
+                } else if (attackHitboxData.type === 'polygon' && attackHitboxData.vertices.length === 4) {
+                    const v = attackHitboxData.vertices;
+                    blockCollisionDetected = _triangleIntersectsAABB([v[0], v[1], v[2]], blockRect) || _triangleIntersectsAABB([v[0], v[2], v[3]], blockRect);
                 }
                 if (blockCollisionDetected) {
                     const damaged = WorldManager.damageBlock(c, r, currentBlockDamage);
