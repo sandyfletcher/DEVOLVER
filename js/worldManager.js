@@ -852,6 +852,21 @@ export function finalizeAllTransformAnimations() {
 // -----------------------------------------------------------------------------
 // --- Rendering ---
 // -----------------------------------------------------------------------------
+
+// --- LCG PRNG ---
+// Simple Linear Congruential Generator for deterministic randomness
+function LCG(seed) {
+    let state = seed;
+    // Ensure state is a positive integer for this LCG variant
+    state = Math.abs(Math.floor(state)) % 2147483647; // Modulo a large prime
+    if (state === 0) state = 1; // Avoid seed 0 if it causes issues with LCG params
+
+    return function() {
+        state = (1664525 * state + 1013904223) & 0x7FFFFFFF; // Common LCG parameters (from Numerical Recipes), keep positive
+        return state / 0x7FFFFFFF; // Normalize to [0, 1)
+    }
+}
+
 function drawAnimatedSunEffect(ctx, sunWorldX, sunWorldY) {
     if (!ctx || !Config.SUN_ANIMATION_ENABLED) return;
     const sunRadius = Config.SUN_ANIMATION_RADIUS_BLOCKS * Config.BLOCK_WIDTH;
@@ -962,9 +977,17 @@ export function updateStaticWorldAt(col, row) {
         } else if (blockProps.isVegetation) {
             if (finalColor) {
                 gridCtx.fillStyle = finalColor;
+                // Seed for PRNG: Combine row, column, and player-placed status for uniqueness
+                // Using primes helps distribute seeds better.
+                let vegetationSeed = (row * 7919 + col * 3571); // Base seed on coords with primes
+                if (typeof block === 'object' && block !== null && block.isPlayerPlaced) {
+                    vegetationSeed = (vegetationSeed + 12583) & 0x7FFFFFFF; // Add another prime and keep positive
+                }
+                const vegetationRandom = LCG(vegetationSeed); // Create a new PRNG instance for this block
+
                 for (let py = 0; py < blockH; py++) {
                     for (let px = 0; px < blockW; px++) {
-                        if (Math.random() < Config.VEGETATION_PIXEL_DENSITY) {
+                        if (vegetationRandom() < Config.VEGETATION_PIXEL_DENSITY) { // Use the seeded PRNG
                             gridCtx.fillRect(Math.floor(blockX + px), Math.floor(blockY + py), 1, 1);
                         }
                     }
@@ -1148,4 +1171,4 @@ export function update(dt) {
     }
     updateGravityAnimations(dt);
     updateTransformAnimations(dt);
-}
+} 

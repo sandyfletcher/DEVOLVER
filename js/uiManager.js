@@ -321,7 +321,7 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         }
         const count = inventory[materialType] || 0;
         const countSpan = slotDiv.querySelector('.item-count');
-        if (countSpan) countSpan.textContent = count > 0 ? Math.min(count, 99) : '';
+        if (countSpan) countSpan.textContent = count > 0 ? Math.min(count, 999) : ''; // CHANGED to 999
         let isDisabled;
         let currentTitle = `${materialType.toUpperCase()} (${count})`;
         if (materialType === 'dirt' || materialType === 'vegetation') {
