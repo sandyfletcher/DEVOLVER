@@ -60,48 +60,51 @@
             <div id="menu-overlay">
                 <div id="overlay-mainmenu-content" class="overlay-content">
                     <h1>DEVOLVER</h1>
-                    <button id="mainmenu-settings-button">SETTINGS</button>
-                    <button id="mainmenu-start-game-button">START</button>
+                    <!-- Button Group for Bottom Right -->
+                    <div class="button-group-bottom-right">
+                        <button id="mainmenu-settings-button" class="button-hero-action">SETTINGS</button>
+                        <button id="mainmenu-start-game-button" class="button-hero-action">START</button>
+                    </div>
                 </div>
                 <div id="overlay-settings-content" class="overlay-content">
                     <h2>SETTINGS</h2>
                     <div class="settings-row">
-                        <button id="settings-btn-toggle-grid" class="settings-button">Toggle Grid</button>
+                        <button id="settings-btn-toggle-grid" class="settings-row__button">Toggle Grid</button>
                         <span id="settings-value-grid"></span>
                     </div>
                     <div class="settings-row">
-                        <button id="settings-btn-mute-music" class="settings-button">Toggle Music</button>
+                        <button id="settings-btn-mute-music" class="settings-row__button">Toggle Music</button>
                         <span id="settings-value-music"></span>
                     </div>
                     <div class="settings-row">
-                        <button id="settings-btn-mute-sfx" class="settings-button">Toggle SFX</button>
+                        <button id="settings-btn-mute-sfx" class="settings-row__button">Toggle SFX</button>
                         <span id="settings-value-sfx"></span>
                     </div>
-                    <button id="settings-back-button">BACK</button>
+                    <button id="settings-back-button" class="overlay-button">BACK</button>
                 </div>
                 <div id="overlay-cutscene-content" class="overlay-content">
                     <img id="cutscene-image-display" class="cutscene-image" src="" alt="Cutscene Image">
                     <div id="cutscene-text-box">
                         <p id="cutscene-text-content"></p>
                     </div>
-                    <button id="cutscene-skip-button">SKIP</button>
+                    <button id="cutscene-skip-button" class="button-hero-action">SKIP</button> <!-- Changed class -->
                 </div>
                 <div id="overlay-pause-content" class="overlay-content">
                     <h2>PAUSED</h2>
                     <p id="pause-menu-epoch-text" class="pause-epoch-info"></p>
-                    <button id="resume-button">RESUME</button>
-                    <button id="settings-button-overlay-pause">SETTINGS</button>
-                    <button id="restart-button-overlay-pause" class="pause-restart-button">RESTART</button>
+                    <button id="resume-button" class="overlay-button">RESUME</button>
+                    <button id="settings-button-overlay-pause" class="overlay-button overlay-button--secondary">SETTINGS</button>
+                    <button id="restart-button-overlay-pause" class="overlay-button overlay-button--destructive pause-restart-button">RESTART</button>
                 </div>
                 <div id="overlay-gameover-content" class="overlay-content">
                     <h2>GAME OVER</h2>
                     <p id="gameover-stats-text">You survived X waves!</p>
-                    <button id="restart-button-overlay">TRY AGAIN</button>
+                    <button id="restart-button-overlay" class="overlay-button overlay-button--destructive">TRY AGAIN</button>
                 </div>
                 <div id="overlay-victory-content" class="overlay-content">
                     <h2>VICTORY!</h2>
                     <p id="victory-stats-text">You cleared all waves!</p>
-                    <button id="restart-button-overlay-victory">PLAY AGAIN?</button>
+                    <button id="restart-button-overlay-victory" class="overlay-button overlay-button--constructive">PLAY AGAIN?</button>
                 </div>
             </div>
         </div>

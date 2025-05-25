@@ -57,8 +57,6 @@ body {
 
 /* ==========================================================================
    4. Game Wrapper & Canvas
-      - #game-wrapper (including ::before and ::after for background/dimming)
-      - #game-canvas
    ========================================================================== */
 #game-wrapper {
     width: 100%;
@@ -73,7 +71,7 @@ body {
     overflow: hidden;
     background-color: rgb(135, 206, 235);
 }
-#game-wrapper::after { /* pseudo-element for the semi-transparent background image */
+#game-wrapper::after {
     content: "";
     position: absolute;
     top: 0;
@@ -85,9 +83,9 @@ body {
     background-position: center center;
     background-size: cover;
     opacity: 0.7;
-    z-index: 0;  /* above parent's bg, below canvas */
+    z-index: 0;
 }
-#game-wrapper::before { /* pseudo-element for dimming */
+#game-wrapper::before {
     content: "";
     position: absolute;
     top: 0;
@@ -129,24 +127,15 @@ body {
     z-index: 51;
     gap: 0.3rem;
 }
-#top-ui-overlay::-webkit-scrollbar {
-    display: none;
-}
-#top-ui-overlay {
-    -ms-overflow-style: none; scrollbar-width: none;
-}
+#top-ui-overlay::-webkit-scrollbar { display: none; }
+#top-ui-overlay { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* 5.1. Top Info Row (Player & Portal Health) */
 #top-info-row {
     display: flex;
-    flex-direction: row;
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    flex-grow: 1;
     gap: 0.3rem;
-    min-height: 1rem;
-    box-sizing: border-box;
 }
 .top-info-column {
     flex-basis: 50%;
@@ -163,7 +152,6 @@ body {
     transform: translate(-50%, -50%);
     z-index: 2;
     margin: 0;
-    padding: 0;
     font-size: 1rem;
     color: white;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
@@ -171,31 +159,24 @@ body {
     width: 100%;
     pointer-events: none;
 }
-.health-bar-container { /* Shared by player, portal, timer */
-    flex-grow: 1;
+.health-bar-container {
     height: 1.5rem;
     background-color: #222;
     border: 2px solid white;
-    border-radius: 0px;
     overflow: hidden;
     width: 100%;
     position: relative;
     z-index: 1;
     box-sizing: border-box;
 }
-.health-bar-fill { /* Shared by player, portal, timer */
+.health-bar-fill {
     height: 100%;
     width: 100%;
     transition: width 0.2s ease-out;
 }
-#player-health-bar-fill {
-    background-color: rgba(220, 40, 40, 0.7);
-}
-#portal-health-bar-fill {
-    background-color: rgba(100, 100, 255, 0.7);
-}
+#player-health-bar-fill { background-color: rgba(220, 40, 40, 0.7); }
+#portal-health-bar-fill { background-color: rgba(100, 100, 255, 0.7); }
 
-/* 5.2. Timer Row */
 #timer-row {
     position: relative;
     display: flex;
@@ -205,13 +186,7 @@ body {
     height: 1.5rem;
     box-sizing: border-box;
 }
-#timer-bar-container { /* Uses .health-bar-container styles */
-    width: 100%;
-    height: 100%;
-}
-#timer-bar-fill { /* Uses .health-bar-fill styles */
-    background-color: rgba(80, 180, 80, 0.7);
-}
+#timer-bar-fill { background-color: rgba(80, 180, 80, 0.7); }
 #timer-text-overlay {
     position: absolute;
     top: 50%;
@@ -225,7 +200,7 @@ body {
 }
 
 /* ==========================================================================
-   6. Epoch Overlay (In-Game MYA Display)
+   6. Epoch Overlay
    ========================================================================== */
 #epoch-overlay {
     position: absolute;
@@ -245,7 +220,7 @@ body {
 }
 
 /* ==========================================================================
-   7. Bottom UI Overlay (In-Game Inventory/Weapon Selection)
+   7. Bottom UI Overlay
    ========================================================================== */
 #bottom-ui-overlay {
     position: absolute;
@@ -262,18 +237,10 @@ body {
     overflow-y: auto;
     border-radius: 8px 8px 0 0;
 }
-#bottom-ui-overlay::-webkit-scrollbar {
-    display: none;
-}
-#bottom-ui-overlay {
-    -ms-overflow-style: none; scrollbar-width: none;
-}
+#bottom-ui-overlay::-webkit-scrollbar { display: none; }
+#bottom-ui-overlay { -ms-overflow-style: none; scrollbar-width: none; }
 
-#item-selection-area {
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
+#item-selection-area { display: flex; flex-direction: column; gap: 0.3rem; }
 #inventory-boxes-container,
 #weapon-slots-container {
     display: flex;
@@ -284,88 +251,33 @@ body {
     justify-content: center;
 }
 .item-box {
-    width: 2.5rem;
-    height: 2.5rem;
-    border: 0.0625rem solid white;
-    border-radius: 4px;
-    position: relative;
-    background-color: #333;
-    box-shadow: inset 0 0 4px rgba(0,0,0,0.4);
-    cursor: pointer;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    width: 2.5rem; height: 2.5rem; border: 0.0625rem solid white;
+    border-radius: 4px; position: relative; background-color: #333;
+    box-shadow: inset 0 0 4px rgba(0,0,0,0.4); cursor: pointer;
+    display: flex; justify-content: center; align-items: center;
     font-size: 18px;
     transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-tap-highlight-color: transparent;
 }
-.item-box.active {
-    border-color: yellow;
-    box-shadow: 0 0 6px yellow;
-    opacity: 1;
-}
-.item-box.disabled {
-    opacity: 0.45;
-    cursor: default;
-    box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
-    border-color: #666;
-}
-.item-box.placeholder-slot {
-    background-color: #2a2a2a;
-    opacity: 0.3;
-    cursor: default;
-    border-color: #444;
-    box-shadow: inset 0 0 3px rgba(0,0,0,0.6);
-}
-.item-box.material-quadrant-box {
-    position: relative;
-}
+.item-box.active { border-color: yellow; box-shadow: 0 0 6px yellow; opacity: 1; }
+.item-box.disabled { opacity: 0.45; cursor: default; box-shadow: inset 0 0 5px rgba(0,0,0,0.8); border-color: #666; }
+.item-box.placeholder-slot { background-color: #2a2a2a; opacity: 0.3; cursor: default; border-color: #444; box-shadow: inset 0 0 3px rgba(0,0,0,0.6); }
+.item-box.material-quadrant-box { position: relative; }
 .quadrant-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-    gap: 0.0625rem;
-    padding: 0.125rem;
-    box-sizing: border-box;
-    z-index: 1;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    gap: 0.0625rem; padding: 0.125rem; box-sizing: border-box; z-index: 1;
 }
-.quadrant {
-    background-color: rgba(0, 0, 0, 0.35);
-    border: 0.0625rem solid rgba(255, 255, 255, 0.05);
-    box-sizing: border-box;
-    transition: background-color 0.15s ease-in-out;
+.quadrant { background-color: rgba(0, 0, 0, 0.35); border: 0.0625rem solid rgba(255, 255, 255, 0.05); box-sizing: border-box; transition: background-color 0.15s ease-in-out; }
+.quadrant.filled { background-color: rgba(255, 255, 255, 0.25); border-color: rgba(255, 255, 255, 0.15); }
+.item-box .item-count {
+    position: absolute; bottom: 0.0625rem; right: 0.125rem; font-size: 0.8em;
+    font-weight: bold; color: white; text-shadow: 1px 1px 1px black; pointer-events: none;
 }
-.quadrant.filled {
-    background-color: rgba(255, 255, 255, 0.25);
-    border-color: rgba(255, 255, 255, 0.15);
-}
-.item-box .item-count { /* General item count positioning */
-    position: absolute;
-    bottom: 0.0625rem;
-    right: 0.125rem;
-    font-size: 0.8em;
-    font-weight: bold;
-    color: white;
-    text-shadow: 1px 1px 1px black;
-    pointer-events: none;
-}
-.item-box.material-quadrant-box .item-count { /* Specific for quadrant box count (centered) */
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2;
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: white;
-    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
-    pointer-events: none;
+.item-box.material-quadrant-box .item-count {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 2; font-size: 1.1rem; font-weight: bold; color: white;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7); pointer-events: none;
 }
 
 /* ==========================================================================
@@ -373,374 +285,229 @@ body {
    ========================================================================== */
 #boot-overlay,
 #menu-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    text-align: center;
-    color: white;
-    opacity: 0;
-    visibility: hidden;
-    pointer-events: none;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; justify-content: center; align-items: center;
+    flex-direction: column; text-align: center; color: white;
+    opacity: 0; visibility: hidden; pointer-events: none;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
 }
-#boot-overlay {
-    background-color: black;
-    z-index: 200;
-}
+#boot-overlay { background-color: black; z-index: 200; }
 #boot-overlay.show-title,
 #boot-overlay.show-error {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
+    opacity: 1; visibility: visible; pointer-events: auto;
     transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 #menu-overlay {
-    background-color: rgba(0, 0, 0, 0.75);
-    z-index: 100;
+    background-color: rgba(0, 0, 0, 0.75); z-index: 100;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0s;
 }
-#menu-overlay.force-opaque {
-    background-color: black;
-}
+#menu-overlay.force-opaque { background-color: black; }
 #menu-overlay.active {
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
+    opacity: 1; visibility: visible; pointer-events: auto;
     transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
 }
-#menu-overlay.active.show-cutscene #overlay-cutscene-content { /* Special case for cutscene width */
-    width: 100%;
-    height: 100%;
-    max-width: none;
-    position: relative;
+#menu-overlay.active.show-cutscene #overlay-cutscene-content {
+    width: 100%; height: 100%; max-width: none; position: relative;
 }
 
-/* Shared Overlay Content Styles */
 .overlay-content {
-    display: none; /* Hidden by default, shown by specific overlay state */
+    display: none; flex-direction: column; align-items: center;
+    width: 80%; max-width: 500px; padding: 20px; box-sizing: border-box;
+}
+/* NEW: Make .overlay-content a flex container that can push buttons to bottom */
+#overlay-mainmenu-content { /* Specific for main menu to allow button group positioning */
+    display: none; /* Still hidden by default */
     flex-direction: column;
-    align-items: center;
-    width: 80%;
-    max-width: 500px;
-    padding: 20px;
+    align-items: center; /* Center the H1 */
+    justify-content: space-between; /* Push H1 to top, button group to bottom */
+    width: 100%; /* Take full width of parent overlay */
+    height: 100%; /* Take full height */
+    max-width: none; /* Override max-width for this specific content */
+    padding: 20px; /* Keep padding */
     box-sizing: border-box;
 }
+
 #boot-overlay h1, #menu-overlay h1 {
-    font-family: 'RubikIso', sans-serif;
-    font-size: 3.5em;
-    margin-bottom: 1.5rem;
-    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
+    font-family: 'RubikIso', sans-serif; font-size: 3.5em;
+    margin-bottom: 1.5rem; text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
 }
-#boot-overlay h2, #menu-overlay h2 {
-    font-size: 2.5em; margin-bottom: 1.5rem;
-}
-#boot-overlay p, #menu-overlay p {
-    font-size: 1.2em; margin-bottom: 1.5rem;
-}
-#boot-overlay button, #menu-overlay button { /* General button styling for overlays */
-    padding: 12px 25px;
-    font-size: 1.3em;
-    margin-top: 1rem;
-    min-width: 150px;
-    cursor: pointer;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    background-color: #eee;
-    color: #333;
-    font-weight: bold;
+#boot-overlay h2, #menu-overlay h2 { font-size: 2.5em; margin-bottom: 1.5rem; }
+#boot-overlay p, #menu-overlay p { font-size: 1.2em; margin-bottom: 1.5rem; }
+
+/* === Base Styles for Standard Overlay Buttons === */
+.overlay-button {
+    padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px;
+    cursor: pointer; border-radius: 5px; border: 1px solid #ccc;
+    background-color: #eee; color: #333; font-weight: bold;
     transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+    box-sizing: border-box;
 }
-#boot-overlay button:hover, #menu-overlay button:hover {
-    background-color: #fff;
-}
-#boot-overlay button:active, #menu-overlay button:active {
-    transform: scale(0.97);
-}
+.overlay-button:hover { background-color: #fff; }
+.overlay-button:active { transform: scale(0.97); }
 
-/* ==========================================================================
-   9. Boot Overlay - Specific Content
-   ========================================================================== */
+/* === Modifiers for Standard Overlay Buttons === */
+.overlay-button--destructive { background-color: darkred; color: white; border-color: #ffaaaa; }
+.overlay-button--destructive:hover { background-color: red; }
+.overlay-button--constructive { background-color: darkgreen; color: white; border-color: #aaffaa; }
+.overlay-button--constructive:hover { background-color: green; }
+.overlay-button--secondary { background-color: #555; color: white; border-color: #888; }
+.overlay-button--secondary:hover { background-color: #666; }
 
-/* 9.1. Title Content */
-/* #overlay-title-content is handled by .overlay-content */
-#title-heading-button { /* This is the user's specific button */
+/* === Hero Action Button Style (Similar to Title Button) === */
+.button-hero-action {
     background-color: black;
     border: 2px solid white;
-    padding: 0.5rem 1rem;
+    padding: 0.5rem 1rem; /* Adjusted padding */
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
     border-radius: 8px;
-}
-#title-heading-button h1 { /* Overrides the general #boot-overlay h1 */
-    margin: 0;
-    padding: 0;
     color: white;
-    /* font-family, font-size, text-shadow will be inherited from general #boot-overlay h1 */
+    font-family: 'RubikIso', sans-serif; /* Example font */
+    font-size: 1.5em; /* Smaller than H1, adjust as needed */
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3);
+    margin: 0.5rem; /* Spacing between hero buttons if grouped */
+    box-sizing: border-box;
 }
-#title-heading-button:hover {
+.button-hero-action:hover {
     background-color: #1a1a1a;
     border-color: #f0f0f0;
-}
-#title-heading-button:hover h1 {
     color: #f0f0f0;
-    text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.5);
+    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
 }
-#title-heading-button:active {
+.button-hero-action:active {
      background-color: #0d0d0d;
      border-color: #e0e0e0;
      transform: scale(0.97);
 }
 
-/* 9.2. Error Content */
-#boot-overlay.show-error { /* Specific background for error state */
-    background-color: rgba(0, 0, 0, 0.95);
-    color: red;
-    padding: 20px;
+
+/* ==========================================================================
+   9. Boot Overlay - Specific Content
+   ========================================================================== */
+
+#title-heading-button { /* This is the main title button */
+    background-color: black; border: 2px solid white; padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    border-radius: 8px;
 }
-/* #overlay-error-content is handled by .overlay-content */
-#overlay-error-content h1 { /* Overrides general h1 for error content */
-    font-family: 'RubikIso', sans-serif;
-    font-size: 2.5em;
-    margin-bottom: 1rem;
-    color: red;
-    text-shadow: 1px 1px 3px rgba(255, 100, 100, 0.5);
+#title-heading-button h1 { margin: 0; padding: 0; color: white; }
+#title-heading-button:hover { background-color: #1a1a1a; border-color: #f0f0f0; }
+#title-heading-button:hover h1 { color: #f0f0f0; text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.5); }
+#title-heading-button:active { background-color: #0d0d0d; border-color: #e0e0e0; transform: scale(0.97); }
+
+#boot-overlay.show-error { background-color: rgba(0, 0, 0, 0.95); color: red; padding: 20px; }
+#overlay-error-content h1 {
+    font-family: 'RubikIso', sans-serif; font-size: 2.5em; margin-bottom: 1rem;
+    color: red; text-shadow: 1px 1px 3px rgba(255, 100, 100, 0.5);
 }
-#overlay-error-content p { /* Overrides general p for error content */
-    font-size: 1.2em;
-    margin-bottom: 1.5rem;
-    color: #ffdddd;
-}
+#overlay-error-content p { font-size: 1.2em; margin-bottom: 1.5rem; color: #ffdddd; }
 #overlay-error-content p#error-message-text {
-    font-size: 1.1em;
-    margin-bottom: 2rem;
-    word-break: break-word;
-    color: white;
-    background-color: rgba(50,0,0,0.5);
-    padding: 0.5rem;
-    border-radius: 4px;
-    border: 1px solid red;
+    font-size: 1.1em; margin-bottom: 2rem; word-break: break-word; color: white;
+    background-color: rgba(50,0,0,0.5); padding: 0.5rem; border-radius: 4px; border: 1px solid red;
 }
-#overlay-error-content p:last-child {
-    font-size: 1em;
-    color: #ffdddd;
-}
+#overlay-error-content p:last-child { font-size: 1em; color: #ffdddd; }
 
 /* ==========================================================================
    10. Menu Overlay - Specific Content
    ========================================================================== */
 
 /* 10.1. Main Menu Content */
-/* #overlay-mainmenu-content is handled by .overlay-content */
-/* Buttons inside inherit from general #menu-overlay button */
+.button-group-bottom-right { /* NEW for main menu buttons */
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    align-items: flex-end; /* Align to bottom of this group */
+    width: 100%; /* Take full width to allow right alignment */
+    padding: 1rem; /* Add some padding around the group */
+    box-sizing: border-box;
+    margin-top: auto; /* Push this group to the bottom of #overlay-mainmenu-content */
+}
+.button-group-bottom-right .button-hero-action {
+    margin-left: 1rem; /* Spacing between settings and start */
+}
+
 
 /* 10.2. Settings Content */
-#overlay-settings-content { /* Slightly different layout than general .overlay-content */
-    flex-direction: column;
-    align-items: center;
-    width: 80%;
-    max-width: 400px; /* Smaller max-width */
-    padding: 20px;
-    box-sizing: border-box;
-    gap: 15px;
+#overlay-settings-content {
+    flex-direction: column; align-items: center; width: 80%;
+    max-width: 400px; padding: 20px; box-sizing: border-box; gap: 15px;
 }
 .settings-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    padding: 5px 0;
+    display: flex; justify-content: space-between; align-items: center;
+    width: 100%; padding: 5px 0;
 }
-#overlay-settings-content .settings-button { /* General style for buttons INSIDE settings */
-    padding: 10px 20px;
-    font-size: 1.1em; /* Different font size */
-    min-width: 180px;
-    text-align: left;
-    cursor: pointer;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    background-color: #eee;
-    color: #333;
-    font-weight: bold;
+.settings-row__button {
+    padding: 10px 20px; font-size: 1.1em; min-width: 180px; text-align: left;
+    cursor: pointer; border-radius: 5px; border: 1px solid #ccc;
+    background-color: #eee; color: #333; font-weight: bold;
     transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+    box-sizing: border-box;
 }
-#overlay-settings-content .settings-button:hover {
-    background-color: #fff;
-}
-#overlay-settings-content .settings-button:active {
-    transform: scale(0.97);
-}
-#overlay-settings-content .settings-row span {
-    font-size: 1.1em;
-    font-weight: bold;
-    color: #ccc;
-    min-width: 50px;
-    text-align: right;
-}
-#overlay-settings-content .settings-button.muted,
-#overlay-settings-content .settings-button.active { /* State for ON/MUTED */
-    border-color: darkred;
-    color: darkred;
-    background-color: #fee;
-}
-#overlay-settings-content #settings-btn-toggle-grid.active { /* Specific for grid button when active */
-    background-color: #dfd;
-    border-color: darkgreen;
-    color: darkgreen;
-}
-/* Back button in settings inherits from general #menu-overlay button */
+.settings-row__button:hover { background-color: #fff; }
+.settings-row__button:active { transform: scale(0.97); }
+.settings-row span { font-size: 1.1em; font-weight: bold; color: #ccc; min-width: 50px; text-align: right; }
+.settings-row__button.settings-row__button--state-bad { border-color: darkred; color: darkred; background-color: #fee; }
+.settings-row__button.settings-row__button--state-good { background-color: #dfd; border-color: darkgreen; color: darkgreen; }
 
 /* 10.3. Cutscene Content */
-/* #overlay-cutscene-content general structure is modified by .active.show-cutscene above */
 .cutscene-image {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    opacity: 0;
-    transition: opacity 1s ease-in-out;
-    z-index: 1;
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    object-fit: contain; opacity: 0; transition: opacity 1s ease-in-out; z-index: 1;
 }
-.cutscene-image.active {
-    opacity: 1;
-}
+.cutscene-image.active { opacity: 1; }
+
 #cutscene-text-box,
-#overlay-cutscene-content #cutscene-skip-button { /* Initial state for text box and skip button */
-    opacity: 0;
-    visibility: hidden;
+#overlay-cutscene-content #cutscene-skip-button.button-hero-action { /* Target the skip button correctly */
+    opacity: 0; visibility: hidden;
     transition: opacity 0.7s ease-in-out, visibility 0s linear 0.7s;
     pointer-events: none;
 }
-#menu-overlay.active.show-cutscene #cutscene-text-box { /* Position and style text box when cutscene is active */
-    display: flex; /* This gets overridden by .visible, but good to have */
-    align-items: center;
-    justify-content: flex-start;
-    position: absolute;
-    bottom: 5%;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 85%;
-    max-width: 750px;
-    min-height: 80px;
-    background-color: rgba(0, 0, 30, 0.8);
-    border: 2px solid rgba(100, 100, 255, 0.7);
-    border-radius: 10px;
-    padding: 15px 20px;
-    box-sizing: border-box;
-    z-index: 5;
-    color: #e0e0ff;
-    font-family: 'Arial', sans-serif;
+
+#menu-overlay.active.show-cutscene #cutscene-text-box {
+    display: flex; align-items: center; justify-content: flex-start;
+    position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%);
+    width: 85%; max-width: 750px; min-height: 80px;
+    background-color: rgba(0, 0, 30, 0.8); border: 2px solid rgba(100, 100, 255, 0.7);
+    border-radius: 10px; padding: 15px 20px; box-sizing: border-box; z-index: 5;
+    color: #e0e0ff; font-family: 'Arial', sans-serif;
     box-shadow: 0 2px 15px rgba(0,0,0,0.6);
 }
-#menu-overlay.active.show-cutscene #overlay-cutscene-content #cutscene-skip-button { /* Position skip button */
+
+/* Position the skip button specifically for cutscenes */
+#overlay-cutscene-content #cutscene-skip-button.button-hero-action {
     position: absolute;
-    bottom: 1rem;
-    right: 1rem;
+    bottom: 1rem; /* Adjust as needed */
+    right: 1rem;  /* Adjust as needed */
     z-index: 10;
-    padding: 8px 15px; /* Custom padding */
-    font-size: 1em;    /* Custom font size */
-    background-color: rgba(0, 0, 0, 0.5); /* Custom background */
-    color: white;
-    border-color: rgba(255, 255, 255, 0.3);
+    margin-top: 0; /* Override margin from .button-hero-action if it has one */
+    font-size: 1.2em; /* Slightly smaller than main menu hero buttons */
 }
+
 #cutscene-text-box.visible,
-#overlay-cutscene-content #cutscene-skip-button.visible { /* Visible state for text box and skip button */
-    opacity: 1;
-    visibility: visible;
-    pointer-events: auto;
+#overlay-cutscene-content #cutscene-skip-button.button-hero-action.visible {
+    opacity: 1; visibility: visible; pointer-events: auto;
     transition: opacity 0.7s ease-in-out, visibility 0s linear 0s;
 }
 #cutscene-text-content {
-    margin: 0;
-    font-size: 1.2em;
-    line-height: 1.6;
-    text-align: left;
-    width: 100%;
-    max-height: 100px;
-    overflow-y: auto;
-}
-#overlay-cutscene-content #cutscene-skip-button:hover {
-    background-color: rgba(0, 0, 0, 0.7);
-    border-color: rgba(255, 255, 255, 0.6);
-}
-#overlay-cutscene-content #cutscene-skip-button:active {
-    transform: scale(0.97);
-    background-color: rgba(0, 0, 0, 0.9);
+    margin: 0; font-size: 1.2em; line-height: 1.6; text-align: left;
+    width: 100%; max-height: 100px; overflow-y: auto;
 }
 
 /* 10.4. Pause Content */
-/* #overlay-pause-content is handled by .overlay-content */
 #overlay-pause-content .pause-epoch-info {
-    font-size: 1.1em;
-    color: #cccccc;
-    margin-top: -1rem;
-    margin-bottom: 1.5rem;
-    font-style: italic;
+    font-size: 1.1em; color: #cccccc; margin-top: -1rem;
+    margin-bottom: 1.5rem; font-style: italic;
 }
-/* Buttons: Resume inherits general. Settings, Restart are specific */
-#settings-button-overlay-pause { /* Specific button in pause menu */
-    background-color: #555;
-    color: white;
-    border-color: #888;
-}
-#settings-button-overlay-pause:hover {
-    background-color: #666;
-}
-#restart-button-overlay-pause { /* Specific button in pause menu */
-    background-color: darkred; color: white; border-color: #ffaaaa;
-}
-#restart-button-overlay-pause:hover {
-    background-color: red;
-}
-
-/* 10.5. Game Over Content */
-/* #overlay-gameover-content is handled by .overlay-content */
-#restart-button-overlay { /* Specific button in game over menu */
-    background-color: darkred; color: white; border-color: #ffaaaa;
-}
-#restart-button-overlay:hover {
-    background-color: red;
-}
-
-/* 10.6. Victory Content */
-/* #overlay-victory-content is handled by .overlay-content */
-#restart-button-overlay-victory { /* Specific button in victory menu */
-    background-color: darkgreen; color: white; border-color: #aaffaa;
-}
-#restart-button-overlay-victory:hover {
-    background-color: green;
-}
-
 
 /* ==========================================================================
    11. Landscape Warning & NoScript
    ========================================================================== */
 #landscape-warning {
-    display: none; /* Shown by media query */
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.9);
-    color: white; z-index: 101;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    font-size: 1.5em;
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.9); color: white; z-index: 101;
+    justify-content: center; align-items: center; text-align: center; font-size: 1.5em;
 }
-noscript p {
-    color: white;
-    text-align: center;
-    padding: 1rem;
-}
+noscript p { color: white; text-align: center; padding: 1rem; }
 
 /* ==========================================================================
    12. Media Queries
