@@ -75,8 +75,7 @@ export function initGameUI() {
         topUiOverlayEl, playerColumnEl, portalColumnEl, playerHealthBarContainerEl, playerHealthBarFillEl, 
         portalColumnH2El, portalHealthBarContainerEl, portalHealthBarFillEl, timerRowEl, timerBarContainerEl, 
         timerBarFillEl, timerTextOverlayEl, bottomUiOverlayEl,itemSelectionAreaEl, inventoryBoxesContainerEl, 
-        weaponSlotsContainerEl, settingsBtnToggleGrid, settingsBtnMuteMusic, settingsBtnMuteSfx, settingsValueGrid, 
-        settingsValueMusic, settingsValueSfx, epochOverlayEl, pauseMenuEpochTextEl
+        weaponSlotsContainerEl, settingsBtnToggleGrid, settingsBtnMuteMusic, settingsBtnMuteSfx, epochOverlayEl, pauseMenuEpochTextEl
     ];
     if (requiredElements.some(el => !el)) {
         console.error("UI InitGameUI: Could not find all expected game UI elements!");
@@ -89,7 +88,6 @@ export function initGameUI() {
             'bottomUiOverlayEl', 
             'itemSelectionAreaEl', 'inventoryBoxesContainerEl', 'weaponSlotsContainerEl',
             'settingsBtnToggleGrid', 'settingsBtnMuteMusic', 'settingsBtnMuteSfx',
-            'settingsValueGrid', 'settingsValueMusic', 'settingsValueSfx',
             'epochOverlayEl',
             'pauseMenuEpochTextEl'
         ];
@@ -283,24 +281,22 @@ export function setPortalReference(portalObject) { // set reference to portal ob
         if (portalColumnH2El) portalColumnH2El.style.color = 'white'; 
     }
 }
-export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMuted) { // update visual state of settings buttons
-    if (settingsBtnToggleGrid && settingsValueGrid) {
-        settingsBtnToggleGrid.classList.toggle('active', isGridVisible);
+export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMuted) {
+    if (settingsBtnToggleGrid) {
+        settingsBtnToggleGrid.classList.toggle('settings-row__button--state-good', isGridVisible);
+        settingsBtnToggleGrid.textContent = isGridVisible ? 'GRID: ON' : 'GRID: OFF';
         settingsBtnToggleGrid.title = isGridVisible ? 'Hide Grid Overlay' : 'Show Grid Overlay';
-        settingsValueGrid.textContent = isGridVisible ? 'ON' : 'OFF';
-        settingsValueGrid.style.color = isGridVisible ? 'lime' : '#ccc';
+
     }
-    if (settingsBtnMuteMusic && settingsValueMusic) {
-        settingsBtnMuteMusic.classList.toggle('muted', isMusicMuted);
+    if (settingsBtnMuteMusic) {
+        settingsBtnMuteMusic.classList.toggle('settings-row__button--state-bad', isMusicMuted);
+        settingsBtnMuteMusic.textContent = isMusicMuted ? 'MUSIC: OFF' : 'MUSIC: ON';
         settingsBtnMuteMusic.title = isMusicMuted ? 'Unmute Music' : 'Mute Music';
-        settingsValueMusic.textContent = isMusicMuted ? 'MUTED' : 'ON';
-        settingsValueMusic.style.color = isMusicMuted ? 'red' : 'lime';
     }
-    if (settingsBtnMuteSfx && settingsValueSfx) {
-        settingsBtnMuteSfx.classList.toggle('muted', isSfxMuted);
+    if (settingsBtnMuteSfx /* && settingsValueSfx - settingsValueSfx is removed */) {
+        settingsBtnMuteSfx.classList.toggle('settings-row__button--state-bad', isSfxMuted);
+        settingsBtnMuteSfx.textContent = isSfxMuted ? 'SFX: OFF' : 'SFX: ON';
         settingsBtnMuteSfx.title = isSfxMuted ? 'Unmute SFX' : 'Mute SFX';
-        settingsValueSfx.textContent = isSfxMuted ? 'MUTED' : 'ON';
-        settingsValueSfx.style.color = isSfxMuted ? 'red' : 'lime';
     }
 }
 export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) { // update player health bar and inventory/weapon slots
