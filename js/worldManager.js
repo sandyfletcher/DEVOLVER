@@ -118,26 +118,37 @@ function updateGravityAnimations(dt) {
     // console.log(`[WorldManager.updateGravityAnimations] Active: ${activeGravityAnimations.length}, Queued: ${gravityAnimationQueue.length}`); // Log active/queued
     if (dt <= 0) return;
     newGravityAnimationStartTimer -= dt;
-    if (newGravityAnimationStartTimer <= 0 && gravityAnimationQueue.length > 0 && activeGravityAnimations.length < MAX_FALLING_BLOCKS_AT_ONCE) {
-        const change = gravityAnimationQueue.shift();
-        const gridCtx = Renderer.getGridContext();
-        if (gridCtx) {
-            gridCtx.clearRect(
-                Math.floor(change.c * Config.BLOCK_WIDTH),
-                Math.floor(change.r_start * Config.BLOCK_HEIGHT),
-                Math.ceil(Config.BLOCK_WIDTH),
-                Math.ceil(Config.BLOCK_HEIGHT)
-            );
+    const maxFallingBlocks = Config.MAX_FALLING_BLOCKS_AT_ONCE ?? 20;
+    const newGravityDelay = Config.NEW_GRAVITY_ANIM_DELAY ?? 0.02;
+
+    if (newGravityAnimationStartTimer <= 0) {
+        let canStartLoopingGravity = true;
+        while (canStartLoopingGravity && gravityAnimationQueue.length > 0 && activeGravityAnimations.length < maxFallingBlocks) {
+            const change = gravityAnimationQueue.shift();
+            const gridCtx = Renderer.getGridContext();
+            if (gridCtx) {
+                gridCtx.clearRect(
+                    Math.floor(change.c * Config.BLOCK_WIDTH),
+                    Math.floor(change.r_start * Config.BLOCK_HEIGHT),
+                    Math.ceil(Config.BLOCK_WIDTH),
+                    Math.ceil(Config.BLOCK_HEIGHT)
+                );
+            }
+            activeGravityAnimations.push({
+                c: change.c,
+                r_start_pixel_y: change.r_start * Config.BLOCK_HEIGHT,
+                r_current_pixel_y: change.r_start * Config.BLOCK_HEIGHT,
+                r_end_pixel_y: change.r_end * Config.BLOCK_HEIGHT,
+                blockData: change.blockData,
+                fallSpeed: Config.GRAVITY_ANIMATION_FALL_SPEED ?? 200, // Use config
+            });
+            if (newGravityDelay > dt && activeGravityAnimations.length >= maxFallingBlocks) {
+                canStartLoopingGravity = false;
+            }
         }
-        activeGravityAnimations.push({
-            c: change.c,
-            r_start_pixel_y: change.r_start * Config.BLOCK_HEIGHT,
-            r_current_pixel_y: change.r_start * Config.BLOCK_HEIGHT,
-            r_end_pixel_y: change.r_end * Config.BLOCK_HEIGHT,
-            blockData: change.blockData,
-            fallSpeed: GRAVITY_ANIMATION_FALL_SPEED,
-        });
-        newGravityAnimationStartTimer = NEW_GRAVITY_ANIM_DELAY;
+        if (gravityAnimationQueue.length > 0 || activeGravityAnimations.length > 0) {
+            newGravityAnimationStartTimer = newGravityDelay;
+        }
     }
     for (let i = activeGravityAnimations.length - 1; i >= 0; i--) {
         const anim = activeGravityAnimations[i];
@@ -726,31 +737,47 @@ function updateTransformAnimations(dt) {
     if (dt <= 0) return;
 
     newTransformAnimationStartTimer -= dt;
-    const blocksAtOnce = Config.AGING_ANIMATION_BLOCKS_AT_ONCE ?? 10;
-    const newBlockDelay = Config.AGING_ANIMATION_NEW_BLOCK_DELAY ?? 0.05;
+    const blocksAtOnce = Config.AGING_ANIMATION_BLOCKS_AT_ONCE ?? 10; // Max active animations
+    const newBlockDelay = Config.AGING_ANIMATION_NEW_BLOCK_DELAY ?? 0.05; // Delay before trying to start a new batch/fill active list
 
-    if (newTransformAnimationStartTimer <= 0 && transformAnimationQueue.length > 0 && activeTransformAnimations.length < blocksAtOnce) {
-        const change = transformAnimationQueue.shift();
+    if (newTransformAnimationStartTimer <= 0) {
+        let canStartLooping = true;
+        while (canStartLooping && transformAnimationQueue.length > 0 && activeTransformAnimations.length < blocksAtOnce) {
+            const change = transformAnimationQueue.shift();
+            // Ensure we don't re-add if somehow an animation for this c,r is already active
+            // (though with diffing this should be rare unless logic changes elsewhere)
+            const existingAnimIndex = activeTransformAnimations.findIndex(anim => anim.c === change.c && anim.r === change.r);
+            if (existingAnimIndex === -1) {
+                activeTransformAnimations.push({
+                    c: change.c, r: change.r,
+                    oldBlockData: change.oldBlockData,
+                    newBlockData: change.newBlockData,
+                    timer: Config.AGING_ANIMATION_SWELL_DURATION ?? 0.12,
+                    phase: 'swell',
+                    currentScale: 1.0,
+                });
 
-        const existingAnimIndex = activeTransformAnimations.findIndex(anim => anim.c === change.c && anim.r === change.r);
-        if (existingAnimIndex === -1) {
-            activeTransformAnimations.push({
-                c: change.c, r: change.r,
-                oldBlockData: change.oldBlockData,
-                newBlockData: change.newBlockData,
-                timer: Config.AGING_ANIMATION_SWELL_DURATION ?? 0.12,
-                phase: 'swell',
-                currentScale: 1.0,
-            });
-            newTransformAnimationStartTimer = newBlockDelay;
-
-            const gridCtx = Renderer.getGridContext();
-            if (gridCtx) {
-                gridCtx.clearRect(
-                    Math.floor(change.c * Config.BLOCK_WIDTH), Math.floor(change.r * Config.BLOCK_HEIGHT),
-                    Math.ceil(Config.BLOCK_WIDTH), Math.ceil(Config.BLOCK_HEIGHT)
-                );
+                const gridCtx = Renderer.getGridContext();
+                if (gridCtx) {
+                    gridCtx.clearRect(
+                        Math.floor(change.c * Config.BLOCK_WIDTH), Math.floor(change.r * Config.BLOCK_HEIGHT),
+                        Math.ceil(Config.BLOCK_WIDTH), Math.ceil(Config.BLOCK_HEIGHT)
+                    );
+                }
+            } else {
+                // If it was already active, effectively skip adding it again from queue.
+                // This might happen if queue had duplicates, though current diff logic shouldn't produce them.
             }
+            // If newBlockDelay is extremely small, allow multiple adds per frame.
+            // If newBlockDelay is larger, this loop will only effectively add one, then wait.
+            // For your config (0.00001s), this will allow filling up `blocksAtOnce` in one frame.
+            if (newBlockDelay > dt && activeTransformAnimations.length >= blocksAtOnce) { // If delay is significant and we filled the batch.
+                 canStartLooping = false; // Stop for this frame, wait for timer.
+            }
+        }
+        // Reset timer for the next opportunity to add animations
+        if (transformAnimationQueue.length > 0 || activeTransformAnimations.length > 0) { // If there's still work or potential future work
+             newTransformAnimationStartTimer = newBlockDelay;
         }
     }
 

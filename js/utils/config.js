@@ -17,7 +17,6 @@ export const CUTSCENE_SLIDES = [
 export const MIN_CAMERA_SCALE = 0.25; // min zoom level (zoomed out to 1/4 size)
 export const MAX_CAMERA_SCALE = 3.0; // max zoom level (zoomed in 3x)
 export const ZOOM_SPEED_FACTOR = 0.001; // sensitivity of mouse wheel
-// PLAYER_INTERACTION_RANGE_MIN_VISUAL_CLAMP is no longer directly used for weapon drawing
 
 // --- Game Grid ---
 
@@ -288,13 +287,13 @@ export const AGING_PROB_TREE_TRUNK_DECAY = 0.001;
 
 // --- Animation Constants ---
 
-export const MAX_FALLING_BLOCKS_AT_ONCE = 10000;
-export const NEW_GRAVITY_ANIM_DELAY = 0.00001;
-export const GRAVITY_ANIMATION_FALL_SPEED = 1000;
-export const AGING_ANIMATION_BLOCKS_AT_ONCE = 10000; // number of simultaneous animations
-export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.00001; // seconds before starting next animation in queue
-export const AGING_ANIMATION_SWELL_DURATION = 0.005;
-export const AGING_ANIMATION_POP_DURATION = 0.005;
+export const MAX_FALLING_BLOCKS_AT_ONCE = 50;
+export const NEW_GRAVITY_ANIM_DELAY = 0.3;
+export const GRAVITY_ANIMATION_FALL_SPEED = 20;
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 1; // number of simultaneous animations
+export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.01; // seconds before starting next animation in queue
+export const AGING_ANIMATION_SWELL_DURATION = 0.3;
+export const AGING_ANIMATION_POP_DURATION = 0.4;
 export const AGING_ANIMATION_SWELL_SCALE = 1.5;
 export const AGING_ANIMATION_OLD_BLOCK_COLOR = 'rgba(200, 200, 200, 0.7)'; // swell old block
 export const AGING_ANIMATION_NEW_BLOCK_COLOR = 'rgba(255, 255, 150, 0.8)'; // briefly flash new block
