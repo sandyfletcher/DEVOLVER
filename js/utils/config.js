@@ -638,7 +638,7 @@ export const ENEMY_STATS = {
         maxSpeedX_BLOCKS_PER_SEC: 13.75,
         maxSpeedY_BLOCKS_PER_SEC: 12.5,
         swimSpeed_BLOCKS_PER_SEC: 12.5,
-        health: 100, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
+        health: 50, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
         canJump: true,
         jumpVelocity_BLOCKS_PER_SEC: 37.5,
         canSwim: false, canFly: false,
@@ -661,7 +661,7 @@ export const ENEMY_STATS = {
     },
     [ENEMY_TYPE_DUNKLEOSTEUS]: {
         displayName: "Dunkleosteus", aiType: 'dunkleosteusAI', color: 'rgb(80, 100, 120)',
-        width_BLOCKS: 4, // Larger enemy
+        width_BLOCKS: 4, // larger enemy
         height_BLOCKS: 2,
         health: 3, contactDamage: 15, applyGravity: true, gravityFactor: 1.0,
         maxSpeedX_BLOCKS_PER_SEC: 6.5,
@@ -674,7 +674,7 @@ export const ENEMY_STATS = {
         landHopHorizontalVelocity_BLOCKS_PER_SEC: 0,
         dropTable: [{ type: 'bone', chance: 0.7, minAmount: 2, maxAmount: 3 }, { type: 'metal', chance: 0.2, minAmount: 1, maxAmount: 1 }],
         outOfWaterDamagePerSecond: 15,
-        visualShape: [ // Assuming center (0,0)
+        visualShape: [ // assuming center (0,0)
             // Main Body (armored front, softer tail)
             { type: 'polygon', points: [ // Armored head plate
                 {xFactor: 0.45, yFactor: -0.3}, {xFactor: 0.1, yFactor: -0.45}, {xFactor: -0.1, yFactor: -0.4},
@@ -728,7 +728,7 @@ export const ENEMY_STATS = {
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const MYA_TRANSITION_ANIMATION_DURATION = 8.0; // seconds for the MYA number to animate
-export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default number of aging passes if not specified per wave
+export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // fallback number of aging passes if not specified
 
 export const WAVES = [
     {
@@ -741,7 +741,7 @@ export const WAVES = [
         subWaves: [
             { enemyGroups: [
                 { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
-                { type: ENEMY_TYPE_SMALL_FISH, count: 10, delayBetween: 0.8, startDelay: 0.0 },
+                { type: ENEMY_TYPE_SMALL_FISH, count: 30, delayBetween: 0.8, startDelay: 0.0 },
                 { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 },
                 { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
                 { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },

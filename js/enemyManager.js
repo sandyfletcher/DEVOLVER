@@ -5,6 +5,7 @@
 import * as Config from './utils/config.js';
 import { Enemy } from './utils/enemy.js';
 import * as GridCollision from './utils/gridCollision.js';
+import * as DebugLogger from './utils/debugLogger.js';
 
 let enemies = [];
 
@@ -74,7 +75,7 @@ export function trySpawnEnemy(enemyType) {
                       for (let r = checkRows[0]; r <= checkRows[1]; r++) {
                           if (GridCollision.isSolid(c, r)) {
                               isLocationClear = false;
-                              // console.log(`Spawn validation failed: Solid block at [${c}, ${r}] for attempt at ${tempX.toFixed(1)}, ${tempY.toFixed(1)}`);
+                              // DebugLogger.log(`Spawn validation failed: Solid block at [${c}, ${r}] for attempt at ${tempX.toFixed(1)}, ${tempY.toFixed(1)}`);
                               break;
                           }
                       }
@@ -85,9 +86,9 @@ export function trySpawnEnemy(enemyType) {
                 spawnX = tempX;
                 spawnY = tempY;
                 foundValidSpawnPoint = true;
-                // console.log(`Found valid spawn: ${enemyType} at ${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}`);
+                DebugLogger.log(`Found valid spawn: ${enemyType} at ${spawnX.toFixed(1)}, ${spawnY.toFixed(1)}`);
             } else {
-                 // console.log(`Invalid spawn point attempt ${attempt+1}/${maxSpawnAttempts}: (${tempX.toFixed(1)}, ${tempY.toFixed(1)}) collision detected.`);
+                 // DebugLogger.log(`Invalid spawn point attempt ${attempt+1}/${maxSpawnAttempts}: (${tempX.toFixed(1)}, ${tempY.toFixed(1)}) collision detected.`);
             }
         }
     }
@@ -129,7 +130,7 @@ export function update(dt, playerPosition) {
 
         // Remove if inactive AFTER update (enemy.update sets isActive=false when death anim finishes)
         if (!enemies[i].isActive) {
-            // console.log(`Removing inactive enemy: ${enemies[i].displayName} (Index ${i})`);
+            DebugLogger.log(`Removing inactive enemy: ${enemies[i].displayName} (Index ${i})`);
             enemies.splice(i, 1);
         }
     }
@@ -181,5 +182,5 @@ export function clearEnemiesOutsideRadius(centerX, centerY, radius) {
         return distSq <= radiusSq;
     });
     const removedCount = initialCount - enemies.length;
-    // console.log(`EnemyManager: Cleared ${removedCount} enemies outside radius ${radius}.`);
+    DebugLogger.log(`EnemyManager: Cleared ${removedCount} enemies outside radius ${radius}.`);
 }

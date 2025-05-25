@@ -4,6 +4,7 @@
 
 import * as Config from './config.js';
 import * as GridCollision from './gridCollision.js';
+import * as DebugLogger from './debugLogger.js';
 
 let canvas = null;
 let ctx = null;
@@ -75,7 +76,7 @@ function _updateMinZoomFactorAndRecalculateScale() {
     } else {
         actualCameraScale = 1.0; // fallback
     }
-    // console.log(`Renderer: MinZoomFactor: ${MIN_ZOOM_FACTOR.toFixed(3)}, CurrentZoom: ${currentZoomFactor.toFixed(3)}, ActualScale: ${actualCameraScale.toFixed(3)}`);
+    DebugLogger.log(`Renderer: MinZoomFactor: ${MIN_ZOOM_FACTOR.toFixed(3)}, CurrentZoom: ${currentZoomFactor.toFixed(3)}, ActualScale: ${actualCameraScale.toFixed(3)}`);
 }
 export function getContext() { return ctx; } // main rendering context
 export function getGridContext() { return gridCtx; } // context for off-screen grid canvas

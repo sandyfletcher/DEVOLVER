@@ -1,9 +1,12 @@
+// =============================================================================
 // root/js/utils/player.js
+// =============================================================================
 
 import * as Config from './config.js';
 import * as GridCollision from './gridCollision.js';
 import * as WorldManager from '../worldManager.js';
 import * as World from './world.js';
+import * as DebugLogger from './debugLogger.js';
 
 export class Player {
     constructor(x, y, width, height, color) { // 'color' param is now effectively ignored
@@ -668,8 +671,8 @@ export class Player {
             let finalWeaponPivotY = clampedTargetY - rotatedAnchorOffsetY;
 
             if (effectiveJabOffset !== 0 && (this.selectedItem === Config.WEAPON_TYPE_SHOVEL || this.selectedItem === Config.WEAPON_TYPE_SPEAR)) {
-                finalWeaponPivotX += effectiveJabOffset * Math.cos(this.currentAttackAngle);
-                finalWeaponPivotY += effectiveJabOffset * Math.sin(this.currentAttackAngle);
+                finalWeaponPivotX += effectiveJabOffset * Math.cos(baseAttackAngle);
+                finalWeaponPivotY += effectiveJabOffset * Math.sin(baseAttackAngle);
             }
 
             const shoulderOffsetPxX = this.width * Config.PLAYER_SHOULDER_OFFSET_X_FACTOR;
@@ -1257,7 +1260,7 @@ export class Player {
         this.currentSwipeProgress = 0;
 
         if (Config.DEBUG_MODE) {
-            console.log(">>> Player DEBUG MODE: Granting starting materials and weapons.");
+            DebugLogger.log(">>> Player DEBUG MODE: Granting starting materials and weapons.");
             Config.INVENTORY_MATERIALS.forEach(materialType => {
                 this.inventory[materialType] = Config.DEBUG_STARTING_MATERIALS_COUNT;
             });

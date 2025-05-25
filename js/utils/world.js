@@ -1,9 +1,10 @@
-// -----------------------------------------------------------------------------
+// =============================================================================
 // root/js/utils/world.js - Manages core world grid data structure
-// -----------------------------------------------------------------------------
+// =============================================================================
 
 import * as Config from './config.js';
 import { createBlock } from './block.js';
+import * as DebugLogger from './debugLogger.js';
 
 let worldGrid = [];
 
@@ -53,7 +54,7 @@ export function setBlockData(col, row, blockData) { // directly sets block data 
             return false;
         }
     }
-    console.warn(`Set block data out of bounds: ${row}, ${col}`); // Commented out for less console noise
+    // DebugLogger.warn(`Set block data out of bounds: ${row}, ${col}`); // Commented out for less console noise, can be re-enabled if needed.
     return false;
 }
 export function getGrid() { // retrieves the entire world grid array, bypassing safety checks in setBlock/getBlock
@@ -69,5 +70,5 @@ export function resetAllBlockLighting() {
             }
         }
     }
-    // console.log("[World] All block lighting states reset to false.");
+    DebugLogger.log("[World] All block lighting states reset to 0.0.");
 }
