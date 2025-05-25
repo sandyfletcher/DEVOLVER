@@ -4,37 +4,37 @@
 
 import * as Config from './config.js';
 import * as ItemManager from '../itemManager.js';
-import * as GridCollision from './gridCollision.js';
-import { E_EPSILON } from './gridCollision.js';
+import * as GridCollision from './gridCollision.js'; // E_EPSILON is used here
+import { E_EPSILON } from './gridCollision.js'; // Explicitly import if not relying on wildcard
 import { SeekCenterAI } from './ai/seekCenterAI.js';
 import { ChasePlayerAI } from './ai/chasePlayerAI.js';
 import { FlopAI } from './ai/flopAI.js';
+import { DunkleosteusAI } from './ai/dunkleosteusAI.js';
 import { FishAI } from './ai/fishAI.js';
 import * as AudioManager from '../audioManager.js';
 
-const aiStrategyMap = { // Map AI type strings from config to the actual AI Strategy classes
+const aiStrategyMap = {
     'seekCenter': SeekCenterAI,
     'chasePlayer': ChasePlayerAI,
     'flopAI': FlopAI,
+    'dunkleosteusAI': DunkleosteusAI,
     'fishAI': FishAI,
-    // 'flyPatrol': FlyerAI, // Add mappings for new AI types here
-    // 'standAndShoot': ShooterAI,
 };
 export class Enemy {
     constructor(x, y, enemyType) {
-        this.type = enemyType; // Store the type key
-        const stats = Config.ENEMY_STATS[this.type]; // --- Get and Scale Stats from Config ---
-        let rawStats; // Store the original stats for reference if needed
+        this.type = enemyType;
+        const stats = Config.ENEMY_STATS[this.type];
+        let rawStats;
         if (!stats) {
             console.error(`>>> Enemy CONSTRUCTOR: Unknown enemy type "${enemyType}". Using fallback stats.`);
-            const fallbackStats = Config.ENEMY_STATS[Config.ENEMY_TYPE_CENTER_SEEKER] || {}; // Define minimal fallback stats or default to center_seeker if type is unknown
-            rawStats = { // Use a basic fallback if center_seeker is also missing (unlikely)
+            const fallbackStats = Config.ENEMY_STATS[Config.ENEMY_TYPE_CENTER_SEEKER] || {};
+            rawStats = {
                 displayName: "Unknown (Fallback)",
                 aiType: 'seekCenter',
                 color: 'purple',
-                width_BLOCKS: Config.DEFAULT_ENEMY_WIDTH, // Use block dimensions for fallback
+                width_BLOCKS: Config.DEFAULT_ENEMY_WIDTH,
                 height_BLOCKS: Config.DEFAULT_ENEMY_HEIGHT,
-                maxSpeedX_BLOCKS_PER_SEC: 30, 
+                maxSpeedX_BLOCKS_PER_SEC: 30,
                 maxSpeedY_BLOCKS_PER_SEC: 50,
                 swimSpeed_BLOCKS_PER_SEC: 50,
                 health: 1,
@@ -45,17 +45,17 @@ export class Enemy {
                 jumpVelocity_BLOCKS_PER_SEC: 0,
                 canSwim: false,
                 canFly: false,
-                separationFactor: Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR, // Added for fallback
+                separationFactor: Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
                 separationStrength_BLOCKS_PER_SEC: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH / Config.BLOCK_WIDTH,
                 landHopHorizontalVelocity_BLOCKS_PER_SEC: 0,
                 dropTable: [],
-                ...fallbackStats // Merge fallback stats if available
+                ...fallbackStats
             };
         } else {
-            rawStats = { ...stats }; // Copy stats from config
+            rawStats = { ...stats };
         }
         this.stats = rawStats;
-        
+
         this.width = this.stats.width_BLOCKS * Config.BLOCK_WIDTH;
         this.height = this.stats.height_BLOCKS * Config.BLOCK_HEIGHT;
         this.x = x;
@@ -67,7 +67,7 @@ export class Enemy {
         this.maxSpeedY = this.stats.maxSpeedY_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
         this.swimSpeed = this.stats.swimSpeed_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
         this.jumpVelocity = this.stats.jumpVelocity_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
-        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * Config.BLOCK_WIDTH; 
+        this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
         this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
         this.canSwim = this.stats.canSwim ?? false;
         this.canFly = this.stats.canFly ?? false;
@@ -83,12 +83,16 @@ export class Enemy {
         this.isFlashing = false;
         this.flashTimer = 0;
         this.flashDuration = Config.ENEMY_FLASH_DURATION;
-        this.isStunned = false;
-        this.stunTimer = 0;
         this.isDying = false;
         this.deathAnimationTimer = 0;
         this.isBeingAbsorbed = false;
         this.absorptionProgress = 0;
+        this.lastDirection = (Math.random() < 0.5) ? -1 : 1;
+
+        // New properties for stun
+        this.isStunned = false;
+        this.stunTimer = 0;
+
         const AIStrategyClass = aiStrategyMap[this.stats.aiType];
         if (AIStrategyClass) {
             this.aiStrategy = new AIStrategyClass(this);
@@ -99,7 +103,7 @@ export class Enemy {
                 reactToCollision: () => {},
             };
         }
-        
+
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Enemy CONSTRUCTOR ERROR: NaN coordinates! Type: ${this.type}. Resetting.`);
             this.x = Config.CANVAS_WIDTH / 2;
@@ -107,23 +111,16 @@ export class Enemy {
         }
     }
 
-    update(dt, playerPosition, allEnemies) { // allEnemies parameter is now passed by EnemyManager
+    update(dt, playerPosition, allEnemies) {
         if (!this.isActive && !this.isDying) return;
         if (this.isBeingAbsorbed) {
             return;
         }
-        
-        if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
-            console.warn(`Enemy(${this.displayName}) Update: Invalid delta time.`, dt);
-            if (this.isDying && this.deathAnimationTimer <= 0) {
-                this.isActive = false;
-                this.isDying = false;
-            }
-            if (!this.isActive && !this.isDying) return;
-        }
-        
+
+        const validDt = (typeof dt === 'number' && !isNaN(dt) && dt >= 0) ? dt : 0;
+
         if (this.isDying) {
-            this.deathAnimationTimer -= dt;
+            this.deathAnimationTimer -= validDt;
             if (this.deathAnimationTimer <= 0) {
                 this.isActive = false;
                 this.isDying = false;
@@ -132,22 +129,62 @@ export class Enemy {
         }
         
         if (this.isStunned) {
-            this.stunTimer -= dt;
+            this.stunTimer -= validDt;
             if (this.stunTimer <= 0) {
                 this.isStunned = false;
+                this.stunTimer = 0;
+            } else {
+                // Apply minimal physics during stun
+                if (this.applyGravityDefault && !this.isOnGround && !this.canFly && !(this.canSwim && this.isInWater)) {
+                     let currentGravity = Config.GRAVITY_ACCELERATION * (this.stats.gravityFactor ?? 1.0);
+                     const gravityMultiplier = (this.isInWater && !this.canSwim) ? Config.WATER_GRAVITY_FACTOR : 1.0;
+                     this.vy += currentGravity * gravityMultiplier * validDt;
+                     this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
+                }
+                if (this.isInWater) { // Apply damping if in water
+                    this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, validDt);
+                    this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, validDt);
+                }
+
+                const potentialMoveX = this.vx * validDt;
+                const potentialMoveY = this.vy * validDt;
+                const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
+                this.isOnGround = collisionResult.isOnGround;
+
+                if (collisionResult.collidedX) this.vx *= -0.3; // Dampen and bounce
+                if (collisionResult.collidedY) this.vy *= -0.3; // Dampen and bounce
+                
+                // Boundary checks
+                if (this.x < 0) { this.x = 0; if (this.vx < 0) this.vx = 0; }
+                if (this.x + this.width > Config.CANVAS_WIDTH) { this.x = Config.CANVAS_WIDTH - this.width; if (this.vx > 0) this.vx = 0; }
+                if (this.y > Config.CANVAS_HEIGHT + 200) { this.die(false); } // Despawn if falls out of world
+                return; // Skip normal AI and physics updates while stunned
             }
         }
+        
+        // If dt was originally invalid and we used validDt = 0, skip the rest of the update for this frame.
+        if (dt !== validDt) {
+            console.warn(`Enemy(${this.displayName}) Update: Invalid delta time (${dt}). Using 0 for this frame's main logic.`);
+            return;
+        }
 
+        // Original dt is now confirmed valid for the rest of the logic
         if (this.isFlashing) {
             this.flashTimer -= dt;
             if (this.flashTimer <= 0) {
                 this.isFlashing = false;
             }
         }
-        if (this.waterJumpCooldown > 0) {
-            this.waterJumpCooldown -= dt;
-            if (this.waterJumpCooldown < 0) {
-                this.waterJumpCooldown = 0;
+        if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt;
+
+        this.isInWater = GridCollision.isEntityInWater(this);
+
+        if (this.type === Config.ENEMY_TYPE_DUNKLEOSTEUS && !this.isInWater && this.health > 0) {
+            const damagePerSecond = this.stats.outOfWaterDamagePerSecond ?? 0;
+            if (damagePerSecond > 0) {
+                const damageThisFrame = damagePerSecond * dt;
+                this.takeDamage(damageThisFrame);
+                 if (this.isDying) return; // Exit if damage caused death
             }
         }
 
@@ -155,72 +192,46 @@ export class Enemy {
             console.error(`>>> Enemy UPDATE ERROR (${this.displayName}): Skipping update due to NaN coordinates!`);
             return;
         }
-        
-        this.isInWater = GridCollision.isEntityInWater(this);
-        
-        if (this.type === Config.ENEMY_TYPE_DUNKLEOSTEUS && !this.isInWater && this.health > 0) {
-            const damagePerSecond = this.stats.outOfWaterDamagePerSecond ?? 0;
-            if (damagePerSecond > 0) {
-                const damageThisFrame = damagePerSecond * dt;
-                this.takeDamage(damageThisFrame);
-            }
-        }
-        
-        let targetVx = 0; 
-        let targetVy = 0;
-        let wantsJump = false;
 
-        if (!this.isStunned) { 
-            const aiDecision = this.aiStrategy.decideMovement(playerPosition, allEnemies, dt);
-            targetVx = aiDecision?.targetVx ?? 0;
-            targetVy = aiDecision?.targetVy ?? 0;
-            wantsJump = aiDecision?.jump ?? false;
+        if (Math.abs(this.vx) > E_EPSILON) {
+            this.lastDirection = Math.sign(this.vx);
         }
 
-        // --- Separation Behavior (Apply after primary movement/physics) ---
-        // Calculate separation force from other enemies
+        const aiDecision = this.aiStrategy.decideMovement(playerPosition, allEnemies, dt);
+        let targetVx = aiDecision?.targetVx ?? 0;
+        let targetVy = aiDecision?.targetVy ?? 0;
+        let wantsJump = aiDecision?.jump ?? false;
+
         let separationForceX = 0;
         let separationForceY = 0;
         let neighborsCount = 0;
-        // Separation radius scales with entity width (which already scales with BLOCK_WIDTH) and separationFactor (remains factor)
-        const separationRadius = this.width * (this.stats.separationFactor ?? Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR); 
+        const separationRadius = this.width * (this.stats.separationFactor ?? Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR);
         const separationRadiusSq = separationRadius * separationRadius;
 
-        if (allEnemies) { // Ensure allEnemies list is provided
+        if (allEnemies) {
             for (const otherEnemy of allEnemies) {
-                // Exclude self, inactive, dying, or being absorbed enemies
-                if (otherEnemy === this || !otherEnemy.isActive || otherEnemy.isDying || otherEnemy.isBeingAbsorbed) continue; 
-
+                if (otherEnemy === this || !otherEnemy.isActive || otherEnemy.isDying || otherEnemy.isBeingAbsorbed) continue;
                 const dx = this.x - otherEnemy.x;
                 const dy = this.y - otherEnemy.y;
                 const distSq = dx * dx + dy * dy;
-
-                if (distSq > 0 && distSq < separationRadiusSq) { // Only repel if within radius and not at exact same spot
+                if (distSq > 0 && distSq < separationRadiusSq) {
                     const dist = Math.sqrt(distSq);
-                    if (dist > E_EPSILON) { // Avoid division by zero for very small distances
-                        const repelStrength = (1.0 - (dist / separationRadius)); // Stronger repulsion when closer
+                    if (dist > E_EPSILON) {
+                        const repelStrength = (1.0 - (dist / separationRadius));
                         separationForceX += (dx / dist) * repelStrength;
-                        separationForceY += (dy / dist) * repelStrength * 0.5; // Weaker vertical push
+                        separationForceY += (dy / dist) * repelStrength * 0.5;
                         neighborsCount++;
                     }
                 }
             }
         }
 
-        // Apply separation velocity adjustment
         if (neighborsCount > 0) {
-            // Use scaled separation strength from constructor
-            const separationBoostX = separationForceX * this.separationStrength * dt; // Apply as acceleration
-            const separationBoostY = separationForceY * this.separationStrength * dt; // Apply as acceleration
-
-            // Apply separation. May need different application based on enemy type (e.g. flying, swimming)
-            // For simplicity, apply directly to vx/vy for all types. This influences the target velocity.
+            const separationBoostX = separationForceX * this.separationStrength * dt;
+            const separationBoostY = separationForceY * this.separationStrength * dt;
             this.vx += separationBoostX;
             this.vy += separationBoostY;
         }
-        
-        let currentVx = this.vx; // Initialize with current velocity
-        let currentVy = this.vy; // Initialize with current velocity
 
         let currentGravity = Config.GRAVITY_ACCELERATION * (this.stats.gravityFactor ?? 1.0);
         let useStandardGravity = this.applyGravityDefault;
@@ -228,97 +239,51 @@ export class Enemy {
 
         if (this.canFly && !this.isOnGround) {
             useStandardGravity = false;
-            if (!this.isStunned) {
-                currentVy = targetVy;
-                currentVx = targetVx;
-            }
+            this.vy = targetVy;
+            this.vy = Math.max(-this.maxSpeedY, Math.min(this.maxSpeedY, this.vy));
+            this.vx = targetVx;
         } else if (this.canSwim && this.isInWater) {
             useStandardGravity = false;
-            if (!this.isStunned) { // AI controls velocity if not stunned
-
-                currentVy = targetVy;
-                currentVx = targetVx;
-            }
-            // Apply water damping to current velocity (which includes knockback if stunned)
-            currentVx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
-            currentVy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
-            // Clamping to swimSpeed happens after this block
-        } else { // Ground units or non-swimmers in water
+            this.vy = targetVy;
+            this.vy = Math.max(-this.swimSpeed, Math.min(this.swimSpeed, this.vy));
+            this.vx = targetVx;
+            this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
+            this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
+        } else {
             applyWaterEffects = this.isInWater;
-            
             if (applyWaterEffects) {
-                currentVy -= Config.ENEMY_WATER_BUOYANCY_ACCEL * dt; // Buoyancy
+                this.vy -= Config.ENEMY_WATER_BUOYANCY_ACCEL * dt;
             }
-            
             if (useStandardGravity && !this.isOnGround) {
                 const gravityMultiplier = applyWaterEffects ? Config.WATER_GRAVITY_FACTOR : 1.0;
-                currentVy += currentGravity * gravityMultiplier * dt;
-            } else if (this.isOnGround && currentVy > E_EPSILON) {
-                currentVy = 0; // Stop downward velocity if on ground
+                this.vy += currentGravity * gravityMultiplier * dt;
+            } else if (this.isOnGround && this.vy > E_EPSILON) {
+                this.vy = 0;
             }
-            
             if (applyWaterEffects) {
-                currentVy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt); // Damping for non-swimmers in water
+                this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
             }
-            
-            if (wantsJump && this.canJump && !this.isStunned) { // Jumping (only if not stunned)
+            if (wantsJump && this.canJump) {
                 if (applyWaterEffects) {
                     if (this.waterJumpCooldown <= 0) {
-                        currentVy = -(this.jumpVelocity * 0.8);
+                        this.vy = -(this.jumpVelocity * 0.8);
                         this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION;
                         this.isOnGround = false;
                     }
                 } else if (this.isOnGround) {
-                    currentVy = -this.jumpVelocity;
+                    this.vy = -this.jumpVelocity;
                     this.isOnGround = false;
                 }
             }
-            
-
-            // Horizontal movement for ground units/non-swimmers
-            if (!this.isStunned) {
-                if (Math.abs(targetVx) > E_EPSILON) { // If AI wants to move
-                    let accelFactor = (this.stats.accelerationX_BLOCKS_PER_SEC ?? 30) * Config.BLOCK_WIDTH;
-                    // Adjust acceleration based on environment (optional, for more nuanced movement)
-                    if (this.isOnGround) accelFactor *= 1.0;
-                    else if (this.isInWater && !this.canSwim) accelFactor *= 0.3; // Less control for non-swimmers in water
-                    else accelFactor *= 0.5; // Air control
-
-                    if (Math.abs(currentVx - targetVx) > accelFactor * dt) {
-                        currentVx += Math.sign(targetVx - currentVx) * accelFactor * dt;
-                    } else {
-                        currentVx = targetVx; // Snap to target if close
-                    }
-                } else if (this.isOnGround) { // AI wants to stop and is on ground, apply friction
-                    let frictionDecel = (this.stats.frictionDecel_BLOCKS_PER_SEC ?? 20) * Config.BLOCK_WIDTH;
-                     if (Math.abs(currentVx) > E_EPSILON) {
-                        let oldSign = Math.sign(currentVx);
-                        currentVx -= oldSign * frictionDecel * dt;
-                        if (Math.sign(currentVx) !== oldSign && oldSign !== 0) { currentVx = 0; }
-                    }
-                }
-            }
-            // If stunned and on ground, friction is applied
-            else if (this.isStunned && this.isOnGround) {
-                let frictionDecel = (this.stats.frictionDecel_BLOCKS_PER_SEC ?? 20) * Config.BLOCK_WIDTH * 0.75; // Slightly less friction when stunned?
-                 if (Math.abs(currentVx) > E_EPSILON) {
-                    let oldSign = Math.sign(currentVx);
-                    currentVx -= oldSign * frictionDecel * dt;
-                    if (Math.sign(currentVx) !== oldSign && oldSign !== 0) { currentVx = 0; }
-                }
-            }
-
-            if (applyWaterEffects && !this.canSwim) { // Water drag for non-swimmers
-                currentVx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
+            this.vx = targetVx;
+            if (applyWaterEffects) {
+                this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
             }
         }
-        
-        this.vx = currentVx;
-        this.vy = currentVy;
 
-        const currentMaxSpeedXToUse = this.canSwim && this.isInWater ? this.swimSpeed : (this.isInWater && !this.canSwim ? this.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.maxSpeedX);
-        this.vx = Math.max(-currentMaxSpeedXToUse, Math.min(currentMaxSpeedXToUse, this.vx));
-        
+        const currentMaxSpeedX = this.isInWater && !this.canSwim ? this.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.maxSpeedX;
+        this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
+
         if (applyWaterEffects) {
             this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
             this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);
@@ -328,15 +293,19 @@ export class Enemy {
 
         const potentialMoveX = this.vx * dt;
         const potentialMoveY = this.vy * dt;
-        
+
         const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
         this.isOnGround = collisionResult.isOnGround;
-        
 
-        if (collisionResult.collidedX) this.vx = 0;
-        if (collisionResult.collidedY) this.vy = 0;
+        if (this.canFly && targetVy < 0 && collisionResult.collidedY && this.vy >= 0) {
+            // Keep existing logic for flyers, if any specific handling is desired.
+        } else {
+            if (collisionResult.collidedX) this.vx = 0;
+            if (collisionResult.collidedY) this.vy = 0;
+        }
+
         this.aiStrategy.reactToCollision(collisionResult);
-        
+
         if (this.x < 0) { this.x = 0; if (this.vx < 0) this.vx = 0; }
         if (this.x + this.width > Config.CANVAS_WIDTH) { this.x = Config.CANVAS_WIDTH - this.width; if (this.vx > 0) this.vx = 0; }
         if (this.y > Config.CANVAS_HEIGHT + 200) {
@@ -344,65 +313,52 @@ export class Enemy {
         }
     }
 
+    applyKnockback(knockbackDirX, knockbackDirY, knockbackStrength, knockbackStunDuration) {
+        if (this.isDying || this.isBeingAbsorbed) return;
 
-    applyKnockback(dirX, dirY, strength, stunDuration) {
-        if (strength === 0 && stunDuration === 0) return;
+        const magnitude = Math.sqrt(knockbackDirX * knockbackDirX + knockbackDirY * knockbackDirY);
+        let normalizedDirX = 0;
+        let normalizedDirY = 0;
 
-        if (strength > 0) {
-            const dist = Math.sqrt(dirX * dirX + dirY * dirY);
-            if (dist > E_EPSILON) {
-                const normDirX = dirX / dist;
-                const normDirY = dirY / dist;
-
-                this.vx += normDirX * strength;
-
-                let yImpulse = normDirY * strength * 0.5; 
-                if (yImpulse >= 0) { // If Y impulse is downward or zero, make it a small upward pop
-                    yImpulse = -Math.abs(strength * 0.2); 
-                } else { // If Y impulse is already upward, ensure it's at least a certain pop
-                    yImpulse = Math.min(yImpulse, -Math.abs(strength * 0.2)); 
-                }
-                this.vy += yImpulse;
-
-                if (this.isOnGround && yImpulse < 0) { 
-                    this.isOnGround = false;
-                }
-            }
+        if (magnitude > E_EPSILON) {
+            normalizedDirX = knockbackDirX / magnitude;
+            normalizedDirY = knockbackDirY / magnitude;
+        } else {
+            normalizedDirY = -1; // Default to upward if no direction
         }
-        if (stunDuration > 0 && !this.isStunned) { // Only apply stun if not already stunned, or use Math.max if re-stun is desired
+
+        this.vx += normalizedDirX * knockbackStrength;
+        this.vy += normalizedDirY * knockbackStrength;
+        this.isOnGround = false; // Knockback usually lifts off ground
+
+        if (knockbackStunDuration > 0) {
             this.isStunned = true;
-            this.stunTimer = stunDuration; // Could also be Math.max(this.stunTimer, stunDuration)
+            this.stunTimer = knockbackStunDuration;
+            // Interrupt AI's current action if it has such a method
+            if (this.aiStrategy && typeof this.aiStrategy.interrupt === 'function') {
+                 this.aiStrategy.interrupt();
+            }
         }
     }
 
-
     takeDamage(amount) {
-        // Do not take damage if already inactive, getting absorbed OR currently in the dying animation state
         if (this.isBeingAbsorbed || !this.isActive || this.isDying || this.isFlashing) return;
         const healthBefore = this.health;
         this.health -= amount;
         this.isFlashing = true;
         this.flashTimer = this.flashDuration;
         if (this.health <= 0) {
-            // This will now transition to the dying state instead of immediate isActive = false
-            this.die(true); // Pass true as it was killed by player attack
+            this.die(true);
         }
     }
-    // Handles enemy death, deactivation, and item drops based on dropTable
+    
     die(killedByPlayer = true) {
-        // Prevent dying animation from starting multiple times
         if (!this.isActive || this.isDying) return;
-        // console.log(`[Enemy] Starting death animation for ${this.displayName}. Killed by player: ${killedByPlayer}`);
-        // Stop movement immediately
         this.vx = 0;
         this.vy = 0;
-        this.isFlopAttacking = false; // Ensure this is off
-        // Set dying state and timer
+        this.isFlopAttacking = false;
         this.isDying = true;
-        this.deathAnimationTimer = Config.ENEMY_DEATH_ANIMATION_DURATION; // Time-based, no scaling needed
-        // Keep isActive = true *during* the animation so it's updated and drawn.
-        // It will be set to false in update() when the timer expires.
-        // Handle item drops immediately when the enemy *starts* dying
+        this.deathAnimationTimer = Config.ENEMY_DEATH_ANIMATION_DURATION;
         if (killedByPlayer && !this.isBeingAbsorbed && this.stats.dropTable && this.stats.dropTable.length > 0) {
             if (typeof this.x !== 'number' || typeof this.y !== 'number' || isNaN(this.x) || isNaN(this.y)) {
                 console.error(`>>> ${this.displayName} died with invalid coordinates [${this.x}, ${this.y}], skipping drop spawn.`);
@@ -413,14 +369,11 @@ export class Enemy {
                         const max = dropInfo.maxAmount ?? 1;
                         const amount = Math.floor(Math.random() * (max - min + 1)) + min;
                         for (let i = 0; i < amount; i++) {
-                            // Use the center of the enemy's bounding box for drop spawn location
                             let dropXBase = this.x + this.width / 2;
                             let dropYBase = this.y + this.height / 2;
-                            // Add some random scatter scaled by enemy size
-                            let dropX = dropXBase + (Math.random() - 0.5) * this.width * 0.5; // Scatter within 50% of enemy width
-                            let dropY = dropYBase + (Math.random() - 0.5) * this.height * 0.5; // Scatter within 50% of enemy height
-
-                            if (!isNaN(dropX) && !isNaN(dropY) && typeof dropX === 'number' && typeof dropY === 'number') { // ensure coordinates are valid
+                            let dropX = dropXBase + (Math.random() - 0.5) * this.width * 0.5;
+                            let dropY = dropYBase + (Math.random() - 0.5) * this.height * 0.5;
+                            if (!isNaN(dropX) && !isNaN(dropY) && typeof dropX === 'number' && typeof dropY === 'number') {
                                 ItemManager.spawnItem(dropX, dropY, dropInfo.type);
                             } else {
                                 console.error(`>>> ITEM SPAWN FAILED: Invalid drop coordinates [${dropX}, ${dropY}] for ${dropInfo.type} from ${this.displayName} death.`);
@@ -430,106 +383,115 @@ export class Enemy {
                 });
             }
         }
-        // Optional: Play enemy death/pop sound effect here
-        // AudioManager.playSound(Config.AUDIO_TRACKS.enemy_pop);
     }
+
     getPosition() {
         return { x: this.x, y: this.y };
     }
-    getRect() { // No change needed, the rect is the base size, transformation happens in draw
+
+    getRect() {
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
         return { x: safeX, y: safeY, width: this.width, height: this.height };
     }
-    // Modify draw() to handle the dying animation visual
+
     draw(ctx) {
-        // Only draw if the enemy is active OR currently dying
         if (!this.isActive && !this.isDying || !ctx) return;
         if (this.isBeingAbsorbed) { return; }
-        // Ensure coordinates are valid before drawing
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Enemy DRAW ERROR (${this.displayName}): Preventing draw due to NaN coordinates!`);
             return;
         }
 
-        // --- Handle Dying Animation Drawing ---
         if (this.isDying) {
-            ctx.save(); // Save context before transformations
+            ctx.save();
             const totalAnimationDuration = Config.ENEMY_DEATH_ANIMATION_DURATION;
             const swellDuration = Config.ENEMY_SWELL_DURATION;
-            const timeElapsed = totalAnimationDuration - this.deathAnimationTimer; // Time passed since animation started
-            let currentScale = 1.0; // Default scale
-            // Swell phase: Scale up during the first Config.ENEMY_SWELL_DURATION
-            if (timeElapsed >= 0 && timeElapsed < swellDuration) { // Check elapsed time against swell duration
-                const swellProgress = timeElapsed / swellDuration; // 0 to <1
-                currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress; // Lerp scale
+            const timeElapsed = totalAnimationDuration - this.deathAnimationTimer;
+            let currentScale = 1.0;
+            if (timeElapsed >= 0 && timeElapsed < swellDuration) {
+                const swellProgress = timeElapsed / swellDuration;
+                currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress;
             } else {
-                // After swell duration, animation is effectively over.
-                // The update loop should set isActive=false when deathAnimationTimer <= 0.
-                // If we reach here with isDying=true but timeElapsed >= totalAnimationDuration, it's a fallback.
-                ctx.restore(); // Restore context if saved
-                return; // Do not draw after animation duration
+                ctx.restore();
+                return;
             }
-            // Calculate pivot point (center of the entity)
             const pivotX = this.x + this.width / 2;
             const pivotY = this.y + this.height / 2;
-            // Translate to pivot, scale, translate back
             ctx.translate(pivotX, pivotY);
             ctx.scale(currentScale, currentScale);
             ctx.translate(-pivotX, -pivotY);
-            // Draw the entity rectangle at the potentially scaled position
-            // Use original color for death animation, not flashing
             ctx.fillStyle = this.color;
-            // Note: fillRect needs the original x, y, width, height. Transformations handle the rest.
             ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-            ctx.restore(); // Restore context
-            return; // Drawing handled, exit
+            ctx.restore();
+            return;
         }
-        // --- Normal Active Drawing Logic (Only if NOT dying) ---
-        // The following code is only reached if `!this.isDying`
-        let drawColor = this.color;
-        if (this.isFlashing) {
-            drawColor = 'white';
+        
+        const visualShape = this.stats.visualShape;
+        if (visualShape) {
+            ctx.save();
+            const centerX = this.x + this.width / 2;
+            const centerY = this.y + this.height / 2;
+            const orientationAngle = (this.lastDirection === 1) ? 0 : Math.PI;
+            ctx.translate(centerX, centerY);
+            ctx.rotate(orientationAngle);
+            if (visualShape.tail && visualShape.tail.type === 'triangle' && visualShape.tail.points_BLOCKS) {
+                ctx.fillStyle = visualShape.tail.color || this.color;
+                ctx.beginPath();
+                const tailPoints = visualShape.tail.points_BLOCKS.map(p => ({
+                    x: p.x * Config.BLOCK_WIDTH,
+                    y: p.y * Config.BLOCK_HEIGHT
+                }));
+                ctx.moveTo(tailPoints[0].x, tailPoints[0].y);
+                for (let i = 1; i < tailPoints.length; i++) {
+                    ctx.lineTo(tailPoints[i].x, tailPoints[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+            }
+            if (visualShape.head && visualShape.head.type === 'circle' && visualShape.head.radius_BLOCKS) {
+                ctx.fillStyle = visualShape.head.color || this.color;
+                const headOffsetX = (visualShape.head.offset_BLOCKS?.x || 0) * Config.BLOCK_WIDTH;
+                const headOffsetY = (visualShape.head.offset_BLOCKS?.y || 0) * Config.BLOCK_HEIGHT;
+                const headRadius = visualShape.head.radius_BLOCKS * Config.BLOCK_WIDTH;
+                ctx.beginPath();
+                ctx.arc(headOffsetX, headOffsetY, headRadius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+            if (this.isFlashing) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+            }
+        } else {
+            let drawColor = this.color;
+            if (this.isFlashing) {
+                drawColor = 'white';
+            }
+            ctx.fillStyle = drawColor;
+            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
         }
-        ctx.fillStyle = drawColor;
-        ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-        ctx.strokeStyle = 'white'; // Bright color
-        ctx.lineWidth = 1;
-        ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
     }
-    // Method to determine current contact damage based on state
+
     getCurrentContactDamage() {
-        if (this.isDying) return 0; // If dying, enemy deals no damage
-        let damage = 0; // Default to 0 if this method is called on a type that doesn't have contact damage logic defined here
-        // --- Specific Logic for Tetrapod ---
+        if (this.isDying) return 0;
+        let damage = 0;
         if (this.type === Config.ENEMY_TYPE_TETRAPOD) {
             if (this.isInWater) {
-                // Damage when in water (uses fixed damage value)
                 damage = Config.TETRAPOD_WATER_CONTACT_DAMAGE;
             } else if (this.isOnGround) {
-                // Damage when on land (only during flop attack state) (uses fixed damage value)
                 damage = this.isFlopAttacking ? Config.TETRAPOD_LAND_FLOP_DAMAGE : Config.TETRAPOD_LAND_STILL_DAMAGE;
             } else {
-                // Damage when airborne over land (e.g., falling between hops)
-                // Maybe still 0 damage if not actively flopping? Let's say 0 unless isFlopAttacking
-                damage = this.isFlopAttacking ? Config.TETRAPOD_LAND_FLOP_DAMAGE : Config.TETRAPOD_LAND_STILL_DAMAGE; // Same as land logic
+                damage = this.isFlopAttacking ? Config.TETRAPOD_LAND_FLOP_DAMAGE : Config.TETRAPOD_LAND_STILL_DAMAGE;
             }
         }
-        // NEW: Specific Logic for Dunkleosteus
         else if (this.type === Config.ENEMY_TYPE_DUNKLEOSTEUS) {
-            // Dunkleosteus deals its configured contactDamage when in water, 0 otherwise
             damage = this.isInWater ? (this.stats?.contactDamage ?? 0) : 0;
         }
-        // --- Add Specific Logic for Other Enemy Types Here If Needed ---
-        // else if (this.type === Config.ENEMY_TYPE_SPIKE_BALL) {
-        //      return Config.SPIKE_BALL_DAMAGE; // Example: Always deals damage
-        // }
-        // else if (this.type === Config.ENEMY_TYPE_SLEEPER) {
-        //      return this.isAwake ? Config.SLEEPER_AWAKE_DAMAGE : 0; // Example: Deals damage only when awake
-        // }
-        // --- Default for Other Types ---
         else {
-            // For any enemy type not handled above, fall back to their base contactDamage stat (fixed value)
             damage = this.stats?.contactDamage ?? 0;
         }
         return damage;

@@ -549,6 +549,7 @@ export const ENEMY_TYPE_DUNKLEOSTEUS = 'dunkleosteus';
 export const ENEMY_TYPE_CENTER_SEEKER = 'center_seeker';
 export const ENEMY_TYPE_PLAYER_CHASER = 'player_chaser';
 export const ENEMY_TYPE_TETRAPOD = 'tetrapod';
+export const ENEMY_TYPE_SMALL_FISH = 'small_fish';
 export const TETRAPOD_WATER_CONTACT_DAMAGE = 1;
 export const TETRAPOD_LAND_FLOP_DAMAGE = 1;
 export const TETRAPOD_LAND_STILL_DAMAGE = 0;
@@ -594,7 +595,7 @@ export const ENEMY_STATS = {
         maxSpeedX_BLOCKS_PER_SEC: 13.75,
         maxSpeedY_BLOCKS_PER_SEC: 12.5,
         swimSpeed_BLOCKS_PER_SEC: 12.5,
-        health: 2, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
+        health: 100, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
         canJump: true,
         jumpVelocity_BLOCKS_PER_SEC: 37.5,
         canSwim: false, canFly: false,
@@ -604,7 +605,7 @@ export const ENEMY_STATS = {
     },
     [ENEMY_TYPE_DUNKLEOSTEUS]: {
         displayName: "Dunkleosteus",
-        aiType: 'fishAI',
+        aiType: 'dunkleosteusAI',
         color: 'rgb(80, 100, 120)',
         width_BLOCKS: 4,
         height_BLOCKS: 2,
@@ -625,6 +626,37 @@ export const ENEMY_STATS = {
         dropTable: [{ type: 'bone', chance: 0.7, minAmount: 2, maxAmount: 3 }, { type: 'metal', chance: 0.2, minAmount: 1, maxAmount: 1 }],
         outOfWaterDamagePerSecond: 15, // damage per second when out of water
     },
+     [ENEMY_TYPE_SMALL_FISH]: {
+        displayName: "Fish",
+        aiType: 'fishAI', // This will be our new scurrying fish AI
+        color: 'rgb(120, 180, 220)', // A light blue/grey
+        width_BLOCKS: 1.5,
+        height_BLOCKS: 0.75,
+        health: 1,
+        contactDamage: 0,
+        applyGravity: true,
+        gravityFactor: 1.0,
+        maxSpeedX_BLOCKS_PER_SEC: 5,  // Normal swim speed
+        maxSpeedY_BLOCKS_PER_SEC: 3,  // For bobbing
+        swimSpeed_BLOCKS_PER_SEC: 7,  // Base speed, flee will be faster
+        canJump: false,
+        jumpVelocity_BLOCKS_PER_SEC: 0,
+        canSwim: true,
+        canFly: false,
+        separationFactor: 0.5, // Less strong separation for small fish
+        separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.5,
+        dropTable: [], // No drops for now
+        // Visual shape: head is a circle offset to the right (front), tail is a triangle to the left (back)
+        // Assuming fish faces right by default (lastDirection = 1)
+        // Offsets and points are relative to the CENTER of the fish's bounding box.
+        visualShape: {
+            head: { type: 'circle', radius_BLOCKS: 0.3, offset_BLOCKS: { x: 0.35, y: 0 }, color: 'rgb(100, 160, 200)' }, // Head slightly darker
+            bodyColor: 'rgb(120, 180, 220)', // Main body color if needed for non-head/tail parts
+            tail: { type: 'triangle', points_BLOCKS: [{x: -0.4, y:0}, {x: -0.1, y:-0.25}, {x: -0.1, y:0.25}], color: 'rgb(140, 200, 240)' } // Tail slightly lighter
+        },
+        fleeDistance_BLOCKS: 4, // How close a threat needs to be to trigger fleeing
+        fleeSpeedFactor: 1.8,   // Multiplier for swimSpeed when fleeing
+    },
 };
 // --- Wave Scripting ---
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
@@ -641,6 +673,7 @@ export const WAVES = [
     subWaves: [
     { enemyGroups: [
     { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
+    { type: ENEMY_TYPE_SMALL_FISH, count: 10, delayBetween: 0.8, startDelay: 0.0 },
     { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 },
     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
     { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
@@ -666,6 +699,7 @@ export const WAVES = [
     { enemyGroups: [
     { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
     { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
+    { type: ENEMY_TYPE_SMALL_FISH, count: 10, delayBetween: 0.8, startDelay: 0.0 },
     ]},
     { enemyGroups: [
     { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },

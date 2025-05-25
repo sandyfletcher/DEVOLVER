@@ -222,7 +222,7 @@ function gameLoop(timestamp) {
         }
         // use the already fetched waveInfo for game over/victory checks
         if ((player && !player.isActive) || (portal && !portal.isAlive())) {
-            WaveManager.setGameOver(); 
+            WaveManager.setGameOver();
             EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
             ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
             FlowManager.handleGameOver();
@@ -324,9 +324,9 @@ function init() {
         restartButtonGameOver = document.getElementById('restart-button-overlay');
         restartButtonVictory = document.getElementById('restart-button-overlay-victory');
         restartButtonPause = document.getElementById('restart-button-overlay-pause');
-        btnToggleGridEl = document.getElementById('settings-btn-toggle-grid'); 
-        muteMusicButtonEl = document.getElementById('settings-btn-mute-music'); 
-        muteSfxButtonEl = document.getElementById('settings-btn-mute-sfx');    
+        btnToggleGridEl = document.getElementById('settings-btn-toggle-grid');
+        muteMusicButtonEl = document.getElementById('settings-btn-mute-music');
+        muteSfxButtonEl = document.getElementById('settings-btn-mute-sfx');
         // Verify all queried elements
         const allElements = [
             appContainerEl, bootOverlayEl, menuOverlayEl, gameWrapperEl, epochOverlayEl,
