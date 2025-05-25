@@ -10,6 +10,7 @@ import { generateInitialWorld as generateWorldFromGenerator } from './utils/worl
 import * as GridCollision from './utils/gridCollision.js';
 import { createBlock } from './utils/block.js';
 import * as WaveManager from './waveManager.js';
+import * as DebugLogger from './utils/debugLogger.js';
 
 // --- Module State ---
 let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
@@ -100,7 +101,7 @@ export function addProposedGravityChanges(changes) {
     changes.forEach(change => {
         gravityAnimationQueue.push(change);
     });
-    // console.log(`[WorldManager] Added ${changes.length} gravity changes. Total queued: ${gravityAnimationQueue.length}`);
+    DebugLogger.log(`[WorldManager] Added ${changes.length} gravity changes. Total queued: ${gravityAnimationQueue.length}`);
 }
 
 function calculateDynamicAnimationIntervals() {
@@ -133,7 +134,7 @@ function calculateDynamicAnimationIntervals() {
     } else {
         dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY; // Fallback
     }
-    console.log(`[WorldManager] Dynamic Pacing Calculated: Transform Interval: ${dynamicTransformAnimStartInterval.toFixed(4)}s (Queue: ${transformAnimationQueue.length}), Gravity Interval: ${dynamicGravityAnimStartInterval.toFixed(4)}s (Queue: ${gravityAnimationQueue.length}) for target ${BLOCK_ANIM_TARGET_DURATION}s`);
+    DebugLogger.log(`[WorldManager] Dynamic Pacing Calculated: Transform Interval: ${dynamicTransformAnimStartInterval.toFixed(4)}s (Queue: ${transformAnimationQueue.length}), Gravity Interval: ${dynamicGravityAnimStartInterval.toFixed(4)}s (Queue: ${gravityAnimationQueue.length}) for target ${BLOCK_ANIM_TARGET_DURATION}s`);
 }
 
 export function startDynamicWarpPacing() {
@@ -141,7 +142,7 @@ export function startDynamicWarpPacing() {
     calculateDynamicAnimationIntervals();
     newTransformAnimationStartTimer = 0; // Start first transform batch immediately
     newGravityAnimationStartTimer = 0;   // Start first gravity batch immediately
-    console.log("[WorldManager] Dynamic warp animation pacing STARTED.");
+    DebugLogger.log("[WorldManager] Dynamic warp animation pacing STARTED.");
 }
 
 export function endDynamicWarpPacing() {
@@ -149,7 +150,7 @@ export function endDynamicWarpPacing() {
     // Reset to defaults, they'll be recalculated next time if needed
     dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
     dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY;
-    console.log("[WorldManager] Dynamic warp animation pacing ENDED.");
+    DebugLogger.log("[WorldManager] Dynamic warp animation pacing ENDED.");
 }
 
 
@@ -238,8 +239,8 @@ export function areGravityAnimationsComplete() {
 }
 
 export function finalizeAllGravityAnimations() {
-    console.log("[WorldManager] Finalizing all gravity animations...");
-    console.time("finalizeAllGravityAnimations");
+    DebugLogger.log("[WorldManager] Finalizing all gravity animations...");
+    DebugLogger.time("finalizeAllGravityAnimations");
     while (gravityAnimationQueue.length > 0) {
         const change = gravityAnimationQueue.shift();
         const end_row = Math.round((change.r_end_pixel_y !== undefined ? change.r_end_pixel_y : change.r_end * Config.BLOCK_HEIGHT) / Config.BLOCK_HEIGHT);
@@ -261,8 +262,8 @@ export function finalizeAllGravityAnimations() {
     }
     gravityAnimationQueue = [];
     activeGravityAnimations = [];
-    console.log("[WorldManager] All gravity animations finalized.");
-    console.timeEnd("finalizeAllGravityAnimations");
+    DebugLogger.log("[WorldManager] All gravity animations finalized.");
+    DebugLogger.timeEnd("finalizeAllGravityAnimations");
 }
 
 function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
@@ -710,10 +711,10 @@ export function damageBlock(col, row, damageAmount) {
 
 // --- NEW: Transform Animation Functions ---
 export function diffGridAndQueueTransformAnimations(initialGrid, finalGrid) {
-    console.time("diffGridAndQueueTransformAnimations");
+    DebugLogger.time("diffGridAndQueueTransformAnimations");
     if (!initialGrid || !finalGrid || initialGrid.length !== finalGrid.length || (initialGrid.length > 0 && initialGrid[0]?.length !== finalGrid[0]?.length)) {
         console.error("[WorldManager] Diff Grids: Invalid grids provided for diffing.", initialGrid?.length, finalGrid?.length, initialGrid[0]?.length, finalGrid[0]?.length);
-        console.timeEnd("diffGridAndQueueTransformAnimations");
+        DebugLogger.timeEnd("diffGridAndQueueTransformAnimations");
         return;
     }
     transformAnimationQueue = [];
@@ -742,8 +743,8 @@ export function diffGridAndQueueTransformAnimations(initialGrid, finalGrid) {
             }
         }
     }
-    console.log(`[WorldManager] Queued ${transformAnimationQueue.length} transform animations after diff.`);
-    console.timeEnd("diffGridAndQueueTransformAnimations");
+    DebugLogger.log(`[WorldManager] Queued ${transformAnimationQueue.length} transform animations after diff.`);
+    DebugLogger.timeEnd("diffGridAndQueueTransformAnimations");
 }
 
 function updateTransformAnimations(dt) {
@@ -856,8 +857,8 @@ export function areTransformAnimationsComplete() {
 }
 
 export function finalizeAllTransformAnimations() {
-    console.log("[WorldManager] Finalizing all transform animations...");
-    console.time("finalizeAllTransformAnimations");
+    DebugLogger.log("[WorldManager] Finalizing all transform animations...");
+    DebugLogger.time("finalizeAllTransformAnimations");
     while (transformAnimationQueue.length > 0) {
         const change = transformAnimationQueue.shift();
         updateStaticWorldAt(change.c, change.r);
@@ -870,8 +871,8 @@ export function finalizeAllTransformAnimations() {
     }
     transformAnimationQueue = [];
     activeTransformAnimations = [];
-    console.log("[WorldManager] All transform animations finalized.");
-    console.timeEnd("finalizeAllTransformAnimations");
+    DebugLogger.log("[WorldManager] All transform animations finalized.");
+    DebugLogger.timeEnd("finalizeAllTransformAnimations");
 }
 
 // -----------------------------------------------------------------------------
@@ -1070,19 +1071,19 @@ export function updateStaticWorldAt(col, row) {
 }
 export function renderStaticWorldToGridCanvas() {
     console.log("WorldManager: Rendering static world to grid canvas...");
-    console.time("renderStaticWorldToGridCanvas");
+    DebugLogger.time("renderStaticWorldToGridCanvas");
     const gridCtx = Renderer.getGridContext();
     const gridCanvas = Renderer.getGridCanvas();
     if (!gridCtx || !gridCanvas) {
         console.error("WorldManager: Cannot render static world - grid canvas/context missing!");
-        console.timeEnd("renderStaticWorldToGridCanvas");
+        DebugLogger.timeEnd("renderStaticWorldToGridCanvas");
         return;
     }
     gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
     const worldGridData = World.getGrid();
     if (!worldGridData || !Array.isArray(worldGridData)) {
         console.error("WorldManager: Cannot render, worldGridData is invalid.");
-        console.timeEnd("renderStaticWorldToGridCanvas");
+        DebugLogger.timeEnd("renderStaticWorldToGridCanvas");
         return;
     }
     for (let r = 0; r < Config.GRID_ROWS; r++) {
@@ -1092,7 +1093,7 @@ export function renderStaticWorldToGridCanvas() {
         }
     }
     console.log("WorldManager: Static world render complete.");
-    console.timeEnd("renderStaticWorldToGridCanvas");
+    DebugLogger.timeEnd("renderStaticWorldToGridCanvas");
 }
 
 export function draw(ctx) {

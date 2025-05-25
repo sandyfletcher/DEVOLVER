@@ -6,6 +6,7 @@ import * as Config from './utils/config.js';
 import * as EnemyManager from './enemyManager.js';
 import * as AudioManager from './audioManager.js';
 import * as WorldManager from './worldManager.js';
+import * as DebugLogger from './utils/debugLogger.js';
 
 let topUiOverlayEl = null;
 let playerColumnEl, portalColumnEl;
@@ -293,22 +294,23 @@ export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMut
         settingsBtnMuteMusic.textContent = isMusicMuted ? 'MUSIC: OFF' : 'MUSIC: ON';
         settingsBtnMuteMusic.title = isMusicMuted ? 'Unmute Music' : 'Mute Music';
     }
-    if (settingsBtnMuteSfx /* && settingsValueSfx - settingsValueSfx is removed */) {
+    if (settingsBtnMuteSfx) {
         settingsBtnMuteSfx.classList.toggle('settings-row__button--state-bad', isSfxMuted);
         settingsBtnMuteSfx.textContent = isSfxMuted ? 'SFX: OFF' : 'SFX: ON';
         settingsBtnMuteSfx.title = isSfxMuted ? 'Unmute SFX' : 'Mute SFX';
     }
 }
-export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) { // update player health bar and inventory/weapon slots
-     if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
-        console.error("UI UpdatePlayerInfo: Missing essential elements.");
-        if(playerHealthBarFillEl){
-            const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
-            const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
-            playerHealthBarFillEl.style.width = `${healthPercent}%`;
-        }
-        return;
+export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
+    if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
+    console.error("UI UpdatePlayerInfo: Missing essential elements.");
+    // if playerHealthBarFillEl exists despite other missing elements, try to update it
+    if (playerHealthBarFillEl) {
+        const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
+        const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
+        playerHealthBarFillEl.style.width = `${healthPercent}%`;
     }
+    return; // still return if critical elements are missing
+}
     const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
     const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
     playerHealthBarFillEl.style.width = `${healthPercent}%`;
@@ -394,15 +396,15 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         slotDiv.title = titleText;
     }
 }
-export function updatePortalInfo(currentHealth, maxHealth) { // updates portal health bar and color
+export function updatePortalInfo(currentHealth, maxHealth) {
     if (!portalHealthBarFillEl || !portalColumnH2El || !portalColumnEl) {
         console.error("UI UpdatePortalInfo: Missing essential elements.");
-        if(portalHealthBarFillEl){
+        if (portalHealthBarFillEl) { // Attempt to update if at least the fill element exists
             const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
             const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
             portalHealthBarFillEl.style.width = `${healthPercent}%`;
         }
-        return; 
+        return;
     }
     const clampedHealth = Math.max(0, Math.min(currentHealth, maxHealth));
     const healthPercent = (maxHealth > 0) ? (clampedHealth / maxHealth) * 100 : 0;
@@ -507,7 +509,7 @@ export function showEpochText(valueOrString) {
 }
 export function startMyaEpochTransition(fromMya, toMya, duration) {
     if (!epochOverlayEl) return;
-    console.log(`[UI] Starting MYA transition from ${fromMya} to ${toMya} over ${duration}s`);
+    DebugLogger.log(`[UI] Starting MYA transition from ${fromMya} to ${toMya} over ${duration}s`);
     isMyaTransitionActive = true;
     myaTransitionFrom = fromMya;
     myaTransitionTo = toMya;
@@ -540,7 +542,7 @@ export function updateMyaEpochTransition(dt) {
                 epochHideTimer = null;
             }, 500);
         }, finalDisplayDuration);
-        console.log(`[UI] MYA transition finished. Displaying: ${formatMya(myaTransitionTo)}`);
+        DebugLogger.log(`[UI] MYA transition finished. Displaying: ${formatMya(myaTransitionTo)}`);
         return;
     }
     const progress = Math.max(0, Math.min(1, 1 - (myaTransitionTimer / myaTransitionDuration)));

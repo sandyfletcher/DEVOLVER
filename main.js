@@ -18,6 +18,7 @@ import * as FlowManager from './js/flowManager.js';
 import { Player } from './js/utils/player.js';
 import { Portal } from './js/utils/portal.js';
 import * as World from './js/utils/world.js';
+import * as DebugLogger from './js/utils/debugLogger.js';
 
 let gameStartTime = 0;
 let lastTime = 0;
@@ -76,13 +77,13 @@ async function performBackgroundWorldGeneration() {
     isWorldGenerated = false;
     worldGenerationPromise = (async () => {
         try {
-            if (Config.DEBUG_MODE) console.time("executeInitialWorldGenerationSequence");
+            DebugLogger.time("executeInitialWorldGenerationSequence");
             WorldManager.executeInitialWorldGenerationSequence(); // This applies its own lighting pass initially
-            if (Config.DEBUG_MODE) console.timeEnd("executeInitialWorldGenerationSequence");
+            DebugLogger.timeEnd("executeInitialWorldGenerationSequence");
 
             const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
             for (let i = 0; i < initialAgingPasses; i++) {
-                if (Config.DEBUG_MODE) console.log(`[Main] Initial Aging Pass ${i + 1}/${initialAgingPasses}`);
+                DebugLogger.log(`[Main] Initial Aging Pass ${i + 1}/${initialAgingPasses}`);
                 // 1. Calculate lighting changes for this pass
                 World.resetAllBlockLighting(); // Reset lighting for this aging pass
                 const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // false to skip debug drawing
@@ -101,7 +102,7 @@ async function performBackgroundWorldGeneration() {
                 AgingManager.applyAging(null);
             }
 
-            if (Config.DEBUG_MODE) console.log("[Main] Applying final lighting pass after all initial aging...");
+            DebugLogger.log("[Main] Applying final lighting pass after all initial aging...");
             World.resetAllBlockLighting(); // Reset before the final, thorough pass
             const finalLightingChanges = WorldManager.applyLightingPass(false, 1); // false to skip debug, 1 for full scan
             if (finalLightingChanges.length > 0) {
@@ -111,7 +112,7 @@ async function performBackgroundWorldGeneration() {
                         block.lightLevel = change.newLightLevel;
                     }
                 });
-                if (Config.DEBUG_MODE) console.log(`[Main] Final lighting pass lit ${finalLightingChanges.length} additional blocks.`);
+                DebugLogger.log(`[Main] Final lighting pass lit ${finalLightingChanges.length} additional blocks.`);
             }
 
             if (!Renderer.getGridCanvas()) Renderer.createGridCanvas();
@@ -130,13 +131,13 @@ async function performBackgroundWorldGeneration() {
 async function initializeAndRunGame() {
     const currentGameState = FlowManager.getCurrentState();
     if (currentGameState === GameState.RUNNING) {
-        if (Config.DEBUG_MODE) console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
+        DebugLogger.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
         return;
     }
     try {
         if (!isWorldGenerated) {
             if (!worldGenerationPromise) {
-                if (Config.DEBUG_MODE) console.warn("[Main] World generation promise not found. Starting now.");
+                DebugLogger.warn("[Main] World generation promise not found. Starting now.");
                 await performBackgroundWorldGeneration();
             } else {
                 await worldGenerationPromise;
@@ -185,7 +186,7 @@ async function initializeAndRunGame() {
 }
 
 function fullGameResetAndShowMenu() {
-    if (Config.DEBUG_MODE) console.log("[Main] Performing full game reset and returning to Main Menu.");
+    DebugLogger.log("[Main] Performing full game reset and returning to Main Menu.");
     player = null; portal = null;
     UI.setPlayerReference(null); UI.setPortalReference(null); // UI still needs to be cleared
     EnemyManager.clearAllEnemies(); ItemManager.clearAllItems();

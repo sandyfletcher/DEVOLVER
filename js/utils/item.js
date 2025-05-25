@@ -7,7 +7,7 @@ import * as GridCollision from './gridCollision.js';
 import * as DebugLogger from './debugLogger.js';
 
 export class Item {
-    constructor(x, y, type, config) { // pass config in
+    constructor(x, y, type,) {
         this.x = x;
         this.y = y;
         this.type = type; // e.g., 'shovel', 'dirt', 'stone'

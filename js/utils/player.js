@@ -9,7 +9,7 @@ import * as World from './world.js';
 import * as DebugLogger from './debugLogger.js';
 
 export class Player {
-    constructor(x, y, width, height, color) { // 'color' param is now effectively ignored
+    constructor(x, y, width, height) { // 'color' param is now effectively ignored
         this.x = x;
         this.y = y;
         this.width = Config.PLAYER_WIDTH;
@@ -50,14 +50,12 @@ export class Player {
         this.jabOffset = 0;
         this.currentAttackAngle = 0; // Angle used for the current attack (center for swipe, direction for jab)
         this.currentSwipeProgress = 0; // For sword swipe animation (0 to 1)
-
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(">>> Player CONSTRUCTOR ERROR: NaN initial coordinates! Resetting to center.");
             this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;
             this.y = Config.CANVAS_HEIGHT / 2 - this.height / 2;
         }
     }
-
     update(dt, inputState, targetWorldPos, targetGridCell) {
         if (this.isDying) {
             if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
@@ -90,7 +88,6 @@ export class Player {
             }
             return;
         }
-
         if (typeof dt !== 'number' || isNaN(dt) || dt < 0) {
             console.warn("Player Update: Invalid delta time.", dt);
             if (this.currentHealth <= 0 && !this.isDying && this.isActive) {
@@ -98,7 +95,6 @@ export class Player {
             }
             return;
         }
-
         if (typeof targetWorldPos !== 'object' || targetWorldPos === null || typeof targetWorldPos.x !== 'number' || typeof targetWorldPos.y !== 'number' || isNaN(targetWorldPos.x) || isNaN(targetWorldPos.y)) {
             const playerCenterX = this.x + this.width / 2;
             const playerCenterY = this.y + this.height / 2;
@@ -107,7 +103,6 @@ export class Player {
             this.targetWorldPos = targetWorldPos;
             this._lastValidTargetWorldPos = { ...targetWorldPos };
         }
-
         if (typeof targetGridCell !== 'object' || targetGridCell === null || typeof targetGridCell.col !== 'number' || typeof targetGridCell.row !== 'number' || isNaN(targetGridCell.col) || isNaN(targetGridCell.row)) {
             this.targetGridCell = GridCollision.worldToGridCoords(this.targetWorldPos.x, this.targetWorldPos.y);
             this._lastValidTargetGridCell = { ...this.targetGridCell };
@@ -115,25 +110,21 @@ export class Player {
             this.targetGridCell = targetGridCell;
             this._lastValidTargetGridCell = { ...targetGridCell };
         }
-
         const playerCenterX = this.x + this.width / 2;
         const targetDeltaX = this.targetWorldPos.x - playerCenterX;
         if (Math.abs(targetDeltaX) > 1) {
             this.lastDirection = Math.sign(targetDeltaX);
         }
-
         this.isInWater = GridCollision.isEntityInWater(this);
         if (!this.isInWater && this.waterJumpCooldown > 0) {
             this.waterJumpCooldown = 0;
         }
-
         this._updateTimers(dt);
         const activeInputState = this.isActive && !this.isDying ? inputState : {};
         this._handleInput(dt, activeInputState);
         this._applyPhysics(dt);
         this._checkBoundaries();
         this.currentHealth = Math.max(0, this.currentHealth);
-
         if (this.isAttacking && this.isWeaponSelected()) {
             const weaponStats = Config.WEAPON_STATS[this.selectedItem];
             if (weaponStats) {
@@ -151,20 +142,15 @@ export class Player {
             this.currentSwipeProgress = 0;
         }
     }
-
     _updateTimers(dt) {
         if (this.canGrabRopeTimer > 0) this.canGrabRopeTimer -= dt;
         if (this.canGrabRopeTimer < 0) this.canGrabRopeTimer = 0;
-
         if (this.attackCooldown > 0) this.attackCooldown -= dt;
         if (this.attackCooldown < 0) this.attackCooldown = 0;
-
         if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt;
         if (this.waterJumpCooldown < 0) this.waterJumpCooldown = 0;
-
         if (this.placementCooldown > 0) this.placementCooldown -= dt;
         if (this.placementCooldown < 0) this.placementCooldown = 0;
-
         if (this.isAttacking) {
             this.attackTimer -= dt;
             if (this.attackTimer <= 0) {
@@ -175,7 +161,6 @@ export class Player {
                 this.currentSwipeProgress = 0;
             }
         }
-
         if (this.isInvulnerable) {
             this.invulnerabilityTimer -= dt;
             if (this.invulnerabilityTimer <= 0) {
@@ -183,7 +168,6 @@ export class Player {
             }
         }
     }
-
     _handleInput(dt, inputState) {
         this._handleMovement(dt, inputState);
         if (inputState.attack) {
@@ -194,18 +178,15 @@ export class Player {
                     this.isAttacking = true;
                     this.hitEnemiesThisSwing = [];
                     this.hitBlocksThisSwing = [];
-
                     const weaponStats = Config.WEAPON_STATS[this.selectedItem];
                     if (weaponStats) {
                         this.attackTimer = weaponStats.attackDuration;
                         this.attackCooldown = weaponStats.attackCooldown;
-
                         const playerCenterX = this.x + this.width / 2;
                         const playerCenterY = this.y + this.height / 2;
                         const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
                         this.currentAttackAngle = Math.atan2(rawTargetWorldPos.y - playerCenterY, rawTargetWorldPos.x - playerCenterX);
                         this.currentSwipeProgress = 0; // Reset swipe progress at start of attack
-
                     } else {
                         this.attackTimer = 0.1;
                         this.attackCooldown = 0.2;
@@ -216,7 +197,6 @@ export class Player {
             }
         }
     }
-
     _handleMovement(dt, inputState) {
         if (this.isOnRope) {
             this.vx = 0;
@@ -245,7 +225,6 @@ export class Player {
             let targetVx = 0;
             if (inputState.left) targetVx -= Config.PLAYER_MAX_SPEED_X;
             if (inputState.right) targetVx += Config.PLAYER_MAX_SPEED_X;
-
             const acceleration = this.isInWater ? Config.PLAYER_MOVE_ACCELERATION * Config.WATER_ACCELERATION_FACTOR : Config.PLAYER_MOVE_ACCELERATION;
             if (targetVx !== 0) {
                 this.vx += Math.sign(targetVx) * acceleration * dt;
@@ -262,7 +241,6 @@ export class Player {
                     this.vx = 0;
                 }
             }
-
             if (inputState.jump && this.waterJumpCooldown <= 0) {
                 if (this.isInWater) {
                     this.vy = -Config.WATER_SWIM_VELOCITY;
@@ -275,34 +253,26 @@ export class Player {
             }
         }
     }
-
     _handlePlacementHold() {
         if (this.placementCooldown > 0) return;
-
         const selectedMaterialType = this.selectedItem;
         if ((this.inventory[selectedMaterialType] || 0) <= 0) return;
-
         const targetForPlacement = this.targetWorldPos || this._lastValidTargetWorldPos;
         if (!targetForPlacement || !this._isTargetWithinRange(targetForPlacement)) return;
-
         const targetCellForPlacement = this.targetGridCell || this._lastValidTargetGridCell;
         if (!targetCellForPlacement || typeof targetCellForPlacement.col !== 'number' || typeof targetCellForPlacement.row !== 'number' || isNaN(targetCellForPlacement.col) || isNaN(targetCellForPlacement.row)) return;
-
         const targetCol = targetCellForPlacement.col;
         const targetRow = targetCellForPlacement.row;
         const targetBlockType = World.getBlockType(targetCol, targetRow);
         if (targetBlockType === null) return;
-
         const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR;
         if (!canPlaceInTargetCell) return;
         if (this.checkPlacementOverlap(targetCol, targetRow)) return;
-
         if (selectedMaterialType === 'vegetation') {
             const blockAboveType = World.getBlockType(targetCol, targetRow - 1);
             const blockAboveData = World.getBlock(targetCol, targetRow - 1);
             const canAttachToSolid = blockAboveData !== null && GridCollision.isSolid(targetCol, targetRow - 1);
             const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
-
             if (canAttachToSolid || canExtendRope) {
                 if (WorldManager.placePlayerBlock(targetCol, targetRow, Config.BLOCK_ROPE)) {
                     this.decrementInventory(selectedMaterialType);
@@ -323,7 +293,6 @@ export class Player {
             }
         }
     }
-
     _applyPhysics(dt) {
         if (!this.isOnRope && this.canGrabRopeTimer <= 0) {
             const playerRect = this.getRect();
@@ -331,7 +300,6 @@ export class Player {
             const maxCheckCol = Math.min(Config.GRID_COLS - 1, Math.floor((playerRect.x + playerRect.width - GridCollision.E_EPSILON) / Config.BLOCK_WIDTH));
             const minCheckRow = Math.max(0, Math.floor(playerRect.y / Config.BLOCK_HEIGHT));
             const maxCheckRow = Math.min(Config.GRID_ROWS - 1, Math.floor((playerRect.y + playerRect.height - GridCollision.E_EPSILON) / Config.BLOCK_HEIGHT));
-
             let foundRope = false;
             for (let r = minCheckRow; r <= maxCheckRow; r++) {
                 for (let c = minCheckCol; c <= maxCheckCol; c++) {
@@ -352,7 +320,6 @@ export class Player {
             this.vx = 0;
             const playerCenterY = this.y + this.height / 2;
             const playerRowAtCenter = Math.floor(playerCenterY / Config.BLOCK_HEIGHT);
-
             if (!GridCollision.isRope(this.ropeCol, playerRowAtCenter) &&
                 !GridCollision.isRope(this.ropeCol, playerRowAtCenter + 1) &&
                 !GridCollision.isRope(this.ropeCol, playerRowAtCenter - 1)) {
@@ -360,14 +327,12 @@ export class Player {
                 this.canGrabRopeTimer = 0.1;
             }
         }
-
         if (this.isOnRope) {
             this.y += this.vy * dt;
             const headCheckY = this.y;
             const feetCheckY = this.y + this.height;
             const headRow = Math.floor(headCheckY / Config.BLOCK_HEIGHT);
             const feetRow = Math.floor(feetCheckY / Config.BLOCK_HEIGHT);
-
             if (this.vy < 0 && GridCollision.isSolid(this.ropeCol, headRow)) {
                 this.y = (headRow + 1) * Config.BLOCK_HEIGHT;
                 this.vy = 0;
@@ -386,13 +351,11 @@ export class Player {
         } else {
             const currentGravity = this.isInWater ? Config.GRAVITY_ACCELERATION * Config.WATER_GRAVITY_FACTOR : Config.GRAVITY_ACCELERATION;
             const verticalDampingFactor = this.isInWater ? Math.pow(Config.WATER_VERTICAL_DAMPING, dt) : 1;
-
             if (!this.isOnGround) {
                 this.vy += currentGravity * dt;
             } else {
                 if (this.vy > 0.1) this.vy = 0;
             }
-
             if (this.isInWater) {
                 this.vy *= verticalDampingFactor;
                 this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
@@ -402,7 +365,6 @@ export class Player {
                     this.vy = Config.MAX_FALL_SPEED;
                 }
             }
-
             const potentialMoveX = this.vx * dt;
             const potentialMoveY = this.vy * dt;
             const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
@@ -411,7 +373,6 @@ export class Player {
         this._checkBoundaries();
         this.currentHealth = Math.max(0, this.currentHealth);
     }
-
     _checkBoundaries() {
         if (this.x < 0) {
             this.x = 0;
@@ -425,7 +386,6 @@ export class Player {
             this.die();
         }
     }
-
     _isTargetWithinRange(targetWorldPos) {
         if (!targetWorldPos) return false;
         if (typeof this.x !== 'number' || typeof this.y !== 'number' ||
@@ -443,7 +403,6 @@ export class Player {
         const distSq = dx * dx + dy * dy;
         return distSq <= Config.PLAYER_INTERACTION_RANGE_SQ;
     }
-
     checkPlacementOverlap(targetCol, targetRow) {
         if (targetCol < 0 || targetRow < 0 || targetCol >= Config.GRID_COLS || targetRow >= Config.GRID_ROWS) return true;
         const blockRect = {
@@ -453,37 +412,27 @@ export class Player {
             height: Config.BLOCK_HEIGHT
         };
         const playerRect = this.getRect();
-        const overlap = playerRect.x < blockRect.x + blockRect.width &&
-                        playerRect.x + playerRect.width > blockRect.x &&
-                        playerRect.y < blockRect.y + blockRect.height &&
-                        playerRect.y + playerRect.height > blockRect.y;
+        const overlap = playerRect.x < blockRect.x + blockRect.width && playerRect.x + playerRect.width > blockRect.x && playerRect.y < blockRect.y + blockRect.height && playerRect.y + playerRect.height > blockRect.y;
         return overlap;
     }
-
     getGhostBlockInfo() {
         if (!this.isMaterialSelected()) return null;
-
         const targetCell = this.targetGridCell || this._lastValidTargetGridCell;
         if (!targetCell || typeof targetCell.col !== 'number' || typeof targetCell.row !== 'number' || isNaN(targetCell.col) || isNaN(targetCell.row)) return null;
-
         const { col, row } = targetCell;
         const targetWorldPosForCheck = this.targetWorldPos || this._lastValidTargetWorldPos;
         if (!targetWorldPosForCheck || !this._isTargetWithinRange(targetWorldPosForCheck)) return null;
-
         const targetBlockType = World.getBlockType(col, row);
         if (targetBlockType === null) return null;
-
         const canPlaceInTargetCell = targetBlockType === Config.BLOCK_AIR;
         if (!canPlaceInTargetCell) return null;
         if (this.checkPlacementOverlap(col, row)) return null;
-
         const selectedMaterialType = this.selectedItem;
         if (selectedMaterialType === 'vegetation') {
             const blockAboveType = World.getBlockType(col, row - 1);
             const blockAboveData = World.getBlock(col, row - 1);
             const canAttachToSolid = blockAboveData !== null && GridCollision.isSolid(col, row - 1);
             const canExtendRope = blockAboveType === Config.BLOCK_ROPE;
-
             if (canAttachToSolid || canExtendRope) {
                 const ropeProps = Config.BLOCK_PROPERTIES[Config.BLOCK_ROPE];
                 return { col: col, row: row, color: ropeProps?.color || Config.PLAYER_BODY_COLOR }; // Use a fallback color
@@ -493,27 +442,22 @@ export class Player {
             if (!GridCollision.hasSolidNeighbor(col, row)) return null;
             const blockTypeToPlace = Config.MATERIAL_TO_BLOCK_TYPE[selectedMaterialType];
             if (blockTypeToPlace === undefined) return null;
-
             const blockProps = Config.BLOCK_PROPERTIES[blockTypeToPlace];
             const blockColor = blockProps?.color;
             if (!blockColor) return null;
             return { col: col, row: row, color: blockColor };
         }
     }
-
     draw(ctx) {
         if (!this.isActive && !this.isDying || !ctx) return;
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Player DRAW ERROR: Preventing draw due to NaN coordinates!`);
             return;
         }
-
         const pivotX = this.x + this.width / 2;
         const pivotY = this.y + this.height / 2;
-
         ctx.save();
         ctx.translate(pivotX, pivotY); // Move origin to player's center for transformations
-
         // Handle death animation transformations (spin and swell)
         let deathRotationAngle = 0;
         let deathScale = 1.0;
@@ -521,7 +465,6 @@ export class Player {
             const totalAnimationDuration = Config.PLAYER_DEATH_ANIMATION_DURATION;
             const spinDuration = Config.PLAYER_SPIN_DURATION;
             const timeElapsed = totalAnimationDuration - this.deathAnimationTimer;
-
             if (timeElapsed >= 0 && timeElapsed < spinDuration) {
                 deathRotationAngle = (this.deathAnimationFrame / Config.PLAYER_SPIN_FRAMES) * 2 * Math.PI;
             } else if (timeElapsed >= spinDuration && timeElapsed < totalAnimationDuration) {
@@ -535,18 +478,15 @@ export class Player {
             ctx.rotate(deathRotationAngle);
             ctx.scale(deathScale, deathScale);
         }
-
         // Handle orientation based on lastDirection (flip if facing left)
         if (this.lastDirection === -1 && !this.isDying) { // Don't apply normal flip if spinning
             ctx.scale(-1, 1);
         }
-
         // --- Draw Player Body Parts (local coordinates relative to pivotX, pivotY) ---
         let drawPlayerBody = true;
         if (this.isInvulnerable && !this.isDying && Math.floor(performance.now() / 100) % 2 !== 0) {
             drawPlayerBody = false; // Skip drawing body for invulnerability flash
         }
-
         if (drawPlayerBody) {
             // Torso (local coords, (0,0) is player center)
             const torsoHeight = this.height * 0.65;
@@ -554,7 +494,6 @@ export class Player {
             const torsoYOffset = this.height * 0.05; // Torso slightly lower than exact center
             ctx.fillStyle = Config.PLAYER_BODY_COLOR;
             ctx.fillRect(-torsoWidth / 2, -torsoHeight / 2 + torsoYOffset, torsoWidth, torsoHeight);
-
             // Head (local coords)
             const headRadius = this.width * 0.35; // Head as a circle
             const headYOffset = -torsoHeight / 2 + torsoYOffset - headRadius * 0.8; // Head on top of torso
@@ -562,7 +501,6 @@ export class Player {
             ctx.beginPath();
             ctx.arc(0, headYOffset, headRadius, 0, Math.PI * 2);
             ctx.fill();
-
             // Simple Eye (always faces "screen forward" if player is flipped, so draw after flip)
             ctx.fillStyle = 'white';
             ctx.beginPath();
@@ -573,17 +511,14 @@ export class Player {
             ctx.arc(headRadius * 0.45, headYOffset - headRadius * 0.08, headRadius * 0.1, 0, Math.PI * 2);
             ctx.fill();
         }
-
         // Restore player-specific body transforms (orientation, death animation part)
         // so that arms/weapon can be drawn relative to the un-transformed, un-rotated world space player center
         ctx.restore(); // This undoes translate(pivotX,pivotY), rotate, scale(-1,1) etc.
-
         // --- Draw Arms and Weapon (logic remains similar, but ensure correct pivot for death animation) ---
         // If dying, arms and weapon also need to be transformed by the death animation.
         // We can re-apply the death transform here, or draw them inside the previous save/restore block
         // by transforming their target points into the player's local rotated space.
         // For simplicity, let's re-apply a similar transform for arms/weapon if dying.
-
         ctx.save(); // New save for arms/weapon, possibly with death animation transform
         if (this.isDying) {
             ctx.translate(pivotX, pivotY);
@@ -591,10 +526,8 @@ export class Player {
             ctx.scale(deathScale, deathScale);
             ctx.translate(-pivotX, -pivotY); // Translate back, arm/weapon coords are world-based
         }
-
         let showWeapon = false;
         let weaponIsAnimated = false;
-
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && !this.isDying) {
             showWeapon = true;
             weaponIsAnimated = true;
@@ -602,23 +535,19 @@ export class Player {
             showWeapon = true;
             weaponIsAnimated = false;
         }
-
         if (showWeapon) {
             const playerCenterX = this.x + this.width / 2; // World coords
             const playerCenterY = this.y + this.height / 2; // World coords
             const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
-
             let weaponStats = Config.WEAPON_STATS[this.selectedItem];
             if (!weaponStats || !weaponStats.shape || !weaponStats.visualAnchorOffset) {
                 console.warn(`Player.draw: Missing weapon stats or shape/anchor for ${this.selectedItem}.`);
                 ctx.restore(); return;
             }
-
             const visualAnchorOffsetX = weaponStats.visualAnchorOffset.x;
             const visualAnchorOffsetY = weaponStats.visualAnchorOffset.y;
             const dx_to_raw = rawTargetWorldPos.x - playerCenterX;
             const dy_to_raw = rawTargetWorldPos.y - playerCenterY;
-
             let maxVisualReach;
             if (weaponStats.attackReachY === undefined) {
                 maxVisualReach = weaponStats.attackReachX;
@@ -629,11 +558,9 @@ export class Player {
                 );
             }
             maxVisualReach = Math.max(maxVisualReach, weaponStats.width, weaponStats.height, Config.BLOCK_WIDTH * 2);
-
             let clampedTargetX = rawTargetWorldPos.x;
             let clampedTargetY = rawTargetWorldPos.y;
             const dist_to_raw = Math.sqrt(dx_to_raw * dx_to_raw + dy_to_raw * dy_to_raw);
-
             if (dist_to_raw > maxVisualReach + GridCollision.E_EPSILON) {
                 if (dist_to_raw > GridCollision.E_EPSILON) {
                     const normalizedDx = dx_to_raw / dist_to_raw;
@@ -648,10 +575,8 @@ export class Player {
                 clampedTargetX = playerCenterX + this.lastDirection * (maxVisualReach * 0.1);
                 clampedTargetY = playerCenterY;
             }
-
             let displayAngle = this.currentAttackAngle;
             let effectiveJabOffset = this.jabOffset;
-
             if (weaponIsAnimated) {
                 if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
                     const swipeArcRad = (weaponStats.swipeArcDegrees || 120) * (Math.PI / 180);
@@ -663,28 +588,22 @@ export class Player {
                 displayAngle = Math.atan2(clampedTargetY - playerCenterY, clampedTargetX - playerCenterX);
                 effectiveJabOffset = 0;
             }
-
             const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(displayAngle) - visualAnchorOffsetY * Math.sin(displayAngle);
             const rotatedAnchorOffsetY = visualAnchorOffsetX * Math.sin(displayAngle) + visualAnchorOffsetY * Math.cos(displayAngle);
-
             let finalWeaponPivotX = clampedTargetX - rotatedAnchorOffsetX;
             let finalWeaponPivotY = clampedTargetY - rotatedAnchorOffsetY;
-
             if (effectiveJabOffset !== 0 && (this.selectedItem === Config.WEAPON_TYPE_SHOVEL || this.selectedItem === Config.WEAPON_TYPE_SPEAR)) {
-                finalWeaponPivotX += effectiveJabOffset * Math.cos(baseAttackAngle);
-                finalWeaponPivotY += effectiveJabOffset * Math.sin(baseAttackAngle);
+                finalWeaponPivotX += effectiveJabOffset * Math.cos(this.currentAttackAngle); // Use this.currentAttackAngle
+                finalWeaponPivotY += effectiveJabOffset * Math.sin(this.currentAttackAngle); // Use this.currentAttackAngle
             }
-
             const shoulderOffsetPxX = this.width * Config.PLAYER_SHOULDER_OFFSET_X_FACTOR;
             const shoulderOffsetPxY = this.height * Config.PLAYER_SHOULDER_OFFSET_Y_FACTOR;
             const shoulderRightX = this.x + (this.width - shoulderOffsetPxX); // World coords
             const shoulderRightY = this.y + shoulderOffsetPxY; // World coords
             const shoulderLeftX = this.x + shoulderOffsetPxX;   // World coords
             const shoulderLeftY = this.y + shoulderOffsetPxY;  // World coords
-
             let frontShoulderX, frontShoulderY;
             let backShoulderX, backShoulderY;
-
             if (this.lastDirection === 1) {
                 frontShoulderX = shoulderRightX; frontShoulderY = shoulderRightY;
                 backShoulderX = shoulderLeftX; backShoulderY = shoulderLeftY;
@@ -692,10 +611,8 @@ export class Player {
                 frontShoulderX = shoulderLeftX; frontShoulderY = shoulderLeftY;
                 backShoulderX = shoulderRightX; backShoulderY = shoulderRightY;
             }
-
             let frontHandWorldX, frontHandWorldY;
             let backHandWorldX, backHandWorldY;
-
             if (weaponStats.handPositions && weaponStats.handPositions.front && weaponStats.handPositions.back) {
                 const localFrontHand = weaponStats.handPositions.front;
                 const localBackHand = weaponStats.handPositions.back;
@@ -707,23 +624,19 @@ export class Player {
                 frontHandWorldX = finalWeaponPivotX; frontHandWorldY = finalWeaponPivotY;
                 backHandWorldX = finalWeaponPivotX; backHandWorldY = finalWeaponPivotY;
             }
-
             const frontArmAngle = Math.atan2(frontHandWorldY - frontShoulderY, frontHandWorldX - frontShoulderX);
             let frontArmLength = Math.sqrt(Math.pow(frontHandWorldX - frontShoulderX, 2) + Math.pow(frontHandWorldY - frontShoulderY, 2));
             const backArmAngle = Math.atan2(backHandWorldY - backShoulderY, backHandWorldX - backShoulderX);
             let backArmLength = Math.sqrt(Math.pow(backHandWorldX - backShoulderX, 2) + Math.pow(backHandWorldY - backShoulderY, 2));
-
             const maxArmLength = this.width * 2;
             frontArmLength = Math.min(frontArmLength, maxArmLength);
             backArmLength = Math.min(backArmLength, maxArmLength * 0.9);
             frontArmLength = Math.max(0, frontArmLength);
             backArmLength = Math.max(0, backArmLength);
-
             // Draw back arm (relative to its shoulder)
             ctx.save(); ctx.translate(backShoulderX, backShoulderY); ctx.rotate(backArmAngle);
             ctx.fillStyle = Config.ARM_COLOR; ctx.fillRect(0, -Config.ARM_THICKNESS / 2, backArmLength, Config.ARM_THICKNESS);
             ctx.restore();
-
             // Draw weapon (relative to its pivot)
             ctx.save();
             ctx.translate(finalWeaponPivotX, finalWeaponPivotY);
@@ -750,7 +663,6 @@ export class Player {
                 }
             });
             ctx.restore();
-
             // Draw front arm (relative to its shoulder)
             ctx.save();
             ctx.translate(frontShoulderX, frontShoulderY); ctx.rotate(frontArmAngle);
@@ -758,7 +670,6 @@ export class Player {
             ctx.restore();
         }
         ctx.restore(); // Restore from death animation transform or main arm/weapon save
-
         // Draw attack hitbox (for debugging, outside player transforms)
         if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && !this.isDying) {
             const hitboxData = this.getAttackHitbox();
@@ -797,7 +708,6 @@ export class Player {
             }
         }
     }
-
     drawGhostBlock(ctx) {
         if (!ctx) return;
         const ghostInfo = this.getGhostBlockInfo();
@@ -829,7 +739,6 @@ export class Player {
             ctx.restore();
         }
     }
-
     drawPlacementRange(ctx) {
         if (!ctx || !this.isMaterialSelected() || this.isDying || !this.isActive) {
             return;
@@ -852,13 +761,11 @@ export class Player {
         ctx.stroke();
         ctx.restore();
     }
-
     takeDamage(amount) {
         if (typeof amount !== 'number' || isNaN(amount) || amount <= 0) {
             return;
         }
         if (this.isInvulnerable || this.isDying || this.currentHealth <= 0) return;
-
         this.currentHealth -= amount;
         if (this.currentHealth <= 0) {
             this.currentHealth = 0;
@@ -868,7 +775,6 @@ export class Player {
             this.invulnerabilityTimer = Config.PLAYER_INVULNERABILITY_DURATION;
         }
     }
-
     die() {
         if (!this.isActive || this.isDying) {
             if (this.currentHealth <= 0 && !this.isActive && !this.isDying) {
@@ -886,30 +792,23 @@ export class Player {
         this.deathAnimationTimer = Config.PLAYER_DEATH_ANIMATION_DURATION;
         this.deathAnimationFrame = 0;
     }
-
     getAttackHitbox() {
         if (!this.isAttacking || !this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED || this.isDying) {
             return null;
         }
-
         const weaponStats = Config.WEAPON_STATS[this.selectedItem];
         if (!weaponStats) return null;
-
         const playerCenterX = this.x + this.width / 2;
         const playerCenterY = this.y + this.height / 2;
-
         const baseAttackAngle = this.currentAttackAngle;
         let effectiveJabOffset = this.jabOffset;
         let currentVisualAngle = baseAttackAngle;
-
         const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
         const visualAnchorOffsetX = weaponStats.visualAnchorOffset.x;
         const visualAnchorOffsetY = weaponStats.visualAnchorOffset.y;
-
         const dx_to_raw = rawTargetWorldPos.x - playerCenterX;
         const dy_to_raw = rawTargetWorldPos.y - playerCenterY;
         const dist_to_raw = Math.sqrt(dx_to_raw * dx_to_raw + dy_to_raw * dy_to_raw);
-
         let maxVisualReach;
         if (weaponStats.attackReachY === undefined) {
             maxVisualReach = weaponStats.attackReachX;
@@ -917,10 +816,8 @@ export class Player {
             maxVisualReach = Math.sqrt((weaponStats.attackReachX**2) + (weaponStats.attackReachY**2));
         }
         maxVisualReach = Math.max(maxVisualReach, weaponStats.width, weaponStats.height, Config.BLOCK_WIDTH * 2);
-
         let clampedTargetX = rawTargetWorldPos.x;
         let clampedTargetY = rawTargetWorldPos.y;
-
         if (dist_to_raw > maxVisualReach + GridCollision.E_EPSILON) {
             if (dist_to_raw > GridCollision.E_EPSILON) {
                 clampedTargetX = playerCenterX + (dx_to_raw / dist_to_raw) * maxVisualReach;
@@ -933,31 +830,25 @@ export class Player {
             clampedTargetX = playerCenterX + this.lastDirection * (maxVisualReach * 0.1);
             clampedTargetY = playerCenterY;
         }
-
         if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
             const swipeArcRad = (weaponStats.swipeArcDegrees || 120) * (Math.PI / 180);
             const swipeStartOffsetRad = (weaponStats.swipeStartOffsetDegrees || -60) * (Math.PI / 180);
             currentVisualAngle = baseAttackAngle + swipeStartOffsetRad + (swipeArcRad * this.currentSwipeProgress);
             effectiveJabOffset = 0;
         }
-
         const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(currentVisualAngle) - visualAnchorOffsetY * Math.sin(currentVisualAngle);
         const rotatedAnchorOffsetY = visualAnchorOffsetX * Math.sin(currentVisualAngle) + visualAnchorOffsetY * Math.cos(currentVisualAngle);
-
         let weaponPivotX = clampedTargetX - rotatedAnchorOffsetX;
         let weaponPivotY = clampedTargetY - rotatedAnchorOffsetY;
-
         if (effectiveJabOffset !== 0 && (this.selectedItem === Config.WEAPON_TYPE_SHOVEL || this.selectedItem === Config.WEAPON_TYPE_SPEAR)) {
             weaponPivotX += effectiveJabOffset * Math.cos(baseAttackAngle);
             weaponPivotY += effectiveJabOffset * Math.sin(baseAttackAngle);
         }
-
         const bladeShape = weaponStats.shape.find(s => s.isBlade === true);
         if (!bladeShape) {
             console.warn(`No 'isBlade' shape found for weapon ${this.selectedItem}`);
             return null;
         }
-
         if (bladeShape.type === 'triangle') {
             const worldVertices = [bladeShape.p1, bladeShape.p2, bladeShape.p3].map(pLocal => {
                 const rotatedX = pLocal.x * Math.cos(currentVisualAngle) - pLocal.y * Math.sin(currentVisualAngle);
@@ -988,20 +879,15 @@ export class Player {
         }
         return null;
     }
-
     hasHitEnemyThisSwing(enemy) { return this.hitEnemiesThisSwing.includes(enemy); }
     registerHitEnemy(enemy) { if (!this.hasHitEnemyThisSwing(enemy)) { this.hitEnemiesThisSwing.push(enemy); } }
-
     hasHitBlockThisSwing(col, row) { const blockKey = `${col},${row}`; return this.hitBlocksThisSwing.includes(blockKey); }
     registerHitBlock(col, row) { const blockKey = `${col},${row}`; if (!this.hitBlocksThisSwing.includes(blockKey)) { this.hitBlocksThisSwing.push(blockKey); } }
-
     pickupItem(item) {
         if (!item || !item.type) return false;
-
         let pickedUp = false;
         const materialType = item.type;
         const GATHER_REQUIREMENT = 4;
-
         if (materialType === 'dirt' || materialType === 'vegetation') {
             this.partialCollection[materialType] = (this.partialCollection[materialType] || 0) + 1;
             pickedUp = true;
@@ -1028,7 +914,6 @@ export class Player {
         }
         return pickedUp;
     }
-
     hasWeapon(weaponType) {
         switch (weaponType) {
             case Config.WEAPON_TYPE_SWORD: return this.hasSword;
@@ -1037,7 +922,6 @@ export class Player {
             default: return false;
         }
     }
-
     equipItem(itemType) {
         if (itemType === Config.WEAPON_TYPE_UNARMED) {
             this.selectedItem = Config.WEAPON_TYPE_UNARMED;
@@ -1046,14 +930,12 @@ export class Player {
             this.placementCooldown = 0;
             return true;
         }
-
         let canEquip = false;
         if (this.isWeaponType(itemType)) {
             canEquip = this.hasWeapon(itemType);
         } else if (Config.INVENTORY_MATERIALS.includes(itemType)) {
             canEquip = (this.inventory[itemType] || 0) > 0;
         }
-
         if (canEquip && this.selectedItem !== itemType) {
             this.selectedItem = itemType;
             this.isAttacking = false;
@@ -1063,7 +945,6 @@ export class Player {
         }
         return false;
     }
-
     decrementInventory(itemType, amount = 1) {
         if (Config.INVENTORY_MATERIALS.includes(itemType) && (this.inventory[itemType] || 0) >= amount) {
             this.inventory[itemType] -= amount;
@@ -1074,7 +955,6 @@ export class Player {
         }
         return false;
     }
-
     craftItem(itemType) {
         const weaponStats = Config.WEAPON_STATS[itemType];
         const recipe = weaponStats?.recipe;
@@ -1085,7 +965,6 @@ export class Player {
         if (this.isWeaponType(itemType) && this.hasWeapon(itemType)) {
             return false;
         }
-
         let hasMaterials = true;
         for (const ingredient of recipe) {
             const requiredType = ingredient.type;
@@ -1099,14 +978,12 @@ export class Player {
         if (!hasMaterials) {
             return false;
         }
-
         for (const ingredient of recipe) {
             if (!this.decrementInventory(ingredient.type, ingredient.amount)) {
                 console.error(`Failed to consume materials while crafting ${itemType}. Inventory state may be inconsistent.`);
                 return false;
             }
         }
-
         let craftedSuccessfully = false;
         switch (itemType) {
             case Config.WEAPON_TYPE_SWORD:
@@ -1123,12 +1000,10 @@ export class Player {
         }
         return craftedSuccessfully;
     }
-
     getPartialCollection(materialType) { return this.partialCollection[materialType] || 0;    }
     isWeaponType(itemType) { return [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL].includes(itemType); }
     isWeaponSelected() { return this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.isWeaponType(this.selectedItem); }
     isMaterialSelected() { return Config.INVENTORY_MATERIALS.includes(this.selectedItem); }
-
     getRect() {
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
@@ -1136,13 +1011,11 @@ export class Player {
         const safeHeight = (typeof this.height === 'number' && !isNaN(this.height)) ? this.height : 1;
         return { x: safeX, y: safeY, width: safeWidth, height: safeHeight };
     }
-
     getPosition() {
         const safeX = (typeof this.x === 'number' && !isNaN(this.x)) ? this.x : 0;
         const safeY = (typeof this.y === 'number' && !isNaN(this.y)) ? this.y : 0;
         return { x: safeX, y: safeY };
     }
-
     getCurrentHealth() { return this.currentHealth; }
     getMaxHealth() { return this.maxHealth; }
     getInventory() { return this.inventory; }
@@ -1152,31 +1025,26 @@ export class Player {
     getCurrentlySelectedItem() { return this.selectedItem; }
     getActiveInventoryMaterial() { return this.isMaterialSelected() ? this.selectedItem : null; }
     getActiveWeaponType() { return this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED ? this.selectedItem : null; }
-
     getCurrentAttackDamage() {
         if (!this.isWeaponSelected() || this.isDying) return 0;
         const weaponStats = Config.WEAPON_STATS[this.selectedItem];
         return weaponStats?.attackDamage ?? 0;
     }
-
     getCurrentBlockDamage() {
         if (this.isDying) return 0;
         const weaponStats = Config.WEAPON_STATS[this.selectedItem];
         return weaponStats?.blockDamage ?? 0;
     }
-
     getCurrentWeaponKnockback() {
         if (!this.isWeaponSelected() || this.isDying) return 0;
         const weaponStats = Config.WEAPON_STATS[this.selectedItem];
         return weaponStats?.knockbackStrength ?? 0;
     }
-
     getCurrentWeaponKnockbackStunDuration() {
         if (!this.isWeaponSelected() || this.isDying) return 0;
         const weaponStats = Config.WEAPON_STATS[this.selectedItem];
         return weaponStats?.knockbackStunDuration ?? 0;
     }
-
     setActiveInventoryMaterial(materialType) {
         if (this.isDying) return false;
         if (Config.INVENTORY_MATERIALS.includes(materialType)) {
@@ -1188,7 +1056,6 @@ export class Player {
         }
         return false;
     }
-
     setActiveWeapon(weaponType) {
         if (this.isDying) return false;
         if (this.isWeaponType(weaponType) || weaponType === Config.WEAPON_TYPE_UNARMED) {
@@ -1219,7 +1086,6 @@ export class Player {
         }
         return false;
     }
-
     reset() {
         console.log("Resetting player state...");
         this.x = Config.PLAYER_START_X;
@@ -1258,7 +1124,6 @@ export class Player {
         this.jabOffset = 0;
         this.currentAttackAngle = 0;
         this.currentSwipeProgress = 0;
-
         if (Config.DEBUG_MODE) {
             DebugLogger.log(">>> Player DEBUG MODE: Granting starting materials and weapons.");
             Config.INVENTORY_MATERIALS.forEach(materialType => {
@@ -1267,18 +1132,15 @@ export class Player {
             this.hasShovel = true;
             this.hasSword = true;
             this.hasSpear = true;
-
             if (this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
                 this.equipItem(Config.WEAPON_TYPE_SHOVEL); // Equip shovel by default in debug
             }
         }
-
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Player RESET POSITION ERROR: NaN final coordinates! Resetting to center.`);
             this.x = Config.CANVAS_WIDTH / 2 - this.width / 2;
             this.y = Config.CANVAS_HEIGHT / 2 - this.height / 2;
         }
     }
-
     resetPosition() { this.die(); }
 }
