@@ -135,6 +135,25 @@ export function checkPlayerAttackEnemyCollisions(player, enemies) {
             if (!player.hasHitEnemyThisSwing(enemy)) {
                 enemy.takeDamage(currentEnemyDamage);
                 player.registerHitEnemy(enemy);
+
+                // --- Add Knockback ---
+                const knockbackStrength = player.getCurrentWeaponKnockback();
+                const knockbackStunDuration = player.getCurrentWeaponKnockbackStunDuration();
+
+                if (knockbackStrength > 0 || knockbackStunDuration > 0) {
+                    const playerRectForKnockback = player.getRect(); 
+                    const playerCenterX = playerRectForKnockback.x + playerRectForKnockback.width / 2;
+                    const playerCenterY = playerRectForKnockback.y + playerRectForKnockback.height / 2;
+
+                    const enemyCenterX = enemyRect.x + enemyRect.width / 2; 
+                    const enemyCenterY = enemyRect.y + enemyRect.height / 2;
+
+                    const knockbackDirX = enemyCenterX - playerCenterX;
+                    const knockbackDirY = enemyCenterY - playerCenterY;
+                    
+                    enemy.applyKnockback(knockbackDirX, knockbackDirY, knockbackStrength, knockbackStunDuration);
+                }
+
             }
         }
     }

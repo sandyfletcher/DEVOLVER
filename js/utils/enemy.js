@@ -83,6 +83,8 @@ export class Enemy {
         this.isFlashing = false;
         this.flashTimer = 0;
         this.flashDuration = Config.ENEMY_FLASH_DURATION;
+        this.isStunned = false;
+        this.stunTimer = 0;
         this.isDying = false;
         this.deathAnimationTimer = 0;
         this.isBeingAbsorbed = false;
@@ -129,13 +131,30 @@ export class Enemy {
             return;
         }
         
+        if (this.isStunned) {
+            this.stunTimer -= dt;
+            if (this.stunTimer <= 0) {
+                this.isStunned = false;
+            }
+        }
+
         if (this.isFlashing) {
             this.flashTimer -= dt;
             if (this.flashTimer <= 0) {
                 this.isFlashing = false;
             }
         }
-        if (this.waterJumpCooldown > 0) this.waterJumpCooldown -= dt;
+        if (this.waterJumpCooldown > 0) {
+            this.waterJumpCooldown -= dt;
+            if (this.waterJumpCooldown < 0) {
+                this.waterJumpCooldown = 0;
+            }
+        }
+
+        if (isNaN(this.x) || isNaN(this.y)) {
+            console.error(`>>> Enemy UPDATE ERROR (${this.displayName}): Skipping update due to NaN coordinates!`);
+            return;
+        }
         
         this.isInWater = GridCollision.isEntityInWater(this);
         
@@ -147,15 +166,16 @@ export class Enemy {
             }
         }
         
-        if (isNaN(this.x) || isNaN(this.y)) {
-            console.error(`>>> Enemy UPDATE ERROR (${this.displayName}): Skipping update due to NaN coordinates!`);
-            return;
+        let targetVx = 0; 
+        let targetVy = 0;
+        let wantsJump = false;
+
+        if (!this.isStunned) { 
+            const aiDecision = this.aiStrategy.decideMovement(playerPosition, allEnemies, dt);
+            targetVx = aiDecision?.targetVx ?? 0;
+            targetVy = aiDecision?.targetVy ?? 0;
+            wantsJump = aiDecision?.jump ?? false;
         }
-        
-        const aiDecision = this.aiStrategy.decideMovement(playerPosition, allEnemies, dt);
-        let targetVx = aiDecision?.targetVx ?? 0;
-        let targetVy = aiDecision?.targetVy ?? 0;
-        let wantsJump = aiDecision?.jump ?? false;
 
         // --- Separation Behavior (Apply after primary movement/physics) ---
         // Calculate separation force from other enemies
@@ -199,62 +219,105 @@ export class Enemy {
             this.vy += separationBoostY;
         }
         
-        // ... (rest of the _applyPhysics logic as it was, unchanged) ...
+        let currentVx = this.vx; // Initialize with current velocity
+        let currentVy = this.vy; // Initialize with current velocity
+
         let currentGravity = Config.GRAVITY_ACCELERATION * (this.stats.gravityFactor ?? 1.0);
         let useStandardGravity = this.applyGravityDefault;
         let applyWaterEffects = false;
 
         if (this.canFly && !this.isOnGround) {
             useStandardGravity = false;
-            this.vy = targetVy;
-            this.vy = Math.max(-this.maxSpeedY, Math.min(this.maxSpeedY, this.vy));
-            this.vx = targetVx;
+            if (!this.isStunned) {
+                currentVy = targetVy;
+                currentVx = targetVx;
+            }
         } else if (this.canSwim && this.isInWater) {
             useStandardGravity = false;
-            this.vy = targetVy;
-            this.vy = Math.max(-this.swimSpeed, Math.min(this.swimSpeed, this.vy));
-            this.vx = targetVx;
-            this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
-            this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
-        } else {
+            if (!this.isStunned) { // AI controls velocity if not stunned
+
+                currentVy = targetVy;
+                currentVx = targetVx;
+            }
+            // Apply water damping to current velocity (which includes knockback if stunned)
+            currentVx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
+            currentVy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
+            // Clamping to swimSpeed happens after this block
+        } else { // Ground units or non-swimmers in water
             applyWaterEffects = this.isInWater;
             
             if (applyWaterEffects) {
-                this.vy -= Config.ENEMY_WATER_BUOYANCY_ACCEL * dt;
+                currentVy -= Config.ENEMY_WATER_BUOYANCY_ACCEL * dt; // Buoyancy
             }
             
             if (useStandardGravity && !this.isOnGround) {
                 const gravityMultiplier = applyWaterEffects ? Config.WATER_GRAVITY_FACTOR : 1.0;
-                this.vy += currentGravity * gravityMultiplier * dt;
-            } else if (this.isOnGround && this.vy > E_EPSILON) {
-                this.vy = 0;
+                currentVy += currentGravity * gravityMultiplier * dt;
+            } else if (this.isOnGround && currentVy > E_EPSILON) {
+                currentVy = 0; // Stop downward velocity if on ground
             }
             
             if (applyWaterEffects) {
-                this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
+                currentVy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt); // Damping for non-swimmers in water
             }
             
-            if (wantsJump && this.canJump) {
+            if (wantsJump && this.canJump && !this.isStunned) { // Jumping (only if not stunned)
                 if (applyWaterEffects) {
                     if (this.waterJumpCooldown <= 0) {
-                        this.vy = -(this.jumpVelocity * 0.8);
+                        currentVy = -(this.jumpVelocity * 0.8);
                         this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION;
                         this.isOnGround = false;
                     }
                 } else if (this.isOnGround) {
-                    this.vy = -this.jumpVelocity;
+                    currentVy = -this.jumpVelocity;
                     this.isOnGround = false;
                 }
             }
             
-            this.vx = targetVx;
-            if (applyWaterEffects) {
-                this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
+
+            // Horizontal movement for ground units/non-swimmers
+            if (!this.isStunned) {
+                if (Math.abs(targetVx) > E_EPSILON) { // If AI wants to move
+                    let accelFactor = (this.stats.accelerationX_BLOCKS_PER_SEC ?? 30) * Config.BLOCK_WIDTH;
+                    // Adjust acceleration based on environment (optional, for more nuanced movement)
+                    if (this.isOnGround) accelFactor *= 1.0;
+                    else if (this.isInWater && !this.canSwim) accelFactor *= 0.3; // Less control for non-swimmers in water
+                    else accelFactor *= 0.5; // Air control
+
+                    if (Math.abs(currentVx - targetVx) > accelFactor * dt) {
+                        currentVx += Math.sign(targetVx - currentVx) * accelFactor * dt;
+                    } else {
+                        currentVx = targetVx; // Snap to target if close
+                    }
+                } else if (this.isOnGround) { // AI wants to stop and is on ground, apply friction
+                    let frictionDecel = (this.stats.frictionDecel_BLOCKS_PER_SEC ?? 20) * Config.BLOCK_WIDTH;
+                     if (Math.abs(currentVx) > E_EPSILON) {
+                        let oldSign = Math.sign(currentVx);
+                        currentVx -= oldSign * frictionDecel * dt;
+                        if (Math.sign(currentVx) !== oldSign && oldSign !== 0) { currentVx = 0; }
+                    }
+                }
+            }
+            // If stunned and on ground, friction is applied
+            else if (this.isStunned && this.isOnGround) {
+                let frictionDecel = (this.stats.frictionDecel_BLOCKS_PER_SEC ?? 20) * Config.BLOCK_WIDTH * 0.75; // Slightly less friction when stunned?
+                 if (Math.abs(currentVx) > E_EPSILON) {
+                    let oldSign = Math.sign(currentVx);
+                    currentVx -= oldSign * frictionDecel * dt;
+                    if (Math.sign(currentVx) !== oldSign && oldSign !== 0) { currentVx = 0; }
+                }
+            }
+
+            if (applyWaterEffects && !this.canSwim) { // Water drag for non-swimmers
+                currentVx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
             }
         }
         
-        const currentMaxSpeedX = this.isInWater && !this.canSwim ? this.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.maxSpeedX;
-        this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
+        this.vx = currentVx;
+        this.vy = currentVy;
+
+        const currentMaxSpeedXToUse = this.canSwim && this.isInWater ? this.swimSpeed : (this.isInWater && !this.canSwim ? this.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.maxSpeedX);
+        this.vx = Math.max(-currentMaxSpeedXToUse, Math.min(currentMaxSpeedXToUse, this.vx));
         
         if (applyWaterEffects) {
             this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
@@ -269,13 +332,9 @@ export class Enemy {
         const collisionResult = GridCollision.collideAndResolve(this, potentialMoveX, potentialMoveY);
         this.isOnGround = collisionResult.isOnGround;
         
-        if (this.canFly && targetVy < 0 && collisionResult.collidedY && this.vy >= 0) {
-            // Keep existing logic for flyers, if any specific handling is desired.
-        } else {
-            if (collisionResult.collidedX) this.vx = 0;
-            if (collisionResult.collidedY) this.vy = 0;
-        }
-        
+
+        if (collisionResult.collidedX) this.vx = 0;
+        if (collisionResult.collidedY) this.vy = 0;
         this.aiStrategy.reactToCollision(collisionResult);
         
         if (this.x < 0) { this.x = 0; if (this.vx < 0) this.vx = 0; }
@@ -284,7 +343,40 @@ export class Enemy {
             this.die(false);
         }
     }
-       takeDamage(amount) {
+
+
+    applyKnockback(dirX, dirY, strength, stunDuration) {
+        if (strength === 0 && stunDuration === 0) return;
+
+        if (strength > 0) {
+            const dist = Math.sqrt(dirX * dirX + dirY * dirY);
+            if (dist > E_EPSILON) {
+                const normDirX = dirX / dist;
+                const normDirY = dirY / dist;
+
+                this.vx += normDirX * strength;
+
+                let yImpulse = normDirY * strength * 0.5; 
+                if (yImpulse >= 0) { // If Y impulse is downward or zero, make it a small upward pop
+                    yImpulse = -Math.abs(strength * 0.2); 
+                } else { // If Y impulse is already upward, ensure it's at least a certain pop
+                    yImpulse = Math.min(yImpulse, -Math.abs(strength * 0.2)); 
+                }
+                this.vy += yImpulse;
+
+                if (this.isOnGround && yImpulse < 0) { 
+                    this.isOnGround = false;
+                }
+            }
+        }
+        if (stunDuration > 0 && !this.isStunned) { // Only apply stun if not already stunned, or use Math.max if re-stun is desired
+            this.isStunned = true;
+            this.stunTimer = stunDuration; // Could also be Math.max(this.stunTimer, stunDuration)
+        }
+    }
+
+
+    takeDamage(amount) {
         // Do not take damage if already inactive, getting absorbed OR currently in the dying animation state
         if (this.isBeingAbsorbed || !this.isActive || this.isDying || this.isFlashing) return;
         const healthBefore = this.health;

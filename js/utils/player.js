@@ -199,8 +199,6 @@ export class Player {
             }
         }
     }
-    // ... _handleMovement, _handlePlacementHold, _applyPhysics, _checkBoundaries, _isTargetWithinRange, checkPlacementOverlap, getGhostBlockInfo remain largely the same ...
-    // (Make sure these methods use `this.width`, `this.height` if player size changes, but it's fixed by Config.PLAYER_WIDTH/HEIGHT)
     _handleMovement(dt, inputState) {
         if (this.isOnRope) {
             this.vx = 0; 
@@ -900,7 +898,6 @@ export class Player {
         }
         return null; // Should not happen if bladeShape is found and is rect/triangle
     }
-    // ... (rest of Player class: hasHitEnemyThisSwing, registerHitEnemy, etc. are fine)
     hasHitEnemyThisSwing(enemy) { return this.hitEnemiesThisSwing.includes(enemy); }
     registerHitEnemy(enemy) { if (!this.hasHitEnemyThisSwing(enemy)) { this.hitEnemiesThisSwing.push(enemy); } }
     hasHitBlockThisSwing(col, row) { const blockKey = `${col},${row}`; return this.hitBlocksThisSwing.includes(blockKey); }
@@ -1056,6 +1053,16 @@ export class Player {
         if (this.isDying) return 0;
         const weaponStats = Config.WEAPON_STATS[this.selectedItem];
         return weaponStats?.blockDamage ?? 0;
+    }
+    getCurrentWeaponKnockback() {
+        if (!this.isWeaponSelected() || this.isDying) return 0;
+        const weaponStats = Config.WEAPON_STATS[this.selectedItem];
+        return weaponStats?.knockbackStrength ?? 0;
+    }
+    getCurrentWeaponKnockbackStunDuration() {
+        if (!this.isWeaponSelected() || this.isDying) return 0;
+        const weaponStats = Config.WEAPON_STATS[this.selectedItem];
+        return weaponStats?.knockbackStunDuration ?? 0;
     }
     setActiveInventoryMaterial(materialType) {
         if (this.isDying) return false;

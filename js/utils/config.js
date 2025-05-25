@@ -442,6 +442,8 @@ export const WEAPON_STATS = {
         attackColor: 'rgba(255, 255, 255, 0.2)',
         visualAnchorOffset: { x: 0, y: 0 },
         shape: [{ type: 'rect', x: -0.5 * BLOCK_WIDTH, y: -0.5 * BLOCK_HEIGHT, w: 1 * BLOCK_WIDTH, h: 1 * BLOCK_HEIGHT, color: 'transparent' }],
+        knockbackStrength: 50,
+        knockbackStunDuration: 0.1,
         jabDistanceBlocks: 0, // Unarmed doesn't jab
     },
     [WEAPON_TYPE_SHOVEL]: {
@@ -470,6 +472,8 @@ export const WEAPON_STATS = {
             { type: 'rect', x: -2.5 * BLOCK_WIDTH, y: -0.25 * BLOCK_HEIGHT, w: 2.5 * BLOCK_WIDTH, h: 0.5 * BLOCK_HEIGHT, color: 'rgb(139, 69, 19)'}, // Handle
             { type: 'triangle', p1: { x: 0, y: -0.75 * BLOCK_WIDTH }, p2: { x: 0, y: 0.75 * BLOCK_WIDTH }, p3: { x: 1.5 * BLOCK_WIDTH, y: 0 }, color: 'rgb(128, 128, 128)', isBlade: true} // Shovel head
         ],
+        knockbackStrength: 150,
+        knockbackStunDuration: 0.2,
         jabDistanceBlocks: 0.75,
     },
     [WEAPON_TYPE_SWORD]: {
@@ -496,6 +500,8 @@ export const WEAPON_STATS = {
         ],
         swipeArcDegrees: 120, // Total arc of the swipe
         swipeStartOffsetDegrees: -60, // Starts -60deg from aim, ends +60deg from aim
+        knockbackStrength: 200,
+        knockbackStunDuration: 0.25,
         jabDistanceBlocks: 0, // Sword uses swipe, not jab
     },
     [WEAPON_TYPE_SPEAR]: {
@@ -524,6 +530,8 @@ export const WEAPON_STATS = {
             { type: 'rect', x: -4.75 * BLOCK_WIDTH, y: -0.20 * BLOCK_HEIGHT, w: 4.75 * BLOCK_WIDTH, h: 0.40 * BLOCK_HEIGHT, color: 'rgb(180, 130, 90)'}, // Shaft
             { type: 'triangle', p1: { x: 0, y: -0.25 * BLOCK_HEIGHT }, p2: { x: 0, y: 0.25 * BLOCK_HEIGHT }, p3: { x: 0.75 * BLOCK_WIDTH, y: 0 }, color: 'rgb(160, 160, 170)', isBlade: true} // Spearhead
         ],
+        knockbackStrength: 250,
+        knockbackStunDuration: 0.3,
         jabDistanceBlocks: 1.0,
     }
 };
