@@ -286,15 +286,22 @@ body {
 
 /* Generic bottom-right button group */
 .button-group-bottom-right {
-    display: flex; justify-content: flex-end; align-items: flex-end;
+    display: flex;
+    /* justify-content: flex-end; */ /* Original: Horizontal */
+    /* align-items: flex-end; */    /* Original: Horizontal */
+    flex-direction: column;      /* New: Vertical stack */
+    align-items: flex-end;       /* New: Align items to the end (right) of the column */
     width: 100%; padding: 1rem; box-sizing: border-box;
     margin-top: auto; /* Pushes this group to the bottom of its flex parent */
 }
 .button-group-bottom-right .button-hero-action {
-    margin-left: 1rem; /* Spacing between hero buttons if multiple */
+    /* margin-left: 1rem; */ /* Original: Horizontal spacing */
+    margin-top: 0.5rem;   /* New: Vertical spacing */
+    margin-left: 0;       /* New: Remove left margin for column layout */
 }
 .button-group-bottom-right .button-hero-action:first-child {
-    margin-left: 0; /* No left margin for the first button in the group */
+    /* margin-left: 0; */   /* Original: No left margin for the first button in the group */
+    margin-top: 0;      /* New: No top margin for the first button in the column */
 }
 
 
@@ -302,12 +309,18 @@ body {
    9. Boot Overlay - Specific Content
    ========================================================================== */
 #title-heading-button {
-    background-color: black; border: 2px solid white; padding: 0.5rem 1rem;
+    background-color: black; border: 2px solid white; 
+    padding: 1.5rem 2.5rem; /* Increased padding */
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
     border-radius: 8px;
 }
-#title-heading-button h1 { margin: 0; padding: 0; color: white; }
+#title-heading-button h1 { 
+    margin: 0; padding: 0; color: white; 
+    font-family: 'RubikIso', sans-serif; /* Ensure font */
+    font-size: 3rem; /* Increased font size, using rem */
+    text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.5); /* Match hover style */
+}
 #title-heading-button:hover { background-color: #1a1a1a; border-color: #f0f0f0; }
 #title-heading-button:hover h1 { color: #f0f0f0; text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.5); }
 #title-heading-button:active { background-color: #0d0d0d; border-color: #e0e0e0; transform: scale(0.97); }
@@ -341,27 +354,52 @@ body {
     margin-bottom: 2rem; /* Space before the back button group */
 }
 .settings-action-button { /* Style for GRID, MUSIC, SFX buttons */
-    padding: 10px 20px;
-    font-size: 1.2em; /* Slightly larger */
-    width: 100%; /* Make buttons take full width of their container */
-    text-align: center; /* Center text */
+    background-color: black; 
+    border: 2px solid white; 
+    padding: 0.5rem 1rem;
     cursor: pointer;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    background-color: #eee;
-    color: #333;
-    font-weight: bold;
-    transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, color 0.2s ease;
+    border-radius: 8px; 
+    color: white; 
+    font-family: 'RubikIso', sans-serif;
+    font-size: 1.3em; /* Adjusted font size for settings context */
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3);
+    margin: 0.25rem; /* Adjusted margin for tighter group */
+    min-width: 200px; /* Ensure buttons have some width */
+    text-align: center;
     box-sizing: border-box;
 }
-.settings-action-button:hover { background-color: #fff; }
-.settings-action-button:active { transform: scale(0.97); }
-
-.settings-action-button.settings-row__button--state-bad { /* From previous refactor for state */
-    border-color: darkred; color: darkred; background-color: #fee;
+.settings-action-button:hover {
+    background-color: #1a1a1a; 
+    border-color: #f0f0f0; 
+    color: #f0f0f0;
+    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
 }
-.settings-action-button.settings-row__button--state-good { /* From previous refactor for state */
-    background-color: #dfd; border-color: darkgreen; color: darkgreen;
+.settings-action-button:active {
+     background-color: #0d0d0d; 
+     border-color: #e0e0e0; 
+     transform: scale(0.97);
+}
+
+/* State-specific styles for settings buttons (text and border only) */
+.settings-action-button.settings-row__button--state-bad { 
+    border-color: red; 
+    color: lightcoral; /* Lighter red for readability on black */
+    /* background-color: black; /* Ensure background remains black */
+}
+.settings-action-button.settings-row__button--state-bad:hover {
+    border-color: #ff4d4d;
+    color: #ff8080;
+}
+
+.settings-action-button.settings-row__button--state-good { 
+    border-color: limegreen; 
+    color: lightgreen; /* Lighter green */
+    /* background-color: black; /* Ensure background remains black */
+}
+.settings-action-button.settings-row__button--state-good:hover {
+    border-color: #4dff4d;
+    color: #80ff80;
 }
 /* The #settings-back-button uses .button-hero-action and is in .button-group-bottom-right */
 
@@ -412,15 +450,63 @@ body {
     gap: 1rem;
     margin-bottom: 2rem; /* Space before restart button group */
 }
-/* RESUME and PAUSE-SETTINGS buttons use .overlay-button and modifiers */
-/* RESTART button uses .button-hero-action and is in .button-group-bottom-right */
-
+/* Styling for RESUME and PAUSE-SETTINGS buttons to match .button-hero-action */
+.pause-options-group .overlay-button {
+    background-color: black; 
+    border: 2px solid white; 
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, color 0.2s ease;
+    border-radius: 8px; 
+    color: white; 
+    font-family: 'RubikIso', sans-serif;
+    font-size: 1.3em; /* Adjusted font size for pause context */
+    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3);
+    margin: 0.25rem; /* Adjusted margin */
+    min-width: 200px;
+    text-align: center;
+    box-sizing: border-box;
+}
+.pause-options-group .overlay-button:hover {
+    background-color: #1a1a1a; 
+    border-color: #f0f0f0; 
+    color: #f0f0f0;
+    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
+}
+.pause-options-group .overlay-button:active {
+     background-color: #0d0d0d; 
+     border-color: #e0e0e0; 
+     transform: scale(0.97);
+}
 
 /* 10.5. Game Over Content */
-/* Buttons use .overlay-button and modifiers */
+/* Buttons use .overlay-button and modifiers. If these should also be hero-style,
+   similar CSS overrides would be needed for #overlay-gameover-content .overlay-button */
+#overlay-gameover-content .overlay-button {
+    /* Example if you want gameover buttons to also be hero style */
+    background-color: black; border: 2px solid darkred; padding: 0.5rem 1rem;
+    color: white; font-family: 'RubikIso', sans-serif; font-size: 1.3em;
+    text-shadow: 1px 1px 3px rgba(255,100,100,0.3);
+    border-radius: 8px; margin: 0.5rem; min-width: 200px;
+}
+#overlay-gameover-content .overlay-button:hover {
+    background-color: #1a0000; border-color: red;
+}
+
 
 /* 10.6. Victory Content */
 /* Buttons use .overlay-button and modifiers */
+#overlay-victory-content .overlay-button {
+    /* Example if you want victory buttons to also be hero style */
+    background-color: black; border: 2px solid darkgreen; padding: 0.5rem 1rem;
+    color: white; font-family: 'RubikIso', sans-serif; font-size: 1.3em;
+    text-shadow: 1px 1px 3px rgba(100,255,100,0.3);
+    border-radius: 8px; margin: 0.5rem; min-width: 200px;
+}
+#overlay-victory-content .overlay-button:hover {
+    background-color: #001a00; border-color: green;
+}
+
 
 /* ==========================================================================
    11. Landscape Warning & NoScript
