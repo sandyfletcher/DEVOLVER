@@ -91,6 +91,15 @@ function endWave() {
     }
     if (currentMainWaveIndex + 1 < Config.WAVES.length) {
         state = 'BUILDPHASE';
+
+        // Grow portal safety radius at the START of build phase
+        if (portalRef) {
+            portalRef.setSafetyRadius(portalRef.safetyRadius + Config.PORTAL_RADIUS_GROWTH_PER_WAVE);
+            console.log(`[WaveMgr] Portal safety radius grown to ${portalRef.safetyRadius} at start of BUILDPHASE.`);
+        } else {
+            console.warn("[WaveMgr] portalRef is null, cannot grow safety radius at start of BUILDPHASE.");
+        }
+
         buildPhaseTimer = waveData.intermissionDuration ?? (Config.AGING_DEFAULT_PASSES_PER_WAVE * 0.5 + 10.0);
         currentMaxTimer = buildPhaseTimer;
         AudioManager.stopGameMusic();
@@ -125,12 +134,12 @@ function triggerWarpCleanupAndCalculations() {
     );
     console.timeEnd("SnapshotInitialGrid");
     // 2. Entity Clearing & Portal Radius
-    portalRef.setSafetyRadius(portalRef.safetyRadius + Config.PORTAL_RADIUS_GROWTH_PER_WAVE);
+    // portalRef.setSafetyRadius(portalRef.safetyRadius + Config.PORTAL_RADIUS_GROWTH_PER_WAVE); // MOVED to endWave()
     const portalCenter = portalRef.getPosition();
-    const safeRadius = portalRef.safetyRadius;
+    const safeRadius = portalRef.safetyRadius; // Now uses the already grown radius
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
-    console.log("[WaveMgr] Entity cleanup and portal radius update complete.");
+    console.log("[WaveMgr] Entity cleanup using portal radius complete.");
 
     // 3. Logical Gravity Settlement (Done once before aging/lighting loop)
     console.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
@@ -287,9 +296,9 @@ export function update(dt, gameState) {
             if (buildPhaseTimer <= 0) {
                 buildPhaseTimer = 0;
                 triggerWarpCleanupAndCalculations();
-                state = 'WARP_ANIMATING';
-                console.log("[WaveMgr] Transitioned from BUILDPHASE to WARP_ANIMATING. Waiting for animations.");
-                currentMaxTimer = sunAnimationDuration;
+                // state = 'WARP_ANIMATING'; // This is set inside triggerWarpCleanupAndCalculations
+                // console.log("[WaveMgr] Transitioned from BUILDPHASE to WARP_ANIMATING. Waiting for animations."); // Log also in triggerWarp
+                // currentMaxTimer = sunAnimationDuration; // Set inside triggerWarp
             }
             break;
         case 'WARP_ANIMATING':

@@ -626,36 +626,37 @@ export const ENEMY_STATS = {
         dropTable: [{ type: 'bone', chance: 0.7, minAmount: 2, maxAmount: 3 }, { type: 'metal', chance: 0.2, minAmount: 1, maxAmount: 1 }],
         outOfWaterDamagePerSecond: 15, // damage per second when out of water
     },
-     [ENEMY_TYPE_SMALL_FISH]: {
+    [ENEMY_TYPE_SMALL_FISH]: {
         displayName: "Fish",
-        aiType: 'fishAI', // This will be our new scurrying fish AI
-        color: 'rgb(120, 180, 220)', // A light blue/grey
+        aiType: 'fishAI', 
+        color: 'rgb(120, 180, 220)', 
         width_BLOCKS: 1.5,
         height_BLOCKS: 0.75,
         health: 1,
         contactDamage: 0,
         applyGravity: true,
         gravityFactor: 1.0,
-        maxSpeedX_BLOCKS_PER_SEC: 5,  // Normal swim speed
-        maxSpeedY_BLOCKS_PER_SEC: 3,  // For bobbing
-        swimSpeed_BLOCKS_PER_SEC: 7,  // Base speed, flee will be faster
+        maxSpeedX_BLOCKS_PER_SEC: 5,  
+        maxSpeedY_BLOCKS_PER_SEC: 3,  
+        swimSpeed_BLOCKS_PER_SEC: 7,  
         canJump: false,
         jumpVelocity_BLOCKS_PER_SEC: 0,
         canSwim: true,
         canFly: false,
-        separationFactor: 0.5, // Less strong separation for small fish
+        separationFactor: 0.5, 
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.5,
-        dropTable: [], // No drops for now
-        // Visual shape: head is a circle offset to the right (front), tail is a triangle to the left (back)
-        // Assuming fish faces right by default (lastDirection = 1)
-        // Offsets and points are relative to the CENTER of the fish's bounding box.
+        dropTable: [], 
+        // Visual shape: Defaults to facing RIGHT.
+        // Head (circle 'O') is on the right.
+        // Tail (triangle '>') is on the left, pointing right.
         visualShape: {
-            head: { type: 'circle', radius_BLOCKS: 0.3, offset_BLOCKS: { x: 0.35, y: 0 }, color: 'rgb(100, 160, 200)' }, // Head slightly darker
-            bodyColor: 'rgb(120, 180, 220)', // Main body color if needed for non-head/tail parts
-            tail: { type: 'triangle', points_BLOCKS: [{x: -0.4, y:0}, {x: -0.1, y:-0.25}, {x: -0.1, y:0.25}], color: 'rgb(140, 200, 240)' } // Tail slightly lighter
+            head: { type: 'circle', radius_BLOCKS: 0.3, offset_BLOCKS: { x: 0.35, y: 0 }, color: 'rgb(100, 160, 200)' }, // Head offset to +X (right)
+            bodyColor: 'rgb(120, 180, 220)', 
+            // Tail points right: point at x=-0.1, base at x=-0.4
+            tail: { type: 'triangle', points_BLOCKS: [{x: -0.1, y:0}, {x: -0.4, y:-0.25}, {x: -0.4, y:0.25}], color: 'rgb(140, 200, 240)' } 
         },
-        fleeDistance_BLOCKS: 4, // How close a threat needs to be to trigger fleeing
-        fleeSpeedFactor: 1.8,   // Multiplier for swimSpeed when fleeing
+        fleeDistance_BLOCKS: 4, 
+        fleeSpeedFactor: 1.8,   
     },
 };
 // --- Wave Scripting ---

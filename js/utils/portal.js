@@ -61,7 +61,7 @@ export class Portal {
         // Get current game state from WaveManager
        const waveInfo = WaveManager.getWaveInfo();
        // Correct the check to include the new intermission states
-       const isIntermission = waveInfo.state === 'BUILDPHASE' || waveInfo.state === 'WARPPHASE';
+       const isIntermission = waveInfo.state === 'BUILDPHASE' || waveInfo.state === 'WARP_ANIMATING';
 
 // Calculate portal's center for circle
         const centerX = this.x + this.width / 2;
@@ -192,20 +192,20 @@ export class Portal {
         return this.isActive && this.currentHealth > 0;
     }
     startAbsorbing(enemy) {
-    if (!enemy || enemy.isBeingAbsorbed || !enemy.isActive || enemy.isDying) {
-        return; // Don't absorb if already being absorbed, inactive, or dying
+        if (!enemy || enemy.isBeingAbsorbed || !enemy.isActive || enemy.isDying) {
+            return; // Don't absorb if already being absorbed, inactive, or dying
+        }
+        enemy.isBeingAbsorbed = true; // Mark the enemy
+        enemy.vx = 0; // Stop its movement
+        enemy.vy = 0;
+        this.absorbingEnemies.push({
+            enemyRef: enemy,
+            timer: Config.PORTAL_ABSORB_ANIMATION_DURATION,
+            startX: enemy.x,
+            startY: enemy.y,
+            startWidth: enemy.width,
+            startHeight: enemy.height,
+        });
+        // console.log(`Portal started absorbing ${enemy.displayName}`);
     }
-    enemy.isBeingAbsorbed = true; // Mark the enemy
-    enemy.vx = 0; // Stop its movement
-    enemy.vy = 0;
-    this.absorbingEnemies.push({
-        enemyRef: enemy,
-        timer: Config.PORTAL_ABSORB_ANIMATION_DURATION,
-        startX: enemy.x,
-        startY: enemy.y,
-        startWidth: enemy.width,
-        startHeight: enemy.height,
-    });
-    // console.log(`Portal started absorbing ${enemy.displayName}`);
-}
 }
