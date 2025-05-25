@@ -367,13 +367,10 @@ export const PORTAL_ABSORB_ANIMATION_DURATION = 0.75; // seconds
 export const PORTAL_SAFETY_RADIUS = 30 * BASE_BLOCK_PIXEL_SIZE; // Pixel radius.
 export const PORTAL_RADIUS_GROWTH_PER_WAVE = 5 * BASE_BLOCK_PIXEL_SIZE; // Pixel growth.
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above mean ground for portal top.
-
-// New Portal Visuals
 export const PORTAL_PULSE_SPEED = 1.5; // Radians per second for pulse cycle
 export const PORTAL_PULSE_MIN_ALPHA = 0.4; // Min alpha for the pulsating glow
 export const PORTAL_PULSE_MAX_ALPHA = 0.8; // Max alpha for the pulsating glow
 export const PORTAL_PULSE_COLOR = 'rgba(150, 150, 255, 0.7)'; // Color of the inner pulsating glow
-
 export const PORTAL_PARTICLE_COUNT = 50;
 export const PORTAL_PARTICLE_MIN_SIZE = 1;
 export const PORTAL_PARTICLE_MAX_SIZE = 4;
@@ -599,8 +596,8 @@ export const ENEMY_STATS = {
             { type: 'circle', cxFactor: 0.45, cyFactor: -0.3, rFactor: 0.08, color: 'white' },
             { type: 'circle', cxFactor: 0.45, cyFactor: -0.3, rFactor: 0.04, color: 'black' },
             // Legs (simple stubs for flopping)
-            { type: 'rect', xFactor: -0.3, yFactor: 0.15, wFactor: 0.2, hFactor: 0.3, color: 'rgb(70, 90, 50)' }, // Back leg
-            { type: 'rect', xFactor: 0.1, yFactor: 0.15, wFactor: 0.2, hFactor: 0.3, color: 'rgb(70, 90, 50)' },  // Front leg
+            { type: 'rect', xFactor: -0.3, yFactor: 0.15, wFactor: 0.2, hFactor: 0.3, color: 'rgb(70, 90, 50)' }, // back leg
+            { type: 'rect', xFactor: 0.1, yFactor: 0.15, wFactor: 0.2, hFactor: 0.3, color: 'rgb(70, 90, 50)' },  // front leg
         ],
     },
     [ENEMY_TYPE_CENTER_SEEKER]: {
