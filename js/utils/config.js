@@ -290,7 +290,7 @@ export const AGING_PROB_TREE_TRUNK_DECAY = 0.001;
 export const MAX_FALLING_BLOCKS_AT_ONCE = 50;
 export const NEW_GRAVITY_ANIM_DELAY = 0.3;
 export const GRAVITY_ANIMATION_FALL_SPEED = 20;
-export const AGING_ANIMATION_BLOCKS_AT_ONCE = 1; // number of simultaneous animations
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 50; // number of simultaneous animations
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.01; // seconds before starting next animation in queue
 export const AGING_ANIMATION_SWELL_DURATION = 0.3;
 export const AGING_ANIMATION_POP_DURATION = 0.4;
@@ -723,7 +723,7 @@ export const ENEMY_STATS = {
 // --- Wave Scripting ---
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
-export const MYA_TRANSITION_ANIMATION_DURATION = 6.0; // seconds for the MYA number to animate
+export const MYA_TRANSITION_ANIMATION_DURATION = 8.0; // seconds for the MYA number to animate
 export const WAVES = [
     {
     mainWaveNumber: 1,
