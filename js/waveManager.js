@@ -34,19 +34,16 @@ function getCurrentWaveData() {
     if (currentMainWaveIndex < 0 || currentMainWaveIndex >= Config.WAVES.length) return null;
     return Config.WAVES[currentMainWaveIndex];
 }
-
 function getCurrentSubWaveData() {
     const waveData = getCurrentWaveData();
     if (!waveData || currentSubWaveIndex < 0 || currentSubWaveIndex >= waveData.subWaves.length) return null;
     return waveData.subWaves[currentSubWaveIndex];
 }
-
 function getCurrentGroupData() {
     const subWaveData = getCurrentSubWaveData();
     if (!subWaveData || currentGroupIndex < 0 || currentGroupIndex >= subWaveData.enemyGroups.length) return null;
     return subWaveData.enemyGroups[currentGroupIndex];
 }
-
 function advanceSpawnProgression() {
     const subWaveData = getCurrentSubWaveData();
     if (!subWaveData) {
@@ -69,7 +66,6 @@ function advanceSpawnProgression() {
         }
     }
 }
-
 function startNextWave() {
     currentMainWaveIndex++;
     const waveData = getCurrentWaveData();
@@ -87,7 +83,6 @@ function startNextWave() {
     else groupStartDelayTimer = waveData.duration + 1; // Ensure no spawns if no groups
     return true;
 }
-
 function endWave() {
     const waveData = getCurrentWaveData();
     if (!waveData) {
@@ -112,20 +107,17 @@ function endWave() {
     currentSubWaveIndex = 0; currentGroupIndex = 0; enemiesSpawnedThisGroup = 0;
     groupSpawnTimer = 0; groupStartDelayTimer = 0;
 }
-
 function triggerWarpCleanupAndCalculations() {
     DebugLogger.log("[WaveMgr] End of BUILDPHASE. Triggering entity cleanup, calculations, and animation queuing...");
     if (Config.DEBUG_MODE) DebugLogger.time("WarpPhaseCalculationsAndQueuing");
-
     if (!portalRef) {
         DebugLogger.error("[WaveMgr] Warp process failed: Portal reference is null.");
         if (Config.DEBUG_MODE) DebugLogger.timeEnd("WarpPhaseCalculationsAndQueuing");
-        state = 'PRE_WAVE'; // Fallback to avoid getting stuck
+        state = 'PRE_WAVE'; // fallback to avoid getting stuck
         return;
     }
     WorldManager.finalizeAllGravityAnimations();
     WorldManager.finalizeAllTransformAnimations();
-
     DebugLogger.log("[WaveMgr] Snapshotting initial grid state...");
     if (Config.DEBUG_MODE) DebugLogger.time("SnapshotInitialGrid");
     const initialGridState = World.getGrid().map(row =>
@@ -137,19 +129,16 @@ function triggerWarpCleanupAndCalculations() {
         })
     );
     if (Config.DEBUG_MODE) DebugLogger.timeEnd("SnapshotInitialGrid");
-
     const portalCenter = portalRef.getPosition();
     const safeRadius = portalRef.safetyRadius;
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     DebugLogger.log("[WaveMgr] Entity cleanup using portal radius complete.");
-
     DebugLogger.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
     if (Config.DEBUG_MODE) DebugLogger.time("LogicalGravitySettlement");
     let allGravityChangesForAnimation = WorldManager.applyGravitySettlement(portalRef);
     DebugLogger.log(`[WaveMgr] Gravity settlement (LOGICAL) complete. ${allGravityChangesForAnimation.length} blocks potentially moved.`);
     if (Config.DEBUG_MODE) DebugLogger.timeEnd("LogicalGravitySettlement");
-
     const currentWaveData = getCurrentWaveData();
     const nextWaveIndexToPrepareFor = currentMainWaveIndex + 1;
     const nextWaveData = Config.WAVES[nextWaveIndexToPrepareFor];
@@ -166,7 +155,6 @@ function triggerWarpCleanupAndCalculations() {
             UI.showEpochText("Final Preparations...");
         }
     }
-
     DebugLogger.log("[WaveMgr] Starting interleaved lighting and aging process (LOGICAL)...");
     if (Config.DEBUG_MODE) DebugLogger.time("InterleavedAgingAndLighting");
     if (nextWaveData && typeof nextWaveData === 'object') {
@@ -193,7 +181,6 @@ function triggerWarpCleanupAndCalculations() {
         DebugLogger.warn("[WaveMgr] No next wave data found for aging/lighting process.");
     }
     if (Config.DEBUG_MODE) DebugLogger.timeEnd("InterleavedAgingAndLighting");
-
     DebugLogger.log("[WaveMgr] Applying final lighting pass after warp phase aging (LOGICAL)...");
     if (Config.DEBUG_MODE) DebugLogger.time("FinalLightingPass");
     World.resetAllBlockLighting();
@@ -208,36 +195,27 @@ function triggerWarpCleanupAndCalculations() {
         DebugLogger.log(`[WaveMgr] Final warp lighting pass lit ${finalWarpLightingChanges.length} additional blocks.`);
     }
     if (Config.DEBUG_MODE) DebugLogger.timeEnd("FinalLightingPass");
-
     DebugLogger.log("[WaveMgr] Diffing grid and queuing transform animations...");
     WorldManager.diffGridAndQueueTransformAnimations(initialGridState, World.getGrid());
-
     if (allGravityChangesForAnimation.length > 0) {
         DebugLogger.log(`[WaveMgr] Queuing ${allGravityChangesForAnimation.length} gravity changes for animation.`);
         WorldManager.addProposedGravityChanges(allGravityChangesForAnimation);
     }
-
-    WorldManager.startDynamicWarpPacing(); // Activate dynamic pacing in WorldManager
-
+    WorldManager.startDynamicWarpPacing(); // activate dynamic pacing in WorldManager
     if (Config.SUN_ANIMATION_ENABLED) {
         isSunAnimationActive = true;
-        sunAnimationDuration = WorldManager.BLOCK_ANIM_TARGET_DURATION;
+        sunAnimationDuration = WorldManager.BLOCK_ANIM_TARGET_DURATION; // use target duration from WorldManager for consistency
         sunAnimationTimer = sunAnimationDuration;
         DebugLogger.log(`[WaveMgr] Started visual sun animation for ${sunAnimationDuration}s.`);
     }
-
     if (Config.DEBUG_MODE) DebugLogger.time("SeedWaterUpdateQueue");
-    WorldManager.seedWaterUpdateQueue();
+    WorldManager.seedWaterUpdateQueue(); // Seed water AFTER all logical block changes
     if (Config.DEBUG_MODE) DebugLogger.timeEnd("SeedWaterUpdateQueue");
-
     if (Config.DEBUG_MODE) DebugLogger.timeEnd("WarpPhaseCalculationsAndQueuing");
-
     state = 'WARP_ANIMATING';
     currentMaxTimer = WorldManager.BLOCK_ANIM_TARGET_DURATION; // For UI timer consistency
     DebugLogger.log(`[WaveMgr] Transitioned from BUILDPHASE to WARP_ANIMATING. Target animation duration: ${currentMaxTimer}s`);
 }
-
-// --- Exported Functions ---
 export function init(callback = null, portalObject = null) {
     currentMainWaveIndex = -1; currentSubWaveIndex = 0; currentGroupIndex = 0;
     enemiesSpawnedThisGroup = 0; groupSpawnTimer = 0; groupStartDelayTimer = 0;
@@ -246,12 +224,10 @@ export function init(callback = null, portalObject = null) {
     isSunAnimationActive = false; sunAnimationTimer = 0; sunAnimationDuration = 0;
     DebugLogger.log(`[WaveManager] Initialized. State: ${state}, First Wave In: ${preWaveTimer}s.`);
 }
-
 export function reset(callback = null, portalObject = null) {
     init(callback, portalObject);
     DebugLogger.log("[WaveManager] Resetting.");
 }
-
 export function update(dt, gameState) {
     if (dt <= 0) return;
     if (isSunAnimationActive && state === 'WARP_ANIMATING') {
@@ -304,10 +280,9 @@ export function update(dt, gameState) {
             const gravityComplete = WorldManager.areGravityAnimationsComplete();
             const transformComplete = WorldManager.areTransformAnimationsComplete();
             const sunComplete = !isSunAnimationActive;
-
             if (gravityComplete && transformComplete && sunComplete) {
                 DebugLogger.log("[WaveMgr] All animations complete. Transitioning to next wave.");
-                WorldManager.endDynamicWarpPacing(); // Deactivate dynamic pacing
+                WorldManager.endDynamicWarpPacing();
                 WorldManager.renderStaticWorldToGridCanvas();
                 WorldManager.seedWaterUpdateQueue();
                 startNextWave();
@@ -317,7 +292,6 @@ export function update(dt, gameState) {
         default: DebugLogger.warn(`[WaveManager] Unknown state: ${state}`); break;
     }
 }
-
 export function setGameOver() {
     if (state !== 'GAME_OVER') {
         state = 'GAME_OVER';
@@ -327,7 +301,6 @@ export function setGameOver() {
         WorldManager.endDynamicWarpPacing();
     }
 }
-
 export function setVictory() {
     if (state !== 'VICTORY') {
         state = 'VICTORY';
@@ -337,15 +310,12 @@ export function setVictory() {
         WorldManager.endDynamicWarpPacing();
     }
 }
-
 export function isGameOver() { return state === 'GAME_OVER'; }
-
 export function getCurrentWaveNumber() {
     if (state === 'GAME_OVER' || state === 'VICTORY') return Math.max(0, currentMainWaveIndex + 1);
     if (state === 'BUILDPHASE' || state === 'WARP_ANIMATING') return currentMainWaveIndex + 2;
     return (currentMainWaveIndex < 0) ? 1 : currentMainWaveIndex + 1;
 }
-
 export function getWaveInfo() {
     let timer = 0;
     let currentWaveNumber = getCurrentWaveNumber();
@@ -366,7 +336,6 @@ export function getWaveInfo() {
         isGameOver: state === 'GAME_OVER', allWavesCleared: state === 'VICTORY'
     };
 }
-
 export function getAnimatedSunPosition() {
     if (!isSunAnimationActive || sunAnimationDuration <= 0) return null;
     const progress = Math.max(0, Math.min(1, 1 - (sunAnimationTimer / sunAnimationDuration)));
@@ -378,13 +347,11 @@ export function getAnimatedSunPosition() {
     const animatedSunY = (Config.SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
     return { x: currentAnimatedSunX, y: animatedSunY };
 }
-
 function formatMyaForPauseMenu(myaValue) {
     if (typeof myaValue !== 'number' || isNaN(myaValue)) return "Epoch Unknown";
     if (myaValue === 0) return "MODERN TIMES";
     return `${Math.round(myaValue)} MILLION YEARS AGO`;
 }
-
 export function getCurrentEpochInfo() {
     let waveData;
     if (state === 'PRE_WAVE' || (currentMainWaveIndex === -1 && state !== 'WARP_ANIMATING' && state !== 'BUILDPHASE')) return null;

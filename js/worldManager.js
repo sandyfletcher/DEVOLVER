@@ -15,30 +15,20 @@ import * as DebugLogger from './utils/debugLogger.js';
 // --- Module State ---
 let waterUpdateQueue = new Map(); // map: "col,row" -> {c, r}
 let waterPropagationTimer = 0; // timer to control spread speed
-
 // --- Transform Animation State ---
 let transformAnimationQueue = [];
 export let activeTransformAnimations = [];
 let newTransformAnimationStartTimer = 0;
-
 // Gravity Animation State
 let gravityAnimationQueue = [];
 export let activeGravityAnimations = [];
 let newGravityAnimationStartTimer = 0;
-
 // --- Dynamic Pacing State ---
 let isDynamicAnimationPacingActive = false;
 let dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY; // Fallback
 let dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY;       // Fallback
 // Define target duration for block animations, aligned with UI/Sun animations
-export const BLOCK_ANIM_TARGET_DURATION = Config.MYA_TRANSITION_ANIMATION_DURATION > 0
-                                  ? Config.MYA_TRANSITION_ANIMATION_DURATION
-                                  : Config.FIXED_SUN_ANIMATION_DURATION;
-
-
-const MAX_FALLING_BLOCKS_AT_ONCE = Config.MAX_FALLING_BLOCKS_AT_ONCE ?? 20;
-const SUN_MOVEMENT_Y_ROW_OFFSET = Config.SUN_MOVEMENT_Y_ROW_OFFSET ?? -3;
-
+export const BLOCK_ANIM_TARGET_DURATION = Config.MYA_TRANSITION_ANIMATION_DURATION > 0 ? Config.MYA_TRANSITION_ANIMATION_DURATION : Config.FIXED_SUN_ANIMATION_DURATION; // Default if MYA is 0
 
 function adjustColorByLightLevel(rgbString, lightLevel) {
     if (!rgbString || !rgbString.startsWith('rgb(')) return rgbString;
@@ -57,7 +47,6 @@ function parseGravityDiffsIntoFallingBlocks(diffs) {
     const fallingBlocks = [];
     const disappeared = new Map();
     const appeared = new Map();
-
     diffs.forEach(diff => {
         if (diff.oldBlockType !== Config.BLOCK_AIR && diff.oldBlockType !== Config.BLOCK_WATER && diff.newBlockType === Config.BLOCK_AIR) {
             if (!disappeared.has(diff.c)) disappeared.set(diff.c, new Map());
@@ -68,7 +57,6 @@ function parseGravityDiffsIntoFallingBlocks(diffs) {
             appeared.get(diff.c).set(diff.r, World.getBlock(diff.c, diff.r));
         }
     });
-
     appeared.forEach((rowMapNew, c) => {
         if (disappeared.has(c)) {
             const rowMapOld = disappeared.get(c);
@@ -96,17 +84,27 @@ function parseGravityDiffsIntoFallingBlocks(diffs) {
     });
     return fallingBlocks;
 }
-
+export function startDynamicWarpPacing() {
+    isDynamicAnimationPacingActive = true;
+    calculateDynamicAnimationIntervals();
+    newTransformAnimationStartTimer = 0;
+    newGravityAnimationStartTimer = 0;
+    DebugLogger.log("[WorldManager] Dynamic warp animation pacing STARTED.");
+}
+export function endDynamicWarpPacing() {
+    isDynamicAnimationPacingActive = false;
+    dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
+    dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY;
+    DebugLogger.log("[WorldManager] Dynamic warp animation pacing ENDED.");
+}
 export function addProposedGravityChanges(changes) {
     changes.forEach(change => {
         gravityAnimationQueue.push(change);
     });
     DebugLogger.log(`[WorldManager] Added ${changes.length} gravity changes. Total queued: ${gravityAnimationQueue.length}`);
 }
-
 function calculateDynamicAnimationIntervals() {
     const single_transform_duration = Config.AGING_ANIMATION_SWELL_DURATION + Config.AGING_ANIMATION_POP_DURATION;
-
     if (transformAnimationQueue.length > 0) {
         // Calculate interval so the last animation STARTS in time to FINISH by BLOCK_ANIM_TARGET_DURATION
         const time_for_all_starts = BLOCK_ANIM_TARGET_DURATION - single_transform_duration;
@@ -120,7 +118,6 @@ function calculateDynamicAnimationIntervals() {
     } else {
         dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY; // Fallback
     }
-
     // Adjust gravity pacing similarly, estimating an average gravity animation duration
     const avg_gravity_duration = 0.5; // A rough estimate for average fall time of a gravity animation
     if (gravityAnimationQueue.length > 0) {
@@ -130,39 +127,17 @@ function calculateDynamicAnimationIntervals() {
         } else {
             dynamicGravityAnimStartInterval = 0.001;
         }
-        dynamicGravityAnimStartInterval = Math.max(0.001, dynamicGravityAnimStartInterval); // Min interval
+        dynamicGravityAnimStartInterval = Math.max(0.001, dynamicGravityAnimStartInterval); // min interval
     } else {
-        dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY; // Fallback
+        dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY; // fallback
     }
     DebugLogger.log(`[WorldManager] Dynamic Pacing Calculated: Transform Interval: ${dynamicTransformAnimStartInterval.toFixed(4)}s (Queue: ${transformAnimationQueue.length}), Gravity Interval: ${dynamicGravityAnimStartInterval.toFixed(4)}s (Queue: ${gravityAnimationQueue.length}) for target ${BLOCK_ANIM_TARGET_DURATION}s`);
 }
-
-export function startDynamicWarpPacing() {
-    isDynamicAnimationPacingActive = true;
-    calculateDynamicAnimationIntervals();
-    newTransformAnimationStartTimer = 0; // Start first transform batch immediately
-    newGravityAnimationStartTimer = 0;   // Start first gravity batch immediately
-    DebugLogger.log("[WorldManager] Dynamic warp animation pacing STARTED.");
-}
-
-export function endDynamicWarpPacing() {
-    isDynamicAnimationPacingActive = false;
-    // Reset to defaults, they'll be recalculated next time if needed
-    dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
-    dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY;
-    DebugLogger.log("[WorldManager] Dynamic warp animation pacing ENDED.");
-}
-
-
 function updateGravityAnimations(dt) {
     if (dt <= 0) return;
     newGravityAnimationStartTimer -= dt;
     const maxFallingBlocks = Config.MAX_FALLING_BLOCKS_AT_ONCE;
-    
-    const currentNewGravityDelay = isDynamicAnimationPacingActive
-                                 ? dynamicGravityAnimStartInterval
-                                 : Config.NEW_GRAVITY_ANIM_DELAY;
-
+    const currentNewGravityDelay = isDynamicAnimationPacingActive? dynamicGravityAnimStartInterval : Config.NEW_GRAVITY_ANIM_DELAY;
     if (newGravityAnimationStartTimer <= 0) {
         if (gravityAnimationQueue.length > 0 && activeGravityAnimations.length < maxFallingBlocks) {
             const change = gravityAnimationQueue.shift();
@@ -188,7 +163,6 @@ function updateGravityAnimations(dt) {
             newGravityAnimationStartTimer = 0;
         }
     }
-
     for (let i = activeGravityAnimations.length - 1; i >= 0; i--) {
         const anim = activeGravityAnimations[i];
         anim.r_current_pixel_y += anim.fallSpeed * dt;
@@ -201,14 +175,12 @@ function updateGravityAnimations(dt) {
         }
     }
 }
-
 function drawGravityAnimations(ctx) {
     activeGravityAnimations.forEach(anim => {
         const blockPixelX = anim.c * Config.BLOCK_WIDTH;
         const blockPixelY = anim.r_current_pixel_y;
         const blockProps = Config.BLOCK_PROPERTIES[anim.blockData.type];
         const blockColor = blockProps?.color;
-
         if (blockColor) {
             ctx.fillStyle = blockColor;
             ctx.fillRect(
@@ -233,11 +205,9 @@ function drawGravityAnimations(ctx) {
         }
     });
 }
-
 export function areGravityAnimationsComplete() {
     return gravityAnimationQueue.length === 0 && activeGravityAnimations.length === 0;
 }
-
 export function finalizeAllGravityAnimations() {
     DebugLogger.log("[WorldManager] Finalizing all gravity animations...");
     DebugLogger.time("finalizeAllGravityAnimations");
@@ -245,7 +215,6 @@ export function finalizeAllGravityAnimations() {
         const change = gravityAnimationQueue.shift();
         const end_row = Math.round((change.r_end_pixel_y !== undefined ? change.r_end_pixel_y : change.r_end * Config.BLOCK_HEIGHT) / Config.BLOCK_HEIGHT);
         const start_row = Math.round((change.r_start_pixel_y !== undefined ? change.r_start_pixel_y : change.r_start * Config.BLOCK_HEIGHT) / Config.BLOCK_HEIGHT);
-
         updateStaticWorldAt(change.c, start_row);
         updateStaticWorldAt(change.c, end_row);
         queueWaterCandidatesAroundChange(change.c, start_row);
@@ -265,7 +234,6 @@ export function finalizeAllGravityAnimations() {
     DebugLogger.log("[WorldManager] All gravity animations finalized.");
     DebugLogger.timeEnd("finalizeAllGravityAnimations");
 }
-
 function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
     const chunk = [];
     const queue = [{ c: startX, r: startY }];
@@ -337,7 +305,6 @@ function getConnectedSolidChunk(startX, startY, visitedInPass, portalRef) {
     }
     return chunk;
 }
-
 export function applyGravitySettlement(portalRef) {
     let allMovedBlocksInSettlement = [];
     let iterations = 0;
@@ -380,9 +347,7 @@ export function applyGravitySettlement(portalRef) {
                         let currentFall = 0;
                         for (let fall_r = chunkBlock.r + 1; fall_r < Config.GRID_ROWS; fall_r++) {
                             const blockAtFallTargetData = World.getBlock(chunkBlock.c, fall_r);
-                            const typeAtFallTarget = (typeof blockAtFallTargetData === 'object' && blockAtFallTargetData !== null)
-                                ? blockAtFallTargetData.type
-                                : blockAtFallTargetData;
+                            const typeAtFallTarget = (typeof blockAtFallTargetData === 'object' && blockAtFallTargetData !== null) ? blockAtFallTargetData.type : blockAtFallTargetData;
                             const isTargetBelowPartOfChunk = chunk.some(b => b.c === chunkBlock.c && b.r === fall_r);
                             if (isTargetBelowPartOfChunk) {
                                 currentFall++;
@@ -417,7 +382,6 @@ export function applyGravitySettlement(portalRef) {
     }
     return allMovedBlocksInSettlement;
 }
-
 function applyInitialFloodFill() {
     const queue = [];
     const visited = new Set();
@@ -732,17 +696,11 @@ export function diffGridAndQueueTransformAnimations(initialGrid, finalGrid) {
     DebugLogger.log(`[WorldManager] Queued ${transformAnimationQueue.length} transform animations after diff.`);
     DebugLogger.timeEnd("diffGridAndQueueTransformAnimations");
 }
-
 function updateTransformAnimations(dt) {
     if (dt <= 0) return;
-
     newTransformAnimationStartTimer -= dt;
     const blocksAtOnce = Config.AGING_ANIMATION_BLOCKS_AT_ONCE;
-    
-    const currentNewBlockDelay = isDynamicAnimationPacingActive 
-                               ? dynamicTransformAnimStartInterval 
-                               : Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
-
+    const currentNewBlockDelay = isDynamicAnimationPacingActive ? dynamicTransformAnimStartInterval : Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
     if (newTransformAnimationStartTimer <= 0) {
         if (transformAnimationQueue.length > 0 && activeTransformAnimations.length < blocksAtOnce) {
             const change = transformAnimationQueue.shift();

@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 
 // --- Debug Mode ---
-export const DEBUG_MODE = true; // Master switch for all debug functionalities
+export const DEBUG_MODE = false; // Master switch for all debug functionalities
 export const DEBUG_STARTING_MATERIALS_COUNT = 11; // Amount for each material in debug mode
 
 // --- Cutscene Parameters ---
