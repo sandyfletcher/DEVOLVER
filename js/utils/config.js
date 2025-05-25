@@ -2,6 +2,10 @@
 // root/js/config.js - Centralized Game Configuration
 // -----------------------------------------------------------------------------
 
+// --- Debug Mode ---
+export const DEBUG_MODE = true; // Master switch for all debug functionalities
+export const DEBUG_STARTING_MATERIALS_COUNT = 11; // Amount for each material in debug mode
+
 // --- Cutscene Parameters ---
 
 export const CUTSCENE_IMAGE_DURATION = 3.0; // seconds image displayed
@@ -418,16 +422,16 @@ export const AUDIO_DEFAULT_GAME_VOLUME = 0.4;
 export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
 export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
 export const AUDIO_TRACKS = {
-MENU: 'assets/audio/music/Menu.mp3',
-pause: 'assets/audio/music/Pause.mp3',
-gameOver: 'assets/audio/music/GameOver.mp3',
-victory: 'assets/audio/music/Victory.mp3',
-CUTSCENE: 'assets/audio/music/Cutscene.mp3',
-wave1: 'assets/audio/music/Wave1-350.mp3',
-wave2: 'assets/audio/music/Wave2-300.mp3',
-wave3: 'assets/audio/music/wave3.mp3',
-// SFX placeholders
-// player_hit: 'assets/audio/sfx/player_hit.wav',
+    MENU: 'assets/audio/music/Menu.mp3',
+    pause: 'assets/audio/music/Pause.mp3',
+    gameOver: 'assets/audio/music/GameOver.mp3',
+    victory: 'assets/audio/music/Victory.mp3',
+    CUTSCENE: 'assets/audio/music/Cutscene.mp3',
+    wave1: 'assets/audio/music/Wave1-350.mp3',
+    wave2: 'assets/audio/music/Wave2-300.mp3',
+    wave3: 'assets/audio/music/wave3.mp3',
+    // SFX placeholders
+    // player_hit: 'assets/audio/sfx/player_hit.wav',
 };
 
 // --- Items & Weapons ---
@@ -618,7 +622,7 @@ export const ENEMY_STATS = {
             // "Eye"
             { type: 'circle', cxFactor: 0.15, cyFactor: -0.1, rFactor: 0.2, color: 'rgb(200, 200, 100)' },
             { type: 'circle', cxFactor: 0.2, cyFactor: -0.12, rFactor: 0.08, color: 'black' },
-             // Some spikes/antennae
+            // Some spikes/antennae
             { type: 'polygon', points: [ // Top spike
                 {xFactor: 0, yFactor: -0.4}, {xFactor: -0.1, yFactor: -0.6}, {xFactor: 0.1, yFactor: -0.6}
             ], color: 'rgb(50,100,50)'},
@@ -677,7 +681,7 @@ export const ENEMY_STATS = {
                 {xFactor: -0.1, yFactor: 0.4}, {xFactor: 0.1, yFactor: 0.45}, {xFactor: 0.45, yFactor: 0.3}
             ], color: 'rgb(100, 120, 140)', outlineColor: 'rgb(60,80,100)', outlineWidth: 3 },
             // Jaw plate
-             { type: 'polygon', points: [
+            { type: 'polygon', points: [
                 {xFactor: 0.48, yFactor: -0.1}, {xFactor: 0.2, yFactor: 0.1}, {xFactor: 0.48, yFactor: 0.15}
             ], color: 'rgb(110, 130, 150)'},
             // Tail section
@@ -724,90 +728,92 @@ export const ENEMY_STATS = {
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const MYA_TRANSITION_ANIMATION_DURATION = 8.0; // seconds for the MYA number to animate
+export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // Default number of aging passes if not specified per wave
+
 export const WAVES = [
     {
-    mainWaveNumber: 1,
-    mya: 350,
-    duration: 117,
-    intermissionDuration: 15.0,
-    audioTrack: AUDIO_TRACKS.wave1,
-    agingPasses: 5,
-    subWaves: [
-    { enemyGroups: [
-    { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
-    { type: ENEMY_TYPE_SMALL_FISH, count: 10, delayBetween: 0.8, startDelay: 0.0 },
-    { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 },
-    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
-    { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
-    ]},
-    { enemyGroups: [
-    { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
-    { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
-    ]},
-    { enemyGroups: [
-    { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
-    { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
-    ]}
-    ]
+        mainWaveNumber: 1,
+        mya: 350,
+        duration: 117,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave1,
+        agingPasses: 5,
+        subWaves: [
+            { enemyGroups: [
+                { type: ENEMY_TYPE_TETRAPOD, count: 10, delayBetween: 1.8, startDelay: 0.0 },
+                { type: ENEMY_TYPE_SMALL_FISH, count: 10, delayBetween: 0.8, startDelay: 0.0 },
+                { type: ENEMY_TYPE_DUNKLEOSTEUS, count: 3, delayBetween: 3.0, startDelay: 5.0 },
+                { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.7, startDelay: 8.0 },
+                { type: ENEMY_TYPE_CENTER_SEEKER, count: 3, delayBetween: 0.5, startDelay: 15.0 },
+            ]},
+            { enemyGroups: [
+                { type: ENEMY_TYPE_CENTER_SEEKER, count: 4, delayBetween: 0.6, startDelay: 1.0 },
+                { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 3.0 }
+            ]},
+            { enemyGroups: [
+                { type: ENEMY_TYPE_CENTER_SEEKER, count: 6, delayBetween: 0.4, startDelay: 0.5 },
+                { type: ENEMY_TYPE_PLAYER_CHASER, count: 1, delayBetween: 1.5, startDelay: 4.0 }
+            ]}
+        ]
     },
     {
-    mainWaveNumber: 2,
-    mya: 300,
-    duration: 137,
-    intermissionDuration: 15.0,
-    audioTrack: AUDIO_TRACKS.wave2,
-    agingPasses: 5,
-    subWaves: [
-    { enemyGroups: [
-    { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
-    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
-    { type: ENEMY_TYPE_SMALL_FISH, count: 10, delayBetween: 0.8, startDelay: 0.0 },
-    ]},
-    { enemyGroups: [
-    { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
-    { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
-    ]},
-    { enemyGroups: [
-    { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
-    { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
-    { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
-    ]}
-    ]
+        mainWaveNumber: 2,
+        mya: 300,
+        duration: 137,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave2,
+        agingPasses: 5,
+        subWaves: [
+            { enemyGroups: [
+                { type: ENEMY_TYPE_PLAYER_CHASER, count: 4, delayBetween: 1.2, startDelay: 1.0 },
+                { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.6, startDelay: 3.0 },
+                { type: ENEMY_TYPE_SMALL_FISH, count: 10, delayBetween: 0.8, startDelay: 0.0 },
+            ]},
+            { enemyGroups: [
+                { type: ENEMY_TYPE_CENTER_SEEKER, count: 10, delayBetween: 0.3, startDelay: 0.0 },
+                { type: ENEMY_TYPE_PLAYER_CHASER, count: 3, delayBetween: 1.0, startDelay: 5.0 },
+            ]},
+            { enemyGroups: [
+                { type: ENEMY_TYPE_PLAYER_CHASER, count: 5, delayBetween: 0.9, startDelay: 0.5 },
+                { type: ENEMY_TYPE_CENTER_SEEKER, count: 5, delayBetween: 0.5, startDelay: 1.5 },
+                { type: ENEMY_TYPE_PLAYER_CHASER, count: 2, delayBetween: 1.5, startDelay: 6.0 },
+            ]}
+        ]
     },
     {
-    mainWaveNumber: 3,
-    mya: 250,
-    duration: 30,
-    intermissionDuration: 15.0,
-    audioTrack: AUDIO_TRACKS.wave3,
-    agingPasses: 5,
-    subWaves: [
-    { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
-    { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
-    ]
+        mainWaveNumber: 3,
+        mya: 250,
+        duration: 30,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave3,
+        agingPasses: 5,
+        subWaves: [
+            { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+            { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+        ]
     },
     {
-    mainWaveNumber: 4,
-    mya: 200,
-    duration: 30,
-    intermissionDuration: 15.0,
-    audioTrack: AUDIO_TRACKS.wave3,
-    agingPasses: 5,
-    subWaves: [
-    { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
-    { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
-    ]
+        mainWaveNumber: 4,
+        mya: 200,
+        duration: 30,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave3,
+        agingPasses: 5,
+        subWaves: [
+            { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+            { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+        ]
     },
     {
-    mainWaveNumber: 5,
-    customEpochText: "Present Day!", // sub out mya for custom text
-    duration: 30,
-    intermissionDuration: 15.0,
-    audioTrack: AUDIO_TRACKS.wave3,
-    agingPasses: 5,
-    subWaves: [
-    { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
-    { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
-    ]
+        mainWaveNumber: 5,
+        customEpochText: "Present Day!", // sub out mya for custom text
+        duration: 30,
+        intermissionDuration: 15.0,
+        audioTrack: AUDIO_TRACKS.wave3,
+        agingPasses: 5,
+        subWaves: [
+            { enemyGroups: [{ type: ENEMY_TYPE_TETRAPOD, count: 20, delayBetween: 0.5, startDelay: 0.0 }] },
+            { enemyGroups: [{ type: ENEMY_TYPE_PLAYER_CHASER, count: 8, delayBetween: 1.0, startDelay: 5.0 }] },
+        ]
     }
 ];
