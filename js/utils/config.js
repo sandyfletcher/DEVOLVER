@@ -353,9 +353,9 @@ export const WATER_UPDATES_PER_FRAME = 10;
 
 // --- Portal Parameters ---
 
-export const PORTAL_COLOR = 'rgb(100, 100, 255)';
-export const PORTAL_BORDER_COLOR = 'silver';
-export const PORTAL_BORDER_WIDTH = 10; // Pixel width of the border
+export const PORTAL_COLOR = 'rgb(80, 80, 200)'; // Slightly darker base
+export const PORTAL_BORDER_COLOR = 'rgb(200, 200, 255)'; // Lighter border/glow
+export const PORTAL_BORDER_WIDTH = 5; // Pixel width of the outer border
 export const PORTAL_WIDTH = 6 * BLOCK_WIDTH; // Pixel width.
 export const PORTAL_HEIGHT = 8 * BLOCK_HEIGHT; // Pixel height.
 export const PORTAL_INITIAL_HEALTH = 500;
@@ -364,11 +364,25 @@ export const PORTAL_SAFETY_RADIUS = 30 * BASE_BLOCK_PIXEL_SIZE; // Pixel radius.
 export const PORTAL_RADIUS_GROWTH_PER_WAVE = 5 * BASE_BLOCK_PIXEL_SIZE; // Pixel growth.
 export const PORTAL_SPAWN_Y_OFFSET_BLOCKS = 8; // Offset in block units above mean ground for portal top.
 
+// New Portal Visuals
+export const PORTAL_PULSE_SPEED = 1.5; // Radians per second for pulse cycle
+export const PORTAL_PULSE_MIN_ALPHA = 0.4; // Min alpha for the pulsating glow
+export const PORTAL_PULSE_MAX_ALPHA = 0.8; // Max alpha for the pulsating glow
+export const PORTAL_PULSE_COLOR = 'rgba(150, 150, 255, 0.7)'; // Color of the inner pulsating glow
+
+export const PORTAL_PARTICLE_COUNT = 50;
+export const PORTAL_PARTICLE_MIN_SIZE = 1;
+export const PORTAL_PARTICLE_MAX_SIZE = 4;
+export const PORTAL_PARTICLE_MIN_SPEED = 10 * BLOCK_HEIGHT; // Pixels per second
+export const PORTAL_PARTICLE_MAX_SPEED = 30 * BLOCK_HEIGHT;
+export const PORTAL_PARTICLE_COLOR_PRIMARY = 'rgba(220, 220, 255, 0.8)';
+export const PORTAL_PARTICLE_COLOR_SECONDARY = 'rgba(180, 180, 255, 0.6)';
+export const PORTAL_PARTICLE_FADE_SPEED = 0.5; // Opacity reduction per second
+
 // --- Player Parameters ---
 
-// export const PLAYER_IMAGE_PATH = 'assets/player.png'; // Will be removed
-// export const PLAYER_HITBOX_COLOR = 'rgba(200, 50, 50, 0.3)'; // Will be removed
 export const PLAYER_BODY_COLOR = 'rgb(200, 50, 50)'; // Solid color for player's body
+export const PLAYER_HEAD_COLOR = 'rgb(255, 224, 189)'; // Skin tone for head
 export const PLAYER_WIDTH = 3 * BLOCK_WIDTH;
 export const PLAYER_HEIGHT = 6 * BLOCK_HEIGHT;
 export const PLAYER_SHOULDER_OFFSET_X_FACTOR = 0.25; // How far from the player's edge
@@ -558,9 +572,9 @@ export const TETRAPOD_LAND_HOP_COOLDOWN_BASE = 1.5;
 export const TETRAPOD_LAND_HOP_COOLDOWN_VARIATION = 1.0;
 export const ENEMY_STATS = {
     [ENEMY_TYPE_TETRAPOD]: {
-        displayName: "Tetrapod", aiType: 'flopAI', color: 'rgb(100, 120, 80)',
-        width_BLOCKS: DEFAULT_ENEMY_WIDTH,
-        height_BLOCKS: DEFAULT_ENEMY_HEIGHT,
+        displayName: "Tetrapod", aiType: 'flopAI', color: 'rgb(100, 120, 80)', // Base color, overridden by visualShape
+        width_BLOCKS: DEFAULT_ENEMY_WIDTH, // 2
+        height_BLOCKS: DEFAULT_ENEMY_HEIGHT, // 2
         health: 1, contactDamage: 0, applyGravity: true, gravityFactor: 1.0,
         maxSpeedX_BLOCKS_PER_SEC: 3.75,
         maxSpeedY_BLOCKS_PER_SEC: 12.5,
@@ -572,26 +586,52 @@ export const ENEMY_STATS = {
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.8,
         landHopHorizontalVelocity_BLOCKS_PER_SEC: 12.5,
         dropTable: [{ type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }],
+        visualShape: [ // Assuming center (0,0) in local coords
+            // Body
+            { type: 'rect', xFactor: -0.4, yFactor: -0.3, wFactor: 0.8, hFactor: 0.6, color: 'rgb(80, 100, 60)', outlineColor: 'rgb(50,70,30)', outlineWidth: 2 },
+            // Head (slightly in front and raised)
+            { type: 'circle', cxFactor: 0.4, cyFactor: -0.25, rFactor: 0.3, color: 'rgb(100, 120, 80)', outlineColor: 'rgb(60,80,40)', outlineWidth: 2 },
+            // Eyes (on head)
+            { type: 'circle', cxFactor: 0.45, cyFactor: -0.3, rFactor: 0.08, color: 'white' },
+            { type: 'circle', cxFactor: 0.45, cyFactor: -0.3, rFactor: 0.04, color: 'black' },
+            // Legs (simple stubs for flopping)
+            { type: 'rect', xFactor: -0.3, yFactor: 0.15, wFactor: 0.2, hFactor: 0.3, color: 'rgb(70, 90, 50)' }, // Back leg
+            { type: 'rect', xFactor: 0.1, yFactor: 0.15, wFactor: 0.2, hFactor: 0.3, color: 'rgb(70, 90, 50)' },  // Front leg
+        ],
     },
     [ENEMY_TYPE_CENTER_SEEKER]: {
         displayName: "Seeker", aiType: 'seekCenter', color: 'rgb(80, 150, 80)',
-        width_BLOCKS: DEFAULT_ENEMY_WIDTH,
-        height_BLOCKS: DEFAULT_ENEMY_HEIGHT,
+        width_BLOCKS: DEFAULT_ENEMY_WIDTH, // 2
+        height_BLOCKS: DEFAULT_ENEMY_HEIGHT, // 2
         maxSpeedX_BLOCKS_PER_SEC: 10,
         maxSpeedY_BLOCKS_PER_SEC: 12.5,
         swimSpeed_BLOCKS_PER_SEC: 12.5,
-        health: 1, contactDamage: 10, applyGravity: true, gravityFactor: 1.0,
+        health: 1, contactDamage: 1, applyGravity: true, gravityFactor: 1.0, // Reduced contact damage for Seekers
         canJump: true,
         jumpVelocity_BLOCKS_PER_SEC: 25,
         canSwim: false, canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH,
         dropTable: [{ type: 'bone', chance: 1.0, minAmount: 1, maxAmount: 1 }],
+        visualShape: [
+            // Main body
+            { type: 'circle', cxFactor: 0, cyFactor: 0, rFactor: 0.45, color: 'rgb(60, 120, 60)', outlineColor: 'rgb(40,90,40)', outlineWidth: 2 },
+            // "Eye"
+            { type: 'circle', cxFactor: 0.15, cyFactor: -0.1, rFactor: 0.2, color: 'rgb(200, 200, 100)' },
+            { type: 'circle', cxFactor: 0.2, cyFactor: -0.12, rFactor: 0.08, color: 'black' },
+             // Some spikes/antennae
+            { type: 'polygon', points: [ // Top spike
+                {xFactor: 0, yFactor: -0.4}, {xFactor: -0.1, yFactor: -0.6}, {xFactor: 0.1, yFactor: -0.6}
+            ], color: 'rgb(50,100,50)'},
+            { type: 'polygon', points: [ // Side spike
+                {xFactor: 0.4, yFactor: 0}, {xFactor: 0.6, yFactor: -0.1}, {xFactor: 0.6, yFactor: 0.1}
+            ], color: 'rgb(50,100,50)'},
+        ],
     },
     [ENEMY_TYPE_PLAYER_CHASER]: {
         displayName: "Chaser", aiType: 'chasePlayer', color: 'rgb(150, 80, 80)',
-        width_BLOCKS: DEFAULT_ENEMY_WIDTH,
-        height_BLOCKS: DEFAULT_ENEMY_HEIGHT,
+        width_BLOCKS: DEFAULT_ENEMY_WIDTH, // 2
+        height_BLOCKS: DEFAULT_ENEMY_HEIGHT, // 2
         maxSpeedX_BLOCKS_PER_SEC: 13.75,
         maxSpeedY_BLOCKS_PER_SEC: 12.5,
         swimSpeed_BLOCKS_PER_SEC: 12.5,
@@ -602,61 +642,83 @@ export const ENEMY_STATS = {
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH,
         dropTable: [{ type: 'wood', chance: 1.0, minAmount: 1, maxAmount: 1 }],
+        visualShape: [
+            // Body
+            { type: 'rect', xFactor: -0.4, yFactor: -0.35, wFactor: 0.8, hFactor: 0.7, color: 'rgb(120, 60, 60)', outlineColor: 'rgb(80,40,40)', outlineWidth: 2 },
+            // Head/Mouth area
+            { type: 'rect', xFactor: 0.2, yFactor: -0.25, wFactor: 0.3, hFactor: 0.5, color: 'rgb(140, 70, 70)' },
+            // Teeth (simple triangles)
+            { type: 'polygon', points: [ {xFactor: 0.2, yFactor: -0.25}, {xFactor: 0.5, yFactor: -0.2}, {xFactor: 0.2, yFactor: -0.15} ], color: 'white' },
+            { type: 'polygon', points: [ {xFactor: 0.2, yFactor: 0}, {xFactor: 0.5, yFactor: -0.05}, {xFactor: 0.2, yFactor: 0.05} ], color: 'white' },
+            { type: 'polygon', points: [ {xFactor: 0.2, yFactor: 0.25}, {xFactor: 0.5, yFactor: 0.2}, {xFactor: 0.2, yFactor: 0.15} ], color: 'white' },
+            // Eye
+            { type: 'circle', cxFactor: -0.1, cyFactor: -0.15, rFactor: 0.15, color: 'yellow' },
+            { type: 'circle', cxFactor: -0.08, cyFactor: -0.16, rFactor: 0.07, color: 'black' },
+        ],
     },
     [ENEMY_TYPE_DUNKLEOSTEUS]: {
-        displayName: "Dunkleosteus",
-        aiType: 'dunkleosteusAI',
-        color: 'rgb(80, 100, 120)',
-        width_BLOCKS: 4,
+        displayName: "Dunkleosteus", aiType: 'dunkleosteusAI', color: 'rgb(80, 100, 120)',
+        width_BLOCKS: 4, // Larger enemy
         height_BLOCKS: 2,
-        health: 3,
-        contactDamage: 15,
-        applyGravity: true,
-        gravityFactor: 1.0,
+        health: 3, contactDamage: 15, applyGravity: true, gravityFactor: 1.0,
         maxSpeedX_BLOCKS_PER_SEC: 6.5,
         maxSpeedY_BLOCKS_PER_SEC: 0,
         swimSpeed_BLOCKS_PER_SEC: 15,
-        canJump: false,
-        jumpVelocity_BLOCKS_PER_SEC: 0,
-        canSwim: true,
-        canFly: false,
+        canJump: false, jumpVelocity_BLOCKS_PER_SEC: 0,
+        canSwim: true, canFly: false,
         separationFactor: DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR * 1.5,
         separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH * 1.2,
         landHopHorizontalVelocity_BLOCKS_PER_SEC: 0,
         dropTable: [{ type: 'bone', chance: 0.7, minAmount: 2, maxAmount: 3 }, { type: 'metal', chance: 0.2, minAmount: 1, maxAmount: 1 }],
-        outOfWaterDamagePerSecond: 15, // damage per second when out of water
+        outOfWaterDamagePerSecond: 15,
+        visualShape: [ // Assuming center (0,0)
+            // Main Body (armored front, softer tail)
+            { type: 'polygon', points: [ // Armored head plate
+                {xFactor: 0.45, yFactor: -0.3}, {xFactor: 0.1, yFactor: -0.45}, {xFactor: -0.1, yFactor: -0.4},
+                {xFactor: -0.1, yFactor: 0.4}, {xFactor: 0.1, yFactor: 0.45}, {xFactor: 0.45, yFactor: 0.3}
+            ], color: 'rgb(100, 120, 140)', outlineColor: 'rgb(60,80,100)', outlineWidth: 3 },
+            // Jaw plate
+             { type: 'polygon', points: [
+                {xFactor: 0.48, yFactor: -0.1}, {xFactor: 0.2, yFactor: 0.1}, {xFactor: 0.48, yFactor: 0.15}
+            ], color: 'rgb(110, 130, 150)'},
+            // Tail section
+            { type: 'polygon', points: [
+                {xFactor: -0.1, yFactor: -0.3}, {xFactor: -0.48, yFactor: -0.15}, {xFactor: -0.48, yFactor: 0.15}, {xFactor: -0.1, yFactor: 0.3}
+            ], color: 'rgb(70, 90, 110)' },
+            // Eye
+            { type: 'circle', cxFactor: 0.25, cyFactor: -0.2, rFactor: 0.1, color: 'rgb(200,180,50)'}, // rFactor relative to min(W,H)*0.5
+            { type: 'circle', cxFactor: 0.26, cyFactor: -0.21, rFactor: 0.05, color: 'black'},
+            // Fin
+            { type: 'polygon', points: [ {xFactor:0, yFactor:0.4}, {xFactor:-0.1, yFactor:0.6}, {xFactor:0.1, yFactor:0.6}], color:'rgb(60,80,100)'}
+        ],
     },
     [ENEMY_TYPE_SMALL_FISH]: {
-        displayName: "Fish",
-        aiType: 'fishAI', 
-        color: 'rgb(120, 180, 220)', 
-        width_BLOCKS: 1.5,
-        height_BLOCKS: 0.75,
-        health: 1,
-        contactDamage: 0,
-        applyGravity: true,
-        gravityFactor: 1.0,
-        maxSpeedX_BLOCKS_PER_SEC: 5,  
-        maxSpeedY_BLOCKS_PER_SEC: 3,  
-        swimSpeed_BLOCKS_PER_SEC: 7,  
-        canJump: false,
-        jumpVelocity_BLOCKS_PER_SEC: 0,
-        canSwim: true,
-        canFly: false,
-        separationFactor: 0.5, 
-        separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.5,
-        dropTable: [], 
-        // Visual shape: Defaults to facing RIGHT.
-        // Head (circle 'O') is on the right.
-        // Tail (triangle '>') is on the left, pointing right.
-        visualShape: {
-            head: { type: 'circle', radius_BLOCKS: 0.3, offset_BLOCKS: { x: 0.35, y: 0 }, color: 'rgb(100, 160, 200)' }, // Head offset to +X (right)
-            bodyColor: 'rgb(120, 180, 220)', 
-            // Tail points right: point at x=-0.1, base at x=-0.4
-            tail: { type: 'triangle', points_BLOCKS: [{x: -0.1, y:0}, {x: -0.4, y:-0.25}, {x: -0.4, y:0.25}], color: 'rgb(140, 200, 240)' } 
-        },
-        fleeDistance_BLOCKS: 4, 
-        fleeSpeedFactor: 1.8,   
+        displayName: "Fish", aiType: 'fishAI', color: 'rgb(120, 180, 220)',
+        width_BLOCKS: 1.5, height_BLOCKS: 0.75,
+        health: 1, contactDamage: 0, applyGravity: true, gravityFactor: 1.0,
+        maxSpeedX_BLOCKS_PER_SEC: 5,  maxSpeedY_BLOCKS_PER_SEC: 3,  swimSpeed_BLOCKS_PER_SEC: 7,
+        canJump: false, jumpVelocity_BLOCKS_PER_SEC: 0,
+        canSwim: true, canFly: false,
+        separationFactor: 0.5, separationStrength_BLOCKS_PER_SEC: DEFAULT_ENEMY_SEPARATION_STRENGTH * 0.5,
+        dropTable: [],
+        visualShape: [ // Designed for a right-facing fish, center (0,0)
+            // Body
+            { type: 'polygon', points: [ // Fishy body shape
+                {xFactor: 0.4, yFactor: 0},    // Nose
+                {xFactor: 0.1, yFactor: -0.4},  // Top-mid
+                {xFactor: -0.45, yFactor: -0.2}, // Tail-top
+                {xFactor: -0.45, yFactor: 0.2},  // Tail-bottom
+                {xFactor: 0.1, yFactor: 0.4}   // Bottom-mid
+            ], color: 'rgb(120, 180, 220)', outlineColor: 'rgb(100,160,200)', outlineWidth:1 },
+            // Eye
+            { type: 'circle', cxFactor: 0.25, cyFactor: -0.05, rFactor: 0.2, color: 'white' }, // rFactor relative to min(W,H)*0.5
+            { type: 'circle', cxFactor: 0.28, cyFactor: -0.06, rFactor: 0.1, color: 'black' },
+            // Tail Fin
+            { type: 'polygon', points: [
+                {xFactor: -0.4, yFactor: 0}, {xFactor: -0.25, yFactor: -0.35}, {xFactor: -0.25, yFactor: 0.35}
+            ], color: 'rgb(140, 200, 240)'}
+        ],
+        fleeDistance_BLOCKS: 4, fleeSpeedFactor: 1.8,
     },
 };
 // --- Wave Scripting ---

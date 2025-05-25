@@ -49,10 +49,36 @@ export class Enemy {
                 separationStrength_BLOCKS_PER_SEC: Config.DEFAULT_ENEMY_SEPARATION_STRENGTH / Config.BLOCK_WIDTH,
                 landHopHorizontalVelocity_BLOCKS_PER_SEC: 0,
                 dropTable: [],
-                ...fallbackStats
+                ...fallbackStats // Apply provided fallback stats over these defaults
             };
         } else {
-            rawStats = { ...stats };
+            // Ensure all expected properties have defaults if not specified in config for a specific enemy
+            rawStats = {
+                displayName: stats.displayName || "Unnamed Enemy",
+                aiType: stats.aiType || 'seekCenter',
+                color: stats.color || 'magenta',
+                width_BLOCKS: stats.width_BLOCKS || Config.DEFAULT_ENEMY_WIDTH,
+                height_BLOCKS: stats.height_BLOCKS || Config.DEFAULT_ENEMY_HEIGHT,
+                maxSpeedX_BLOCKS_PER_SEC: stats.maxSpeedX_BLOCKS_PER_SEC || 30,
+                maxSpeedY_BLOCKS_PER_SEC: stats.maxSpeedY_BLOCKS_PER_SEC || 50,
+                swimSpeed_BLOCKS_PER_SEC: stats.swimSpeed_BLOCKS_PER_SEC || 50,
+                health: stats.health || 1,
+                contactDamage: stats.contactDamage || 1,
+                applyGravity: stats.applyGravity !== undefined ? stats.applyGravity : true,
+                gravityFactor: stats.gravityFactor || 1.0,
+                canJump: stats.canJump || false,
+                jumpVelocity_BLOCKS_PER_SEC: stats.jumpVelocity_BLOCKS_PER_SEC || 0,
+                canSwim: stats.canSwim || false,
+                canFly: stats.canFly || false,
+                separationFactor: stats.separationFactor || Config.DEFAULT_ENEMY_SEPARATION_RADIUS_FACTOR,
+                separationStrength_BLOCKS_PER_SEC: stats.separationStrength_BLOCKS_PER_SEC || (Config.DEFAULT_ENEMY_SEPARATION_STRENGTH / Config.BLOCK_WIDTH),
+                landHopHorizontalVelocity_BLOCKS_PER_SEC: stats.landHopHorizontalVelocity_BLOCKS_PER_SEC || 0,
+                dropTable: stats.dropTable || [],
+                visualShape: stats.visualShape, // Keep as is, draw method will handle if undefined
+                outOfWaterDamagePerSecond: stats.outOfWaterDamagePerSecond, // Keep as is
+                fleeDistance_BLOCKS: stats.fleeDistance_BLOCKS, // For FishAI
+                fleeSpeedFactor: stats.fleeSpeedFactor, // For FishAI
+            };
         }
         this.stats = rawStats;
 
@@ -65,7 +91,7 @@ export class Enemy {
         this.displayName = this.stats.displayName;
         this.maxSpeedX = this.stats.maxSpeedX_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
         this.maxSpeedY = this.stats.maxSpeedY_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
-        this.swimSpeed = this.stats.swimSpeed_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
+        this.swimSpeed = this.stats.swimSpeed_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT; // Note: AI uses this, physics might use maxSpeedY with water factors
         this.jumpVelocity = this.stats.jumpVelocity_BLOCKS_PER_SEC * Config.BLOCK_HEIGHT;
         this.separationStrength = this.stats.separationStrength_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
         this.landHopHorizontalVelocity = this.stats.landHopHorizontalVelocity_BLOCKS_PER_SEC * Config.BLOCK_WIDTH;
@@ -162,13 +188,11 @@ export class Enemy {
             }
         }
         
-        // If dt was originally invalid and we used validDt = 0, skip the rest of the update for this frame.
         if (dt !== validDt) {
             console.warn(`Enemy(${this.displayName}) Update: Invalid delta time (${dt}). Using 0 for this frame's main logic.`);
             return;
         }
 
-        // Original dt is now confirmed valid for the rest of the logic
         if (this.isFlashing) {
             this.flashTimer -= dt;
             if (this.flashTimer <= 0) {
@@ -184,7 +208,7 @@ export class Enemy {
             if (damagePerSecond > 0) {
                 const damageThisFrame = damagePerSecond * dt;
                 this.takeDamage(damageThisFrame);
-                 if (this.isDying) return; // Exit if damage caused death
+                 if (this.isDying) return; 
             }
         }
 
@@ -219,7 +243,7 @@ export class Enemy {
                     if (dist > E_EPSILON) {
                         const repelStrength = (1.0 - (dist / separationRadius));
                         separationForceX += (dx / dist) * repelStrength;
-                        separationForceY += (dy / dist) * repelStrength * 0.5;
+                        separationForceY += (dy / dist) * repelStrength * 0.5; 
                         neighborsCount++;
                     }
                 }
@@ -245,51 +269,58 @@ export class Enemy {
         } else if (this.canSwim && this.isInWater) {
             useStandardGravity = false;
             this.vy = targetVy;
-            this.vy = Math.max(-this.swimSpeed, Math.min(this.swimSpeed, this.vy));
+            this.vy = Math.max(-this.swimSpeed, Math.min(this.swimSpeed, this.vy)); // Use swimSpeed for vertical movement in water
             this.vx = targetVx;
             this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
             this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
-        } else {
-            applyWaterEffects = this.isInWater;
+        } else { // Not flying, or not swimming in water (could be on land, or in water but can't swim)
+            applyWaterEffects = this.isInWater; // Apply water effects if in water, regardless of canSwim for buoyancy/drag
+
             if (applyWaterEffects) {
-                this.vy -= Config.ENEMY_WATER_BUOYANCY_ACCEL * dt;
+                this.vy -= Config.ENEMY_WATER_BUOYANCY_ACCEL * dt; // Apply buoyancy
             }
-            if (useStandardGravity && !this.isOnGround) {
+
+            if (useStandardGravity && !this.isOnGround) { // Apply gravity if applicable
                 const gravityMultiplier = applyWaterEffects ? Config.WATER_GRAVITY_FACTOR : 1.0;
                 this.vy += currentGravity * gravityMultiplier * dt;
-            } else if (this.isOnGround && this.vy > E_EPSILON) {
+            } else if (this.isOnGround && this.vy > E_EPSILON) { // Reset vertical velocity if on ground and moving down slightly
                 this.vy = 0;
             }
-            if (applyWaterEffects) {
+
+            if (applyWaterEffects) { // General vertical damping in water
                 this.vy *= Math.pow(Config.WATER_VERTICAL_DAMPING, dt);
             }
+
             if (wantsJump && this.canJump) {
-                if (applyWaterEffects) {
+                if (applyWaterEffects) { // Water jump / stroke
                     if (this.waterJumpCooldown <= 0) {
-                        this.vy = -(this.jumpVelocity * 0.8);
+                        this.vy = -(this.jumpVelocity * 0.8); // Reduced jump height in water
                         this.waterJumpCooldown = Config.WATER_JUMP_COOLDOWN_DURATION;
-                        this.isOnGround = false;
+                        this.isOnGround = false; // Jumping means no longer on ground
                     }
-                } else if (this.isOnGround) {
+                } else if (this.isOnGround) { // Land jump
                     this.vy = -this.jumpVelocity;
                     this.isOnGround = false;
                 }
             }
             this.vx = targetVx;
-            if (applyWaterEffects) {
+            if (applyWaterEffects) { // General horizontal damping in water
                 this.vx *= Math.pow(Config.WATER_HORIZONTAL_DAMPING, dt);
             }
         }
 
+        // Clamp horizontal speed
         const currentMaxSpeedX = this.isInWater && !this.canSwim ? this.maxSpeedX * Config.WATER_MAX_SPEED_FACTOR : this.maxSpeedX;
         this.vx = Math.max(-currentMaxSpeedX, Math.min(currentMaxSpeedX, this.vx));
 
-        if (applyWaterEffects) {
-            this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED);
-            this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);
-        } else if (!this.canFly && !this.isInWater) {
-            this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED);
+        // Clamp vertical speed based on environment
+        if (applyWaterEffects) { // In water (swimming or not)
+            this.vy = Math.max(this.vy, -Config.WATER_MAX_SWIM_UP_SPEED); // Max upward speed in water
+            this.vy = Math.min(this.vy, Config.WATER_MAX_SINK_SPEED);   // Max downward speed in water
+        } else if (!this.canFly && !this.isInWater) { // On land and cannot fly
+            this.vy = Math.min(this.vy, Config.MAX_FALL_SPEED); // Max fall speed on land
         }
+        // If canFly, vy is already clamped by maxSpeedY
 
         const potentialMoveX = this.vx * dt;
         const potentialMoveY = this.vy * dt;
@@ -298,17 +329,20 @@ export class Enemy {
         this.isOnGround = collisionResult.isOnGround;
 
         if (this.canFly && targetVy < 0 && collisionResult.collidedY && this.vy >= 0) {
-            // Keep existing logic for flyers, if any specific handling is desired.
-        } else {
+           // Flyer hit ceiling while trying to move up, keep vy (might be 0 from collision)
+           // Or, specific logic for flyers hitting ceilings
+        } else { // Standard collision response for non-flyers or flyers not hitting ceiling while moving up
             if (collisionResult.collidedX) this.vx = 0;
             if (collisionResult.collidedY) this.vy = 0;
         }
 
+
         this.aiStrategy.reactToCollision(collisionResult);
 
+        // Final boundary checks
         if (this.x < 0) { this.x = 0; if (this.vx < 0) this.vx = 0; }
         if (this.x + this.width > Config.CANVAS_WIDTH) { this.x = Config.CANVAS_WIDTH - this.width; if (this.vx > 0) this.vx = 0; }
-        if (this.y > Config.CANVAS_HEIGHT + 200) {
+        if (this.y > Config.CANVAS_HEIGHT + 200) { // Despawn if falls far out of world
             this.die(false);
         }
     }
@@ -324,7 +358,8 @@ export class Enemy {
             normalizedDirX = knockbackDirX / magnitude;
             normalizedDirY = knockbackDirY / magnitude;
         } else {
-            normalizedDirY = -1; // Default to upward if no direction
+            // Default to upward if no direction (e.g., if knockback source is exactly at enemy center)
+            normalizedDirY = -1; 
         }
 
         this.vx += normalizedDirX * knockbackStrength;
@@ -334,7 +369,6 @@ export class Enemy {
         if (knockbackStunDuration > 0) {
             this.isStunned = true;
             this.stunTimer = knockbackStunDuration;
-            // Interrupt AI's current action if it has such a method
             if (this.aiStrategy && typeof this.aiStrategy.interrupt === 'function') {
                  this.aiStrategy.interrupt();
             }
@@ -356,9 +390,10 @@ export class Enemy {
         if (!this.isActive || this.isDying) return;
         this.vx = 0;
         this.vy = 0;
-        this.isFlopAttacking = false;
+        this.isFlopAttacking = false; // Ensure flop state is reset
         this.isDying = true;
         this.deathAnimationTimer = Config.ENEMY_DEATH_ANIMATION_DURATION;
+
         if (killedByPlayer && !this.isBeingAbsorbed && this.stats.dropTable && this.stats.dropTable.length > 0) {
             if (typeof this.x !== 'number' || typeof this.y !== 'number' || isNaN(this.x) || isNaN(this.y)) {
                 console.error(`>>> ${this.displayName} died with invalid coordinates [${this.x}, ${this.y}], skipping drop spawn.`);
@@ -371,8 +406,10 @@ export class Enemy {
                         for (let i = 0; i < amount; i++) {
                             let dropXBase = this.x + this.width / 2;
                             let dropYBase = this.y + this.height / 2;
+                            // Add some randomness to drop location to prevent perfect stacking
                             let dropX = dropXBase + (Math.random() - 0.5) * this.width * 0.5;
                             let dropY = dropYBase + (Math.random() - 0.5) * this.height * 0.5;
+
                             if (!isNaN(dropX) && !isNaN(dropY) && typeof dropX === 'number' && typeof dropY === 'number') {
                                 ItemManager.spawnItem(dropX, dropY, dropInfo.type);
                             } else {
@@ -413,6 +450,7 @@ export class Enemy {
                 const swellProgress = timeElapsed / swellDuration;
                 currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress;
             } else {
+                // After swell, enemy becomes invisible or fades out, handled by isActive=false
                 ctx.restore();
                 return;
             }
@@ -421,56 +459,101 @@ export class Enemy {
             ctx.translate(pivotX, pivotY);
             ctx.scale(currentScale, currentScale);
             ctx.translate(-pivotX, -pivotY);
-            ctx.fillStyle = this.color;
+            // Use the fallback color for dying animation if no visualShape or shape color
+            ctx.fillStyle = this.stats.visualShape?.[0]?.color || this.color;
             ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
             ctx.restore();
             return;
         }
         
-        const visualShape = this.stats.visualShape;
-        if (visualShape) {
+        const visualShapeArray = this.stats.visualShape;
+
+        if (Array.isArray(visualShapeArray) && visualShapeArray.length > 0) {
             ctx.save();
             const centerX = this.x + this.width / 2;
             const centerY = this.y + this.height / 2;
-            const orientationAngle = (this.lastDirection === 1) ? 0 : Math.PI;
+            
+            // Determine asset's designed facing direction. Assume right-facing by default.
+            // For small_fish, its shape config implies right-facing (nose at positive xFactor).
+            // If an asset was truly designed facing left, its config would use negative xFactors for its front.
+            const assetFacesRight = true; // True if asset's "front" is along positive local X.
+                                           // For small_fish, nose is at xFactor: 0.4, so it faces right locally.
+            
+            let orientationAngle;
+            if (assetFacesRight) {
+                orientationAngle = (this.lastDirection === 1) ? 0 : Math.PI; // Asset faces right, flip if moving left
+            } else { // Asset faces left
+                orientationAngle = (this.lastDirection === -1) ? 0 : Math.PI; // Asset faces left, flip if moving right
+            }
+
             ctx.translate(centerX, centerY);
             ctx.rotate(orientationAngle);
-            if (visualShape.tail && visualShape.tail.type === 'triangle' && visualShape.tail.points_BLOCKS) {
-                ctx.fillStyle = visualShape.tail.color || this.color;
-                ctx.beginPath();
-                const tailPoints = visualShape.tail.points_BLOCKS.map(p => ({
-                    x: p.x * Config.BLOCK_WIDTH,
-                    y: p.y * Config.BLOCK_HEIGHT
-                }));
-                ctx.moveTo(tailPoints[0].x, tailPoints[0].y);
-                for (let i = 1; i < tailPoints.length; i++) {
-                    ctx.lineTo(tailPoints[i].x, tailPoints[i].y);
+
+            visualShapeArray.forEach(shapeDef => {
+                ctx.fillStyle = shapeDef.color || this.color;
+                
+                if (shapeDef.outlineColor && shapeDef.outlineWidth > 0) {
+                    ctx.strokeStyle = shapeDef.outlineColor;
+                    ctx.lineWidth = shapeDef.outlineWidth;
+                } else {
+                    ctx.strokeStyle = 'transparent'; // Ensure no accidental stroke from previous shape
+                    ctx.lineWidth = 0;
                 }
-                ctx.closePath();
-                ctx.fill();
-            }
-            if (visualShape.head && visualShape.head.type === 'circle' && visualShape.head.radius_BLOCKS) {
-                ctx.fillStyle = visualShape.head.color || this.color;
-                const headOffsetX = (visualShape.head.offset_BLOCKS?.x || 0) * Config.BLOCK_WIDTH;
-                const headOffsetY = (visualShape.head.offset_BLOCKS?.y || 0) * Config.BLOCK_HEIGHT;
-                const headRadius = visualShape.head.radius_BLOCKS * Config.BLOCK_WIDTH;
-                ctx.beginPath();
-                ctx.arc(headOffsetX, headOffsetY, headRadius, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.restore();
+
+                if (shapeDef.type === 'rect') {
+                    // xFactor, yFactor are top-left relative to the (0,0) center
+                    const rectX = (shapeDef.xFactor || 0) * this.width;
+                    const rectY = (shapeDef.yFactor || 0) * this.height;
+                    const rectW = (shapeDef.wFactor || 0) * this.width;
+                    const rectH = (shapeDef.hFactor || 0) * this.height;
+                    ctx.fillRect(rectX, rectY, rectW, rectH);
+                    if (ctx.lineWidth > 0 && ctx.strokeStyle !== 'transparent') ctx.strokeRect(rectX, rectY, rectW, rectH);
+
+                } else if (shapeDef.type === 'circle') {
+                    // cxFactor, cyFactor are center relative to the (0,0) center
+                    const circleX = (shapeDef.cxFactor || 0) * this.width;
+                    const circleY = (shapeDef.cyFactor || 0) * this.height;
+                    // rFactor is relative to half the smaller dimension of the enemy
+                    const radius = (shapeDef.rFactor || 0) * (Math.min(this.width, this.height) * 0.5); 
+                    ctx.beginPath();
+                    ctx.arc(circleX, circleY, radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    if (ctx.lineWidth > 0 && ctx.strokeStyle !== 'transparent') ctx.stroke();
+
+                } else if (shapeDef.type === 'polygon' && shapeDef.points) {
+                    ctx.beginPath();
+                    shapeDef.points.forEach((p, index) => {
+                        // Polygon points xFactor, yFactor are relative to center (0,0),
+                        // scaled by half-width/height.
+                        const pointX_pixel = (p.xFactor || 0) * (this.width / 2);
+                        const pointY_pixel = (p.yFactor || 0) * (this.height / 2);
+                        if (index === 0) {
+                            ctx.moveTo(pointX_pixel, pointY_pixel);
+                        } else {
+                            ctx.lineTo(pointX_pixel, pointY_pixel);
+                        }
+                    });
+                    ctx.closePath();
+                    ctx.fill();
+                    if (ctx.lineWidth > 0 && ctx.strokeStyle !== 'transparent') ctx.stroke();
+                }
+            });
+            ctx.restore(); // Restore transform from translate(centerX,centerY) and rotate
+
             if (this.isFlashing) {
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
                 ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
             }
-        } else {
+
+        } else { // Fallback: Draw a simple rectangle if no visualShape defined
             let drawColor = this.color;
             if (this.isFlashing) {
                 drawColor = 'white';
             }
             ctx.fillStyle = drawColor;
             ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-            ctx.strokeStyle = 'white';
+            // Optional: simple border for fallback
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
             ctx.lineWidth = 1;
             ctx.strokeRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
         }
@@ -484,7 +567,7 @@ export class Enemy {
                 damage = Config.TETRAPOD_WATER_CONTACT_DAMAGE;
             } else if (this.isOnGround) {
                 damage = this.isFlopAttacking ? Config.TETRAPOD_LAND_FLOP_DAMAGE : Config.TETRAPOD_LAND_STILL_DAMAGE;
-            } else {
+            } else { // Airborne
                 damage = this.isFlopAttacking ? Config.TETRAPOD_LAND_FLOP_DAMAGE : Config.TETRAPOD_LAND_STILL_DAMAGE;
             }
         }

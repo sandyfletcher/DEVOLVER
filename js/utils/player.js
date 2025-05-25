@@ -461,66 +461,111 @@ export class Player {
             console.error(`>>> Player DRAW ERROR: Preventing draw due to NaN coordinates!`);
             return;
         }
+
+        const pivotX = this.x + this.width / 2;
+        const pivotY = this.y + this.height / 2;
+
+        ctx.save();
+        ctx.translate(pivotX, pivotY); // Move origin to player's center for transformations
+
+        // Handle death animation transformations (spin and swell)
+        let deathRotationAngle = 0;
+        let deathScale = 1.0;
         if (this.isDying) {
-            ctx.save(); 
-            const pivotX = this.x + this.width / 2; 
-            const pivotY = this.y + this.height / 2;
             const totalAnimationDuration = Config.PLAYER_DEATH_ANIMATION_DURATION;
             const spinDuration = Config.PLAYER_SPIN_DURATION;
-            const timeElapsed = totalAnimationDuration - this.deathAnimationTimer; 
-            let currentScale = 1.0;
-            let rotationAngle = 0; 
-            if (timeElapsed >= 0 && timeElapsed < spinDuration) { 
-                rotationAngle = (this.deathAnimationFrame / Config.PLAYER_SPIN_FRAMES) * 2 * Math.PI; 
-            } else if (timeElapsed >= spinDuration && timeElapsed < totalAnimationDuration) { 
-                const swellDuration = totalAnimationDuration - spinDuration;
-                if (swellDuration > 0) {
-                    const swellProgress = (timeElapsed - spinDuration) / swellDuration; 
-                    currentScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress; 
-                } else {
-                    currentScale = 1.0; 
+            const timeElapsed = totalAnimationDuration - this.deathAnimationTimer;
+
+            if (timeElapsed >= 0 && timeElapsed < spinDuration) {
+                deathRotationAngle = (this.deathAnimationFrame / Config.PLAYER_SPIN_FRAMES) * 2 * Math.PI;
+            } else if (timeElapsed >= spinDuration && timeElapsed < totalAnimationDuration) {
+                const swellProgressTime = timeElapsed - spinDuration;
+                const swellPhaseDuration = totalAnimationDuration - spinDuration;
+                if (swellPhaseDuration > 0) {
+                    const swellProgress = swellProgressTime / swellPhaseDuration;
+                    deathScale = 1.0 + (Config.ENEMY_SWELL_SCALE - 1.0) * swellProgress; // Using ENEMY_SWELL_SCALE
                 }
-                rotationAngle = 0; 
-            } else {
-                currentScale = 1.0; rotationAngle = 0;
-            } 
-            ctx.translate(pivotX, pivotY);
-            ctx.rotate(rotationAngle);
-            ctx.scale(currentScale, currentScale);
-            ctx.translate(-pivotX, -pivotY);
-            ctx.fillStyle = Config.PLAYER_BODY_COLOR;
-            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
-            ctx.restore(); 
-            return; 
+            }
+            ctx.rotate(deathRotationAngle);
+            ctx.scale(deathScale, deathScale);
+        }
+
+        // Handle orientation based on lastDirection (flip if facing left)
+        if (this.lastDirection === -1 && !this.isDying) { // Don't apply normal flip if spinning
+            ctx.scale(-1, 1);
         }
         
-        if (this.isInvulnerable && Math.floor(performance.now() / 100) % 2 !== 0) { 
-            // Skip drawing player body for flash
-        } else {
-            ctx.fillStyle = Config.PLAYER_BODY_COLOR; 
-            ctx.fillRect(Math.floor(this.x), Math.floor(this.y), this.width, this.height);
+        // --- Draw Player Body Parts (local coordinates relative to pivotX, pivotY) ---
+        let drawPlayerBody = true;
+        if (this.isInvulnerable && !this.isDying && Math.floor(performance.now() / 100) % 2 !== 0) {
+            drawPlayerBody = false; // Skip drawing body for invulnerability flash
+        }
+
+        if (drawPlayerBody) {
+            // Torso (local coords, (0,0) is player center)
+            const torsoHeight = this.height * 0.65;
+            const torsoWidth = this.width * 0.7;
+            const torsoYOffset = this.height * 0.05; // Torso slightly lower than exact center
+            ctx.fillStyle = Config.PLAYER_BODY_COLOR;
+            ctx.fillRect(-torsoWidth / 2, -torsoHeight / 2 + torsoYOffset, torsoWidth, torsoHeight);
+
+            // Head (local coords)
+            const headRadius = this.width * 0.35; // Head as a circle
+            const headYOffset = -torsoHeight / 2 + torsoYOffset - headRadius * 0.8; // Head on top of torso
+            ctx.fillStyle = Config.PLAYER_HEAD_COLOR;
+            ctx.beginPath();
+            ctx.arc(0, headYOffset, headRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Simple Eye (always faces "screen forward" if player is flipped, so draw after flip)
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(headRadius * 0.4, headYOffset - headRadius * 0.1, headRadius * 0.2, 0, Math.PI * 2); // Eye on the "right" side of local head
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(headRadius * 0.45, headYOffset - headRadius * 0.08, headRadius * 0.1, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        // Restore player-specific body transforms (orientation, death animation part)
+        // so that arms/weapon can be drawn relative to the un-transformed, un-rotated world space player center
+        ctx.restore(); // This undoes translate(pivotX,pivotY), rotate, scale(-1,1) etc.
+
+        // --- Draw Arms and Weapon (logic remains similar, but ensure correct pivot for death animation) ---
+        // If dying, arms and weapon also need to be transformed by the death animation.
+        // We can re-apply the death transform here, or draw them inside the previous save/restore block
+        // by transforming their target points into the player's local rotated space.
+        // For simplicity, let's re-apply a similar transform for arms/weapon if dying.
+
+        ctx.save(); // New save for arms/weapon, possibly with death animation transform
+        if (this.isDying) {
+            ctx.translate(pivotX, pivotY);
+            ctx.rotate(deathRotationAngle);
+            ctx.scale(deathScale, deathScale);
+            ctx.translate(-pivotX, -pivotY); // Translate back, arm/weapon coords are world-based
         }
 
         let showWeapon = false;
-        let weaponIsAnimated = false; // True if attacking
+        let weaponIsAnimated = false; 
 
-        if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
+        if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && !this.isDying) {
             showWeapon = true;
             weaponIsAnimated = true;
-        } else if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
+        } else if (!this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && !this.isDying) {
             showWeapon = true;
             weaponIsAnimated = false;
         }
         
         if (showWeapon) {
-            const playerCenterX = this.x + this.width / 2;
-            const playerCenterY = this.y + this.height / 2;
+            const playerCenterX = this.x + this.width / 2; // World coords
+            const playerCenterY = this.y + this.height / 2; // World coords
             const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY}; 
             
             let weaponStats = Config.WEAPON_STATS[this.selectedItem];
             if (!weaponStats || !weaponStats.shape || !weaponStats.visualAnchorOffset) {
                 console.warn(`Player.draw: Missing weapon stats or shape/anchor for ${this.selectedItem}.`);
-                return;
+                ctx.restore(); return;
             }
 
             const visualAnchorOffsetX = weaponStats.visualAnchorOffset.x;
@@ -558,21 +603,19 @@ export class Player {
                 clampedTargetY = playerCenterY;
             }
             
-            let displayAngle = this.currentAttackAngle; // Base angle is always the stored attack angle for consistency
+            let displayAngle = this.currentAttackAngle; 
             let effectiveJabOffset = this.jabOffset;
 
             if (weaponIsAnimated) {
                 if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
                     const swipeArcRad = (weaponStats.swipeArcDegrees || 120) * (Math.PI / 180);
                     const swipeStartOffsetRad = (weaponStats.swipeStartOffsetDegrees || -60) * (Math.PI / 180);
-                    // Linear swipe: progress goes 0 -> 1
                     displayAngle = this.currentAttackAngle + swipeStartOffsetRad + (swipeArcRad * this.currentSwipeProgress);
-                    effectiveJabOffset = 0; // Sword swipe doesn't use jabOffset for position
+                    effectiveJabOffset = 0; 
                 }
-                // For jab weapons (shovel, spear), displayAngle remains this.currentAttackAngle, jabOffset is used
-            } else { // Not attacking, weapon is held statically
+            } else { 
                 displayAngle = Math.atan2(clampedTargetY - playerCenterY, clampedTargetX - playerCenterX);
-                effectiveJabOffset = 0; // No jab when not attacking
+                effectiveJabOffset = 0; 
             }
             
             const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(displayAngle) - visualAnchorOffsetY * Math.sin(displayAngle);
@@ -581,18 +624,17 @@ export class Player {
             let finalWeaponPivotX = clampedTargetX - rotatedAnchorOffsetX;
             let finalWeaponPivotY = clampedTargetY - rotatedAnchorOffsetY;
 
-            // Apply jab offset to the pivot for jabbing weapons
             if (effectiveJabOffset !== 0 && (this.selectedItem === Config.WEAPON_TYPE_SHOVEL || this.selectedItem === Config.WEAPON_TYPE_SPEAR)) {
-                finalWeaponPivotX += effectiveJabOffset * Math.cos(this.currentAttackAngle); // Jab along the original attack angle
+                finalWeaponPivotX += effectiveJabOffset * Math.cos(this.currentAttackAngle); 
                 finalWeaponPivotY += effectiveJabOffset * Math.sin(this.currentAttackAngle);
             }
             
             const shoulderOffsetPxX = this.width * Config.PLAYER_SHOULDER_OFFSET_X_FACTOR;
             const shoulderOffsetPxY = this.height * Config.PLAYER_SHOULDER_OFFSET_Y_FACTOR;
-            const shoulderRightX = this.x + (this.width - shoulderOffsetPxX);
-            const shoulderRightY = this.y + shoulderOffsetPxY;
-            const shoulderLeftX = this.x + shoulderOffsetPxX;
-            const shoulderLeftY = this.y + shoulderOffsetPxY;
+            const shoulderRightX = this.x + (this.width - shoulderOffsetPxX); // World coords
+            const shoulderRightY = this.y + shoulderOffsetPxY; // World coords
+            const shoulderLeftX = this.x + shoulderOffsetPxX;   // World coords
+            const shoulderLeftY = this.y + shoulderOffsetPxY;  // World coords
         
             let frontShoulderX, frontShoulderY; 
             let backShoulderX, backShoulderY;   
@@ -615,7 +657,7 @@ export class Player {
                 frontHandWorldY = finalWeaponPivotY + (localFrontHand.x * Math.sin(displayAngle) + localFrontHand.y * Math.cos(displayAngle));
                 backHandWorldX = finalWeaponPivotX + (localBackHand.x * Math.cos(displayAngle) - localBackHand.y * Math.sin(displayAngle));
                 backHandWorldY = finalWeaponPivotY + (localBackHand.x * Math.sin(displayAngle) + localBackHand.y * Math.cos(displayAngle));
-            } else { // Fallback if no hand positions defined (e.g. simple sword without explicit hands)
+            } else { 
                 frontHandWorldX = finalWeaponPivotX; frontHandWorldY = finalWeaponPivotY;
                 backHandWorldX = finalWeaponPivotX; backHandWorldY = finalWeaponPivotY;
             }
@@ -631,10 +673,12 @@ export class Player {
             frontArmLength = Math.max(0, frontArmLength);
             backArmLength = Math.max(0, backArmLength);
             
+            // Draw back arm (relative to its shoulder)
             ctx.save(); ctx.translate(backShoulderX, backShoulderY); ctx.rotate(backArmAngle);
             ctx.fillStyle = Config.ARM_COLOR; ctx.fillRect(0, -Config.ARM_THICKNESS / 2, backArmLength, Config.ARM_THICKNESS);
             ctx.restore();
 
+            // Draw weapon (relative to its pivot)
             ctx.save(); 
             ctx.translate(finalWeaponPivotX, finalWeaponPivotY); 
             ctx.rotate(displayAngle); 
@@ -661,25 +705,28 @@ export class Player {
             });
             ctx.restore(); 
             
+            // Draw front arm (relative to its shoulder)
             ctx.save(); 
             ctx.translate(frontShoulderX, frontShoulderY); ctx.rotate(frontArmAngle);
             ctx.fillStyle = Config.ARM_COLOR; ctx.fillRect(0, -Config.ARM_THICKNESS / 2, frontArmLength, Config.ARM_THICKNESS);
             ctx.restore();
         }
-        
-        if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED) {
+        ctx.restore(); // Restore from death animation transform or main arm/weapon save
+
+        // Draw attack hitbox (for debugging, outside player transforms)
+        if (this.isAttacking && this.isWeaponSelected() && this.selectedItem !== Config.WEAPON_TYPE_UNARMED && !this.isDying) {
             const hitboxData = this.getAttackHitbox(); 
             if (hitboxData) {
                 const weaponStats = Config.WEAPON_STATS[this.selectedItem];
                 let hitboxColor = weaponStats?.attackColor || 'rgba(255, 0, 0, 0.5)';
                 ctx.fillStyle = hitboxColor;
 
-                if (hitboxData.type === 'rect') { // Should only be for unarmed now
+                if (hitboxData.type === 'rect') { 
                     const { x, y, width, height } = hitboxData.bounds;
                      if (typeof x === 'number' && typeof y === 'number' && typeof width === 'number' && typeof height === 'number' && !isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height)) {
                         ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(width), Math.ceil(height));
                     }
-                } else if (hitboxData.type === 'triangle') { // Shovel, Spear
+                } else if (hitboxData.type === 'triangle') { 
                     const v = hitboxData.vertices;
                     if (v && v.length === 3 && v.every(p => p && typeof p.x === 'number' && typeof p.y === 'number' && !isNaN(p.x) && !isNaN(p.y))) {
                         ctx.beginPath();
@@ -689,7 +736,7 @@ export class Player {
                         ctx.closePath();
                         ctx.fill();
                     }
-                } else if (hitboxData.type === 'polygon' && hitboxData.vertices.length === 4) { // Sword
+                } else if (hitboxData.type === 'polygon' && hitboxData.vertices.length === 4) { 
                      const v = hitboxData.vertices;
                      if (v && v.length === 4 && v.every(p => p && typeof p.x === 'number' && typeof p.y === 'number' && !isNaN(p.x) && !isNaN(p.y))) {
                         ctx.beginPath();
@@ -800,12 +847,10 @@ export class Player {
         const playerCenterX = this.x + this.width / 2;
         const playerCenterY = this.y + this.height / 2;
         
-        // Base aim angle stored at the start of the attack
         const baseAttackAngle = this.currentAttackAngle;
         let effectiveJabOffset = this.jabOffset;
-        let currentVisualAngle = baseAttackAngle; // For jab weapons, visual angle is the aim angle
+        let currentVisualAngle = baseAttackAngle; 
 
-        // Calculate the weapon's pivot point based on player aim and weapon's visual anchor
         const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
         const visualAnchorOffsetX = weaponStats.visualAnchorOffset.x;
         const visualAnchorOffsetY = weaponStats.visualAnchorOffset.y;
@@ -838,30 +883,24 @@ export class Player {
              clampedTargetY = playerCenterY;
         }
         
-        // Determine the current visual angle for the weapon (important for swipe)
         if (this.selectedItem === Config.WEAPON_TYPE_SWORD) {
             const swipeArcRad = (weaponStats.swipeArcDegrees || 120) * (Math.PI / 180);
             const swipeStartOffsetRad = (weaponStats.swipeStartOffsetDegrees || -60) * (Math.PI / 180);
             currentVisualAngle = baseAttackAngle + swipeStartOffsetRad + (swipeArcRad * this.currentSwipeProgress);
-            effectiveJabOffset = 0; // Sword swipe doesn't use jab displacement for hitbox anchor
+            effectiveJabOffset = 0; 
         }
 
-        // Calculate the weapon's pivot in world space
-        // Anchor offset is rotated by the *visual angle* of the weapon
         const rotatedAnchorOffsetX = visualAnchorOffsetX * Math.cos(currentVisualAngle) - visualAnchorOffsetY * Math.sin(currentVisualAngle);
         const rotatedAnchorOffsetY = visualAnchorOffsetX * Math.sin(currentVisualAngle) + visualAnchorOffsetY * Math.cos(currentVisualAngle);
         
         let weaponPivotX = clampedTargetX - rotatedAnchorOffsetX;
         let weaponPivotY = clampedTargetY - rotatedAnchorOffsetY;
 
-        // Apply jab offset to the pivot for jabbing weapons (shovel, spear)
-        // Jab occurs along the original aim_angle (baseAttackAngle)
         if (effectiveJabOffset !== 0 && (this.selectedItem === Config.WEAPON_TYPE_SHOVEL || this.selectedItem === Config.WEAPON_TYPE_SPEAR)) {
             weaponPivotX += effectiveJabOffset * Math.cos(baseAttackAngle);
             weaponPivotY += effectiveJabOffset * Math.sin(baseAttackAngle);
         }
 
-        // Find the shape component marked as 'isBlade' for the hitbox
         const bladeShape = weaponStats.shape.find(s => s.isBlade === true);
         if (!bladeShape) {
             console.warn(`No 'isBlade' shape found for weapon ${this.selectedItem}`);
@@ -878,13 +917,13 @@ export class Player {
                 };
             });
             return { type: 'triangle', vertices: worldVertices };
-        } else if (bladeShape.type === 'rect') { // For sword's blade
+        } else if (bladeShape.type === 'rect') { 
             const { x: localX, y: localY, w, h } = bladeShape;
             const localCorners = [
-                { x: localX, y: localY },         // Top-left
-                { x: localX + w, y: localY },     // Top-right
-                { x: localX + w, y: localY + h }, // Bottom-right
-                { x: localX, y: localY + h }      // Bottom-left
+                { x: localX, y: localY },         
+                { x: localX + w, y: localY },     
+                { x: localX + w, y: localY + h }, 
+                { x: localX, y: localY + h }      
             ];
             const worldVertices = localCorners.map(pLocal => {
                 const rotatedX = pLocal.x * Math.cos(currentVisualAngle) - pLocal.y * Math.sin(currentVisualAngle);
@@ -896,7 +935,7 @@ export class Player {
             });
             return { type: 'polygon', vertices: worldVertices };
         }
-        return null; // Should not happen if bladeShape is found and is rect/triangle
+        return null; 
     }
     hasHitEnemyThisSwing(enemy) { return this.hitEnemiesThisSwing.includes(enemy); }
     registerHitEnemy(enemy) { if (!this.hasHitEnemyThisSwing(enemy)) { this.hitEnemiesThisSwing.push(enemy); } }
