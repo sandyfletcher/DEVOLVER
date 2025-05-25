@@ -171,7 +171,7 @@ function createItemSlot(itemType, container, category) { // create and setup a s
         const blockProps = Config.BLOCK_PROPERTIES[blockTypeForMaterial];
         slotDiv.style.backgroundColor = blockProps?.color || '#444';
         const countSpan = document.createElement('span'); 
-        countSpan.classList.add('item-count');
+        countSpan.classList.add('item-count'); // For materials
         countSpan.textContent = ''; 
         slotDiv.appendChild(countSpan); 
         titleText += ' (0)'; 
@@ -191,6 +191,12 @@ function createItemSlot(itemType, container, category) { // create and setup a s
     } else if (category === 'weapon') {
         const weaponStats = Config.WEAPON_STATS[itemType];
         slotDiv.textContent = weaponStats?.symbol || '?'; // Use the new symbol property
+        
+        const statusSymbolSpan = document.createElement('span'); // For weapons
+        statusSymbolSpan.classList.add('weapon-status-symbol');
+        statusSymbolSpan.textContent = 'X'; // Default symbol
+        slotDiv.appendChild(statusSymbolSpan);
+
         titleText = (weaponStats?.displayName || itemType.toUpperCase()) + ' (Unavailable)'; // Use displayName for title
     } else if (category.includes('-placeholder')) {
         slotDiv.textContent = ''; 
@@ -267,6 +273,8 @@ export function setPlayerReference(playerObject) { // set reference to player ob
             } else if (slotDiv.dataset.category === 'weapon') {
                 const weaponStats = Config.WEAPON_STATS[key];
                 slotDiv.title = `${weaponStats?.displayName || key.toUpperCase()} (Unavailable)`;
+                const statusSymbolSpan = slotDiv.querySelector('.weapon-status-symbol'); // Update symbol
+                if (statusSymbolSpan) statusSymbolSpan.textContent = 'X'; 
             }
         }
     }
@@ -358,11 +366,15 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         const weaponStats = Config.WEAPON_STATS[weaponType]; // Get weapon stats
         const recipe = weaponStats?.recipe; // Get recipe from weaponStats
         const isCraftable = recipe !== undefined && recipe.length > 0;
+        
         let canInteract = false; 
-        let titleText = weaponStats?.displayName || weaponType.toUpperCase(); // Use display name for title
+        let symbolText = '';
+        let titleSuffix = '';
+
         if (possessed) {
-            canInteract = true;
-            titleText += ' (Owned)'; 
+            symbolText = '✓';
+            titleSuffix = ' (Owned)';
+            canInteract = true; 
         } else if (isCraftable) {
             let canAfford = true;
             if (playerRef) { 
@@ -378,22 +390,32 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             } else {
                 canAfford = false; 
             }
+
             if (canAfford) {
-                canInteract = true;
-                titleText += ' (Click to Craft)'; 
+                symbolText = '$';
+                titleSuffix = ' (Click to Craft)';
+                canInteract = true; 
             } else {
+                symbolText = 'X';
+                titleSuffix = ' (Need: '; 
+                titleSuffix += recipe.map(ing => `${ing.amount} ${ing.type.charAt(0).toUpperCase() + ing.type.slice(1)}`).join(', '); 
+                titleSuffix += ')';
                 canInteract = false;
-                titleText += ' (Need: '; 
-                titleText += recipe.map(ing => `${ing.amount} ${ing.type.charAt(0).toUpperCase() + ing.type.slice(1)}`).join(', '); 
-                titleText += ')';
             }
-        } else {
+        } else { // Not owned, not craftable from scratch
+            symbolText = '↑'; // Placeholder for "upgradeable" or "find later"
+            titleSuffix = ' (Enhance Later)';
             canInteract = false;
-            titleText += ' (Unavailable)'; 
         }
+        
+        const statusSymbolSpan = slotDiv.querySelector('.weapon-status-symbol');
+        if (statusSymbolSpan) {
+            statusSymbolSpan.textContent = symbolText;
+        }
+
+        slotDiv.title = (weaponStats?.displayName || weaponType.toUpperCase()) + titleSuffix;
         slotDiv.classList.toggle('disabled', !canInteract);
-        slotDiv.classList.toggle('active', playerRef && selectedItem === weaponType);
-        slotDiv.title = titleText;
+        slotDiv.classList.toggle('active', playerRef && selectedItem === weaponType && canInteract);
     }
 }
 export function updatePortalInfo(currentHealth, maxHealth) {

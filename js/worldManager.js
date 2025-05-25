@@ -462,7 +462,6 @@ function applyInitialFloodFill() {
         }
     }
 }
-
 export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride = null) {
     const maxLightLevels = new Map();
     const grid = World.getGrid();
@@ -470,7 +469,6 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
         console.error("[WorldManager] applyLightingPass: World grid not available for calculation.");
         return [];
     }
-
     let mainCtxForDebug;
     if (DEBUG_DRAW_LIGHTING) {
         mainCtxForDebug = Renderer.getContext();
@@ -479,18 +477,14 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
             DEBUG_DRAW_LIGHTING = false;
         }
     }
-
     const sunCenterPixelY = (Config.SUN_MOVEMENT_Y_ROW_OFFSET * Config.BLOCK_HEIGHT) + (Config.BLOCK_HEIGHT / 2);
     const sunStartPixelX = Config.CANVAS_WIDTH + (Config.BLOCK_WIDTH * 10);
     const sunEndPixelX = -(Config.BLOCK_WIDTH * 10);
-    
     const stepColumnsToUse = sunStepOverride !== null ? sunStepOverride : Config.SUN_MOVEMENT_STEP_COLUMNS;
     const sunStepPixelX = stepColumnsToUse * Config.BLOCK_WIDTH;
-
     for (let currentSunPixelX = sunStartPixelX; currentSunPixelX >= sunEndPixelX; currentSunPixelX -= sunStepPixelX) {
         const sunGridCol = Math.floor(currentSunPixelX / Config.BLOCK_WIDTH);
         const sunGridRow = Math.floor(sunCenterPixelY / Config.BLOCK_HEIGHT);
-
         if (DEBUG_DRAW_LIGHTING && mainCtxForDebug) {
             mainCtxForDebug.save();
             Renderer.applyCameraTransforms(mainCtxForDebug);
@@ -504,10 +498,8 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
             Renderer.restoreCameraTransforms(mainCtxForDebug);
             mainCtxForDebug.restore();
         }
-
        const numDownwardRays = Math.ceil(Config.SUN_RAYS_PER_POSITION / 2);
        if (numDownwardRays <= 0) continue;
-
        for (let i = 0; i < numDownwardRays; i++) {
            let angle = (numDownwardRays === 1) ? (Math.PI / 2) : (i / (numDownwardRays - 1)) * Math.PI;
             let rayCurrentGridCol = sunGridCol;
@@ -521,17 +513,14 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
             let err = dx - dy;
             let currentRayBlockLength = 0;
             let currentLightPower = Config.INITIAL_LIGHT_RAY_POWER;
-
             while (currentRayBlockLength < Config.MAX_LIGHT_RAY_LENGTH_BLOCKS) {
                 if (currentLightPower < Config.MIN_LIGHT_THRESHOLD) {
                     break;
                 }
-
                 if (rayCurrentGridCol >= 0 && rayCurrentGridCol < Config.GRID_COLS &&
                     rayCurrentGridRow >= 0 && rayCurrentGridRow < Config.GRID_ROWS) {
                     const block = World.getBlock(rayCurrentGridCol, rayCurrentGridRow);
                     const blockProps = Config.BLOCK_PROPERTIES[block?.type ?? Config.BLOCK_AIR];
-
                     if (blockProps && blockProps.translucency !== undefined) {
                         if (blockProps.translucency === 0.0) {
                             const blockKey = `${rayCurrentGridCol},${rayCurrentGridRow}`;
@@ -542,7 +531,6 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
                             break;
                         }
                     }
-
                     if (block === Config.BLOCK_AIR || (blockProps && blockProps.translucency === 1.0) || block === null) {
                         // Ray passes without power reduction
                     } 
@@ -560,7 +548,6 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
                 } else if (rayCurrentGridRow >= Config.GRID_ROWS || rayCurrentGridCol < 0 || rayCurrentGridCol >= Config.GRID_COLS) {
                     break;
                 }
-
                 if (rayCurrentGridCol === rayEndGridCol && rayCurrentGridRow === rayEndGridRow) break;
                 let e2 = 2 * err;
                 if (e2 > -dy) { err -= dy; rayCurrentGridCol += sx; }
@@ -570,13 +557,11 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
             if (DEBUG_DRAW_LIGHTING && mainCtxForDebug) { /* ... debug ray drawing ... */ }
         }
     }
-
     const proposedChanges = [];
     maxLightLevels.forEach((lightLevel, key) => {
         const [c, r] = key.split(',').map(Number);
         proposedChanges.push({ c, r, newLightLevel: lightLevel });
     });
-
     return proposedChanges;
 }
 
@@ -584,6 +569,7 @@ export function applyLightingPass(DEBUG_DRAW_LIGHTING = false, sunStepOverride =
 // -----------------------------------------------------------------------------
 // --- Initialization ---
 // -----------------------------------------------------------------------------
+
 export function executeInitialWorldGenerationSequence() {
     console.log("[WorldManager] Executing initial world data generation sequence...");
     generateWorldFromGenerator();
