@@ -1,31 +1,32 @@
-// -----------------------------------------------------------------------------
+// =============================================================================
 // root/js/config.js - Centralized Game Configuration
-// -----------------------------------------------------------------------------
+// =============================================================================
 
-// --- Debug Mode ---
-export const DEBUG_MODE = false; // Master switch for all debug functionalities
-export const DEBUG_STARTING_MATERIALS_COUNT = 11; // Amount for each material in debug mode
+// --- Debug ---
 
-// --- Cutscene Parameters ---
+export const DEBUG_MODE = false; // toggle debug functionality
+export const DEBUG_STARTING_MATERIALS_COUNT = 11;
 
-export const CUTSCENE_IMAGE_DURATION = 3.0; // seconds image displayed
+// --- Cutscene ---
+
+export const CUTSCENE_IMAGE_DURATION = 3.0; // seconds each is displayed
 export const CUTSCENE_SLIDES = [
     { imagePath: 'assets/cut1.png', text: "In the near future, dolphins master nuclear fusion and seize control of the planet." },
-    { imagePath: 'assets/cut2.jpg', text: "As an elite triple-agent SEAL team 7 operative, you inflitrated their lab compound and harnessed their technology to send yourself back in time." },
-    { imagePath: 'assets/cut3.png', text: "Use your military and ballet training, along with knowledge of modern technology, to defeat any threats to humanity that attempt to breach your position." },
-    { imagePath: 'assets/cut4.png', text: "Only one thing has followed you back in time - a simple shovel. Will that be enough?" }
+    { imagePath: 'assets/cut2.jpg', text: "You're an elite SEAL team 6 operative, infiltrating their laboratory and harnessing the technology to send yourself back in time." },
+    { imagePath: 'assets/cut3.png', text: "Use your knowledge of modern technology and military tactics to defeat those who threaten humanity's stranglehold on Earth." },
+    { imagePath: 'assets/cut4.png', text: "Only one thing has followed you back in time: a simple shovel.  Will that be enough?" }
 ];
 
-// --- Camera / Viewport ---
+// --- Camera ---
 
-export const MIN_CAMERA_SCALE = 0.25; // min zoom level (zoomed out to 1/4 size)
-export const MAX_CAMERA_SCALE = 3.0; // max zoom level (zoomed in 3x)
-export const ZOOM_SPEED_FACTOR = 0.001; // sensitivity of mouse wheel
+export const MIN_CAMERA_SCALE = 0.25; // min zoom (1/4x)
+export const MAX_CAMERA_SCALE = 3.0; // max zoom (3x)
+export const ZOOM_SPEED_FACTOR = 0.001; // mouse wheel sensitivity
 
 // --- Game Grid ---
 
 export const BACKGROUND_COLOR = 'rgb(135, 206, 235)'; // TODO: develop background images with moving parts
-export const BASE_BLOCK_PIXEL_SIZE = 16; // size in pixels of one side of square block
+export const BASE_BLOCK_PIXEL_SIZE = 16; // pixel size - one side of square block
 export const BLOCK_WIDTH = BASE_BLOCK_PIXEL_SIZE;
 export const BLOCK_HEIGHT = BASE_BLOCK_PIXEL_SIZE;
 export const GRID_COLS = 400; // # of columns in world grid
@@ -37,8 +38,8 @@ export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
 
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
 export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2;
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // show / when HP <= 70%
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // show X when HP <= 30%
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // [/] when HP <= 70%
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // [X] when HP <= 30%
 export const GHOST_BLOCK_ALPHA = 0.5; // placement preview transparency
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 3; // in pixels
@@ -115,14 +116,14 @@ export const BLOCK_PROPERTIES = {
         hp: 25,
         color: 'rgb(80, 180, 80)',
         translucency: 0.5,
-        isSolidForPhysics: false, // Vegetation is not solid for physics
-        isSolidForPlacementSupport: false, // Vegetation does not support other blocks
+        isSolidForPhysics: false,
+        isSolidForPlacementSupport: false,
         isRope: false,
         isVegetation: true,
         isWood: false,
         droppedItemType: 'vegetation',
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' },
-        isPlayerPlaceableAsMaterial: true, // Player can place vegetation blocks if they have the material
+        isPlayerPlaceableAsMaterial: true,
     },
     [BLOCK_STONE]: {
         name: 'STONE',
@@ -143,8 +144,8 @@ export const BLOCK_PROPERTIES = {
         hp: 100,
         color: 'rgb(160, 110, 70)',
         translucency: 0.0,
-        isSolidForPhysicsConfig: { base: true, naturalOverride: false }, // Player-placed wood is solid, natural wood is not
-        isSolidForPlacementSupport: true, // All wood can support other blocks
+        isSolidForPhysicsConfig: { base: true, naturalOverride: false }, // player-placed wood is solid, natural is not
+        isSolidForPlacementSupport: true,
         isRope: false,
         isVegetation: false,
         isWood: true,
@@ -183,16 +184,16 @@ export const BLOCK_PROPERTIES = {
     [BLOCK_ROPE]: {
         name: 'ROPE',
         hp: 25,
-        color: 'rgb(80, 180, 80)', // Visually similar to vegetation
+        color: 'rgb(197, 228, 20)',
         translucency: 0.9,
         isSolidForPhysics: false,
         isSolidForPlacementSupport: false,
         isRope: true,
-        isVegetation: false, // Not vegetation itself, though placed using vegetation material
+        isVegetation: false, // not vegetation, but placed using its material
         isWood: false,
-        droppedItemType: 'vegetation', // Drops vegetation material when destroyed
-        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' }, // Dropped item looks like vegetation
-        isPlayerPlaceableAsMaterial: false, // Player uses 'vegetation' material to place ropes
+        droppedItemType: 'vegetation', // drops vegetation when destroyed
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' }, // dropped item looks like vegetation
+        isPlayerPlaceableAsMaterial: false, // uses vegetation to place
     },
 };
 export const AGING_MATERIAL_CONVERSION_FACTORS = {
@@ -211,13 +212,13 @@ export const MATERIAL_TO_BLOCK_TYPE = {
     'sand': BLOCK_SAND,
     'metal': BLOCK_METAL,
     'bone': BLOCK_BONE,
-    'vegetation': BLOCK_VEGETATION, // Note: Placing 'vegetation' material could result in either VEGETATION block or ROPE block based on context
+    'vegetation': BLOCK_VEGETATION, // placing vegetation could result in either block or rope
 };
 
 // --- Landmass Generation ---
 
-export const ISLAND_WIDTH_MIN = 0.75; // minimum width of island
-export const ISLAND_WIDTH_MAX = 0.85; // as percentage of GRID_COLS
+export const ISLAND_WIDTH_MIN = 0.75; // minimum width of island as a percentage of GRID_COLS
+export const ISLAND_WIDTH_MAX = 0.85;
 export const WATER_LEVEL_FRACTION = 0.25; // % of bottom GRID_ROWS water covers
 export const WATER_LEVEL = Math.floor(GRID_ROWS * (1.0 - WATER_LEVEL_FRACTION)); // calculate target row for water surface
 export const MEAN_GROUND_LEVEL = WATER_LEVEL - Math.floor(GRID_ROWS * 0.20); // mean row for ground surface
@@ -238,7 +239,7 @@ export const STONE_NOISE_LACUNARITY = 2.2;
 // --- Cave Formation ---
 
 export const ENABLE_CAVES = true;
-export const CAVE_NOISE_SCALE_X = 0.08; // Scale for 2D Perlin noise for caves (adjust for smaller/larger caves)
+export const CAVE_NOISE_SCALE_X = 0.08; //  2D noise scale for caves
 export const CAVE_NOISE_SCALE_Y = 0.07; // Can be different for X and Y to stretch caves
 export const CAVE_THRESHOLD = 0.5; // Noise values above this threshold become air (range typically [-1,1] or [0,1] - adjust based on noise2D output) - If noise2D outputs roughly [-1,1], a threshold of 0.6 means ~20% of area could be caves.
 export const CAVE_MIN_ROWS_BELOW_SURFACE = 0; // Caves start at least this many rows below the generated surface
