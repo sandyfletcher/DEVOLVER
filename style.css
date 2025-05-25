@@ -42,11 +42,8 @@ body {
     width: calc(min(97vw, 94vh * (2 / 1)));
     height: calc(min(97vw * (1 / 2), 94vh));
 }
-#app-container.overlay-active > #game-wrapper::before {
-    opacity: 1;
-    visibility: visible;
-    transition-delay: 0s;
-}
+
+/* When any overlay is active, game wrapper should not receive pointer events */
 #app-container.overlay-active > #game-wrapper {
     pointer-events: none;
 }
@@ -61,20 +58,16 @@ body {
     width: 100%; height: 100%; min-height: 0; position: relative;
     border: 0.2rem solid white; box-sizing: border-box;
     display: flex; justify-content: center; align-items: center;
-    overflow: hidden; background-color: rgb(135, 206, 235);
+    overflow: hidden; background-color: rgb(135, 206, 235); /* Base background color */
 }
+/* Background image for the game world itself */
 #game-wrapper::after {
     content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background-image: url('assets/background.jpeg');
     background-repeat: no-repeat; background-position: center center;
     background-size: cover; opacity: 0.7; z-index: 0;
 }
-#game-wrapper::before {
-    content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); opacity: 0; visibility: hidden;
-    pointer-events: none; transition: opacity 0.3s ease, visibility 0s linear 0.3s;
-    z-index: 52;
-}
+/* Removed ::before for dimming, as it's handled by menu-overlay background */
 #game-canvas {
     display: block; width: 100%; height: 100%; max-width: 100%; max-height: 100%;
     image-rendering: pixelated; image-rendering: crisp-edges;
@@ -194,20 +187,25 @@ body {
     opacity: 0; visibility: hidden; pointer-events: none;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
 }
-#boot-overlay { background-color: black; z-index: 200; }
+
+#boot-overlay { background-color: black; z-index: 200; } /* Always opaque black */
 #boot-overlay.show-title,
 #boot-overlay.show-error {
     opacity: 1; visibility: visible; pointer-events: auto;
     transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
+
 #menu-overlay {
-    background-color: rgba(0, 0, 0, 0.75); z-index: 100;
-    transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0s;
+    background-color: black; /* Default to opaque black */
+    z-index: 100;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s, background-color 0.3s ease; /* Added transition for background-color */
 }
-#menu-overlay.force-opaque { background-color: black; }
+#menu-overlay.menu-overlay--translucent {
+    background-color: rgba(0, 0, 0, 0.75); /* Translucent for pause, gameover, victory */
+}
 #menu-overlay.active {
     opacity: 1; visibility: visible; pointer-events: auto;
-    transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0s;
+    transition: opacity 0.3s ease, visibility 0s linear 0s, background-color 0.3s ease;
 }
 #menu-overlay.active.show-cutscene #overlay-cutscene-content {
     width: 100%; height: 100%; max-width: none; position: relative;
@@ -229,7 +227,6 @@ body {
 #overlay-pause-content {
     display: none; /* Still hidden by default */
     flex-direction: column;
-    /* align-items: center; /* Can be overridden if needed */
     justify-content: space-between; /* Push groups to top/bottom */
     width: 100%; /* Take full width of parent overlay */
     height: 100%; /* Take full height */
@@ -249,32 +246,14 @@ body {
 #boot-overlay h2, #menu-overlay h2 { font-size: 2.5em; margin-bottom: 1.5rem; }
 #boot-overlay p, #menu-overlay p { font-size: 1.2em; margin-bottom: 1.5rem; }
 
-/* === Base Styles for Standard Overlay Buttons === */
-.overlay-button {
-    padding: 12px 25px; font-size: 1.3em; margin-top: 1rem; min-width: 150px;
-    cursor: pointer; border-radius: 5px; border: 1px solid #ccc;
-    background-color: #eee; color: #333; font-weight: bold;
-    transition: background-color 0.2s ease, transform 0.1s ease, border-color 0.2s ease;
-    box-sizing: border-box;
-}
-.overlay-button:hover { background-color: #fff; }
-.overlay-button:active { transform: scale(0.97); }
-
-.overlay-button--destructive { background-color: darkred; color: white; border-color: #ffaaaa; }
-.overlay-button--destructive:hover { background-color: red; }
-.overlay-button--constructive { background-color: darkgreen; color: white; border-color: #aaffaa; }
-.overlay-button--constructive:hover { background-color: green; }
-.overlay-button--secondary { background-color: #555; color: white; border-color: #888; }
-.overlay-button--secondary:hover { background-color: #666; }
-
-/* === Hero Action Button Style === */
+/* === Standardized Hero Action Button Style === */
 .button-hero-action {
     background-color: black; border: 2px solid white; padding: 0.5rem 1rem;
     cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
+    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, color 0.2s ease, text-shadow 0.2s ease;
     border-radius: 8px; color: white; font-family: 'RubikIso', sans-serif;
     font-size: 1.5em; text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3);
-    margin: 0.5rem; box-sizing: border-box;
+    margin: 0.5rem; box-sizing: border-box; min-width: 200px; text-align: center;
 }
 .button-hero-action:hover {
     background-color: #1a1a1a; border-color: #f0f0f0; color: #f0f0f0;
@@ -284,23 +263,63 @@ body {
      background-color: #0d0d0d; border-color: #e0e0e0; transform: scale(0.97);
 }
 
+/* Destructive Modifier */
+.button-hero-action.button-hero-action--destructive {
+    border-color: darkred;
+    text-shadow: 1px 1px 3px rgba(255,100,100,0.3); /* Reddish shadow */
+}
+.button-hero-action.button-hero-action--destructive:hover {
+    background-color: #1a0000; /* Darker red background on hover */
+    border-color: red;
+    color: white; /* Ensure text remains white */
+    text-shadow: 2px 2px 6px rgba(255,100,100,0.4);
+}
+.button-hero-action.button-hero-action--destructive:active {
+    background-color: #330000; /* Even darker red for active */
+    border-color: #cc0000;
+}
+
+/* Constructive Modifier */
+.button-hero-action.button-hero-action--constructive {
+    border-color: darkgreen;
+    text-shadow: 1px 1px 3px rgba(100,255,100,0.3); /* Greenish shadow */
+}
+.button-hero-action.button-hero-action--constructive:hover {
+    background-color: #001a00; /* Darker green background on hover */
+    border-color: green;
+    color: white; /* Ensure text remains white */
+    text-shadow: 2px 2px 6px rgba(100,255,100,0.4);
+}
+.button-hero-action.button-hero-action--constructive:active {
+    background-color: #003300; /* Even darker green for active */
+    border-color: #006400;
+}
+
+/* Secondary Modifier */
+.button-hero-action.button-hero-action--secondary {
+    border-color: #aaa;
+    color: #ccc;
+}
+.button-hero-action.button-hero-action--secondary:hover {
+    background-color: #1a1a1a; /* Keep consistent hover background */
+    border-color: #ccc;
+    color: white;
+}
+
+
 /* Generic bottom-right button group */
 .button-group-bottom-right {
     display: flex;
-    /* justify-content: flex-end; */ /* Original: Horizontal */
-    /* align-items: flex-end; */    /* Original: Horizontal */
     flex-direction: column;      /* New: Vertical stack */
     align-items: flex-end;       /* New: Align items to the end (right) of the column */
     width: 100%; padding: 1rem; box-sizing: border-box;
     margin-top: auto; /* Pushes this group to the bottom of its flex parent */
 }
 .button-group-bottom-right .button-hero-action {
-    /* margin-left: 1rem; */ /* Original: Horizontal spacing */
     margin-top: 0.5rem;   /* New: Vertical spacing */
     margin-left: 0;       /* New: Remove left margin for column layout */
 }
 .button-group-bottom-right .button-hero-action:first-child {
-    /* margin-left: 0; */   /* Original: No left margin for the first button in the group */
     margin-top: 0;      /* New: No top margin for the first button in the column */
 }
 
@@ -308,17 +327,17 @@ body {
 /* ==========================================================================
    9. Boot Overlay - Specific Content
    ========================================================================== */
-#title-heading-button {
-    background-color: black; border: 2px solid white; 
-    padding: 1.5rem 2.5rem; /* Increased padding */
+#title-heading-button { /* This button is unique, keep its specific style */
+    background-color: black; border: 2px solid white;
+    padding: 1.5rem 2.5rem;
     cursor: pointer;
     transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
     border-radius: 8px;
 }
-#title-heading-button h1 { 
-    margin: 0; padding: 0; color: white; 
+#title-heading-button h1 {
+    margin: 0; padding: 0; color: white;
     font-family: 'RubikIso', sans-serif; /* Ensure font */
-    font-size: 3rem; /* Increased font size, using rem */
+    font-size: 3rem;
     text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.5); /* Match hover style */
 }
 #title-heading-button:hover { background-color: #1a1a1a; border-color: #f0f0f0; }
@@ -341,7 +360,7 @@ body {
    10. Menu Overlay - Specific Content
    ========================================================================== */
 
-/* 10.1. Main Menu Content uses .button-group-bottom-right for its buttons */
+/* 10.1. Main Menu Content uses .button-group-bottom-right for its buttons (which use .button-hero-action) */
 
 /* 10.2. Settings Content */
 .settings-options-group { /* Container for the main settings action buttons */
@@ -353,55 +372,29 @@ body {
     max-width: 350px; /* Control max width of this group */
     margin-bottom: 2rem; /* Space before the back button group */
 }
-.settings-action-button { /* Style for GRID, MUSIC, SFX buttons */
-    background-color: black; 
-    border: 2px solid white; 
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, color 0.2s ease;
-    border-radius: 8px; 
-    color: white; 
-    font-family: 'RubikIso', sans-serif;
-    font-size: 1.3em; /* Adjusted font size for settings context */
-    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3);
-    margin: 0.25rem; /* Adjusted margin for tighter group */
-    min-width: 200px; /* Ensure buttons have some width */
-    text-align: center;
-    box-sizing: border-box;
-}
-.settings-action-button:hover {
-    background-color: #1a1a1a; 
-    border-color: #f0f0f0; 
-    color: #f0f0f0;
-    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
-}
-.settings-action-button:active {
-     background-color: #0d0d0d; 
-     border-color: #e0e0e0; 
-     transform: scale(0.97);
-}
-
-/* State-specific styles for settings buttons (text and border only) */
-.settings-action-button.settings-row__button--state-bad { 
-    border-color: red; 
+/* .settings-action-button is now .button-hero-action.
+   The following styles are for text/border color based on ON/OFF state */
+.button-hero-action.settings-row__button--state-bad { /* For OFF state */
+    border-color: red;
     color: lightcoral; /* Lighter red for readability on black */
-    /* background-color: black; /* Ensure background remains black */
 }
-.settings-action-button.settings-row__button--state-bad:hover {
+.button-hero-action.settings-row__button--state-bad:hover {
     border-color: #ff4d4d;
     color: #ff8080;
+    background-color: #1a1a1a; /* Keep hover background consistent */
 }
 
-.settings-action-button.settings-row__button--state-good { 
-    border-color: limegreen; 
+.button-hero-action.settings-row__button--state-good { /* For ON state */
+    border-color: limegreen;
     color: lightgreen; /* Lighter green */
-    /* background-color: black; /* Ensure background remains black */
 }
-.settings-action-button.settings-row__button--state-good:hover {
+.button-hero-action.settings-row__button--state-good:hover {
     border-color: #4dff4d;
     color: #80ff80;
+    background-color: #1a1a1a; /* Keep hover background consistent */
 }
 /* The #settings-back-button uses .button-hero-action and is in .button-group-bottom-right */
+
 
 /* 10.3. Cutscene Content */
 .cutscene-image {
@@ -426,7 +419,7 @@ body {
 }
 #overlay-cutscene-content #cutscene-skip-button.button-hero-action {
     position: absolute; bottom: 1rem; right: 1rem; z-index: 10;
-    margin-top: 0; font-size: 1.2em;
+    margin-top: 0; font-size: 1.2em; /* Adjusted size */
 }
 #cutscene-text-box.visible,
 #overlay-cutscene-content #cutscene-skip-button.button-hero-action.visible {
@@ -450,63 +443,22 @@ body {
     gap: 1rem;
     margin-bottom: 2rem; /* Space before restart button group */
 }
-/* Styling for RESUME and PAUSE-SETTINGS buttons to match .button-hero-action */
-.pause-options-group .overlay-button {
-    background-color: black; 
-    border: 2px solid white; 
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease, color 0.2s ease;
-    border-radius: 8px; 
-    color: white; 
-    font-family: 'RubikIso', sans-serif;
-    font-size: 1.3em; /* Adjusted font size for pause context */
-    text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3);
-    margin: 0.25rem; /* Adjusted margin */
-    min-width: 200px;
-    text-align: center;
-    box-sizing: border-box;
-}
-.pause-options-group .overlay-button:hover {
-    background-color: #1a1a1a; 
-    border-color: #f0f0f0; 
-    color: #f0f0f0;
-    text-shadow: 2px 2px 6px rgba(255, 255, 255, 0.4);
-}
-.pause-options-group .overlay-button:active {
-     background-color: #0d0d0d; 
-     border-color: #e0e0e0; 
-     transform: scale(0.97);
-}
-
-/* 10.5. Game Over Content */
-/* Buttons use .overlay-button and modifiers. If these should also be hero-style,
-   similar CSS overrides would be needed for #overlay-gameover-content .overlay-button */
-#overlay-gameover-content .overlay-button {
-    /* Example if you want gameover buttons to also be hero style */
-    background-color: black; border: 2px solid darkred; padding: 0.5rem 1rem;
-    color: white; font-family: 'RubikIso', sans-serif; font-size: 1.3em;
-    text-shadow: 1px 1px 3px rgba(255,100,100,0.3);
-    border-radius: 8px; margin: 0.5rem; min-width: 200px;
-}
-#overlay-gameover-content .overlay-button:hover {
-    background-color: #1a0000; border-color: red;
-}
+/* Pause buttons now use .button-hero-action and .button-hero-action--secondary */
+/* #resume-button and #settings-button-overlay-pause will have .button-hero-action */
+/* #settings-button-overlay-pause will also have .button-hero-action--secondary */
 
 
-/* 10.6. Victory Content */
-/* Buttons use .overlay-button and modifiers */
-#overlay-victory-content .overlay-button {
-    /* Example if you want victory buttons to also be hero style */
-    background-color: black; border: 2px solid darkgreen; padding: 0.5rem 1rem;
-    color: white; font-family: 'RubikIso', sans-serif; font-size: 1.3em;
-    text-shadow: 1px 1px 3px rgba(100,255,100,0.3);
-    border-radius: 8px; margin: 0.5rem; min-width: 200px;
+/* 10.5. Game Over & 10.6. Victory Content */
+/* Game Over/Victory buttons now use .button-hero-action with modifiers */
+/* #restart-button-overlay will have .button-hero-action .button-hero-action--destructive */
+/* #restart-button-overlay-victory will have .button-hero-action .button-hero-action--constructive */
+/* These buttons are not in a group, so their default margin: 0.5rem will apply, or margin: 0.5rem auto for centering if parent allows. */
+/* Centering single button if its parent is overlay-content (flex column, items center) */
+#overlay-gameover-content .button-hero-action,
+#overlay-victory-content .button-hero-action {
+    margin-left: auto;
+    margin-right: auto;
 }
-#overlay-victory-content .overlay-button:hover {
-    background-color: #001a00; border-color: green;
-}
-
 
 /* ==========================================================================
    11. Landscape Warning & NoScript
