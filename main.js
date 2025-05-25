@@ -44,40 +44,45 @@ const GameState = FlowManager.GameState;
 window.pauseGameCallback = () => FlowManager.pauseGame();
 window.updateCameraScale = (deltaZoom) => {
     const currentGameState = FlowManager.getCurrentState();
-        if (currentGameState !== GameState.RUNNING && currentGameState !== GameState.PAUSED) {
-            return;
-        }
+    if (currentGameState !== GameState.RUNNING && currentGameState !== GameState.PAUSED) {
+        return;
+    }
     Renderer.updateZoomLevel(deltaZoom);
 };
 window.skipCutscene = () => FlowManager.skipCutscene();
+
 function toggleGridDisplay() {
     isGridVisible = !isGridVisible;
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 }
 window.toggleGridDisplay = toggleGridDisplay;
+
 function toggleMusicMute() {
     const newState = AudioManager.toggleMusicMute();
     UI.updateSettingsButtonStates(isGridVisible, newState, AudioManager.getSfxMutedState());
 }
 window.toggleMusicMute = toggleMusicMute;
+
 function toggleSfxMute() {
     const newState = AudioManager.toggleSfxMute();
     UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), newState);
 }
 window.toggleSfxMute = toggleSfxMute;
+
 async function performBackgroundWorldGeneration() {
     if (worldGenerationPromise && isWorldGenerated) return;
     if (worldGenerationPromise && !isWorldGenerated) return worldGenerationPromise;
+
     isWorldGenerated = false;
     worldGenerationPromise = (async () => {
         try {
-            console.time("executeInitialWorldGenerationSequence");
+            if (Config.DEBUG_MODE) console.time("executeInitialWorldGenerationSequence");
             WorldManager.executeInitialWorldGenerationSequence(); // This applies its own lighting pass initially
-            console.timeEnd("executeInitialWorldGenerationSequence");
+            if (Config.DEBUG_MODE) console.timeEnd("executeInitialWorldGenerationSequence");
 
             const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
             for (let i = 0; i < initialAgingPasses; i++) {
-                console.log(`[Main] Initial Aging Pass ${i + 1}/${initialAgingPasses}`);
+                if (Config.DEBUG_MODE) console.log(`[Main] Initial Aging Pass ${i + 1}/${initialAgingPasses}`);
                 // 1. Calculate lighting changes for this pass
                 World.resetAllBlockLighting(); // Reset lighting for this aging pass
                 const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // false to skip debug drawing
@@ -91,12 +96,12 @@ async function performBackgroundWorldGeneration() {
                         }
                     });
                 }
-                
+
                 // 3. Apply aging using the now updated lighting state
                 AgingManager.applyAging(null);
             }
 
-            console.log("[Main] Applying final lighting pass after all initial aging...");
+            if (Config.DEBUG_MODE) console.log("[Main] Applying final lighting pass after all initial aging...");
             World.resetAllBlockLighting(); // Reset before the final, thorough pass
             const finalLightingChanges = WorldManager.applyLightingPass(false, 1); // false to skip debug, 1 for full scan
             if (finalLightingChanges.length > 0) {
@@ -106,7 +111,7 @@ async function performBackgroundWorldGeneration() {
                         block.lightLevel = change.newLightLevel;
                     }
                 });
-                console.log(`[Main] Final lighting pass lit ${finalLightingChanges.length} additional blocks.`);
+                if (Config.DEBUG_MODE) console.log(`[Main] Final lighting pass lit ${finalLightingChanges.length} additional blocks.`);
             }
 
             if (!Renderer.getGridCanvas()) Renderer.createGridCanvas();
@@ -121,16 +126,17 @@ async function performBackgroundWorldGeneration() {
     })();
     return worldGenerationPromise;
 }
+
 async function initializeAndRunGame() {
     const currentGameState = FlowManager.getCurrentState();
     if (currentGameState === GameState.RUNNING) {
-    console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
-    return;
+        if (Config.DEBUG_MODE) console.warn("[main.js] initializeAndRunGame called but game already RUNNING.");
+        return;
     }
     try {
         if (!isWorldGenerated) {
             if (!worldGenerationPromise) {
-                console.warn("[Main] World generation promise not found. Starting now.");
+                if (Config.DEBUG_MODE) console.warn("[Main] World generation promise not found. Starting now.");
                 await performBackgroundWorldGeneration();
             } else {
                 await worldGenerationPromise;
@@ -142,25 +148,33 @@ async function initializeAndRunGame() {
                 return;
             }
         }
+
         UI.setPlayerReference(null);
         UI.setPortalReference(null);
+
         const portalSpawnX = Config.CANVAS_WIDTH / 2 - Config.PORTAL_WIDTH / 2;
         const portalSpawnY = (Config.MEAN_GROUND_LEVEL * Config.BLOCK_HEIGHT) - Config.PORTAL_HEIGHT - (Config.PORTAL_SPAWN_Y_OFFSET_BLOCKS * Config.BLOCK_HEIGHT);
         portal = new Portal(portalSpawnX, portalSpawnY);
-        ItemManager.init();
+
+        ItemManager.init(); // ItemManager.init might spawn items based on Config.DEBUG_MODE if we add that later
         EnemyManager.init();
+
         const playerSpawnX = Config.PLAYER_START_X;
         const playerSpawnY = Config.PLAYER_START_Y;
         player = new Player(playerSpawnX, playerSpawnY, Config.PLAYER_WIDTH, Config.PLAYER_HEIGHT, Config.PLAYER_COLOR);
-        player.reset();
+        player.reset(); // Player's reset method now handles DEBUG_MODE inventory
+
         UI.setPlayerReference(player);
         UI.setPortalReference(portal);
+
         WaveManager.reset(null, portal);
         Renderer.calculateInitialCamera(player);
         isAutoPaused = false;
+
         AudioManager.setVolume('game', Config.AUDIO_DEFAULT_GAME_VOLUME);
         AudioManager.setVolume('sfx', Config.AUDIO_DEFAULT_SFX_VOLUME);
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
+
         FlowManager.changeState(GameState.RUNNING); // Crucially, FlowManager changes state to RUNNING *after* setup
         gameStartTime = performance.now();
         console.log(">>> [main.js] Game Started <<<");
@@ -169,118 +183,132 @@ async function initializeAndRunGame() {
         FlowManager.changeState(GameState.ERROR, { errorMessage: error.message });
     }
 }
+
 function fullGameResetAndShowMenu() {
-    console.log("[Main] Performing full game reset and returning to Main Menu.");
+    if (Config.DEBUG_MODE) console.log("[Main] Performing full game reset and returning to Main Menu.");
     player = null; portal = null;
     UI.setPlayerReference(null); UI.setPortalReference(null); // UI still needs to be cleared
     EnemyManager.clearAllEnemies(); ItemManager.clearAllItems();
     AudioManager.stopAllMusic();
     isAutoPaused = false; // isGridVisible state persists unless explicitly reset
-    worldGenerationPromise = null; // reset world generation state for next game start - causing warning on second playthrough?
+    worldGenerationPromise = null;
     isWorldGenerated = false;
     FlowManager.changeState(GameState.MAIN_MENU);
 }
+
 function gameLoop(timestamp) {
     gameLoopId = requestAnimationFrame(gameLoop);
     try {
-    let rawDt = (lastTime === 0) ? 0 : (timestamp - lastTime) / 1000;
-    lastTime = timestamp;
-    rawDt = Math.min(rawDt, Config.MAX_DELTA_TIME);
-    let dt = 0;
-    const currentGameState = FlowManager.getCurrentState();
-    const waveInfo = WaveManager.getWaveInfo(); // get wave info once for the frame
-    if (currentGameState === GameState.RUNNING || currentGameState === GameState.CUTSCENE ||
-        (waveInfo.state === 'WARP_ANIMATING' && currentGameState !== GameState.PAUSED)) {
-        dt = rawDt;
-    }
-    if (waveInfo.state === 'WARP_ANIMATING') { // update MYA transition animation if active (during WARP_ANIMATING)
-        UI.updateMyaEpochTransition(dt);
-    }
-    if (currentGameState === GameState.RUNNING) {
-        Renderer.calculateCameraPosition(player, currentGameState === GameState.RUNNING); // Update camera position first. It will use the player's position from the end of the last frame/start of this one.
-        WaveManager.update(dt, currentGameState); // Pass currentGameState for conditional updates
-        if (player) {
-            const inputState = Input.getState();
-            const internalMousePos = Input.getMousePosition();
-            const targetWorldPos = Renderer.getMouseWorldCoords(internalMousePos);
-            const targetGridCell = Renderer.getMouseGridCoords(internalMousePos);
-            player.update(dt, inputState, targetWorldPos, targetGridCell);
+        let rawDt = (lastTime === 0) ? 0 : (timestamp - lastTime) / 1000;
+        lastTime = timestamp;
+        rawDt = Math.min(rawDt, Config.MAX_DELTA_TIME);
+        let dt = 0;
+
+        const currentGameState = FlowManager.getCurrentState();
+        const waveInfo = WaveManager.getWaveInfo(); // get wave info once for the frame
+
+        if (currentGameState === GameState.RUNNING || currentGameState === GameState.CUTSCENE ||
+            (waveInfo.state === 'WARP_ANIMATING' && currentGameState !== GameState.PAUSED)) {
+            dt = rawDt;
         }
-        const playerPosForEnemies = (player && player.isActive && !player.isDying) ? player.getPosition() : null;
-        EnemyManager.update(dt, playerPosForEnemies);
-        const playerRefForItems = (player && player.isActive && !player.isDying) ? player : null;
-        ItemManager.update(dt, playerRefForItems);
-        if (portal && portal.isAlive()) portal.update(dt);
-        if (player) {
-            CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
-            CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
-            CollisionManager.checkPlayerAttackBlockCollisions(player);
-            CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
+
+        if (waveInfo.state === 'WARP_ANIMATING') { // update MYA transition animation if active (during WARP_ANIMATING)
+            UI.updateMyaEpochTransition(dt);
         }
-        if (portal && portal.isAlive()) {
-            CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
-        }
-        // use the already fetched waveInfo for game over/victory checks
-        if ((player && !player.isActive) || (portal && !portal.isAlive())) {
-            WaveManager.setGameOver();
-            EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
-            ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
-            FlowManager.handleGameOver();
-            isAutoPaused = false;
-        } else if (waveInfo.allWavesCleared) { // check against the waveInfo from this frame
-            WaveManager.setVictory();
-            EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
-            ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
-            FlowManager.handleVictory();
-            isAutoPaused = false;
-        }
-    } else if (currentGameState === GameState.CUTSCENE) {
-        FlowManager.updateCutscene(dt);
-    }
-    if (dt > 0) WorldManager.update(dt);
-    Renderer.clear();
-    const mainCtx = Renderer.getContext();
-    const isGameWorldVisible = currentGameState === GameState.RUNNING || currentGameState === GameState.PAUSED ||
-                             currentGameState === GameState.GAME_OVER || currentGameState === GameState.VICTORY ||
-                             (currentGameState === GameState.CUTSCENE && waveInfo.state !== 'PRE_WAVE') ||
-                             (waveInfo.state === 'WARP_ANIMATING');
-    if (isGameWorldVisible && gameWrapperEl && gameWrapperEl.style.display !== 'none') {
-        Renderer.applyCameraTransforms(mainCtx);
-        WorldManager.draw(mainCtx);
-        GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
-        ItemManager.draw(mainCtx);
-        if (portal) portal.draw(mainCtx);
-        EnemyManager.draw(mainCtx);
-        if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {
-            player.draw(mainCtx);
-            const waveInfoAtDraw = WaveManager.getWaveInfo(); // use waveInfo from start of frame
-            const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
-            const isGameplayActiveAtDraw = ['WAVE_COUNTDOWN', 'BUILDPHASE', 'WARP_ANIMATING'].includes(currentWaveManagerStateAtDraw);
-            const playerIsInteractableAtDraw = player && player.isActive && !player.isDying;
-            if (playerIsInteractableAtDraw && isGameplayActiveAtDraw && player.isMaterialSelected()) {
-                player.drawPlacementRange(mainCtx); // draw placement range indicator
-                player.drawGhostBlock(mainCtx); // then draw ghost block on top
+
+        if (currentGameState === GameState.RUNNING) {
+            Renderer.calculateCameraPosition(player, currentGameState === GameState.RUNNING);
+            WaveManager.update(dt, currentGameState);
+            if (player) {
+                const inputState = Input.getState();
+                const internalMousePos = Input.getMousePosition();
+                const targetWorldPos = Renderer.getMouseWorldCoords(internalMousePos);
+                const targetGridCell = Renderer.getMouseGridCoords(internalMousePos);
+                player.update(dt, inputState, targetWorldPos, targetGridCell);
             }
+
+            const playerPosForEnemies = (player && player.isActive && !player.isDying) ? player.getPosition() : null;
+            EnemyManager.update(dt, playerPosForEnemies);
+
+            const playerRefForItems = (player && player.isActive && !player.isDying) ? player : null;
+            ItemManager.update(dt, playerRefForItems);
+
+            if (portal && portal.isAlive()) portal.update(dt);
+
+            if (player) {
+                CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
+                CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
+                CollisionManager.checkPlayerAttackBlockCollisions(player);
+                CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
+            }
+            if (portal && portal.isAlive()) {
+                CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
+            }
+
+            if ((player && !player.isActive) || (portal && !portal.isAlive())) {
+                WaveManager.setGameOver();
+                EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
+                ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
+                FlowManager.handleGameOver();
+                isAutoPaused = false;
+            } else if (waveInfo.allWavesCleared) {
+                WaveManager.setVictory();
+                EnemyManager.clearEnemiesOutsideRadius(0, 0, Infinity);
+                ItemManager.clearItemsOutsideRadius(0, 0, Infinity);
+                FlowManager.handleVictory();
+                isAutoPaused = false;
+            }
+        } else if (currentGameState === GameState.CUTSCENE) {
+            FlowManager.updateCutscene(dt);
         }
-        Renderer.restoreCameraTransforms(mainCtx);
-    }
-    if (UI.isInitialized()) {
-        const playerExists = !!player;
-        UI.updatePlayerInfo(
-            playerExists ? player.getCurrentHealth() : 0,
-            playerExists ? player.getMaxHealth() : Config.PLAYER_MAX_HEALTH_DISPLAY,
-            playerExists ? player.getInventory() : {},
-            playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SWORD) : false,
-            playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SPEAR) : false,
-            playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SHOVEL) : false
-        );
-        const portalExists = !!portal;
-        UI.updatePortalInfo(
-            portalExists ? portal.currentHealth : 0,
-            portalExists ? portal.maxHealth : Config.PORTAL_INITIAL_HEALTH
-        );
-        UI.updateWaveTimer(waveInfo); // ue waveInfo from start of frame
-    }
+
+        if (dt > 0) WorldManager.update(dt);
+
+        Renderer.clear();
+        const mainCtx = Renderer.getContext();
+        const isGameWorldVisible = currentGameState === GameState.RUNNING || currentGameState === GameState.PAUSED ||
+                                 currentGameState === GameState.GAME_OVER || currentGameState === GameState.VICTORY ||
+                                 (currentGameState === GameState.CUTSCENE && waveInfo.state !== 'PRE_WAVE') ||
+                                 (waveInfo.state === 'WARP_ANIMATING');
+
+        if (isGameWorldVisible && gameWrapperEl && gameWrapperEl.style.display !== 'none') {
+            Renderer.applyCameraTransforms(mainCtx);
+            WorldManager.draw(mainCtx);
+            GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
+            ItemManager.draw(mainCtx);
+            if (portal) portal.draw(mainCtx);
+            EnemyManager.draw(mainCtx);
+            if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {
+                player.draw(mainCtx);
+                const waveInfoAtDraw = WaveManager.getWaveInfo();
+                const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
+                const isGameplayActiveAtDraw = ['WAVE_COUNTDOWN', 'BUILDPHASE', 'WARP_ANIMATING'].includes(currentWaveManagerStateAtDraw);
+                const playerIsInteractableAtDraw = player && player.isActive && !player.isDying;
+                if (playerIsInteractableAtDraw && isGameplayActiveAtDraw && player.isMaterialSelected()) {
+                    player.drawPlacementRange(mainCtx);
+                    player.drawGhostBlock(mainCtx);
+                }
+            }
+            Renderer.restoreCameraTransforms(mainCtx);
+        }
+
+        if (UI.isInitialized()) {
+            const playerExists = !!player;
+            UI.updatePlayerInfo(
+                playerExists ? player.getCurrentHealth() : 0,
+                playerExists ? player.getMaxHealth() : Config.PLAYER_MAX_HEALTH_DISPLAY,
+                playerExists ? player.getInventory() : {},
+                playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SWORD) : false,
+                playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SPEAR) : false,
+                playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SHOVEL) : false
+            );
+            const portalExists = !!portal;
+            UI.updatePortalInfo(
+                portalExists ? portal.currentHealth : 0,
+                portalExists ? portal.maxHealth : Config.PORTAL_INITIAL_HEALTH
+            );
+            UI.updateWaveTimer(waveInfo);
+        }
     } catch (error) {
         console.error("Unhandled error in gameLoop:", error);
         if (gameLoopId) {
@@ -292,10 +320,11 @@ function gameLoop(timestamp) {
         }
     }
 }
+
 function init() {
     let success = true;
     try {
-        appContainerEl = document.getElementById('app-container'); // query DOM elements needed by FlowManager and main.js
+        appContainerEl = document.getElementById('app-container');
         bootOverlayEl = document.getElementById('boot-overlay');
         menuOverlayEl = document.getElementById('menu-overlay');
         gameWrapperEl = document.getElementById('game-wrapper');
@@ -327,7 +356,7 @@ function init() {
         btnToggleGridEl = document.getElementById('settings-btn-toggle-grid');
         muteMusicButtonEl = document.getElementById('settings-btn-mute-music');
         muteSfxButtonEl = document.getElementById('settings-btn-mute-sfx');
-        // Verify all queried elements
+
         const allElements = [
             appContainerEl, bootOverlayEl, menuOverlayEl, gameWrapperEl, epochOverlayEl,
             overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
@@ -339,47 +368,52 @@ function init() {
             settingsButtonPauseOverlayEl, resumeButton, restartButtonGameOver, restartButtonVictory,
             restartButtonPause, btnToggleGridEl, muteMusicButtonEl, muteSfxButtonEl
         ];
-    if (allElements.some(el => !el)) {
-        allElements.forEach((el, index) => {
-            if (!el) console.error(`FATAL INIT ERROR: UI Element at index ${index} (check init list) not found.`);
+        if (allElements.some(el => !el)) {
+            allElements.forEach((el, index) => {
+                if (!el) console.error(`FATAL INIT ERROR: UI Element at index ${index} (check init list) not found.`);
+            });
+            throw new Error("One or more critical UI elements are missing.");
+        }
+
+        Renderer.init();
+        AudioManager.init();
+        if (!UI.initGameUI()) throw new Error("FATAL INIT ERROR: UI.initGameUI() failed.");
+        Input.init();
+        lastTime = 0;
+        isAutoPaused = false;
+        isGridVisible = false;
+        UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
+
+        const gameFlowDependencies = {
+            bootOverlayEl, menuOverlayEl, appContainer: appContainerEl, gameWrapperEl,
+            overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
+            overlaySettingsContentEl, overlayCutsceneContentEl, overlayPauseContentEl,
+            overlayGameOverContentEl, overlayVictoryContentEl,
+            cutsceneImageDisplayEl, cutsceneTextContentEl, cutsceneTextContainerEl, cutsceneSkipButton,
+            gameOverStatsTextP, victoryStatsTextP, errorOverlayMessageP,
+            onStartGameRequested: initializeAndRunGame,
+            onFullGameResetRequested: fullGameResetAndShowMenu
+        };
+        FlowManager.init(gameFlowDependencies);
+
+        performBackgroundWorldGeneration().catch(err => {
+            console.error("Error setting up background world generation promise:", err);
+            FlowManager.changeState(GameState.ERROR, { errorMessage: `Failed to initiate world generation - ${err.message}` });
         });
-        throw new Error("One or more critical UI elements are missing.");
-    }
-    Renderer.init();
-    AudioManager.init();
-    if (!UI.initGameUI()) throw new Error("FATAL INIT ERROR: UI.initGameUI() failed.");
-    Input.init();
-    lastTime = 0;
-    isAutoPaused = false;
-    isGridVisible = false;
-    UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
-    const gameFlowDependencies = {
-        bootOverlayEl, menuOverlayEl, appContainer: appContainerEl, gameWrapperEl,
-        overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
-        overlaySettingsContentEl, overlayCutsceneContentEl, overlayPauseContentEl,
-        overlayGameOverContentEl, overlayVictoryContentEl,
-        cutsceneImageDisplayEl, cutsceneTextContentEl, cutsceneTextContainerEl, cutsceneSkipButton,
-        gameOverStatsTextP, victoryStatsTextP, errorOverlayMessageP,
-        onStartGameRequested: initializeAndRunGame,
-        onFullGameResetRequested: fullGameResetAndShowMenu
-    };
-    FlowManager.init(gameFlowDependencies);
-    performBackgroundWorldGeneration().catch(err => {
-        console.error("Error setting up background world generation promise:", err);
-        FlowManager.changeState(GameState.ERROR, { errorMessage: `Failed to initiate world generation - ${err.message}` });
-    });
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    titleStartButton.addEventListener('click', () => FlowManager.handleTitleStart()); // setup event listeners to call FlowManager methods
-    mainmenuStartGameButton.addEventListener('click', () => FlowManager.startCutscene());
-    mainmenuSettingsButton.addEventListener('click', () => FlowManager.openSettingsFromMainMenu());
-    settingsButtonPauseOverlayEl.addEventListener('click', () => FlowManager.openSettingsFromPause());
-    settingsBackButton.addEventListener('click', () => FlowManager.closeSettings());
-    resumeButton.addEventListener('click', () => FlowManager.resumeGame());
-    restartButtonGameOver.addEventListener('click', () => FlowManager.requestFullGameReset());
-    restartButtonVictory.addEventListener('click', () => FlowManager.requestFullGameReset());
-    restartButtonPause.addEventListener('click', () => FlowManager.requestFullGameReset());
-    cutsceneSkipButton.addEventListener('click', () => FlowManager.skipCutscene());
-    gameLoopId = requestAnimationFrame(gameLoop);
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        titleStartButton.addEventListener('click', () => FlowManager.handleTitleStart());
+        mainmenuStartGameButton.addEventListener('click', () => FlowManager.startCutscene());
+        mainmenuSettingsButton.addEventListener('click', () => FlowManager.openSettingsFromMainMenu());
+        settingsButtonPauseOverlayEl.addEventListener('click', () => FlowManager.openSettingsFromPause());
+        settingsBackButton.addEventListener('click', () => FlowManager.closeSettings());
+        resumeButton.addEventListener('click', () => FlowManager.resumeGame());
+        restartButtonGameOver.addEventListener('click', () => FlowManager.requestFullGameReset());
+        restartButtonVictory.addEventListener('click', () => FlowManager.requestFullGameReset());
+        restartButtonPause.addEventListener('click', () => FlowManager.requestFullGameReset());
+        cutsceneSkipButton.addEventListener('click', () => FlowManager.skipCutscene());
+
+        gameLoopId = requestAnimationFrame(gameLoop);
     } catch (error) {
         console.error("FATAL: Initialization Error:", error);
         if (bootOverlayEl && errorOverlayMessageP && FlowManager.getCurrentState() !== GameState.ERROR) {
@@ -389,10 +423,12 @@ function init() {
         }
     }
 }
+
 function handleVisibilityChange() {
     if (document.hidden && FlowManager.getCurrentState() === GameState.RUNNING) {
         isAutoPaused = true;
         FlowManager.pauseGame();
     }
 }
+
 window.addEventListener('DOMContentLoaded', init);
