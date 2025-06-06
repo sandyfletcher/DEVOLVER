@@ -288,3 +288,20 @@ export function checkEnemyPortalCollisions(enemies, portal) {
         }
     }
 }
+
+export function checkPlayerProjectileCollisions(player, projectiles) {
+    if (!player || !player.isActive || player.isDying || !projectiles || projectiles.length === 0) return;
+    const playerRect = player.getRect();
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        if (!p || !p.isActive || !p.isStuck) continue; // Only check for stuck projectiles
+
+        const pRect = p.getRect();
+        if (_checkRectOverlap(playerRect, pRect)) {
+            const pickedUp = player.pickupItem({ type: 'arrows' }); // The inventory material type is 'arrows'
+            if (pickedUp) {
+                p.isActive = false; // Deactivate the projectile so it gets removed by the manager
+            }
+        }
+    }
+}

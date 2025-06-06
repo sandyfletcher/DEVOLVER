@@ -10,6 +10,7 @@ import * as EnemyManager from './enemyManager.js';
 import * as AudioManager from './audioManager.js';
 import * as WorldManager from './worldManager.js';
 import * as AgingManager from './agingManager.js';
+import * as ProjectileManager from './projectileManager.js';
 import * as DebugLogger from './utils/debugLogger.js'; // Import the new logger
 
 let currentMainWaveIndex = -1;
@@ -133,6 +134,7 @@ function triggerWarpCleanupAndCalculations() {
     const safeRadius = portalRef.safetyRadius;
     ItemManager.clearItemsOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     EnemyManager.clearEnemiesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
+    ProjectileManager.clearProjectilesOutsideRadius(portalCenter.x, portalCenter.y, safeRadius);
     DebugLogger.log("[WaveMgr] Entity cleanup using portal radius complete.");
     DebugLogger.log("[WaveMgr] Applying gravity settlement (LOGICAL)...");
     if (Config.DEBUG_MODE) DebugLogger.time("LogicalGravitySettlement");

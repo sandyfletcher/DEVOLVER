@@ -242,6 +242,7 @@ function gameLoop(timestamp) {
 
             if (player) {
                 CollisionManager.checkPlayerItemCollisions(player, ItemManager.getItems(), ItemManager);
+                CollisionManager.checkPlayerProjectileCollisions(player, ProjectileManager.getProjectiles());
                 CollisionManager.checkPlayerAttackEnemyCollisions(player, EnemyManager.getEnemies());
                 CollisionManager.checkPlayerAttackBlockCollisions(player);
                 CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());

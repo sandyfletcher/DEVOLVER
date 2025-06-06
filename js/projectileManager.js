@@ -49,3 +49,23 @@ export function clearAllProjectiles() {
     projectiles = [];
     DebugLogger.log("ProjectileManager: Cleared all projectiles.");
 }
+
+export function clearProjectilesOutsideRadius(centerX, centerY, radius) {
+    const radiusSq = radius * radius;
+    const initialCount = projectiles.length;
+    projectiles = projectiles.filter(p => {
+        if (!p || typeof p.x !== 'number' || typeof p.y !== 'number' || isNaN(p.x) || isNaN(p.y)) {
+            DebugLogger.warn("ProjectileManager: Found invalid projectile data during cleanup, removing.", p);
+            return false;
+        }
+        // Use the projectile's center for distance check
+        const pCenterX = p.x; 
+        const pCenterY = p.y;
+        const dx = pCenterX - centerX;
+        const dy = pCenterY - centerY;
+        const distSq = dx * dx + dy * dy;
+        return distSq <= radiusSq;
+    });
+    const removedCount = initialCount - projectiles.length;
+    DebugLogger.log(`ProjectileManager: Cleared ${removedCount} projectiles outside radius ${radius}.`);
+}

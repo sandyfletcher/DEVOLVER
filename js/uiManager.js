@@ -387,6 +387,9 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         let titleSuffix = '';
         let ammoCount = 0;
 
+        const statusSymbolSpan = slotDiv.querySelector('.weapon-status-symbol');
+        const ammoCountSpan = slotDiv.querySelector('.item-count');
+
         if (weaponType === Config.WEAPON_TYPE_BOW && possessed) {
             ammoCount = inventory['arrows'] || 0;
             const ammoRecipe = weaponStats.ammoRecipe;
@@ -401,17 +404,29 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             } else {
                 canAffordAmmo = false;
             }
-            symbolText = '$';
+
             canInteract = true;
-            titleSuffix = ` (Arrows: ${ammoCount}) - Click to craft 1 arrow`;
+            if (ammoCount > 0) {
+                symbolText = '$';
+                if (statusSymbolSpan) statusSymbolSpan.style.display = 'none';
+                titleSuffix = ` (Arrows: ${ammoCount}) - Click to craft 1 more`;
+            } else {
+                if (statusSymbolSpan) statusSymbolSpan.style.display = 'block';
+                symbolText = canAffordAmmo ? '$' : 'X';
+                titleSuffix = ' (Click to craft 1 arrow)';
+            }
+            
             if (!canAffordAmmo) {
                 titleSuffix += ` (Need ${ammoRecipe.map(i => `${i.amount} ${i.type}`).join(', ')})`;
             }
+
         } else if (possessed) {
             symbolText = '✓';
             titleSuffix = ' (Owned)';
             canInteract = true; 
+            if (statusSymbolSpan) statusSymbolSpan.style.display = 'block';
         } else if (recipe && recipe.length > 0) {
+            if (statusSymbolSpan) statusSymbolSpan.style.display = 'block';
             let canAfford = true;
             if (playerRef) { 
                 for (const ingredient of recipe) {
@@ -436,21 +451,18 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
                 canInteract = false;
             }
         } else { 
+            if (statusSymbolSpan) statusSymbolSpan.style.display = 'block';
             symbolText = '↑'; 
             titleSuffix = ' (Cannot Craft)';
             canInteract = false;
         }
         
-        const statusSymbolSpan = slotDiv.querySelector('.weapon-status-symbol');
         if (statusSymbolSpan) {
             statusSymbolSpan.textContent = symbolText;
         }
 
-        if (weaponType === Config.WEAPON_TYPE_BOW) {
-            const ammoCountSpan = slotDiv.querySelector('.item-count');
-            if (ammoCountSpan) {
-                ammoCountSpan.textContent = ammoCount > 0 ? Math.min(ammoCount, 999) : '';
-            }
+        if (weaponType === Config.WEAPON_TYPE_BOW && ammoCountSpan) {
+            ammoCountSpan.textContent = ammoCount > 0 ? Math.min(ammoCount, 999) : '';
         }
 
         slotDiv.title = (weaponStats?.displayName || weaponType.toUpperCase()) + titleSuffix;
