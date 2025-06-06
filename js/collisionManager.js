@@ -4,6 +4,7 @@
 
 import * as Config from './utils/config.js';
 import * as WorldManager from './worldManager.js';
+import * as GridCollision from './utils/gridCollision.js';
 
 function _checkRectOverlap(rect1, rect2) {
     if (!rect1 || !rect2) {
@@ -89,11 +90,11 @@ function _triangleIntersectsAABB(triangleVertices, aabb) { // checks if a triang
     return false;
 }
 function _getTriangleAABB(vertices) { // get AABB of a triangle
-    if (!vertices || vertices.length !== 3) return null;
-    const minX = Math.min(vertices[0].x, vertices[1].x, vertices[2].x);
-    const maxX = Math.max(vertices[0].x, vertices[1].x, vertices[2].x);
-    const minY = Math.min(vertices[0].y, vertices[1].y, vertices[2].y);
-    const maxY = Math.max(vertices[0].y, vertices[1].y, vertices[2].y);
+    if (!vertices || vertices.length < 3) return null;
+    const minX = Math.min(...vertices.map(v => v.x));
+    const maxX = Math.max(...vertices.map(v => v.x));
+    const minY = Math.min(...vertices.map(v => v.y));
+    const maxY = Math.max(...vertices.map(v => v.y));
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
 }
 export function checkPlayerItemCollisions(player, items, itemManager) { // check for collisions between player and items
@@ -113,7 +114,7 @@ export function checkPlayerItemCollisions(player, items, itemManager) { // check
 }
 export function checkPlayerAttackEnemyCollisions(player, enemies) {
     const currentEnemyDamage = player?.getCurrentAttackDamage() ?? 0;
-    if (!player || !player.isActive || player.isDying || !enemies || !player.isAttacking || currentEnemyDamage <= 0) { return; }
+    if (!player || !player.isActive || player.isDying || !player.isAttacking || currentEnemyDamage <= 0) { return; }
     const attackHitboxData = player.getAttackHitbox();
     if (!attackHitboxData) return;
     for (const enemy of enemies) {
@@ -232,6 +233,45 @@ export function checkPlayerEnemyCollisions(player, enemies) { // check for colli
         }
     }
 }
+
+export function checkProjectileEnemyCollisions(projectiles, enemies, player) {
+    if (!projectiles || projectiles.length === 0 || !enemies || enemies.length === 0) return;
+
+    for (const p of projectiles) {
+        if (!p.isActive || p.isStuck || p.owner !== player) continue;
+
+        const pRect = p.getRect();
+        for (const e of enemies) {
+            if (!e.isActive || e.isDying) continue;
+
+            const eRect = e.getRect();
+            if (_checkRectOverlap(pRect, eRect)) {
+                e.takeDamage(p.damage);
+                p.isActive = false; // Arrow is used up
+                break; // One arrow hits one enemy
+            }
+        }
+    }
+}
+
+export function checkProjectileBlockCollisions(projectiles) {
+    if (!projectiles || projectiles.length === 0) return;
+
+    for (const p of projectiles) {
+        if (!p.isActive || p.isStuck) continue;
+
+        // Check the tip of the projectile for simplicity
+        const tipX = p.x + (p.width / 2) * Math.cos(p.rotation);
+        const tipY = p.y + (p.width / 2) * Math.sin(p.rotation);
+
+        const { col, row } = GridCollision.worldToGridCoords(tipX, tipY);
+
+        if (GridCollision.isSolid(col, row)) {
+            p.stickInBlock(col, row);
+        }
+    }
+}
+
 export function checkEnemyPortalCollisions(enemies, portal) {
     if (!portal || !portal.isAlive() || !enemies) { return; }
     const portalRect = portal.getRect();

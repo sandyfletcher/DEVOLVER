@@ -6,6 +6,7 @@ import * as Config from './utils/config.js';
 import * as AudioManager from './audioManager.js';
 import * as WaveManager from './waveManager.js';
 import * as UI from './uiManager.js';
+import * as ProjectileManager from './projectileManager.js';
 
 export const GameState = Object.freeze({
     TITLE: 'TITLE',

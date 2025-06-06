@@ -6,6 +6,7 @@
 
 export const DEBUG_MODE = false; // toggle debug functionality
 export const DEBUG_STARTING_MATERIALS_COUNT = 11;
+export const DEBUG_STARTING_ARROWS = 25;
 
 // --- Cutscene ---
 
@@ -204,7 +205,7 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_WOOD]: 1.0,
     [BLOCK_METAL]: 1.0,
 };
-export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal'];
+export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal', 'arrows'];
 export const MATERIAL_TO_BLOCK_TYPE = {
     'dirt': BLOCK_DIRT,
     'stone': BLOCK_STONE,
@@ -440,6 +441,7 @@ export const WEAPON_TYPE_UNARMED = 'unarmed';
 export const WEAPON_TYPE_SHOVEL = 'shovel';
 export const WEAPON_TYPE_SWORD = 'sword';
 export const WEAPON_TYPE_SPEAR = 'spear';
+export const WEAPON_TYPE_BOW = 'bow';
 export const WEAPON_STATS = {
     [WEAPON_TYPE_UNARMED]: {
         displayName: "Unarmed",
@@ -548,6 +550,41 @@ export const WEAPON_STATS = {
         knockbackStrength: 250,
         knockbackStunDuration: 0.3,
         jabDistanceBlocks: 1.0,
+    },
+    [WEAPON_TYPE_BOW]: {
+        displayName: "Bow",
+        symbol: "🏹",
+        width: 1 * BLOCK_WIDTH,
+        height: 5 * BLOCK_HEIGHT,
+        attackDamage: 0, // Bow itself does no damage
+        blockDamage: 0,
+        attackDuration: 0.1, // Time to fire
+        attackCooldown: 0.5, // Time between shots
+        recipe: [ { type: 'wood', amount: 2 }, { type: 'vegetation', amount: 2 } ],
+        ammoType: 'arrow',
+        ammoRecipe: [ { type: 'wood', amount: 1 }, { type: 'stone', amount: 1 } ],
+        visualAnchorOffset: { x: 0, y: 0 }, // Pivot at center
+        handPositions: { back: { x: 0, y: 0.5 * BLOCK_HEIGHT }, front: { x: 0, y: -0.5 * BLOCK_HEIGHT } }, // Simple grip
+        shape: [ // A simple arc shape
+            { type: 'polygon', points: [ {x:0, y:-2.5*BLOCK_HEIGHT}, {x:0.5*BLOCK_WIDTH, y:0}, {x:0, y:2.5*BLOCK_HEIGHT} ], color: 'rgb(139, 69, 19)'},
+        ]
+    }
+};
+
+// --- Projectiles ---
+export const PROJECTILE_TYPE_ARROW = 'arrow';
+export const PROJECTILE_STATS = {
+    [PROJECTILE_TYPE_ARROW]: {
+        width: 2.5 * BLOCK_WIDTH,
+        height: 0.25 * BLOCK_HEIGHT,
+        speed: 80 * BLOCK_WIDTH, // pixels per second
+        damage: 10,
+        gravityFactor: 0.2, // Arrows are light and fly relatively straight
+        shape: [
+            { type: 'rect', x: -1.25 * BLOCK_WIDTH, y: -0.05 * BLOCK_HEIGHT, w: 2.5 * BLOCK_WIDTH, h: 0.1 * BLOCK_HEIGHT, color: 'rgb(139, 69, 19)' },
+            { type: 'polygon', points: [ {x:1.25*BLOCK_WIDTH, y:0}, {x:1*BLOCK_WIDTH, y:-0.125*BLOCK_HEIGHT}, {x:1*BLOCK_WIDTH, y:0.125*BLOCK_HEIGHT} ], color: 'rgb(160,160,170)' },
+            { type: 'polygon', points: [ {x:-1.25*BLOCK_WIDTH, y:0}, {x:-1*BLOCK_WIDTH, y:-0.2*BLOCK_HEIGHT}, {x:-1*BLOCK_WIDTH, y:0.2*BLOCK_HEIGHT} ], color: 'rgb(200,200,200)' }
+        ]
     }
 };
 

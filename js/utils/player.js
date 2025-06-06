@@ -7,6 +7,7 @@ import * as GridCollision from './gridCollision.js';
 import * as WorldManager from '../worldManager.js';
 import * as World from './world.js';
 import * as DebugLogger from './debugLogger.js';
+import * as ProjectileManager from '../projectileManager.js';
 
 export class Player {
     constructor(x, y, width, height) { // 'color' param is now effectively ignored
@@ -25,6 +26,7 @@ export class Player {
         this.hasShovel = false;
         this.hasSword = false;
         this.hasSpear = false;
+        this.hasBow = false;
         this.selectedItem = Config.WEAPON_TYPE_UNARMED;
         this.inventory = {};
         this.partialCollection = {};
@@ -108,7 +110,7 @@ export class Player {
             this._lastValidTargetGridCell = { ...this.targetGridCell };
         } else {
             this.targetGridCell = targetGridCell;
-            this._lastValidTargetGridCell = { ...targetGridCell };
+            this._lastValidTargetGridCell = { ...this.targetGridCell };
         }
         const playerCenterX = this.x + this.width / 2;
         const targetDeltaX = this.targetWorldPos.x - playerCenterX;
@@ -187,6 +189,19 @@ export class Player {
                         const rawTargetWorldPos = this.targetWorldPos || this._lastValidTargetWorldPos || {x: playerCenterX + this.lastDirection * 50, y: playerCenterY};
                         this.currentAttackAngle = Math.atan2(rawTargetWorldPos.y - playerCenterY, rawTargetWorldPos.x - playerCenterX);
                         this.currentSwipeProgress = 0; // Reset swipe progress at start of attack
+
+                        if (this.selectedItem === Config.WEAPON_TYPE_BOW) {
+                            if ((this.inventory['arrows'] || 0) > 0) {
+                                this.decrementInventory('arrows', 1);
+                                const arrowSpeed = Config.PROJECTILE_STATS[Config.PROJECTILE_TYPE_ARROW].speed;
+                                const vx = Math.cos(this.currentAttackAngle) * arrowSpeed;
+                                const vy = Math.sin(this.currentAttackAngle) * arrowSpeed;
+                                ProjectileManager.spawnProjectile(playerCenterX, playerCenterY, vx, vy, Config.PROJECTILE_TYPE_ARROW, this);
+                            } else {
+                                // "Dry fire" sound could go here
+                                this.isAttacking = false; // Cancel attack if no ammo
+                            }
+                        }
                     } else {
                         this.attackTimer = 0.1;
                         this.attackCooldown = 0.2;
@@ -660,6 +675,19 @@ export class Player {
                     if (weaponStats.outlineColor && weaponStats.outlineWidth) {
                         ctx.strokeStyle = weaponStats.outlineColor; ctx.lineWidth = weaponStats.outlineWidth; ctx.stroke();
                     }
+                } else if (shapeDef.type === 'polygon' && shapeDef.points) {
+                    ctx.beginPath();
+                    shapeDef.points.forEach((p, index) => {
+                        if (index === 0) ctx.moveTo(p.x, p.y);
+                        else ctx.lineTo(p.x, p.y);
+                    });
+                    ctx.closePath();
+                    ctx.fill();
+                    if (weaponStats.outlineColor && weaponStats.outlineWidth) {
+                        ctx.strokeStyle = weaponStats.outlineColor;
+                        ctx.lineWidth = weaponStats.outlineWidth;
+                        ctx.stroke();
+                    }
                 }
             });
             ctx.restore();
@@ -796,6 +824,9 @@ export class Player {
         if (!this.isAttacking || !this.isWeaponSelected() || this.selectedItem === Config.WEAPON_TYPE_UNARMED || this.isDying) {
             return null;
         }
+        if (this.selectedItem === Config.WEAPON_TYPE_BOW) {
+            return null; // Bow doesn't have a melee hitbox
+        }
         const weaponStats = Config.WEAPON_STATS[this.selectedItem];
         if (!weaponStats) return null;
         const playerCenterX = this.x + this.width / 2;
@@ -902,6 +933,8 @@ export class Player {
                 if (!this.hasSpear) { this.hasSpear = true; pickedUp = true; }
             } else if (materialType === Config.WEAPON_TYPE_SHOVEL) {
                 if (!this.hasShovel) { this.hasShovel = true; pickedUp = true; }
+            } else if (materialType === Config.WEAPON_TYPE_BOW) {
+                if (!this.hasBow) { this.hasBow = true; pickedUp = true; }
             }
             if (pickedUp && this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
                 this.equipItem(materialType);
@@ -919,6 +952,7 @@ export class Player {
             case Config.WEAPON_TYPE_SWORD: return this.hasSword;
             case Config.WEAPON_TYPE_SPEAR: return this.hasSpear;
             case Config.WEAPON_TYPE_SHOVEL: return this.hasShovel;
+            case Config.WEAPON_TYPE_BOW: return this.hasBow;
             default: return false;
         }
     }
@@ -986,22 +1020,41 @@ export class Player {
         }
         let craftedSuccessfully = false;
         switch (itemType) {
-            case Config.WEAPON_TYPE_SWORD:
-                this.hasSword = true;
-                craftedSuccessfully = true;
-                break;
-            case Config.WEAPON_TYPE_SPEAR:
-                this.hasSpear = true;
-                craftedSuccessfully = true;
-                break;
-            default:
-                console.error(`Crafting logic for item type ${itemType} not implemented.`);
-                return false;
+            case Config.WEAPON_TYPE_SWORD: this.hasSword = true; craftedSuccessfully = true; break;
+            case Config.WEAPON_TYPE_SPEAR: this.hasSpear = true; craftedSuccessfully = true; break;
+            case Config.WEAPON_TYPE_BOW: this.hasBow = true; craftedSuccessfully = true; break;
+            default: console.error(`Crafting logic for item type ${itemType} not implemented.`); return false;
         }
         return craftedSuccessfully;
     }
+    craftAmmo(weaponType) {
+        const weaponStats = Config.WEAPON_STATS[weaponType];
+        if (!weaponStats || !weaponStats.ammoType || !weaponStats.ammoRecipe) {
+            return false;
+        }
+
+        const ammoType = weaponStats.ammoType;
+        const recipe = weaponStats.ammoRecipe;
+
+        let hasMaterials = true;
+        for (const ingredient of recipe) {
+            if ((this.inventory[ingredient.type] || 0) < ingredient.amount) {
+                hasMaterials = false;
+                break;
+            }
+        }
+
+        if (hasMaterials) {
+            for (const ingredient of recipe) {
+                this.decrementInventory(ingredient.type, ingredient.amount);
+            }
+            this.inventory[ammoType] = (this.inventory[ammoType] || 0) + 1;
+            return true;
+        }
+        return false;
+    }
     getPartialCollection(materialType) { return this.partialCollection[materialType] || 0;    }
-    isWeaponType(itemType) { return [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL].includes(itemType); }
+    isWeaponType(itemType) { return [Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SHOVEL, Config.WEAPON_TYPE_BOW].includes(itemType); }
     isWeaponSelected() { return this.selectedItem !== Config.WEAPON_TYPE_UNARMED && this.isWeaponType(this.selectedItem); }
     isMaterialSelected() { return Config.INVENTORY_MATERIALS.includes(this.selectedItem); }
     getRect() {
@@ -1048,6 +1101,9 @@ export class Player {
     setActiveInventoryMaterial(materialType) {
         if (this.isDying) return false;
         if (Config.INVENTORY_MATERIALS.includes(materialType)) {
+            // Arrows are not a placeable material
+            if (materialType === 'arrows') return false;
+            
             if ((this.inventory[materialType] || 0) > 0) {
                 return this.equipItem(materialType);
             }
@@ -1059,6 +1115,11 @@ export class Player {
     setActiveWeapon(weaponType) {
         if (this.isDying) return false;
         if (this.isWeaponType(weaponType) || weaponType === Config.WEAPON_TYPE_UNARMED) {
+            // Special case for Bow: if already selected, craft ammo instead of unequipping
+            if (this.selectedItem === Config.WEAPON_TYPE_BOW && weaponType === Config.WEAPON_TYPE_BOW) {
+                return this.craftAmmo(Config.WEAPON_TYPE_BOW);
+            }
+
             if (this.selectedItem === weaponType) {
                 if (weaponType !== Config.WEAPON_TYPE_UNARMED) {
                     return this.equipItem(Config.WEAPON_TYPE_UNARMED);
@@ -1113,6 +1174,7 @@ export class Player {
         this.hasShovel = false;
         this.hasSword = false;
         this.hasSpear = false;
+        this.hasBow = false;
         this.selectedItem = Config.WEAPON_TYPE_UNARMED;
         this.lastDirection = 1;
         this._lastValidTargetWorldPos = null;
@@ -1127,11 +1189,15 @@ export class Player {
         if (Config.DEBUG_MODE) {
             DebugLogger.log(">>> Player DEBUG MODE: Granting starting materials and weapons.");
             Config.INVENTORY_MATERIALS.forEach(materialType => {
-                this.inventory[materialType] = Config.DEBUG_STARTING_MATERIALS_COUNT;
+                if (materialType !== 'arrows') {
+                    this.inventory[materialType] = Config.DEBUG_STARTING_MATERIALS_COUNT;
+                }
             });
+            this.inventory['arrows'] = Config.DEBUG_STARTING_ARROWS;
             this.hasShovel = true;
             this.hasSword = true;
             this.hasSpear = true;
+            this.hasBow = true;
             if (this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
                 this.equipItem(Config.WEAPON_TYPE_SHOVEL); // Equip shovel by default in debug
             }

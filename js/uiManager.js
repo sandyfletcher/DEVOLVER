@@ -29,7 +29,7 @@ let pauseMenuEpochTextEl = null;
 let playerRef = null;
 let portalRef = null;
 const itemSlotDivs = {};
-const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SHOVEL, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SWORD];
+const WEAPON_SLOTS_ORDER = [Config.WEAPON_TYPE_SHOVEL, Config.WEAPON_TYPE_SPEAR, Config.WEAPON_TYPE_SWORD, Config.WEAPON_TYPE_BOW];
 let isUIReady = false;
 let isMyaTransitionActive = false;
 let myaTransitionFrom = 0;
@@ -106,10 +106,11 @@ export function initGameUI() {
         inventoryBoxesContainerEl.innerHTML = '';
         weaponSlotsContainerEl.innerHTML = '';
         for (let i = 0; i < 15; i++) { // create 15 material slots
-            if (i < Config.INVENTORY_MATERIALS.length) {
-                createItemSlot(Config.INVENTORY_MATERIALS[i], inventoryBoxesContainerEl, 'material');
+            const materialType = Config.INVENTORY_MATERIALS[i];
+            if (materialType && materialType !== 'arrows') { // Exclude arrows from material bar
+                createItemSlot(materialType, inventoryBoxesContainerEl, 'material');
             } else {
-                createItemSlot(`placeholder_material_${i - Config.INVENTORY_MATERIALS.length}`, inventoryBoxesContainerEl, 'material-placeholder'); // create placeholder slot
+                createItemSlot(`placeholder_material_${i}`, inventoryBoxesContainerEl, 'material-placeholder'); // create placeholder slot
             }
         }
         for (let i = 0; i < 15; i++) { // create 15 weapon slots
@@ -144,7 +145,7 @@ export function initGameUI() {
                 console.error("UI Error: toggleSfxMute function not found on window.");
             }
         });
-        updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false); // initial state
+        updatePlayerInfo(0, Config.PLAYER_MAX_HEALTH_DISPLAY, {}, false, false, false, false); // initial state
         updatePortalInfo(0, Config.PORTAL_INITIAL_HEALTH);
         updateWaveTimer({ state: 'LOADING', timer: 0, maxTimer: 1, progressText: "Loading...", mainWaveNumber: 0 });
         updatePauseMenuEpochText(""); // initialize pause menu epoch text as empty
@@ -196,6 +197,13 @@ function createItemSlot(itemType, container, category) { // create and setup a s
         statusSymbolSpan.classList.add('weapon-status-symbol');
         statusSymbolSpan.textContent = 'X'; // Default symbol
         slotDiv.appendChild(statusSymbolSpan);
+
+        if (itemType === Config.WEAPON_TYPE_BOW) {
+            const ammoCountSpan = document.createElement('span');
+            ammoCountSpan.classList.add('item-count'); // Reuse class for styling
+            ammoCountSpan.textContent = '';
+            slotDiv.appendChild(ammoCountSpan);
+        }
 
         titleText = (weaponStats?.displayName || itemType.toUpperCase()) + ' (Unavailable)'; // Use displayName for title
     } else if (category.includes('-placeholder')) {
@@ -253,7 +261,8 @@ export function setPlayerReference(playerObject) { // set reference to player ob
             updatePlayerInfo(
                 playerRef.getCurrentHealth(), playerRef.getMaxHealth(),
                 playerRef.getInventory(), playerRef.hasWeapon(Config.WEAPON_TYPE_SWORD),
-                playerRef.hasWeapon(Config.WEAPON_TYPE_SPEAR), playerRef.hasWeapon(Config.WEAPON_TYPE_SHOVEL)
+                playerRef.hasWeapon(Config.WEAPON_TYPE_SPEAR), playerRef.hasWeapon(Config.WEAPON_TYPE_SHOVEL),
+                playerRef.hasWeapon(Config.WEAPON_TYPE_BOW)
             );
         });
     } else {
@@ -274,7 +283,11 @@ export function setPlayerReference(playerObject) { // set reference to player ob
                 const weaponStats = Config.WEAPON_STATS[key];
                 slotDiv.title = `${weaponStats?.displayName || key.toUpperCase()} (Unavailable)`;
                 const statusSymbolSpan = slotDiv.querySelector('.weapon-status-symbol'); // Update symbol
-                if (statusSymbolSpan) statusSymbolSpan.textContent = 'X'; 
+                if (statusSymbolSpan) statusSymbolSpan.textContent = 'X';
+                if (key === Config.WEAPON_TYPE_BOW) {
+                    const ammoCountSpan = slotDiv.querySelector('.item-count');
+                    if(ammoCountSpan) ammoCountSpan.textContent = '';
+                }
             }
         }
     }
@@ -308,7 +321,7 @@ export function updateSettingsButtonStates(isGridVisible, isMusicMuted, isSfxMut
         settingsBtnMuteSfx.title = isSfxMuted ? 'Unmute SFX' : 'Mute SFX';
     }
 }
-export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel) {
+export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSword, hasSpear, hasShovel, hasBow) {
     if (!playerHealthBarFillEl || !inventoryBoxesContainerEl || !weaponSlotsContainerEl) {
     console.error("UI UpdatePlayerInfo: Missing essential elements.");
     // if playerHealthBarFillEl exists despite other missing elements, try to update it
@@ -325,6 +338,8 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
     const selectedItem = playerRef ? playerRef.getCurrentlySelectedItem() : null;
     const getPartialCollectionFn = playerRef ? playerRef.getPartialCollection.bind(playerRef) : () => 0;
     for (const materialType of Config.INVENTORY_MATERIALS) {
+        if (materialType === 'arrows') continue; // Skip arrows in the material bar
+
         const slotDiv = itemSlotDivs[materialType];
         if (!slotDiv || slotDiv.classList.contains('placeholder-slot')) { 
             continue;
@@ -356,6 +371,7 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         [Config.WEAPON_TYPE_SHOVEL]: hasShovel,
         [Config.WEAPON_TYPE_SPEAR]: hasSpear,
         [Config.WEAPON_TYPE_SWORD]: hasSword,
+        [Config.WEAPON_TYPE_BOW]: hasBow,
     };
     for (const weaponType of WEAPON_SLOTS_ORDER) {
         const slotDiv = itemSlotDivs[weaponType];
@@ -363,26 +379,43 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
             continue; 
         }
         const possessed = playerPossession[weaponType]; 
-        const weaponStats = Config.WEAPON_STATS[weaponType]; // Get weapon stats
-        const recipe = weaponStats?.recipe; // Get recipe from weaponStats
-        const isCraftable = recipe !== undefined && recipe.length > 0;
+        const weaponStats = Config.WEAPON_STATS[weaponType];
+        const recipe = weaponStats?.recipe;
         
         let canInteract = false; 
         let symbolText = '';
         let titleSuffix = '';
+        let ammoCount = 0;
 
-        if (possessed) {
+        if (weaponType === Config.WEAPON_TYPE_BOW && possessed) {
+            ammoCount = inventory['arrows'] || 0;
+            const ammoRecipe = weaponStats.ammoRecipe;
+            let canAffordAmmo = true;
+            if (playerRef && ammoRecipe) {
+                for(const ing of ammoRecipe) {
+                    if ((inventory[ing.type] || 0) < ing.amount) {
+                        canAffordAmmo = false;
+                        break;
+                    }
+                }
+            } else {
+                canAffordAmmo = false;
+            }
+            symbolText = '$';
+            canInteract = true;
+            titleSuffix = ` (Arrows: ${ammoCount}) - Click to craft 1 arrow`;
+            if (!canAffordAmmo) {
+                titleSuffix += ` (Need ${ammoRecipe.map(i => `${i.amount} ${i.type}`).join(', ')})`;
+            }
+        } else if (possessed) {
             symbolText = '✓';
             titleSuffix = ' (Owned)';
             canInteract = true; 
-        } else if (isCraftable) {
+        } else if (recipe && recipe.length > 0) {
             let canAfford = true;
             if (playerRef) { 
                 for (const ingredient of recipe) {
-                    const requiredType = ingredient.type;
-                    const requiredAmount = ingredient.amount;
-                    const possessedAmount = inventory[requiredType] || 0; 
-                    if (possessedAmount < requiredAmount) {
+                    if ((inventory[ingredient.type] || 0) < ingredient.amount) {
                         canAfford = false;
                         break; 
                     }
@@ -402,15 +435,22 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
                 titleSuffix += ')';
                 canInteract = false;
             }
-        } else { // Not owned, not craftable from scratch
-            symbolText = '↑'; // Placeholder for "upgradeable" or "find later"
-            titleSuffix = ' (Enhance Later)';
+        } else { 
+            symbolText = '↑'; 
+            titleSuffix = ' (Cannot Craft)';
             canInteract = false;
         }
         
         const statusSymbolSpan = slotDiv.querySelector('.weapon-status-symbol');
         if (statusSymbolSpan) {
             statusSymbolSpan.textContent = symbolText;
+        }
+
+        if (weaponType === Config.WEAPON_TYPE_BOW) {
+            const ammoCountSpan = slotDiv.querySelector('.item-count');
+            if (ammoCountSpan) {
+                ammoCountSpan.textContent = ammoCount > 0 ? Math.min(ammoCount, 999) : '';
+            }
         }
 
         slotDiv.title = (weaponStats?.displayName || weaponType.toUpperCase()) + titleSuffix;

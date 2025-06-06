@@ -15,6 +15,7 @@ import * as AudioManager from './js/audioManager.js';
 import * as AgingManager from './js/agingManager.js';
 import * as CollisionManager from './js/collisionManager.js';
 import * as FlowManager from './js/flowManager.js';
+import * as ProjectileManager from './js/projectileManager.js';
 import { Player } from './js/utils/player.js';
 import { Portal } from './js/utils/portal.js';
 import * as World from './js/utils/world.js';
@@ -159,6 +160,7 @@ async function initializeAndRunGame() {
 
         ItemManager.init(); // ItemManager.init might spawn items based on Config.DEBUG_MODE if we add that later
         EnemyManager.init();
+        ProjectileManager.init();
 
         const playerSpawnX = Config.PLAYER_START_X;
         const playerSpawnY = Config.PLAYER_START_Y;
@@ -189,7 +191,7 @@ function fullGameResetAndShowMenu() {
     DebugLogger.log("[Main] Performing full game reset and returning to Main Menu.");
     player = null; portal = null;
     UI.setPlayerReference(null); UI.setPortalReference(null); // UI still needs to be cleared
-    EnemyManager.clearAllEnemies(); ItemManager.clearAllItems();
+    EnemyManager.clearAllEnemies(); ItemManager.clearAllItems(); ProjectileManager.clearAllProjectiles();
     AudioManager.stopAllMusic();
     isAutoPaused = false; // isGridVisible state persists unless explicitly reset
     worldGenerationPromise = null;
@@ -231,6 +233,8 @@ function gameLoop(timestamp) {
             const playerPosForEnemies = (player && player.isActive && !player.isDying) ? player.getPosition() : null;
             EnemyManager.update(dt, playerPosForEnemies);
 
+            ProjectileManager.update(dt);
+
             const playerRefForItems = (player && player.isActive && !player.isDying) ? player : null;
             ItemManager.update(dt, playerRefForItems);
 
@@ -242,6 +246,10 @@ function gameLoop(timestamp) {
                 CollisionManager.checkPlayerAttackBlockCollisions(player);
                 CollisionManager.checkPlayerEnemyCollisions(player, EnemyManager.getEnemies());
             }
+
+            CollisionManager.checkProjectileEnemyCollisions(ProjectileManager.getProjectiles(), EnemyManager.getEnemies(), player);
+            CollisionManager.checkProjectileBlockCollisions(ProjectileManager.getProjectiles());
+
             if (portal && portal.isAlive()) {
                 CollisionManager.checkEnemyPortalCollisions(EnemyManager.getEnemies(), portal);
             }
@@ -277,6 +285,7 @@ function gameLoop(timestamp) {
             WorldManager.draw(mainCtx);
             GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
             ItemManager.draw(mainCtx);
+            ProjectileManager.draw(mainCtx);
             if (portal) portal.draw(mainCtx);
             EnemyManager.draw(mainCtx);
             if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {
@@ -301,7 +310,8 @@ function gameLoop(timestamp) {
                 playerExists ? player.getInventory() : {},
                 playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SWORD) : false,
                 playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SPEAR) : false,
-                playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SHOVEL) : false
+                playerExists ? player.hasWeapon(Config.WEAPON_TYPE_SHOVEL) : false,
+                playerExists ? player.hasWeapon(Config.WEAPON_TYPE_BOW) : false
             );
             const portalExists = !!portal;
             UI.updatePortalInfo(
