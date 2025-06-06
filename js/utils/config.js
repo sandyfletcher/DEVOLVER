@@ -259,7 +259,7 @@ export const DEEP_OCEAN_STONE_START_ROW = DEEP_OCEAN_FLOOR_START_ROW + 8; // Sta
 export const EDGE_TAPER_WIDTH_FACTOR = 0.15; // Percentage of GRID_COLS for edge tapering
 export const EDGE_STONE_LEVEL_TARGET_ROW_OFFSET = 15; // Target stone level offset (in rows) at the absolute world edge
 export const EDGE_FLOOR_LEVEL_TARGET_ROW_OFFSET = 20; // Target floor level offset (in rows) at the absolute world edge
-export const ISLAND_CENTER_TAPER_WIDTH_FACTOR = 0.25; // Width in columns for tapering from island edge inward
+export const ISLAND_CENTER_TAPER_WIDTH_FACTOR = 0.25; // Percentage of the island's width for tapering from island edge inward
 
 // --- Tree Parameters ---
 

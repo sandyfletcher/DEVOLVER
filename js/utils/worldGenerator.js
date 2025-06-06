@@ -366,7 +366,7 @@ const generatedWorldLevels = generateLandmass();
 if (!generatedWorldLevels || generatedWorldLevels.length === 0) {
 DebugLogger.error("[WorldGenerator] CRITICAL ERROR: generateLandmass did NOT return valid worldLevels! Caves will not generate correctly.");
 } else {
-DebugLogger.log("[WorldGenerator] generateLandmass returned ${generatedWorldLevels.length} column levels.");
+DebugLogger.log(`[WorldGenerator] generateLandmass returned ${generatedWorldLevels.length} column levels.`);
 generateCavesConnected(generatedWorldLevels);
 }
 if (Config.DEBUG_MODE) DebugLogger.timeEnd("Initial World generated in");
