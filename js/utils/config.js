@@ -558,10 +558,12 @@ export const WEAPON_STATS = {
         height: 5 * BLOCK_HEIGHT,
         attackDamage: 0, // Bow itself does no damage
         blockDamage: 0,
+        attackReachX: 2.5 * BLOCK_WIDTH,
+        attackReachY: 0,
         attackDuration: 0.1, // Time to fire
         attackCooldown: 0.5, // Time between shots
         recipe: [ { type: 'wood', amount: 2 }, { type: 'vegetation', amount: 2 } ],
-        ammoType: 'arrow',
+        ammoType: 'arrows',
         ammoRecipe: [ { type: 'wood', amount: 1 }, { type: 'stone', amount: 1 } ],
         visualAnchorOffset: { x: 0, y: 0 }, // Pivot at center
         handPositions: { back: { x: 0, y: 0.5 * BLOCK_HEIGHT }, front: { x: 0, y: -0.5 * BLOCK_HEIGHT } }, // Simple grip
