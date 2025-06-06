@@ -1,4 +1,3 @@
-
 @font-face { font-family: 'Fredericka'; src: url('assets/fonts/Fredericka.ttf') format('truetype'); font-display: block}
 @font-face { font-family: 'Nosifer'; src: url('assets/fonts/Nosifer.ttf') format('truetype'); font-display: block}
 @font-face { font-family: 'RubikIso'; src: url('assets/fonts/RubikIso.ttf') format('truetype'); font-display: block}
@@ -217,13 +216,14 @@ body {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    min-width: 41.7rem;
+    /* CHANGE: Removed fixed min-width to allow the container to shrink with its content. */
     gap: 0.3rem;
     justify-content: center;
 }
 .item-box {
-    width: 2.5rem;
-    height: 2.5rem;
+    /* CHANGE: Replaced fixed rem units with clamp() for responsive scaling. */
+    width: clamp(2.2rem, 4.5vw, 2.8rem);
+    aspect-ratio: 1 / 1; /* CHANGE: Use aspect-ratio to keep it square, simpler than clamping height. */
     border: 0.0625rem solid white;
     border-radius: 4px;
     position: relative;
@@ -233,7 +233,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 18px;
+    /* CHANGE: Use clamp() for font-size to ensure text scales with the box. */
+    font-size: clamp(14px, 2.2vw, 18px);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -393,7 +394,8 @@ body {
     border-radius: 8px;
     color: white;
     font-family: 'RubikIso', sans-serif;
-    font-size: 1.5em;
+    /* CHANGE: This makes the font size responsive, preventing it from being too big or small. */
+    font-size: clamp(1.1em, 2.5vw, 1.5em);
     text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3);
     margin: 0.5rem;
     box-sizing: border-box;
@@ -479,7 +481,8 @@ body {
 #title-heading-button h1 {
     margin: 0; padding: 0; color: white;
     font-family: 'RubikIso', sans-serif;
-    font-size: 4rem;
+    /* CHANGE: This makes the main title font size responsive. */
+    font-size: clamp(2.5rem, 6vw, 4rem);
     text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.5);
 }
 #title-heading-button:hover {
