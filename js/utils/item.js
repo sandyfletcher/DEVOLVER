@@ -125,7 +125,7 @@ export class Item {
             this.isActive = false;
         }
     }
-    draw(ctx) {
+    draw(ctx, highlightColor) {
         if (!this.isActive || !ctx) return;
         if (isNaN(this.x) || isNaN(this.y)) {
             DebugLogger.error(`>>> Item DRAW ERROR: NaN coordinates! type: ${this.type}`);
@@ -152,7 +152,7 @@ export class Item {
                 ctx.translate(-weaponStats.visualAnchorOffset.x, -weaponStats.visualAnchorOffset.y); // draw centered for item, need to counter-translate by offset
             }
             weaponStats.shape.forEach(shapeDef => {
-                const fillColor = shapeDef.color || 'magenta'; // fallback if shape part has no color
+                const fillColor = shapeDef.isBlade ? highlightColor : (shapeDef.color || 'magenta');
                 ctx.fillStyle = fillColor;
                 if (shapeDef.type === 'rect') {
                     ctx.fillRect(Math.floor(shapeDef.x), Math.floor(shapeDef.y), Math.ceil(shapeDef.w), Math.ceil(shapeDef.h));

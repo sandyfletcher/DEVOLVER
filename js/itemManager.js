@@ -52,10 +52,10 @@ export function update(dt, player) {
         }
     }
 }
-export function draw(ctx) {
+export function draw(ctx, highlightColor) {
     items.forEach(item => {
         if (item && item.isActive) {
-            item.draw(ctx);
+            item.draw(ctx, highlightColor);
         } else if (item && Config.DEBUG_MODE) { // only log inactive item skipping in debug mode
             DebugLogger.log(`ItemManager.draw: Skipping inactive item of type ${item.type}`);
         }

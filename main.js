@@ -37,6 +37,8 @@ let gameOverStatsTextP, victoryStatsTextP, errorOverlayMessageP;
 let titleStartButton, mainmenuStartGameButton, mainmenuSettingsButton, settingsBackButton;
 let resumeButton, restartButtonGameOver, restartButtonVictory, restartButtonPause;
 let btnToggleGridEl, muteMusicButtonEl, muteSfxButtonEl, settingsButtonPauseOverlayEl;
+let settingsBtnWeaponHighlight, highlightColorPreview, colorPickerPalette;
+let weaponHighlightColor = Config.PLAYER_WEAPON_HIGHLIGHT_DEFAULT_COLOR;
 let worldGenerationPromise = null;
 let isWorldGenerated = false;
 const GameState = FlowManager.GameState;
@@ -285,12 +287,12 @@ function gameLoop(timestamp) {
             Renderer.applyCameraTransforms(mainCtx);
             WorldManager.draw(mainCtx);
             GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
-            ItemManager.draw(mainCtx);
+            ItemManager.draw(mainCtx, weaponHighlightColor);
             ProjectileManager.draw(mainCtx);
             if (portal) portal.draw(mainCtx);
             EnemyManager.draw(mainCtx);
             if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {
-                player.draw(mainCtx);
+                player.draw(mainCtx, weaponHighlightColor);
                 const waveInfoAtDraw = WaveManager.getWaveInfo();
                 const currentWaveManagerStateAtDraw = waveInfoAtDraw.state;
                 const isGameplayActiveAtDraw = ['WAVE_COUNTDOWN', 'BUILDPHASE', 'WARP_ANIMATING'].includes(currentWaveManagerStateAtDraw);
@@ -368,6 +370,9 @@ function init() {
         btnToggleGridEl = document.getElementById('settings-btn-toggle-grid');
         muteMusicButtonEl = document.getElementById('settings-btn-mute-music');
         muteSfxButtonEl = document.getElementById('settings-btn-mute-sfx');
+        settingsBtnWeaponHighlight = document.getElementById('settings-btn-weapon-highlight');
+        highlightColorPreview = document.getElementById('highlight-color-preview');
+        colorPickerPalette = document.getElementById('color-picker-palette');
 
         const allElements = [
             appContainerEl, bootOverlayEl, menuOverlayEl, gameWrapperEl, epochOverlayEl,
@@ -378,7 +383,8 @@ function init() {
             gameOverStatsTextP, victoryStatsTextP, errorOverlayMessageP,
             titleStartButton, mainmenuStartGameButton, mainmenuSettingsButton, settingsBackButton,
             settingsButtonPauseOverlayEl, resumeButton, restartButtonGameOver, restartButtonVictory,
-            restartButtonPause, btnToggleGridEl, muteMusicButtonEl, muteSfxButtonEl
+            restartButtonPause, btnToggleGridEl, muteMusicButtonEl, muteSfxButtonEl,
+            settingsBtnWeaponHighlight, highlightColorPreview, colorPickerPalette
         ];
         if (allElements.some(el => !el)) {
             allElements.forEach((el, index) => {
@@ -396,6 +402,21 @@ function init() {
         isGridVisible = false;
         UI.updateSettingsButtonStates(isGridVisible, AudioManager.getMusicMutedState(), AudioManager.getSfxMutedState());
 
+        weaponHighlightColor = localStorage.getItem('weaponHighlightColor') || Config.PLAYER_WEAPON_HIGHLIGHT_DEFAULT_COLOR;
+        highlightColorPreview.style.backgroundColor = weaponHighlightColor;
+        Config.WEAPON_HIGHLIGHT_PALETTE.forEach(color => {
+            const swatch = document.createElement('div');
+            swatch.className = 'color-swatch';
+            swatch.style.backgroundColor = color;
+            swatch.addEventListener('click', () => {
+                weaponHighlightColor = color;
+                highlightColorPreview.style.backgroundColor = color;
+                colorPickerPalette.style.display = 'none';
+                localStorage.setItem('weaponHighlightColor', color);
+            });
+            colorPickerPalette.appendChild(swatch);
+        });
+        
         const gameFlowDependencies = {
             bootOverlayEl, menuOverlayEl, appContainer: appContainerEl, gameWrapperEl,
             overlayTitleContentEl, overlayErrorContentEl, overlayMainMenuContentEl,
@@ -418,12 +439,19 @@ function init() {
         mainmenuStartGameButton.addEventListener('click', () => FlowManager.startCutscene());
         mainmenuSettingsButton.addEventListener('click', () => FlowManager.openSettingsFromMainMenu());
         settingsButtonPauseOverlayEl.addEventListener('click', () => FlowManager.openSettingsFromPause());
-        settingsBackButton.addEventListener('click', () => FlowManager.closeSettings());
+        settingsBackButton.addEventListener('click', () => {
+            colorPickerPalette.style.display = 'none';
+            FlowManager.closeSettings();
+        });
         resumeButton.addEventListener('click', () => FlowManager.resumeGame());
         restartButtonGameOver.addEventListener('click', () => FlowManager.requestFullGameReset());
         restartButtonVictory.addEventListener('click', () => FlowManager.requestFullGameReset());
         restartButtonPause.addEventListener('click', () => FlowManager.requestFullGameReset());
         cutsceneSkipButton.addEventListener('click', () => FlowManager.skipCutscene());
+        settingsBtnWeaponHighlight.addEventListener('click', () => {
+            const isVisible = colorPickerPalette.style.display === 'grid';
+            colorPickerPalette.style.display = isVisible ? 'none' : 'grid';
+        });
 
         gameLoopId = requestAnimationFrame(gameLoop);
     } catch (error) {

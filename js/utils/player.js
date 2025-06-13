@@ -463,7 +463,7 @@ export class Player {
             return { col: col, row: row, color: blockColor };
         }
     }
-    draw(ctx) {
+    draw(ctx, highlightColor) {
         if (!this.isActive && !this.isDying || !ctx) return;
         if (isNaN(this.x) || isNaN(this.y)) {
             console.error(`>>> Player DRAW ERROR: Preventing draw due to NaN coordinates!`);
@@ -657,7 +657,7 @@ export class Player {
             ctx.translate(finalWeaponPivotX, finalWeaponPivotY);
             ctx.rotate(displayAngle);
             weaponStats.shape.forEach(shapeDef => {
-                const fillColor = shapeDef.color || weaponStats.color || 'magenta';
+                const fillColor = shapeDef.isBlade ? highlightColor : (shapeDef.color || weaponStats.color || 'magenta');
                 ctx.fillStyle = fillColor;
                 if (shapeDef.type === 'rect') {
                     ctx.fillRect(Math.floor(shapeDef.x), Math.floor(shapeDef.y), Math.ceil(shapeDef.w), Math.ceil(shapeDef.h));
@@ -957,6 +957,7 @@ export class Player {
         }
     }
     equipItem(itemType) {
+        if (this.isDying) return false;
         if (itemType === Config.WEAPON_TYPE_UNARMED) {
             this.selectedItem = Config.WEAPON_TYPE_UNARMED;
             this.isAttacking = false;

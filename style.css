@@ -538,6 +538,46 @@ body {
     max-width: 350px;
     margin-bottom: 1rem;
 }
+#settings-btn-weapon-highlight {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+#highlight-color-preview {
+    width: 2rem;
+    height: 1.5rem;
+    border: 1px solid white;
+    border-radius: 4px;
+    background-color: purple; /* Default, will be set by JS */
+}
+#color-picker-palette {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.9);
+    border: 2px solid white;
+    padding: 1rem;
+    z-index: 10;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 0.75rem;
+    border-radius: 8px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: fit-content;
+}
+.color-swatch {
+    width: 2.5rem;
+    height: 2.5rem;
+    border: 1px solid #555;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.1s ease, border-color 0.1s ease;
+}
+.color-swatch:hover {
+    transform: scale(1.1);
+    border-color: white;
+}
 .button-hero-action.settings-row__button--state-bad {
     border-color: red;
     color: lightcoral;

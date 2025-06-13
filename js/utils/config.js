@@ -4,7 +4,7 @@
 
 // --- Debug ---
 
-export const DEBUG_MODE = false; // toggle debug functionality
+export const DEBUG_MODE = true; // toggle debug functionality
 export const DEBUG_STARTING_MATERIALS_COUNT = 11;
 export const DEBUG_STARTING_ARROWS = 25;
 
@@ -435,6 +435,21 @@ export const AUDIO_TRACKS = {
 
 // --- Items & Weapons ---
 
+export const PLAYER_WEAPON_HIGHLIGHT_DEFAULT_COLOR = 'rgb(160, 32, 240)';
+export const WEAPON_HIGHLIGHT_PALETTE = [
+    'rgb(255, 87, 87)',   // Red
+    'rgb(255, 172, 87)',  // Orange
+    'rgb(255, 255, 87)',  // Yellow
+    'rgb(87, 255, 87)',   // Green
+    'rgb(87, 255, 255)',  // Cyan
+    'rgb(87, 87, 255)',   // Blue
+    'rgb(160, 32, 240)',  // Purple (Default)
+    'rgb(255, 87, 255)',  // Magenta
+    'rgb(255, 255, 255)', // White
+    'rgb(192, 192, 192)', // Silver
+    'rgb(255, 215, 0)',   // Gold
+    'rgb(0, 255, 127)',   // Spring Green
+];
 export const ITEM_BOBBLE_AMOUNT = 0.15; // factor relative to item height
 export const ITEM_BOBBLE_SPEED = 2.0; // radians per second for bobbing cycle
 export const WEAPON_TYPE_UNARMED = 'unarmed';
