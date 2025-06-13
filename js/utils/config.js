@@ -495,7 +495,7 @@ export const WEAPON_STATS = {
         attackCooldown: 0.4,
         attackColor: 'rgba(180, 180, 180, 0.5)',
         recipe: [],
-        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 }, // Anchor at the tip of the shovel head
+        visualAnchorOffset: { x: 1.5 * BLOCK_WIDTH, y: 0 }, // anchor at the tip of the shovel head
         handPositions: {
             back: { x: -2.0 * BLOCK_WIDTH, y: 0 },
             front: { x: -0.5 * BLOCK_WIDTH, y: 0 }
@@ -599,7 +599,7 @@ export const PROJECTILE_STATS = {
         gravityFactor: 0.2, // Arrows are light and fly relatively straight
         shape: [
             { type: 'rect', x: -1.25 * BLOCK_WIDTH, y: -0.05 * BLOCK_HEIGHT, w: 2.5 * BLOCK_WIDTH, h: 0.1 * BLOCK_HEIGHT, color: 'rgb(139, 69, 19)' },
-            { type: 'polygon', points: [ {x:1.25*BLOCK_WIDTH, y:0}, {x:1*BLOCK_WIDTH, y:-0.125*BLOCK_HEIGHT}, {x:1*BLOCK_WIDTH, y:0.125*BLOCK_HEIGHT} ], color: 'rgb(160,160,170)' },
+            { type: 'polygon', points: [ {x:1.25*BLOCK_WIDTH, y:0}, {x:1*BLOCK_WIDTH, y:-0.125*BLOCK_HEIGHT}, {x:1*BLOCK_WIDTH, y:0.125*BLOCK_HEIGHT} ], color: 'rgb(160,160,170)', isBlade: true },
             { type: 'polygon', points: [ {x:-1.25*BLOCK_WIDTH, y:0}, {x:-1*BLOCK_WIDTH, y:-0.2*BLOCK_HEIGHT}, {x:-1*BLOCK_WIDTH, y:0.2*BLOCK_HEIGHT} ], color: 'rgb(200,200,200)' }
         ]
     }

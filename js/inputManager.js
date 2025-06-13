@@ -57,14 +57,15 @@ const handleKeyUp = (e) => {
 function getInternalMouseCoords(e) {
     if (!canvas) return { x: state.internalMouseX, y: state.internalMouseY };
     const rect = canvas.getBoundingClientRect();
-    // If canvas.width/height are set to rect.width/height, no further scaling needed here.
-    let internalX = e.clientX - rect.left;
-    let internalY = e.clientY - rect.top;
-
+    // Mouse position relative to the top-left of the CSS-displayed canvas element
+    const mouseXRelativeToRect = e.clientX - rect.left;
+    const mouseYRelativeToRect = e.clientY - rect.top;
+    // Scale these coordinates to the canvas's internal drawing buffer size.
+    let internalX = (mouseXRelativeToRect / rect.width) * canvas.width;
+    let internalY = (mouseYRelativeToRect / rect.height) * canvas.height;
     // Clamp to canvas dimensions (0 to canvas.width/height)
     internalX = Math.max(0, Math.min(internalX, canvas.width));
     internalY = Math.max(0, Math.min(internalY, canvas.height));
-
     return { x: internalX, y: internalY };
 }
 

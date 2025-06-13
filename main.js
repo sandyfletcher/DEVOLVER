@@ -288,7 +288,7 @@ function gameLoop(timestamp) {
             WorldManager.draw(mainCtx);
             GridRenderer.drawStaticGrid(mainCtx, isGridVisible);
             ItemManager.draw(mainCtx, weaponHighlightColor);
-            ProjectileManager.draw(mainCtx);
+            ProjectileManager.draw(mainCtx, weaponHighlightColor);
             if (portal) portal.draw(mainCtx);
             EnemyManager.draw(mainCtx);
             if (player && currentGameState !== GameState.GAME_OVER && currentGameState !== GameState.VICTORY) {

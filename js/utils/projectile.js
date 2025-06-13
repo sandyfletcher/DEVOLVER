@@ -59,7 +59,7 @@ export class Projectile {
         }
     }
 
-    draw(ctx) {
+    draw(ctx, highlightColor) {
         if (!this.isActive || !ctx) return;
 
         const stats = Config.PROJECTILE_STATS[this.type];
@@ -70,7 +70,8 @@ export class Projectile {
         ctx.rotate(this.rotation);
 
         stats.shape.forEach(shapeDef => {
-            ctx.fillStyle = shapeDef.color || 'magenta';
+            const fillColor = (shapeDef.isBlade && highlightColor) ? highlightColor : (shapeDef.color || 'magenta');
+            ctx.fillStyle = fillColor;
             if (shapeDef.outlineColor && shapeDef.outlineWidth) {
                 ctx.strokeStyle = shapeDef.outlineColor;
                 ctx.lineWidth = shapeDef.outlineWidth;
