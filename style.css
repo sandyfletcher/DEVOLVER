@@ -216,14 +216,12 @@ body {
     display: flex;
     flex-direction: row;
     flex-wrap: nowrap;
-    /* CHANGE: Removed fixed min-width to allow the container to shrink with its content. */
     gap: 0.3rem;
     justify-content: center;
 }
 .item-box {
-    /* CHANGE: Replaced fixed rem units with clamp() for responsive scaling. */
     width: clamp(2.2rem, 4.5vw, 2.8rem);
-    aspect-ratio: 1 / 1; /* CHANGE: Use aspect-ratio to keep it square, simpler than clamping height. */
+    aspect-ratio: 1 / 1;
     border: 0.0625rem solid white;
     border-radius: 4px;
     position: relative;
@@ -233,7 +231,6 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    /* CHANGE: Use clamp() for font-size to ensure text scales with the box. */
     font-size: clamp(14px, 2.2vw, 18px);
     transition: border-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
     user-select: none;
@@ -359,15 +356,7 @@ body {
     width: 100%;
     height: 100%;
     max-width: none;
-    padding: 20px;
     box-sizing: border-box;
-}
-#overlay-mainmenu-content {
-    justify-content: space-between;
-    align-items: center;
-}
-#overlay-settings-content,
-#overlay-pause-content {
     justify-content: center;
     align-items: center;
 }
@@ -394,7 +383,6 @@ body {
     border-radius: 8px;
     color: white;
     font-family: 'RubikIso', sans-serif;
-    /* CHANGE: This makes the font size responsive, preventing it from being too big or small. */
     font-size: clamp(1.1em, 2.5vw, 1.5em);
     text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3);
     margin: 0.5rem;
@@ -481,7 +469,6 @@ body {
 #title-heading-button h1 {
     margin: 0; padding: 0; color: white;
     font-family: 'RubikIso', sans-serif;
-    /* CHANGE: This makes the main title font size responsive. */
     font-size: clamp(2.5rem, 6vw, 4rem);
     text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.5);
 }
@@ -533,9 +520,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
     width: 100%;
-    max-width: 350px;
+    max-width: 35rem;
     margin-bottom: 1rem;
 }
 #settings-btn-weapon-highlight {
@@ -549,11 +535,11 @@ body {
     height: 1.5rem;
     border: 1px solid white;
     border-radius: 4px;
-    background-color: purple; /* Default, will be set by JS */
+    background-color: purple;
 }
 #color-picker-palette {
     position: absolute;
-    background-color: rgba(0, 0, 0, 0.9);
+    background-color: rgba(0, 0, 0, 1);
     border: 2px solid white;
     padding: 1rem;
     z-index: 10;
@@ -660,18 +646,15 @@ body {
     overflow-y: auto;
 }
 #overlay-pause-content .pause-epoch-info {
-    font-size: 1.1em;
+    font-size: 1.1rem;
     color: #cccccc;
-    margin-top: -1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     font-style: italic;
 }
 .pause-options-group {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1rem;
 }
 #overlay-gameover-content .button-hero-action,
 #overlay-victory-content .button-hero-action {

@@ -38,6 +38,9 @@ let myaTransitionTimer = 0;
 let myaTransitionDuration = 0;
 let myaTransitionCurrentDisplayValue = 0;
 
+// Add this for timing logs
+let myaAnimStartTime = 0;
+
 export function initOverlay() {
     bootOverlayEl = document.getElementById('boot-overlay');
     if (!bootOverlayEl) {
@@ -583,7 +586,7 @@ export function showEpochText(valueOrString) {
 }
 export function startMyaEpochTransition(fromMya, toMya, duration) {
     if (!epochOverlayEl) return;
-    DebugLogger.log(`[UI] Starting MYA transition from ${fromMya} to ${toMya} over ${duration}s`);
+    DebugLogger.log(`[UI] Starting MYA transition from ${fromMya} to ${toMya} over ${duration.toFixed(3)}s`);
     isMyaTransitionActive = true;
     myaTransitionFrom = fromMya;
     myaTransitionTo = toMya;
@@ -598,6 +601,9 @@ export function startMyaEpochTransition(fromMya, toMya, duration) {
     epochOverlayEl.style.visibility = 'visible';
     epochOverlayEl.style.opacity = '1';
     epochOverlayEl.textContent = formatMya(myaTransitionCurrentDisplayValue);
+
+    myaAnimStartTime = performance.now(); // Record start time
+    DebugLogger.log(`[UI] MYA Epoch Transition START. Target Duration: ${duration.toFixed(3)}s. Time: ${myaAnimStartTime.toFixed(2)}ms`);
 }
 export function updateMyaEpochTransition(dt) {
     if (!isMyaTransitionActive || !epochOverlayEl) return;
@@ -605,6 +611,16 @@ export function updateMyaEpochTransition(dt) {
     if (myaTransitionTimer <= 0) {
         isMyaTransitionActive = false;
         epochOverlayEl.textContent = formatMya(myaTransitionTo);
+        
+        const myaAnimEndTime = performance.now();
+        if (myaAnimStartTime > 0) {
+            const actualMyaDuration = (myaAnimEndTime - myaAnimStartTime) / 1000;
+            DebugLogger.log(`[UI] MYA Epoch Transition END. Actual Duration: ${actualMyaDuration.toFixed(3)}s. Time: ${myaAnimEndTime.toFixed(2)}ms`);
+        } else {
+            DebugLogger.log(`[UI] MYA Epoch Transition END (no start time recorded). Time: ${myaAnimEndTime.toFixed(2)}ms`);
+        }
+        myaAnimStartTime = 0; // Reset for next time
+        
         epochOverlayEl.style.transition = 'opacity 0.5s ease-in-out, visibility 0s linear 0s';
         epochOverlayEl.style.opacity = '1';
         if (epochHideTimer) clearTimeout(epochHideTimer);

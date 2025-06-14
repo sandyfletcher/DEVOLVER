@@ -27,8 +27,12 @@ let newGravityAnimationStartTimer = 0;
 let isDynamicAnimationPacingActive = false;
 let dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY; // Fallback
 let dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY;       // Fallback
+let dynamicBlocksAtOnce = Config.AGING_ANIMATION_BLOCKS_AT_ONCE; // ADDED: For dynamic concurrency
 // Define target duration for block animations, aligned with UI/Sun animations
 export const BLOCK_ANIM_TARGET_DURATION = Config.MYA_TRANSITION_ANIMATION_DURATION > 0 ? Config.MYA_TRANSITION_ANIMATION_DURATION : Config.FIXED_SUN_ANIMATION_DURATION; // Default if MYA is 0
+
+// Add this for timing logs
+let dynamicPacingActualStartTime = 0;
 
 function adjustColorByLightLevel(rgbString, lightLevel) {
     if (!rgbString || !rgbString.startsWith('rgb(')) return rgbString;
@@ -84,42 +88,73 @@ function parseGravityDiffsIntoFallingBlocks(diffs) {
     });
     return fallingBlocks;
 }
-export function startDynamicWarpPacing() {
-    isDynamicAnimationPacingActive = true;
-    calculateDynamicAnimationIntervals();
-    newTransformAnimationStartTimer = 0;
-    newGravityAnimationStartTimer = 0;
-    DebugLogger.log("[WorldManager] Dynamic warp animation pacing STARTED.");
-}
-export function endDynamicWarpPacing() {
-    isDynamicAnimationPacingActive = false;
-    dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
-    dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY;
-    DebugLogger.log("[WorldManager] Dynamic warp animation pacing ENDED.");
-}
-export function addProposedGravityChanges(changes) {
-    changes.forEach(change => {
-        gravityAnimationQueue.push(change);
-    });
-    DebugLogger.log(`[WorldManager] Added ${changes.length} gravity changes. Total queued: ${gravityAnimationQueue.length}`);
-}
-function calculateDynamicAnimationIntervals() {
-    const single_transform_duration = Config.AGING_ANIMATION_SWELL_DURATION + Config.AGING_ANIMATION_POP_DURATION;
-    if (transformAnimationQueue.length > 0) {
-        // Calculate interval so the last animation STARTS in time to FINISH by BLOCK_ANIM_TARGET_DURATION
-        const time_for_all_starts = BLOCK_ANIM_TARGET_DURATION - single_transform_duration;
-        if (time_for_all_starts > 0 && transformAnimationQueue.length > 1) {
-            // Spread starts so the last one begins at time_for_all_starts
-            dynamicTransformAnimStartInterval = time_for_all_starts / (transformAnimationQueue.length - 1);
-        } else { // Not enough time for spreading, or only one/zero animations. Start quickly.
-            dynamicTransformAnimStartInterval = 0.001; // Effectively start them as fast as blocksAtOnce allows
-        }
-        dynamicTransformAnimStartInterval = Math.max(0.001, dynamicTransformAnimStartInterval); // Min interval
-    } else {
-        dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY; // Fallback
+
+function calculateDynamicBlocksAtOnce() {
+    if (!isDynamicAnimationPacingActive || transformAnimationQueue.length === 0) {
+        dynamicBlocksAtOnce = Config.AGING_ANIMATION_BLOCKS_AT_ONCE;
+        DebugLogger.log(`[WorldManager] DynamicBlocksAtOnce reset to config default (or not active/queue empty): ${dynamicBlocksAtOnce}`);
+        return;
     }
-    // Adjust gravity pacing similarly, estimating an average gravity animation duration
-    const avg_gravity_duration = 0.5; // A rough estimate for average fall time of a gravity animation
+
+    const single_transform_duration = Config.AGING_ANIMATION_SWELL_DURATION + Config.AGING_ANIMATION_POP_DURATION;
+
+    if (BLOCK_ANIM_TARGET_DURATION <= 0 || single_transform_duration <= 0) {
+        dynamicBlocksAtOnce = Config.AGING_ANIMATION_BLOCKS_AT_ONCE; // Fallback
+        DebugLogger.warn(`[WorldManager] DynamicBlocksAtOnce: Invalid target or animation duration. Defaulting to ${dynamicBlocksAtOnce}`);
+        return;
+    }
+
+    // Calculate the maximum number of full animation batches that can fit within the target duration
+    const maxBatchesPossible = Math.floor(BLOCK_ANIM_TARGET_DURATION / single_transform_duration);
+
+    if (maxBatchesPossible <= 0) {
+        // Not enough time for even one full batch.
+        // Start as many as possible up to the configured max, or all if fewer than max.
+        dynamicBlocksAtOnce = Math.min(transformAnimationQueue.length, Config.AGING_ANIMATION_BLOCKS_AT_ONCE);
+        // Ensure at least 1 if queue is not empty
+        if (transformAnimationQueue.length > 0 && dynamicBlocksAtOnce === 0) dynamicBlocksAtOnce = 1;
+        DebugLogger.warn(`[WorldManager] DynamicBlocksAtOnce: Target duration too short for a full animation batch. Setting to ${dynamicBlocksAtOnce}`);
+        return;
+    }
+
+    // Calculate how many blocks need to be processed per batch to meet the maxBatchesPossible
+    const blocksPerBatchNeeded = Math.ceil(transformAnimationQueue.length / maxBatchesPossible);
+    
+    dynamicBlocksAtOnce = Math.min(
+        transformAnimationQueue.length, // Don't try to process more blocks than are in the queue
+        Math.max(Config.AGING_ANIMATION_BLOCKS_AT_ONCE, blocksPerBatchNeeded) // Use calculated need, or config default if higher
+    );
+    
+    // Ensure at least 1 if queue is not empty and somehow ended up as 0
+    if (transformAnimationQueue.length > 0 && dynamicBlocksAtOnce === 0) {
+        dynamicBlocksAtOnce = 1;
+    }
+
+    DebugLogger.log(`[WorldManager] DynamicBlocksAtOnce calculated: ${dynamicBlocksAtOnce} (Queue: ${transformAnimationQueue.length}, TargetDur: ${BLOCK_ANIM_TARGET_DURATION.toFixed(2)}s, AnimDur: ${single_transform_duration.toFixed(2)}s, MaxBatchesPossible: ${maxBatchesPossible}, BlocksPerBatchNeeded: ${blocksPerBatchNeeded})`);
+}
+
+
+function calculateDynamicAnimationIntervals() {
+    if (isDynamicAnimationPacingActive) {
+        dynamicTransformAnimStartInterval = 0.001; // Start new transform animations very quickly
+    } else {
+        const single_transform_duration = Config.AGING_ANIMATION_SWELL_DURATION + Config.AGING_ANIMATION_POP_DURATION;
+        if (transformAnimationQueue.length > 0) {
+            const time_for_all_starts = BLOCK_ANIM_TARGET_DURATION - single_transform_duration;
+            const effectiveQueueLengthForIntervals = Math.ceil(transformAnimationQueue.length / 2); 
+
+            if (time_for_all_starts > 0 && effectiveQueueLengthForIntervals > 1) {
+                dynamicTransformAnimStartInterval = time_for_all_starts / (effectiveQueueLengthForIntervals - 1);
+            } else { 
+                dynamicTransformAnimStartInterval = 0.001;
+            }
+            dynamicTransformAnimStartInterval = Math.max(0.001, dynamicTransformAnimStartInterval); 
+        } else {
+            dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY; 
+        }
+    }
+
+    const avg_gravity_duration = 0.5; 
     if (gravityAnimationQueue.length > 0) {
         const time_for_all_gravity_starts = BLOCK_ANIM_TARGET_DURATION - avg_gravity_duration;
         if (time_for_all_gravity_starts > 0 && gravityAnimationQueue.length > 1) {
@@ -127,12 +162,46 @@ function calculateDynamicAnimationIntervals() {
         } else {
             dynamicGravityAnimStartInterval = 0.001;
         }
-        dynamicGravityAnimStartInterval = Math.max(0.001, dynamicGravityAnimStartInterval); // min interval
+        dynamicGravityAnimStartInterval = Math.max(0.001, dynamicGravityAnimStartInterval);
     } else {
-        dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY; // fallback
+        dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY; 
     }
-    DebugLogger.log(`[WorldManager] Dynamic Pacing Calculated: Transform Interval: ${dynamicTransformAnimStartInterval.toFixed(4)}s (Queue: ${transformAnimationQueue.length}), Gravity Interval: ${dynamicGravityAnimStartInterval.toFixed(4)}s (Queue: ${gravityAnimationQueue.length}) for target ${BLOCK_ANIM_TARGET_DURATION}s`);
+    DebugLogger.log(`[WorldManager] Dynamic Pacing Intervals: Transform: ${dynamicTransformAnimStartInterval.toFixed(4)}s, Gravity: ${dynamicGravityAnimStartInterval.toFixed(4)}s`);
 }
+
+
+export function startDynamicWarpPacing() {
+    isDynamicAnimationPacingActive = true;
+    calculateDynamicBlocksAtOnce(); // Calculate dynamic concurrency
+    calculateDynamicAnimationIntervals(); // Calculate start intervals
+    newTransformAnimationStartTimer = 0;
+    newGravityAnimationStartTimer = 0;
+    dynamicPacingActualStartTime = performance.now(); // Record when animation processing begins
+    DebugLogger.log(`[WorldManager] Dynamic warp animation pacing STARTED. Actual Block Anim Start Time: ${dynamicPacingActualStartTime.toFixed(2)}ms`);
+}
+export function endDynamicWarpPacing() {
+    const dynamicPacingActualEndTime = performance.now(); // Record when it ends
+    if (dynamicPacingActualStartTime > 0) {
+        const actualBlockAnimDuration = (dynamicPacingActualEndTime - dynamicPacingActualStartTime) / 1000;
+        DebugLogger.log(`[WorldManager] Dynamic warp animation pacing ENDED. Actual Block Animation Processing Duration: ${actualBlockAnimDuration.toFixed(3)}s. Target: ${BLOCK_ANIM_TARGET_DURATION.toFixed(3)}s`);
+    } else {
+        DebugLogger.log(`[WorldManager] Dynamic warp animation pacing ENDED (no start time recorded).`);
+    }
+    dynamicPacingActualStartTime = 0; // Reset for next time
+
+    isDynamicAnimationPacingActive = false;
+    dynamicTransformAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
+    dynamicGravityAnimStartInterval = Config.NEW_GRAVITY_ANIM_DELAY;
+    dynamicBlocksAtOnce = Config.AGING_ANIMATION_BLOCKS_AT_ONCE; // Reset to config default
+    DebugLogger.log("[WorldManager] Dynamic warp animation pacing variables reset.");
+}
+export function addProposedGravityChanges(changes) {
+    changes.forEach(change => {
+        gravityAnimationQueue.push(change);
+    });
+    DebugLogger.log(`[WorldManager] Added ${changes.length} gravity changes. Total queued: ${gravityAnimationQueue.length}`);
+}
+
 function updateGravityAnimations(dt) {
     if (dt <= 0) return;
     newGravityAnimationStartTimer -= dt;
@@ -699,11 +768,16 @@ export function diffGridAndQueueTransformAnimations(initialGrid, finalGrid) {
 function updateTransformAnimations(dt) {
     if (dt <= 0) return;
     newTransformAnimationStartTimer -= dt;
-    const blocksAtOnce = Config.AGING_ANIMATION_BLOCKS_AT_ONCE;
+    
+    const currentBlocksAtOnce = isDynamicAnimationPacingActive ? dynamicBlocksAtOnce : Config.AGING_ANIMATION_BLOCKS_AT_ONCE;
     const currentNewBlockDelay = isDynamicAnimationPacingActive ? dynamicTransformAnimStartInterval : Config.AGING_ANIMATION_NEW_BLOCK_DELAY;
+    
     if (newTransformAnimationStartTimer <= 0) {
-        if (transformAnimationQueue.length > 0 && activeTransformAnimations.length < blocksAtOnce) {
-            const change = transformAnimationQueue.shift();
+        let startedThisTick = 0;
+
+        const tryAddAnimation = (change) => {
+            if (activeTransformAnimations.length >= currentBlocksAtOnce || !change) return false;
+            
             const existingAnimIndex = activeTransformAnimations.findIndex(anim => anim.c === change.c && anim.r === change.r);
             if (existingAnimIndex === -1) {
                 activeTransformAnimations.push({
@@ -721,10 +795,32 @@ function updateTransformAnimations(dt) {
                         Math.ceil(Config.BLOCK_WIDTH), Math.ceil(Config.BLOCK_HEIGHT)
                     );
                 }
+                return true;
             }
+            return false;
+        };
+
+        let canStartMore = activeTransformAnimations.length < currentBlocksAtOnce;
+
+        if (transformAnimationQueue.length > 0 && canStartMore) {
+            if (tryAddAnimation(transformAnimationQueue.shift())) {
+                startedThisTick++;
+                canStartMore = activeTransformAnimations.length < currentBlocksAtOnce;
+            }
+        }
+
+        if (transformAnimationQueue.length > 0 && canStartMore) {
+             if (tryAddAnimation(transformAnimationQueue.pop())) {
+                startedThisTick++;
+            }
+        }
+        
+        if (startedThisTick > 0) {
             newTransformAnimationStartTimer = currentNewBlockDelay;
         } else if (transformAnimationQueue.length === 0 && activeTransformAnimations.length === 0) {
             newTransformAnimationStartTimer = 0;
+        } else if (activeTransformAnimations.length >= currentBlocksAtOnce && transformAnimationQueue.length > 0) {
+            newTransformAnimationStartTimer = currentNewBlockDelay; 
         }
     }
 

@@ -20,7 +20,7 @@ export const CUTSCENE_SLIDES = [
 
 // --- Camera ---
 
-export const MIN_CAMERA_SCALE = 0.25; // min zoom (1/4x)
+export const MIN_CAMERA_SCALE = 0.2; // min zoom (1/5x)
 export const MAX_CAMERA_SCALE = 3.0; // max zoom (3x)
 export const ZOOM_SPEED_FACTOR = 0.001; // mouse wheel sensitivity
 
@@ -45,6 +45,7 @@ export const GHOST_BLOCK_ALPHA = 0.5; // placement preview transparency
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
 export const PLAYER_BLOCK_OUTLINE_THICKNESS = 3; // in pixels
 export const VEGETATION_PIXEL_DENSITY = 0.6;
+
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
 export const BLOCK_SAND = 2;
@@ -55,6 +56,7 @@ export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
+
 export const BLOCK_PROPERTIES = {
     [BLOCK_AIR]: {
         name: 'AIR',
@@ -296,7 +298,7 @@ export const AGING_PROB_TREE_TRUNK_DECAY = 0.001;
 export const MAX_FALLING_BLOCKS_AT_ONCE = 50;
 export const NEW_GRAVITY_ANIM_DELAY = 0.3;
 export const GRAVITY_ANIMATION_FALL_SPEED = 20;
-export const AGING_ANIMATION_BLOCKS_AT_ONCE = 100; // number of simultaneous animations
+export const AGING_ANIMATION_BLOCKS_AT_ONCE = 200; // number of simultaneous animations
 export const AGING_ANIMATION_NEW_BLOCK_DELAY = 0.01; // seconds before starting next animation in queue
 export const AGING_ANIMATION_SWELL_DURATION = 0.3;
 export const AGING_ANIMATION_POP_DURATION = 0.4;
