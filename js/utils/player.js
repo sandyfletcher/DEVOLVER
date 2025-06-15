@@ -563,19 +563,26 @@ export class Player {
             const visualAnchorOffsetY = weaponStats.visualAnchorOffset.y;
             const dx_to_raw = rawTargetWorldPos.x - playerCenterX;
             const dy_to_raw = rawTargetWorldPos.y - playerCenterY;
+
             let maxVisualReach;
+            let gameplayAimingReach; // This is the effective reach defined by config for aiming
             if (weaponStats.attackReachY === undefined) {
-                maxVisualReach = weaponStats.attackReachX;
+                gameplayAimingReach = weaponStats.attackReachX;
             } else {
-                maxVisualReach = Math.sqrt(
+                gameplayAimingReach = Math.sqrt(
                     (weaponStats.attackReachX * weaponStats.attackReachX) +
                     (weaponStats.attackReachY * weaponStats.attackReachY)
                 );
             }
-            maxVisualReach = Math.max(maxVisualReach, weaponStats.width, weaponStats.height, Config.BLOCK_WIDTH * 2);
+            // maxVisualReach determines how far the weapon's visual anchor point (defined by visualAnchorOffset)
+            // can be from the player's center. It's primarily driven by gameplayAimingReach,
+            // with a small minimum to prevent it from being zero.
+            maxVisualReach = Math.max(gameplayAimingReach, Config.BLOCK_WIDTH * 0.5);
+
             let clampedTargetX = rawTargetWorldPos.x;
             let clampedTargetY = rawTargetWorldPos.y;
             const dist_to_raw = Math.sqrt(dx_to_raw * dx_to_raw + dy_to_raw * dy_to_raw);
+
             if (dist_to_raw > maxVisualReach + GridCollision.E_EPSILON) {
                 if (dist_to_raw > GridCollision.E_EPSILON) {
                     const normalizedDx = dx_to_raw / dist_to_raw;
@@ -840,13 +847,22 @@ export class Player {
         const dx_to_raw = rawTargetWorldPos.x - playerCenterX;
         const dy_to_raw = rawTargetWorldPos.y - playerCenterY;
         const dist_to_raw = Math.sqrt(dx_to_raw * dx_to_raw + dy_to_raw * dy_to_raw);
+
         let maxVisualReach;
+        let gameplayAimingReach; // This is the effective reach defined by config for aiming
         if (weaponStats.attackReachY === undefined) {
-            maxVisualReach = weaponStats.attackReachX;
+            gameplayAimingReach = weaponStats.attackReachX;
         } else {
-            maxVisualReach = Math.sqrt((weaponStats.attackReachX**2) + (weaponStats.attackReachY**2));
+            gameplayAimingReach = Math.sqrt(
+                (weaponStats.attackReachX * weaponStats.attackReachX) +
+                (weaponStats.attackReachY * weaponStats.attackReachY)
+            );
         }
-        maxVisualReach = Math.max(maxVisualReach, weaponStats.width, weaponStats.height, Config.BLOCK_WIDTH * 2);
+        // maxVisualReach determines how far the weapon's visual anchor point (defined by visualAnchorOffset)
+        // can be from the player's center. It's primarily driven by gameplayAimingReach,
+        // with a small minimum to prevent it from being zero.
+        maxVisualReach = Math.max(gameplayAimingReach, Config.BLOCK_WIDTH * 0.5);
+
         let clampedTargetX = rawTargetWorldPos.x;
         let clampedTargetY = rawTargetWorldPos.y;
         if (dist_to_raw > maxVisualReach + GridCollision.E_EPSILON) {
