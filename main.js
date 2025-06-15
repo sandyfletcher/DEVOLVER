@@ -435,7 +435,32 @@ function init() {
         });
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        titleStartButton.addEventListener('click', () => FlowManager.handleTitleStart());
+        
+        // MODIFIED Event Listener for titleStartButton
+        titleStartButton.addEventListener('click', () => {
+            // 1. Play gunshot sound
+            // Ensure you have 'gunshot.mp3' (or similar) in 'assets/audio/sfx/'
+            AudioManager.playSound('assets/audio/sfx/gunshot.mp3'); // Ensure this path is correct
+
+            // 2. Trigger flash effect
+            if (bootOverlayEl) {
+                bootOverlayEl.classList.add('flash-effect');
+                
+                // After a short delay, remove the flash and proceed
+                setTimeout(() => {
+                    if (bootOverlayEl) { // Check again in case something went wrong
+                        bootOverlayEl.classList.remove('flash-effect');
+                    }
+                    // 3. Proceed to next state
+                    FlowManager.handleTitleStart();
+                }, 100); // Flash duration in milliseconds (e.g., 100ms = 0.1 seconds)
+            } else {
+                // Fallback if bootOverlayEl is not found, proceed immediately
+                console.warn("bootOverlayEl not found, skipping flash effect.");
+                FlowManager.handleTitleStart();
+            }
+        });
+        
         mainmenuStartGameButton.addEventListener('click', () => FlowManager.startCutscene());
         mainmenuSettingsButton.addEventListener('click', () => FlowManager.openSettingsFromMainMenu());
         settingsButtonPauseOverlayEl.addEventListener('click', () => FlowManager.openSettingsFromPause());

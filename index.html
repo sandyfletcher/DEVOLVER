@@ -4,16 +4,14 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
         <meta name="description" content="DEVOLVER - 2D Wave Survival Against Humanity's Original Opponents">
-        <title>DEVOLVER</title>
+        <title>ask questions later</title>
         <link rel="stylesheet" href="style.css">
         <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
     </head>
     <body>
         <div id="app-container">
             <main id="game-wrapper">
-                 <canvas id="game-canvas" width="800" height="800">
-                    Your browser does not support the HTML canvas.
-                </canvas>
+                <canvas id="game-canvas" width="800" height="800">Your browser doesn't support HTML canvas</canvas>
                 <div id="top-ui-overlay">
                     <div id="top-info-row">
                         <div id="player-column" class="top-info-column">
@@ -39,26 +37,28 @@
                 <div id="epoch-overlay"></div>
                 <div id="bottom-ui-overlay">
                     <div id="item-selection-area">
-                        <div id="inventory-boxes-container">Loading...</div>
-                        <div id="weapon-slots-container">Loading...</div>
+                        <div id="inventory-boxes-container">LOADING...</div>
+                        <div id="weapon-slots-container">LOADING...</div>
                     </div>
                 </div>
             </main>
             <div id="boot-overlay" class="show-title">
                 <div id="overlay-title-content" class="overlay-content">
                     <button id="title-heading-button">
-                        <h1>DEVOLVER</h1>
+                        <h1>SHOOT FIRST</h1> <!-- MODIFIED TEXT -->
                     </button>
                 </div>
                 <div id="overlay-error-content" class="overlay-content">
                     <h1>Game Error</h1>
-                    <p>An unrecoverable error occurred during initialization.</p>
-                    <p id="error-message-text">[Dynamic Error Message]</p>
-                    <p>Check the developer console for technical details or refresh the page to try playing again.</p>
+                    <p>Unrecoverable error occurred during initialization</p>
+                    <p id="error-message-text">[Error Message]</p>
+                    <p>Check developer console for details or refresh page to play again</p>
                 </div>
             </div>
             <div id="menu-overlay">
                 <div id="overlay-mainmenu-content" class="overlay-content">
+                    <!-- ADDED TITLE CARD -->
+                    <h1 class="mainmenu-title-card">ask questions later</h1> 
                     <div class="button-group-bottom-right">
                         <button id="mainmenu-settings-button" class="button-hero-action">SETTINGS</button>
                         <button id="mainmenu-start-game-button" class="button-hero-action">START</button>

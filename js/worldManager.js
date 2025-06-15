@@ -154,8 +154,17 @@ function calculateDynamicAnimationIntervals() {
         }
     }
 
-    const avg_gravity_duration = 0.5; 
-    if (gravityAnimationQueue.length > 0) {
+    if (isDynamicAnimationPacingActive && gravityAnimationQueue.length > 0) {
+        // When dynamic pacing is active, make gravity animations start much more frequently,
+        // rather than trying to spread them out over BLOCK_ANIM_TARGET_DURATION.
+        // This will make gravity feel more immediate during warp.
+        // Use a small fixed delay, similar to AGING_ANIMATION_NEW_BLOCK_DELAY.
+        dynamicGravityAnimStartInterval = Config.AGING_ANIMATION_NEW_BLOCK_DELAY; // e.g., 0.01 seconds
+    } else if (gravityAnimationQueue.length > 0) {
+        // Fallback for non-dynamic pacing if needed, or if dynamic pacing is off but still calculated here
+        // (though NEW_GRAVITY_ANIM_DELAY is used directly in updateGravityAnimations for non-dynamic)
+        // This part ensures dynamicGravityAnimStartInterval has a reasonable value if used outside strict dynamic pacing.
+        const avg_gravity_duration = 0.5; 
         const time_for_all_gravity_starts = BLOCK_ANIM_TARGET_DURATION - avg_gravity_duration;
         if (time_for_all_gravity_starts > 0 && gravityAnimationQueue.length > 1) {
             dynamicGravityAnimStartInterval = time_for_all_gravity_starts / (gravityAnimationQueue.length - 1);

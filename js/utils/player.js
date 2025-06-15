@@ -504,14 +504,29 @@ export class Player {
         }
         if (drawPlayerBody) {
             // Torso (local coords, (0,0) is player center)
-            const torsoHeight = this.height * 0.65;
-            const torsoWidth = this.width * 0.7;
-            const torsoYOffset = this.height * 0.05; // Torso slightly lower than exact center
+            // Original definitions for reference:
+            // const torsoHeightOriginal = this.height * 0.65;
+            // const torsoWidthOriginal = this.width * 0.7;
+            // const torsoYOffsetOriginal = this.height * 0.05; // Center Y of the torso relative to player's overall center
+
+            // NEW constants for drawing to better match collision box
+            const torsoWidth = this.width * 0.90; // Make torso fill more of the collision width
+            const torsoHeight = this.height * 0.90; // Make torso fill more of the collision height
+            // Keep the torso's conceptual center Y offset the same as original.
+            // This means the torso grows downwards and slightly upwards from its original center.
+            const torsoCenterYForDrawing = this.height * 0.05; 
+
             ctx.fillStyle = Config.PLAYER_BODY_COLOR;
-            ctx.fillRect(-torsoWidth / 2, -torsoHeight / 2 + torsoYOffset, torsoWidth, torsoHeight);
+            // fillRect's y argument is the top-left corner's y.
+            // Torso is drawn centered at (0, torsoCenterYForDrawing) in local space.
+            ctx.fillRect(-torsoWidth / 2, torsoCenterYForDrawing - torsoHeight / 2, torsoWidth, torsoHeight);
+
             // Head (local coords)
-            const headRadius = this.width * 0.35; // Head as a circle
-            const headYOffset = -torsoHeight / 2 + torsoYOffset - headRadius * 0.8; // Head on top of torso
+            const headRadius = this.width * 0.35; // Keep head radius relative to overall player width
+            // Position head on top of the new torso top.
+            // New torso top localY = torsoCenterYForDrawing - torsoHeight / 2
+            const headYOffset = (torsoCenterYForDrawing - torsoHeight / 2) - headRadius * 0.8;
+            
             ctx.fillStyle = Config.PLAYER_HEAD_COLOR;
             ctx.beginPath();
             ctx.arc(0, headYOffset, headRadius, 0, Math.PI * 2);
