@@ -70,8 +70,22 @@ export class Projectile {
         ctx.rotate(this.rotation);
 
         stats.shape.forEach(shapeDef => {
-            const fillColor = (shapeDef.isBlade && highlightColor) ? highlightColor : (shapeDef.color || 'magenta');
+            // MODIFIED LOGIC FOR FILL COLOR
+            let fillColor;
+            if (shapeDef.isBlade) {
+                // If the projectile is stuck, or no highlightColor is provided, use its default color.
+                // Otherwise (flying and highlightColor exists), use the highlightColor.
+                if (this.isStuck || !highlightColor) {
+                    fillColor = shapeDef.color || 'magenta';
+                } else {
+                    fillColor = highlightColor;
+                }
+            } else { // For non-blade parts
+                fillColor = shapeDef.color || 'magenta';
+            }
             ctx.fillStyle = fillColor;
+            // END MODIFIED LOGIC
+
             if (shapeDef.outlineColor && shapeDef.outlineWidth) {
                 ctx.strokeStyle = shapeDef.outlineColor;
                 ctx.lineWidth = shapeDef.outlineWidth;

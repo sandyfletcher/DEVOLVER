@@ -679,8 +679,20 @@ export class Player {
             ctx.translate(finalWeaponPivotX, finalWeaponPivotY);
             ctx.rotate(displayAngle);
             weaponStats.shape.forEach(shapeDef => {
-                const fillColor = shapeDef.isBlade ? highlightColor : (shapeDef.color || weaponStats.color || 'magenta');
+                // MODIFIED LOGIC FOR FILL COLOR
+                let fillColor;
+                if (shapeDef.isBlade) {
+                    if (this.isAttacking) { // When actively attacking
+                        fillColor = highlightColor; // Use the user-selected highlight color
+                    } else { // When idle (selected but not attacking)
+                        fillColor = shapeDef.color || 'magenta'; // Use the blade's default defined color
+                    }
+                } else { // For non-blade parts of the weapon
+                    fillColor = shapeDef.color || 'magenta'; // Always use their default defined color
+                }
                 ctx.fillStyle = fillColor;
+                // END MODIFIED LOGIC
+
                 if (shapeDef.type === 'rect') {
                     ctx.fillRect(Math.floor(shapeDef.x), Math.floor(shapeDef.y), Math.ceil(shapeDef.w), Math.ceil(shapeDef.h));
                     if (weaponStats.outlineColor && weaponStats.outlineWidth) {

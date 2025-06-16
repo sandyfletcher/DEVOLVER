@@ -355,8 +355,9 @@ body {
     height: 100%;
     max-width: none;
     box-sizing: border-box;
-    justify-content: center;
+    justify-content: center; /* Modified to allow button group at bottom */
     align-items: center;
+    position: relative; /* Added for absolute positioning of title card */
 }
 #overlay-settings-content,
 #overlay-pause-content {
@@ -469,17 +470,28 @@ body {
     align-items: center;
 }
 #title-heading-button {
-    background-color: black; border: 2px solid white;
-    padding: 1.5rem 2.5rem;
+    background-color: black; 
+    border: 2px solid white;
+    /* padding: 1.5rem 2.5rem; */ /* MODIFIED: Removed specific padding */
+    width: clamp(12rem, 25vw, 18rem); /* MODIFIED: Added responsive width */
+    aspect-ratio: 1 / 1; /* MODIFIED: Make it square */
+    border-radius: 50%; /* MODIFIED: Make it circular */
+    padding: 0; /* MODIFIED: Use flex to center content */
+    display: flex; /* MODIFIED: Added for centering */
+    flex-direction: column; /* MODIFIED: Allow text to wrap if needed */
+    align-items: center; /* MODIFIED: Added for centering */
+    justify-content: center; /* MODIFIED: Added for centering */
     cursor: crosshair; 
     transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
-    border-radius: 8px;
+    box-sizing: border-box; /* MODIFIED: Added for good measure */
 }
 #title-heading-button h1 {
     margin: 0; padding: 0; color: white;
     font-family: 'RubikIso', sans-serif;
-    font-size: clamp(2.5rem, 6vw, 4rem);
+    font-size: clamp(1.8rem, 3.5vw, 2.8rem); /* MODIFIED: Adjusted font size */
     text-shadow: 2px 2px 8px rgba(255, 255, 255, 0.5);
+    text-align: center; /* MODIFIED: Ensure text centering */
+    line-height: 1.1; /* MODIFIED: Adjust for potential wrapping */
 }
 #title-heading-button:hover {
     background-color: #1a1a1a;
@@ -694,10 +706,16 @@ noscript p {
     font-size: clamp(2.2em, 6vw, 3em);
     color: #ffdddd;
     text-shadow: 1px 1px 0px #000, 2px 2px 3px rgba(255, 0, 0, 0.6);
-    margin-bottom: 1.5rem;
+    /* margin-bottom: 1.5rem; */ /* MODIFIED: Removed margin as it's now absolutely positioned */
+    margin: 0; /* MODIFIED: Ensure no default margins interfere */
     text-align: center;
     letter-spacing: 0.05em;
     white-space: nowrap;
+    position: absolute; /* MODIFIED: Absolute positioning */
+    top: 50%; /* MODIFIED: Centering */
+    left: 50%; /* MODIFIED: Centering */
+    transform: translate(-50%, -50%); /* MODIFIED: Precise centering */
+    z-index: 1; /* MODIFIED: Ensure it's above background but potentially below other UI if needed */
 }
 .flash-effect {
     background-color: white !important;

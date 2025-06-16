@@ -145,15 +145,20 @@ export class Item {
         if (weaponStats && Array.isArray(weaponStats.shape) && weaponStats.shape.length > 0) {
             ctx.save(); // draw using weapon shape definition
             const itemCenterX = this.x + this.width / 2;
-            const itemCenterY = drawY + this.height / 2; // ese bobbing Y for visual center
+            const itemCenterY = drawY + this.height / 2; // use bobbing Y for visual center
             ctx.translate(itemCenterX, itemCenterY);
             ctx.rotate(Math.PI / 7); // slight angle to look resting (+/- 26°)
             if (weaponStats.visualAnchorOffset) { // weapon shapes defined relative to their visualAnchorOffset
                 ctx.translate(-weaponStats.visualAnchorOffset.x, -weaponStats.visualAnchorOffset.y); // draw centered for item, need to counter-translate by offset
             }
             weaponStats.shape.forEach(shapeDef => {
-                const fillColor = shapeDef.isBlade ? highlightColor : (shapeDef.color || 'magenta');
+                // MODIFIED LOGIC FOR FILL COLOR
+                // For items on the ground, they are never "actively attacking".
+                // All parts (including blades) should use their default defined color.
+                const fillColor = shapeDef.color || 'magenta'; // Use the shape's defined color for all parts
                 ctx.fillStyle = fillColor;
+                // END MODIFIED LOGIC
+
                 if (shapeDef.type === 'rect') {
                     ctx.fillRect(Math.floor(shapeDef.x), Math.floor(shapeDef.y), Math.ceil(shapeDef.w), Math.ceil(shapeDef.h));
                     if (weaponStats.outlineColor && weaponStats.outlineWidth) {
