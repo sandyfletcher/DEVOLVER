@@ -959,34 +959,44 @@ export class Player {
     registerHitBlock(col, row) { const blockKey = `${col},${row}`; if (!this.hitBlocksThisSwing.includes(blockKey)) { this.hitBlocksThisSwing.push(blockKey); } }
     pickupItem(item) {
         if (!item || !item.type) return false;
+        
         let pickedUp = false;
-        const materialType = item.type;
-        const GATHER_REQUIREMENT = 4;
-        if (materialType === 'dirt' || materialType === 'vegetation') {
-            this.partialCollection[materialType] = (this.partialCollection[materialType] || 0) + 1;
+        const itemMaterialType = item.type;
+        const GATHER_REQUIREMENT = 2; // MODIFIED from 4 to 2
+
+        // Determine the target material in the inventory
+        let targetInventoryMaterial = itemMaterialType;
+        if (itemMaterialType === 'gravel') {
+            targetInventoryMaterial = 'rock'; // Gravel items contribute to the rock material
+        }
+
+        const isFractional = ['dirt', 'vegetation', 'gravel'].includes(itemMaterialType);
+
+        if (isFractional) {
+            this.partialCollection[targetInventoryMaterial] = (this.partialCollection[targetInventoryMaterial] || 0) + 1;
             pickedUp = true;
-            if (this.partialCollection[materialType] >= GATHER_REQUIREMENT) {
-                this.partialCollection[materialType] = 0;
-                this.inventory[materialType] = (this.inventory[materialType] || 0) + 1;
+            if (this.partialCollection[targetInventoryMaterial] >= GATHER_REQUIREMENT) {
+                this.partialCollection[targetInventoryMaterial] = 0;
+                this.inventory[targetInventoryMaterial] = (this.inventory[targetInventoryMaterial] || 0) + 1;
             }
-        } else if (this.isWeaponType(materialType)) {
-            if (materialType === Config.WEAPON_TYPE_SWORD) {
+        } else if (this.isWeaponType(itemMaterialType)) {
+            if (itemMaterialType === Config.WEAPON_TYPE_SWORD) {
                 if (!this.hasSword) { this.hasSword = true; pickedUp = true; }
-            } else if (materialType === Config.WEAPON_TYPE_SPEAR) {
+            } else if (itemMaterialType === Config.WEAPON_TYPE_SPEAR) {
                 if (!this.hasSpear) { this.hasSpear = true; pickedUp = true; }
-            } else if (materialType === Config.WEAPON_TYPE_SHOVEL) {
+            } else if (itemMaterialType === Config.WEAPON_TYPE_SHOVEL) {
                 if (!this.hasShovel) { this.hasShovel = true; pickedUp = true; }
-            } else if (materialType === Config.WEAPON_TYPE_BOW) {
+            } else if (itemMaterialType === Config.WEAPON_TYPE_BOW) {
                 if (!this.hasBow) { this.hasBow = true; pickedUp = true; }
             }
             if (pickedUp && this.selectedItem === Config.WEAPON_TYPE_UNARMED) {
-                this.equipItem(materialType);
+                this.equipItem(itemMaterialType);
             }
-        } else if (Config.INVENTORY_MATERIALS.includes(materialType)) {
-            this.inventory[materialType] = (this.inventory[materialType] || 0) + 1;
+        } else if (Config.INVENTORY_MATERIALS.includes(itemMaterialType)) {
+            this.inventory[itemMaterialType] = (this.inventory[itemMaterialType] || 0) + 1;
             pickedUp = true;
         } else {
-            console.warn(`Player encountered unknown item type: ${materialType}`);
+            console.warn(`Player encountered unknown item type: ${itemMaterialType}`);
         }
         return pickedUp;
     }

@@ -179,18 +179,9 @@ function createItemSlot(itemType, container, category) { // create and setup a s
         countSpan.textContent = ''; 
         slotDiv.appendChild(countSpan); 
         titleText += ' (0)'; 
-        if (itemType === 'dirt' || itemType === 'vegetation') {
-            slotDiv.classList.add('material-quadrant-box'); 
-            const quadrantContainer = document.createElement('div');
-            quadrantContainer.classList.add('quadrant-container');
-
-            const quadrantClasses = ['quadrant-tl', 'quadrant-tr', 'quadrant-bl', 'quadrant-br'];
-            quadrantClasses.forEach(qClassSuffix => {
-                const quadrantDiv = document.createElement('div');
-                quadrantDiv.classList.add('quadrant', qClassSuffix); 
-                quadrantContainer.appendChild(quadrantDiv);
-            });
-            slotDiv.insertBefore(quadrantContainer, countSpan); 
+        // Fractional materials now get a special class for the slash effect
+        if (itemType === 'dirt' || itemType === 'vegetation' || itemType === 'rock') {
+            slotDiv.classList.add('material-half-box'); 
         }
     } else if (category === 'weapon') {
         const weaponStats = Config.WEAPON_STATS[itemType];
@@ -352,17 +343,13 @@ export function updatePlayerInfo(currentHealth, maxHealth, inventory = {}, hasSw
         if (countSpan) countSpan.textContent = count > 0 ? Math.min(count, 999) : ''; // CHANGED to 999
         let isDisabled;
         let currentTitle = `${materialType.toUpperCase()} (${count})`;
-        if (materialType === 'dirt' || materialType === 'vegetation') {
+
+        // UPDATED: Logic for fractional materials
+        if (materialType === 'dirt' || materialType === 'vegetation' || materialType === 'rock') {
             const partialCount = getPartialCollectionFn(materialType);
             isDisabled = (count === 0 && partialCount === 0);
-            currentTitle = `${materialType.toUpperCase()} (${count} full, ${partialCount}/4 collected)`;
-            const quadrants = slotDiv.querySelectorAll('.quadrant-container .quadrant');
-            if (quadrants.length === 4) { 
-                 quadrants[0].classList.toggle('filled', partialCount >= 1);
-                 quadrants[1].classList.toggle('filled', partialCount >= 2);
-                 quadrants[2].classList.toggle('filled', partialCount >= 3);
-                 quadrants[3].classList.toggle('filled', partialCount >= 4); 
-            }
+            currentTitle = `${materialType.toUpperCase()} (${count} full, ${partialCount}/2 collected)`;
+            slotDiv.classList.toggle('half-collected', partialCount === 1);
         } else {
             isDisabled = (count === 0);
         }

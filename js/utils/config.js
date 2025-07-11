@@ -58,6 +58,7 @@ export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
 export const BLOCK_ROCK = 10;
 export const BLOCK_DIAMOND = 11;
+export const BLOCK_GRAVEL = 12; // NEW
 
 export const BLOCK_PROPERTIES = {
     [BLOCK_AIR]: {
@@ -228,6 +229,21 @@ export const BLOCK_PROPERTIES = {
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' }, // dropped item looks like vegetation
         isPlayerPlaceableAsMaterial: false, // uses vegetation to place
     },
+    // NEW GRAVEL BLOCK
+    [BLOCK_GRAVEL]: {
+        name: 'GRAVEL',
+        hp: 80,
+        color: 'rgb(165, 155, 145)', // A mix of rock and sand colors
+        translucency: 0.1,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'gravel', // This item contributes to 'rock' inventory
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(165, 155, 145)' },
+        isPlayerPlaceableAsMaterial: false, // Not directly placeable
+    },
 };
 export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_DIRT]: 1.0,
@@ -311,41 +327,43 @@ export const AGING_DEFAULT_RING_WEIGHTS = {
     7: 0.1   // 7x7 ring
 };
 export const AGING_RULES = {
+    // STONE -> ROCK
     [BLOCK_STONE]: {
         [BLOCK_ROCK]: {
             baseProbability: 0.0001,
             influences: {
-                [BLOCK_DIRT]:  0.08,
-                [BLOCK_WATER]: 0.04,
-                [BLOCK_AIR]:   0.02,
-                [BLOCK_SAND]:  0.01,
+                [BLOCK_WATER]: 0.05, // Water is a key catalyst
+                [BLOCK_AIR]:   0.03, // Exposure to air
+                [BLOCK_DIRT]:  0.01,
             }
-        },
-        [BLOCK_SAND]: {
-             baseProbability: 0.0001,
-             influences: {
-                 [BLOCK_WATER]: 0.10,
-                 [BLOCK_SAND]:  0.05,
-                 [BLOCK_AIR]:   0.01,
-             }
         }
     },
+    // ROCK -> GRAVEL or DIRT
     [BLOCK_ROCK]: {
-        [BLOCK_DIRT]: {
-            baseProbability: 0.0005,
+        [BLOCK_GRAVEL]: {
+            baseProbability: 0.0003,
             influences: {
-                [BLOCK_WATER]: 0.12,
-                [BLOCK_AIR]:   0.06,
-                [BLOCK_VEGETATION]: 0.04,
+                [BLOCK_WATER]: 0.10, // Water is very effective at breaking rock to gravel
+                [BLOCK_AIR]:   0.05,
+                [BLOCK_SAND]:  0.02,
             }
         },
+        [BLOCK_DIRT]: {
+            baseProbability: 0.0001,
+            influences: {
+                [BLOCK_VEGETATION]: 0.08, // Roots break down rock to dirt
+                [BLOCK_WATER]: 0.02,
+            }
+        }
+    },
+    // GRAVEL -> SAND
+    [BLOCK_GRAVEL]: {
         [BLOCK_SAND]: {
-             baseProbability: 0.0002,
-             influences: {
-                 [BLOCK_WATER]: 0.15,
-                 [BLOCK_SAND]:  0.07,
-                 [BLOCK_AIR]:   0.02,
-             }
+            baseProbability: 0.001,
+            influences: {
+                [BLOCK_WATER]: 0.25, // Water is extremely effective at turning gravel to sand
+                [BLOCK_AIR]:   0.05,
+            }
         }
     },
     [BLOCK_DIRT]: {
