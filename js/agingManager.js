@@ -116,7 +116,23 @@ export function applyAging(portalRef) {
             let newType = originalType; // 1: Influence-Based Material Weathering ---
             let changeOccurred = false;
             if (areNeighborsHomogeneous(c, r, originalType)) {
-                // early exit if no influencers
+                // This block is surrounded by blocks of the same type.
+                // We can check for special "pressure" transformations here.
+                // Diamond Formation Rule
+                if (originalType === Config.BLOCK_STONE) {
+                    if (Math.random() < Config.AGING_PROB_DIAMOND_FORMATION) {
+                        newType = Config.BLOCK_DIAMOND;
+                        changeOccurred = true;
+                        // A change occurred, so we DON'T continue. We fall through to apply it.
+                    } else {
+                        // No diamond formed, so we can safely skip the rest of the logic for this block.
+                        continue;
+                    }
+                } else {
+                    // It's a homogeneous block, but not stone (or not eligible for other pressure rules).
+                    // Nothing to do, so we skip the expensive influence checks.
+                    continue;
+                }
             } else {
                 // "border block", proceed with deeper analysis
                 const blockRules = Config.AGING_RULES[originalType];

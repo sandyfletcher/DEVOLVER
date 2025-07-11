@@ -57,6 +57,7 @@ export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
 export const BLOCK_ROCK = 10;
+export const BLOCK_DIAMOND = 11;
 
 export const BLOCK_PROPERTIES = {
     [BLOCK_AIR]: {
@@ -185,6 +186,20 @@ export const BLOCK_PROPERTIES = {
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(190, 190, 200)' },
         isPlayerPlaceableAsMaterial: true,
     },
+        [BLOCK_DIAMOND]: {
+        name: 'DIAMOND',
+        hp: 1000, // extremely durable
+        color: 'rgb(185, 242, 255)', //bright crystalline blue
+        translucency: 0.8, // mostly transparent, glows when lit
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'diamond',
+        droppedItemConfig: { width: BLOCK_WIDTH * 0.8, height: BLOCK_HEIGHT * 0.8, color: 'rgb(185, 242, 255)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
     [BLOCK_BONE]: {
         name: 'BONE',
         hp: 120,
@@ -222,7 +237,7 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_WOOD]: 1.0,
     [BLOCK_METAL]: 1.0,
 };
-export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'rock', 'wood', 'bone', 'metal', 'arrows'];
+export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'rock', 'wood', 'bone', 'metal', 'diamond', 'arrows'];
 export const MATERIAL_TO_BLOCK_TYPE = {
     'dirt': BLOCK_DIRT,
     'stone': BLOCK_STONE,
@@ -232,6 +247,7 @@ export const MATERIAL_TO_BLOCK_TYPE = {
     'bone': BLOCK_BONE,
     'vegetation': BLOCK_VEGETATION, // vegetation could be block or rope
     'rock': BLOCK_ROCK,
+    'diamond': BLOCK_DIAMOND,
 };
 
 // --- Landmass Generation ---
@@ -289,12 +305,12 @@ export const TREE_MAX_CANOPY_RADIUS = 4; // max radius canopy can reach
 
 // --- Aging Rules ---
 export const AGING_INITIAL_PASSES = 10; // aging passes on initial world generation
-export const AGING_DEFAULT_RING_WEIGHTS = { // NEW
-    3: 1.0,  // 3x3 ring (immediate neighbors)
+export const AGING_DEFAULT_RING_WEIGHTS = {
+    3: 1.0,  // 3x3 ring (immediate neighbours)
     5: 0.3,  // 5x5 ring
     7: 0.1   // 7x7 ring
 };
-export const AGING_RULES = { // NEW
+export const AGING_RULES = {
     [BLOCK_STONE]: {
         [BLOCK_ROCK]: {
             baseProbability: 0.0001,
@@ -357,12 +373,13 @@ export const AGING_RULES = { // NEW
         }
     }
 };
-
+export const AGING_PROB_DIAMOND_FORMATION = 1 / 9999;
 export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // chance for vegetation chunk to become tree
 export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.3;
 export const AGING_PROB_TREE_CANOPY_GROW = 0.1;
 export const AGING_PROB_TREE_CANOPY_DECAY = 0.01;
 export const AGING_PROB_TREE_TRUNK_DECAY = 0.001;
+
 // --- Animation Constants ---
 
 export const MAX_FALLING_BLOCKS_AT_ONCE = 50;
