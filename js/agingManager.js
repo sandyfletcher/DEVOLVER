@@ -7,8 +7,6 @@ import * as World from './utils/world.js';
 import * as GridCollision from './utils/gridCollision.js';
 import { createBlock } from './utils/block.js';
 
-let allGravityChangesFromAgingThisPass = [];
-
 // check 8 immediate neighbors for homogeneity
 function areNeighborsHomogeneous(c, r, originalType) {
     const neighbors = [
@@ -49,7 +47,7 @@ function calculateInfluenceScore(c, r, transformationRule) {
     return totalInfluence;
 }
 // check special tree formation rule
-function checkForTreeFormation(c, r, changedCellsArray) {
+function checkForTreeFormation(c, r) {
     const neighborTypes = {};
     const neighborOffsets = [
         { key: 'above', dc: 0, dr: -1 }, { key: 'below', dc: 0, dr: 1 },
@@ -63,7 +61,7 @@ function checkForTreeFormation(c, r, changedCellsArray) {
     const allEightNeighborsAreVeg = Object.values(neighborTypes).every(type => type === Config.BLOCK_VEGETATION);
     if (allEightNeighborsAreVeg) {
         if (GridCollision.isSolid(c, r + 2) && Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
-            // further checks for spacing could be added here
+            const proposedTreeChanges = [];
             const pattern = [
                 { dr: -1, dc: -1, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 1, type: Config.BLOCK_VEGETATION },
                 { dr: 0, dc: -1, type: Config.BLOCK_AIR }, { dr: 0, dc: 0, type: Config.BLOCK_WOOD }, { dr: 0, dc: 1, type: Config.BLOCK_AIR },
@@ -74,29 +72,28 @@ function checkForTreeFormation(c, r, changedCellsArray) {
                 const targetR = r + cell.dr;
                 if (targetR >= 0 && targetR < Config.GRID_ROWS && targetC >= 0 && targetC < Config.GRID_COLS) {
                     const oldBlockAtTargetType = World.getBlockType(targetC, targetR);
-                    const success = World.setBlock(targetC, targetR, cell.type, false);
-                    if (success && oldBlockAtTargetType !== cell.type) {
-                        changedCellsArray.push({
-                            c: targetC, r: targetR,
-                            oldBlockType: oldBlockAtTargetType,
-                            newBlockType: cell.type,
-                            finalBlockData: World.getBlock(targetC, targetR)
-                        });
-                    }
+                    proposedTreeChanges.push({
+                        c: targetC,
+                        r: targetR,
+                        oldBlockType: oldBlockAtTargetType,
+                        newBlockType: cell.type,
+                        finalBlockData: null 
+                    });
                 }
             }
-            return true; // tree
+            return proposedTreeChanges;
         }
     }
-    return false; // no tree
+    return null;
 }
 export function applyAging(portalRef) {
     const grid = World.getGrid();
     if (!grid || grid.length === 0 || grid[0].length === 0) {
-        return { visualChanges: [], gravityChanges: [] };
+        return { visualChanges: [] };
     }
-    let changedCellsAndTypes = [];
-    allGravityChangesFromAgingThisPass = [];
+    let proposedChanges = [];
+
+    // PASS 1: Collect all proposed changes without modifying the grid
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             if (portalRef) {
@@ -113,8 +110,9 @@ export function applyAging(portalRef) {
             if (blockBeforeChange === null) continue;
             const originalType = (typeof blockBeforeChange === 'object') ? blockBeforeChange.type : blockBeforeChange;
             if (originalType === Config.BLOCK_AIR || originalType === Config.BLOCK_WATER) continue;
-            let newType = originalType; // 1: Influence-Based Material Weathering ---
+            let newType = originalType; 
             let changeOccurred = false;
+
             if (areNeighborsHomogeneous(c, r, originalType)) {
                 // This block is surrounded by blocks of the same type.
                 // We can check for special "pressure" transformations here.
@@ -161,7 +159,9 @@ export function applyAging(portalRef) {
             let specialRuleTriggered = false;
             if (!changeOccurred) {
                 if (originalType === Config.BLOCK_VEGETATION) {
-                    if (checkForTreeFormation(c, r, changedCellsAndTypes)) {
+                    const treeChanges = checkForTreeFormation(c, r);
+                    if (treeChanges) {
+                         proposedChanges.push(...treeChanges);
                          specialRuleTriggered = true;
                     }
                 }
@@ -171,20 +171,35 @@ export function applyAging(portalRef) {
             }
             // --- 3: Apply the Single-Block Change ---
             if (changeOccurred) {
-                const originalIsPlayerPlaced = (typeof blockBeforeChange === 'object') ? (blockBeforeChange.isPlayerPlaced ?? false) : false;
-                if (World.setBlock(c, r, newType, originalIsPlayerPlaced)) {
-                    changedCellsAndTypes.push({
-                        c, r,
-                        oldBlockType: originalType,
-                        newBlockType: newType,
-                        finalBlockData: World.getBlock(c, r)
-                    });
-                }
+                proposedChanges.push({
+                    c, r,
+                    oldBlockType: originalType,
+                    newBlockType: newType,
+                    finalBlockData: null
+                });
             }
         }
     }
+    
+    // PASS 2: Apply all collected changes to the grid
+    const appliedChanges = [];
+    proposedChanges.forEach(change => {
+        const { c, r, newBlockType, oldBlockType } = change;
+        const blockBeforeChange = World.getBlock(c, r); // Get the original block for its properties
+        const originalIsPlayerPlaced = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? (blockBeforeChange.isPlayerPlaced ?? false) : false;
+
+        // Apply the change to the world grid.
+        if (World.setBlock(c, r, newBlockType, originalIsPlayerPlaced)) {
+            appliedChanges.push({
+                c, r,
+                oldBlockType: oldBlockType,
+                newBlockType: newBlockType,
+                finalBlockData: World.getBlock(c, r) // Now we have the final data
+            });
+        }
+    });
+
     return {
-        visualChanges: changedCellsAndTypes,
-        gravityChanges: allGravityChangesFromAgingThisPass
+        visualChanges: appliedChanges
     };
 }

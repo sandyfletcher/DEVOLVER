@@ -173,10 +173,7 @@ function triggerWarpCleanupAndCalculations() {
                     }
                 });
             }
-            const agingChangesInThisPass = AgingManager.applyAging(portalRef);
-            if (agingChangesInThisPass.gravityChanges && Array.isArray(agingChangesInThisPass.gravityChanges)) {
-                allGravityChangesForAnimation.push(...agingChangesInThisPass.gravityChanges);
-            }
+            AgingManager.applyAging(portalRef);
         }
         DebugLogger.log(`[WaveMgr] Interleaved lighting & aging (LOGICAL) complete. Total passes: ${passes}.`);
     } else {
