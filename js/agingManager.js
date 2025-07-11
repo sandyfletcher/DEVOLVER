@@ -46,69 +46,64 @@ function calculateInfluenceScore(c, r, transformationRule) {
     return totalInfluence;
 }
 // check special tree formation rule
-function checkForTreeFormation(c, r) {
-    // Tree Spacing Check
+function checkForTreeFormation(c, r, proposedChanges) {
+    // tree spacing check
     const radius = Config.MIN_TREE_SPACING_RADIUS;
     for (let dr = -radius; dr <= radius; dr++) {
         for (let dc = -radius; dc <= radius; dc++) {
             if (dr === 0 && dc === 0) continue;
             const checkC = c + dc;
             const checkR = r + dr;
+            // check against already proposed changes in this cycle
+            const isWoodProposed = proposedChanges.some(change =>
+                change.c === checkC &&
+                change.r === checkR &&
+                change.newBlockType === Config.BLOCK_WOOD
+            );
+            if (isWoodProposed) {
+                return null; // tree is already planned nearby
+            }
+            // check against existing wood from previous cycles
             if (checkR >= 0 && checkR < Config.GRID_ROWS && checkC >= 0 && checkC < Config.GRID_COLS) {
-                // Get full block data to check isPlayerPlaced
                 const block = World.getBlock(checkC, checkR);
                 if (typeof block === 'object' && block !== null) {
-                    // Check if the block is NATURALLY occurring wood.
                     if (block.type === Config.BLOCK_WOOD && !block.isPlayerPlaced) {
-                        return null; // Found a natural tree nearby, stop.
+                        return null; // found a natural tree nearby, stop.
                     }
                 }
             }
         }
     }
-
-    // Scan downwards from below the canopy center (r+1) to find a dirt anchor.
+    // scan downwards from canopy center (r+1) to find a dirt anchor
     let dirtRow = -1;
-    const maxTrunkLength = 3; // How many blocks down we're willing to look for dirt.
-
+    const maxTrunkLength = 3; // how many blocks down to look for dirt
     for (let i = 1; i <= maxTrunkLength; i++) {
         const scanR = r + i;
-        if (scanR >= Config.GRID_ROWS) break; // Out of bounds.
-
+        if (scanR >= Config.GRID_ROWS) break; // out of bounds
         const blockTypeAtDepth = World.getBlockType(c, scanR);
-
         if (blockTypeAtDepth === Config.BLOCK_DIRT) {
-            dirtRow = scanR; // Found our anchor!
+            dirtRow = scanR; // found anchor
             break;
         }
-        // If we hit anything other than more vegetation, the path is broken.
-        if (blockTypeAtDepth !== Config.BLOCK_VEGETATION) {
-            return null;
-        }
     }
-
-    // If no dirt was found within the search range, we can't grow a tree here.
+    // can't grow a tree here if no dirt was found within the search range
     if (dirtRow === -1) {
         return null;
     }
-
-    // We have a valid location. Now check the random chance to grow.
+    // valid location, now check random chance to grow
     if (Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
         const proposedTreeChanges = [];
-
-        // 1. Convert the entire vertical path from the canopy center to the dirt anchor into WOOD.
+        // 1. convert entire vertical path from the canopy center to the dirt anchor into WOOD.
         for (let trunkR = r; trunkR <= dirtRow; trunkR++) {
             proposedTreeChanges.push({
                 c: c,
                 r: trunkR,
-                oldBlockType: World.getBlockType(c, trunkR), // Record what was there
+                oldBlockType: World.getBlockType(c, trunkR), // record what was there
                 newBlockType: Config.BLOCK_WOOD,
                 finalBlockData: null
             });
         }
-
-        // 2. Clear out the vegetation to the left and right of the new trunk at the canopy level
-        // to make the trunk distinct from the canopy "leaves".
+        // 2. clear out vegetation to left and right of new trunk at canopy level to make trunk distinct from canopy "leaves"
         const sideClearCells = [ { dr: 0, dc: -1 }, { dr: 0, dc: 1 } ];
         for(const cell of sideClearCells) {
             const targetC = c + cell.dc;
@@ -116,16 +111,14 @@ function checkForTreeFormation(c, r) {
             proposedTreeChanges.push({
                 c: targetC,
                 r: targetR,
-                oldBlockType: Config.BLOCK_VEGETATION, // We know this is vegetation due to areNeighborsHomogeneous
+                oldBlockType: Config.BLOCK_VEGETATION, // we know this is vegetation due to areNeighborsHomogeneous
                 newBlockType: Config.BLOCK_AIR,
                 finalBlockData: null
             });
         }
-
         return proposedTreeChanges;
     }
-
-    return null; // Failed the random chance check.
+    return null; // failed random chance check
 }
 
 export function applyAging(portalRef) {
@@ -134,7 +127,7 @@ export function applyAging(portalRef) {
         return { visualChanges: [] };
     }
     let proposedChanges = [];
-    // PASS 1: Collect all proposed changes without modifying the grid
+    // PASS 1: collect all proposed changes without modifying the grid
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             if (portalRef) {
@@ -162,7 +155,8 @@ export function applyAging(portalRef) {
                         continue;
                     }
                 } else if (originalType === Config.BLOCK_VEGETATION) {
-                    const treeChanges = checkForTreeFormation(c, r);
+                    // pass current proposedChanges array to check function
+                    const treeChanges = checkForTreeFormation(c, r, proposedChanges);
                     if (treeChanges) {
                         proposedChanges.push(...treeChanges);
                         continue;
@@ -170,8 +164,7 @@ export function applyAging(portalRef) {
                 } else {
                     continue;
                 }
-            } else {
-                // "border block", proceed with deeper analysis
+            } else { // "border block", proceed with deeper analysis
                 const blockRules = Config.AGING_RULES[originalType];
                 if (blockRules) {
                     for (const targetTypeStr in blockRules) {
@@ -213,7 +206,7 @@ export function applyAging(portalRef) {
                             if (Math.random() < finalProbability) {
                                 // decay rule for unlit vegetation
                                 if (originalType === Config.BLOCK_VEGETATION && targetType === Config.BLOCK_AIR && !blockIsLit) {
-                                    // It's unlit vegetation decay. Apply the 90/10 rule.
+                                    // unlit vegetation decay, apply 90/10 rule
                                     if (Math.random() < 0.10) { // 10% chance to become DIRT
                                         newType = Config.BLOCK_DIRT;
                                     } else { // 90% chance to become AIR
@@ -240,13 +233,12 @@ export function applyAging(portalRef) {
             }
         }
     }
-    // PASS 2: Apply all collected changes to the grid
+    // PASS 2: apply all collected changes to grid
     const appliedChanges = [];
     proposedChanges.forEach(change => {
         const { c, r, newBlockType, oldBlockType } = change;
         const blockBeforeChange = World.getBlock(c, r);
         const originalIsPlayerPlaced = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? (blockBeforeChange.isPlayerPlaced ?? false) : false;
-
         if (World.setBlock(c, r, newBlockType, originalIsPlayerPlaced)) {
             appliedChanges.push({
                 c, r,

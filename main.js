@@ -83,14 +83,12 @@ async function performBackgroundWorldGeneration() {
             DebugLogger.time("executeInitialWorldGenerationSequence");
             WorldManager.executeInitialWorldGenerationSequence(); // This applies its own lighting pass initially
             DebugLogger.timeEnd("executeInitialWorldGenerationSequence");
-
             const initialAgingPasses = Config.AGING_INITIAL_PASSES ?? 1;
             for (let i = 0; i < initialAgingPasses; i++) {
                 DebugLogger.log(`[Main] Initial Aging Pass ${i + 1}/${initialAgingPasses}`);
                 // 1. Calculate lighting changes for this pass
                 World.resetAllBlockLighting(); // Reset lighting for this aging pass
                 const proposedLightingChangesThisPass = WorldManager.applyLightingPass(false); // false to skip debug drawing
-
                 // 2. Apply these lighting changes directly to the world data
                 if (proposedLightingChangesThisPass.length > 0) {
                     proposedLightingChangesThisPass.forEach(change => {
@@ -100,13 +98,14 @@ async function performBackgroundWorldGeneration() {
                         }
                     });
                 }
-
                 // 3. Apply aging using the now updated lighting state
                 AgingManager.applyAging(null);
             }
-
+            // --- Apply a final gravity settlement pass after all aging ---
+            DebugLogger.log("[Main] Applying final gravity settlement after all initial aging...");
+            WorldManager.applyGravitySettlement(null);
             DebugLogger.log("[Main] Applying final lighting pass after all initial aging...");
-            World.resetAllBlockLighting(); // Reset before the final, thorough pass
+            World.resetAllBlockLighting(); // reset before final, thorough pass
             const finalLightingChanges = WorldManager.applyLightingPass(false, 1); // false to skip debug, 1 for full scan
             if (finalLightingChanges.length > 0) {
                 finalLightingChanges.forEach(change => {
@@ -120,7 +119,7 @@ async function performBackgroundWorldGeneration() {
 
             if (!Renderer.getGridCanvas()) Renderer.createGridCanvas();
             WorldManager.renderStaticWorldToGridCanvas();
-            WorldManager.seedWaterUpdateQueue(); // This seeds water, waterPropagationTimer reset by WaveManager on warp
+            WorldManager.seedWaterUpdateQueue(); // seeds water, waterPropagationTimer reset by WaveManager on warp
             isWorldGenerated = true;
         } catch (error) {
             console.error("[Main] FATAL error during background world generation:", error);
