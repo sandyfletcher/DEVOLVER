@@ -66,13 +66,22 @@ function checkForTreeFormation(c, r) {
             }
         }
     }
+    // check for DIRT below
+    const blockBelowType = World.getBlockType(c, r + 1);
+    const canRootInDirt = (blockBelowType === Config.BLOCK_DIRT);
     // "Soil" and "Luck" checks
-    if (GridCollision.isSolid(c, r + 2) && Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
+    if (canRootInDirt && Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
         const proposedTreeChanges = [];
+        // tree pattern
         const pattern = [
-            { dr: -1, dc: -1, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 1, type: Config.BLOCK_VEGETATION },
-            { dr: 0, dc: -1, type: Config.BLOCK_AIR }, { dr: 0, dc: 0, type: Config.BLOCK_WOOD }, { dr: 0, dc: 1, type: Config.BLOCK_AIR },
-            { dr: 1, dc: -1, type: Config.BLOCK_AIR }, { dr: 1, dc: 0, type: Config.BLOCK_WOOD }, { dr: 1, dc: 1, type: Config.BLOCK_AIR },
+            // Canopy
+            { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION },
+            // Trunk and clearing
+            { dr: 0, dc: -1, type: Config.BLOCK_AIR },
+            { dr: 0, dc: 0, type: Config.BLOCK_WOOD },
+            { dr: 0, dc: 1, type: Config.BLOCK_AIR },
+            // Base of trunk, consuming the dirt below
+            { dr: 1, dc: 0, type: Config.BLOCK_WOOD },
         ];
         for (const cell of pattern) {
             const targetC = c + cell.dc;
@@ -175,7 +184,18 @@ export function applyAging(portalRef) {
                             let finalProbability = rule.baseProbability || 0;
                             finalProbability += calculateInfluenceScore(c, r, rule);
                             if (Math.random() < finalProbability) {
-                                newType = targetType;
+                                // decay rule for unlit vegetation
+                                if (originalType === Config.BLOCK_VEGETATION && targetType === Config.BLOCK_AIR && !blockIsLit) {
+                                    // It's unlit vegetation decay. Apply the 90/10 rule.
+                                    if (Math.random() < 0.10) { // 10% chance to become DIRT
+                                        newType = Config.BLOCK_DIRT;
+                                    } else { // 90% chance to become AIR
+                                        newType = Config.BLOCK_AIR;
+                                    }
+                                } else {
+                                    // for all other rules, apply target type normally
+                                    newType = targetType;
+                                }
                                 changeOccurred = true;
                                 break;
                             }
