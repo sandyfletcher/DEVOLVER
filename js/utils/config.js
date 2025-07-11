@@ -39,11 +39,11 @@ export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
 
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
 export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2;
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // [/] when HP <= 70%
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // [X] when HP <= 30%
-export const GHOST_BLOCK_ALPHA = 0.5; // placement preview transparency
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7;     // / <= 70% 
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;         // X <= 30%
+export const GHOST_BLOCK_ALPHA = 0.5;                // placement preview transparency
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
-export const PLAYER_BLOCK_OUTLINE_THICKNESS = 3; // in pixels
+export const PLAYER_BLOCK_OUTLINE_THICKNESS = 3;     // in pixels
 export const VEGETATION_PIXEL_DENSITY = 0.6;
 
 export const BLOCK_AIR = 0;
