@@ -23,28 +23,22 @@ function areNeighborsHomogeneous(c, r, originalType) {
     }
     return true;
 }
-
 // Helper to calculate the influence score from surrounding blocks
 function calculateInfluenceScore(c, r, transformationRule) {
     let totalInfluence = 0;
     const influences = transformationRule.influences;
     if (!influences) return 0;
-
     const ringWeights = transformationRule.ringWeights || Config.AGING_DEFAULT_RING_WEIGHTS;
-    
     // Check rings 3, 5, 7
     for (let ringSize = 3; ringSize <= 7; ringSize += 2) {
         const ringWeight = ringWeights[ringSize] || 0;
         if (ringWeight === 0) continue;
-
         const radius = Math.floor(ringSize / 2);
         for (let dr = -radius; dr <= radius; dr++) {
             for (let dc = -radius; dc <= radius; dc++) {
                 if (dr === 0 && dc === 0) continue; // Skip the center block
-
                 // Skip inner rings that have already been processed
                 if (Math.abs(dr) < radius && Math.abs(dc) < radius) continue;
-                
                 const neighborType = World.getBlockType(c + dc, r + dr);
                 if (neighborType !== null && influences[neighborType]) {
                     totalInfluence += influences[neighborType] * ringWeight;
@@ -54,7 +48,6 @@ function calculateInfluenceScore(c, r, transformationRule) {
     }
     return totalInfluence;
 }
-
 // Helper to check for tree formation (special pattern rule)
 function checkForTreeFormation(c, r, changedCellsArray) {
     const neighborTypes = {};
@@ -67,9 +60,7 @@ function checkForTreeFormation(c, r, changedCellsArray) {
     for (const offset of neighborOffsets) {
         neighborTypes[offset.key] = World.getBlockType(c + offset.dc, r + offset.dr);
     }
-    
     const allEightNeighborsAreVeg = Object.values(neighborTypes).every(type => type === Config.BLOCK_VEGETATION);
-
     if (allEightNeighborsAreVeg) {
         if (GridCollision.isSolid(c, r + 2) && Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
             // Further checks for spacing can be added here if needed
@@ -99,16 +90,13 @@ function checkForTreeFormation(c, r, changedCellsArray) {
     }
     return false; // No tree formed
 }
-
 export function applyAging(portalRef) {
     const grid = World.getGrid();
     if (!grid || grid.length === 0 || grid[0].length === 0) {
         return { visualChanges: [], gravityChanges: [] };
     }
-
     let changedCellsAndTypes = [];
     allGravityChangesFromAgingThisPass = [];
-
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
             if (portalRef) {
@@ -121,20 +109,15 @@ export function applyAging(portalRef) {
                     continue;
                 }
             }
-
             const blockBeforeChange = World.getBlock(c, r);
             if (blockBeforeChange === null) continue;
-            
             const originalType = (typeof blockBeforeChange === 'object') ? blockBeforeChange.type : blockBeforeChange;
             if (originalType === Config.BLOCK_AIR || originalType === Config.BLOCK_WATER) continue;
-
             // --- PHASE 1: Influence-Based Material Weathering ---
             let newType = originalType;
             let changeOccurred = false;
-
-            // Optimization: Early exit if block is not on a border
             if (areNeighborsHomogeneous(c, r, originalType)) {
-                // We could still apply a tiny chance of spontaneous change here if desired
+                // Early exit for performance
             } else {
                 // This is a "border block", proceed with deeper analysis
                 const blockRules = Config.AGING_RULES[originalType];
@@ -142,28 +125,23 @@ export function applyAging(portalRef) {
                     for (const targetTypeStr in blockRules) {
                         const targetType = parseInt(targetTypeStr, 10);
                         const rule = blockRules[targetType];
-                        let finalProbability = rule.baseProbability || 0;
-
-                        // Handle special hardcoded conditions (like light)
                         const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
                         if (originalType === Config.BLOCK_DIRT && targetType === Config.BLOCK_VEGETATION && !blockIsLit) {
-                             continue; // Skip this rule if dirt is not lit
+                            continue; // Don't process vegetation growth rule for unlit dirt
                         }
                         if (originalType === Config.BLOCK_VEGETATION && targetType === Config.BLOCK_AIR && blockIsLit) {
-                             continue; // Skip decay rule if vegetation is lit
+                            continue; // Don't process decay rule for lit vegetation
                         }
-                        
+                        let finalProbability = rule.baseProbability || 0;
                         finalProbability += calculateInfluenceScore(c, r, rule);
-
                         if (Math.random() < finalProbability) {
                             newType = targetType;
                             changeOccurred = true;
-                            break; // A change was decided, no need to check other transformations
+                            break;
                         }
                     }
                 }
             }
-
             // --- PHASE 2: Special Pattern-Based Formations ---
             let specialRuleTriggered = false;
             if (!changeOccurred) {
@@ -172,13 +150,10 @@ export function applyAging(portalRef) {
                          specialRuleTriggered = true;
                     }
                 }
-                // Other special pattern rules could go here
             }
-
             if (specialRuleTriggered) {
-                continue; // Skip to next block in the main loop
+                continue;
             }
-
             // --- PHASE 3: Apply the Single-Block Change ---
             if (changeOccurred) {
                 const originalIsPlayerPlaced = (typeof blockBeforeChange === 'object') ? (blockBeforeChange.isPlayerPlaced ?? false) : false;
@@ -193,7 +168,6 @@ export function applyAging(portalRef) {
             }
         }
     }
-
     return {
         visualChanges: changedCellsAndTypes,
         gravityChanges: allGravityChangesFromAgingThisPass
