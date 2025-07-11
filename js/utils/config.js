@@ -230,8 +230,8 @@ export const MATERIAL_TO_BLOCK_TYPE = {
     'sand': BLOCK_SAND,
     'metal': BLOCK_METAL,
     'bone': BLOCK_BONE,
-    'vegetation': BLOCK_VEGETATION, // placing vegetation could result in either block or rope
-    'rock': BLOCK_ROCK, // NEW
+    'vegetation': BLOCK_VEGETATION, // vegetation could be block or rope
+    'rock': BLOCK_ROCK,
 };
 
 // --- Landmass Generation ---
