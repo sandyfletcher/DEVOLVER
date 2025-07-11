@@ -58,6 +58,7 @@ function checkForTreeFormation(c, r) {
     for (const offset of neighborOffsets) {
         neighborTypes[offset.key] = World.getBlockType(c + offset.dc, r + offset.dr);
     }
+    // This function is now only called for homogeneous vegetation, so this check is technically redundant but harmless.
     const allEightNeighborsAreVeg = Object.values(neighborTypes).every(type => type === Config.BLOCK_VEGETATION);
     if (allEightNeighborsAreVeg) {
         if (GridCollision.isSolid(c, r + 2) && Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
@@ -77,7 +78,7 @@ function checkForTreeFormation(c, r) {
                         r: targetR,
                         oldBlockType: oldBlockAtTargetType,
                         newBlockType: cell.type,
-                        finalBlockData: null 
+                        finalBlockData: null
                     });
                 }
             }
@@ -110,14 +111,16 @@ export function applyAging(portalRef) {
             if (blockBeforeChange === null) continue;
             const originalType = (typeof blockBeforeChange === 'object') ? blockBeforeChange.type : blockBeforeChange;
             if (originalType === Config.BLOCK_AIR || originalType === Config.BLOCK_WATER) continue;
-            let newType = originalType; 
+            let newType = originalType;
             let changeOccurred = false;
 
             if (areNeighborsHomogeneous(c, r, originalType)) {
                 // This block is surrounded by blocks of the same type.
-                // We can check for special "pressure" transformations here.
                 // Diamond Formation Rule
+                // We can check for special "pressure" or "pattern" transformations here.
+
                 if (originalType === Config.BLOCK_STONE) {
+                    // Diamond Formation Rule
                     if (Math.random() < Config.AGING_PROB_DIAMOND_FORMATION) {
                         newType = Config.BLOCK_DIAMOND;
                         changeOccurred = true;
@@ -126,8 +129,16 @@ export function applyAging(portalRef) {
                         // No diamond formed, so we can safely skip the rest of the logic for this block.
                         continue;
                     }
+                } else if (originalType === Config.BLOCK_VEGETATION) {
+                    // Tree Formation Rule - MOVED HERE
+                    const treeChanges = checkForTreeFormation(c, r);
+                    if (treeChanges) {
+                        // Directly add the multi-block change and skip to the next grid cell
+                        proposedChanges.push(...treeChanges);
+                        continue;
+                    }
                 } else {
-                    // It's a homogeneous block, but not stone (or not eligible for other pressure rules).
+                    // It's a homogeneous block, but not stone or vegetation.
                     // Nothing to do, so we skip the expensive influence checks.
                     continue;
                 }
@@ -155,21 +166,11 @@ export function applyAging(portalRef) {
                     }
                 }
             }
-            // --- 2: Special Pattern-Based Formations ---
-            let specialRuleTriggered = false;
-            if (!changeOccurred) {
-                if (originalType === Config.BLOCK_VEGETATION) {
-                    const treeChanges = checkForTreeFormation(c, r);
-                    if (treeChanges) {
-                         proposedChanges.push(...treeChanges);
-                         specialRuleTriggered = true;
-                    }
-                }
-            }
-            if (specialRuleTriggered) {
-                continue;
-            }
-            // --- 3: Apply the Single-Block Change ---
+
+            // --- Special Pattern-Based Formations are now handled above ---
+            // The old block of code that was here has been removed.
+
+            // --- Apply the Single-Block Change ---
             if (changeOccurred) {
                 proposedChanges.push({
                     c, r,
@@ -180,7 +181,7 @@ export function applyAging(portalRef) {
             }
         }
     }
-    
+
     // PASS 2: Apply all collected changes to the grid
     const appliedChanges = [];
     proposedChanges.forEach(change => {

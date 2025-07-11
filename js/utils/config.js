@@ -229,7 +229,6 @@ export const BLOCK_PROPERTIES = {
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' }, // dropped item looks like vegetation
         isPlayerPlaceableAsMaterial: false, // uses vegetation to place
     },
-    // NEW GRAVEL BLOCK
     [BLOCK_GRAVEL]: {
         name: 'GRAVEL',
         hp: 80,
@@ -323,8 +322,8 @@ export const TREE_MAX_CANOPY_RADIUS = 4; // max radius canopy can reach
 export const AGING_INITIAL_PASSES = 10; // aging passes on initial world generation
 export const AGING_DEFAULT_RING_WEIGHTS = {
     3: 1.0,  // 3x3 ring (immediate neighbours)
-    5: 0.3,  // 5x5 ring
-    7: 0.1   // 7x7 ring
+    5: 0.3,  // 5x5
+    7: 0.1   // 7x7
 };
 export const AGING_RULES = {
     // STONE -> ROCK
@@ -338,7 +337,7 @@ export const AGING_RULES = {
             }
         }
     },
-    // ROCK -> GRAVEL or DIRT
+    // ROCK -> GRAVEL
     [BLOCK_ROCK]: {
         [BLOCK_GRAVEL]: {
             baseProbability: 0.0003,
@@ -346,13 +345,6 @@ export const AGING_RULES = {
                 [BLOCK_WATER]: 0.10, // Water is very effective at breaking rock to gravel
                 [BLOCK_AIR]:   0.05,
                 [BLOCK_SAND]:  0.02,
-            }
-        },
-        [BLOCK_DIRT]: {
-            baseProbability: 0.0001,
-            influences: {
-                [BLOCK_VEGETATION]: 0.08, // Roots break down rock to dirt
-                [BLOCK_WATER]: 0.02,
             }
         }
     },
@@ -382,11 +374,22 @@ export const AGING_RULES = {
         }
     },
     [BLOCK_VEGETATION]: {
+        // decay into Air
         [BLOCK_AIR]: { // Decay
             baseProbability: 0.005,
             // 'isUnlit' will be a special condition
             influences: {
                 [BLOCK_WATER]: 0.05, // Water-logged vegetation dies
+            }
+        },
+        // grow into adjacent Air
+        [BLOCK_VEGETATION]: { // The key is the NEW block type
+            target: Config.BLOCK_AIR, // Special key: what block type this rule applies TO
+            baseProbability: 0.02, // 2% base chance to try and spread
+            // 'isLit' will be a special condition
+            influences: {
+                [BLOCK_DIRT]: 0.10, // Higher chance to grow if near dirt
+                [BLOCK_WOOD]: 0.05, // Lower chance if near wood (part of a tree)
             }
         }
     }
