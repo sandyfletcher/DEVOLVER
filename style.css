@@ -256,19 +256,31 @@ body {
 .item-box.material-half-box {
     position: relative;
 }
-.item-box.material-half-box::before {
+/* MODIFIED: New system using ::before and ::after for slash and fill */
+.item-box.material-half-box::before,
+.item-box.material-half-box::after {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: linear-gradient(to bottom left, transparent 48.5%, rgba(255, 255, 255, 0.2) 48.5%, rgba(255, 255, 255, 0.2) 51.5%, transparent 51.5%);
-    display: none;
-    z-index: 2;
     pointer-events: none;
+    z-index: 2;
 }
-.item-box.material-half-box.half-collected::before {
+/* The always-visible, dark slash line */
+.item-box.material-half-box::before {
+    background: linear-gradient(to bottom right, transparent 48.5%, rgba(0, 0, 0, 0.4) 48.5%, rgba(0, 0, 0, 0.4) 51.5%, transparent 51.5%);
+    display: block;
+}
+/* The illuminated half, hidden by default */
+.item-box.material-half-box::after {
+    background-color: rgba(255, 255, 255, 0.25);
+    clip-path: polygon(100% 0, 0 0, 0 100%); /* Top-left triangle for a / slash */
+    display: none;
+}
+/* Show the illuminated half when the class is present */
+.item-box.material-half-box.half-collected::after {
     display: block;
 }
 .item-box .item-count,
