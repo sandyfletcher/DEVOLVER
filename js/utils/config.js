@@ -385,7 +385,7 @@ export const AGING_RULES = {
         },
         [BLOCK_VEGETATION]: { // grow into adjacent Air
             target: BLOCK_AIR, // Special key: what block type this rule applies TO
-            baseProbability: 0.20, // 2% base chance to try and spread
+            baseProbability: 0.2, // 20% base chance to try and spread
             // 'isLit' will be a special condition
             influences: {
                 [BLOCK_DIRT]: 0.10, // Higher chance to grow if near dirt
