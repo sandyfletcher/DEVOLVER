@@ -370,14 +370,14 @@ export const AGING_RULES = {
         [BLOCK_VEGETATION]: {
             baseProbability: 0.0, // Only grows if lit — 'isLit' will be a special condition checked in the aging manager
             influences: {
-                [BLOCK_AIR]: 0.10, // Must be exposed to air to grow
+                [BLOCK_AIR]: 0.02, // Must be exposed to air to grow
             }
         }
     },
     // VEG -> decay / grow
     [BLOCK_VEGETATION]: {
         [BLOCK_AIR]: { // Decay
-            baseProbability: 0.005,
+            baseProbability: 0.05,
             // 'isUnlit' will be a special condition
             influences: {
                 [BLOCK_WATER]: 0.05, // Water-logged vegetation dies
@@ -385,7 +385,7 @@ export const AGING_RULES = {
         },
         [BLOCK_VEGETATION]: { // grow into adjacent Air
             target: BLOCK_AIR, // Special key: what block type this rule applies TO
-            baseProbability: 0.02, // 2% base chance to try and spread
+            baseProbability: 0.20, // 2% base chance to try and spread
             // 'isLit' will be a special condition
             influences: {
                 [BLOCK_DIRT]: 0.10, // Higher chance to grow if near dirt
