@@ -56,6 +56,7 @@ export const BLOCK_WOOD = 6;
 export const BLOCK_METAL = 7;
 export const BLOCK_BONE = 8;
 export const BLOCK_ROPE = 9;
+export const BLOCK_ROCK = 10;
 
 export const BLOCK_PROPERTIES = {
     [BLOCK_AIR]: {
@@ -142,6 +143,20 @@ export const BLOCK_PROPERTIES = {
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(140, 140, 140)' },
         isPlayerPlaceableAsMaterial: true,
     },
+    [BLOCK_ROCK]: {
+        name: 'ROCK',
+        hp: 150,
+        color: 'rgb(155, 145, 135)',
+        translucency: 0.0,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'rock',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(155, 145, 135)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
     [BLOCK_WOOD]: {
         name: 'WOOD',
         hp: 100,
@@ -207,7 +222,7 @@ export const AGING_MATERIAL_CONVERSION_FACTORS = {
     [BLOCK_WOOD]: 1.0,
     [BLOCK_METAL]: 1.0,
 };
-export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'wood', 'bone', 'metal', 'arrows'];
+export const INVENTORY_MATERIALS = [ 'dirt', 'vegetation', 'sand', 'stone', 'rock', 'wood', 'bone', 'metal', 'arrows'];
 export const MATERIAL_TO_BLOCK_TYPE = {
     'dirt': BLOCK_DIRT,
     'stone': BLOCK_STONE,
@@ -216,6 +231,7 @@ export const MATERIAL_TO_BLOCK_TYPE = {
     'metal': BLOCK_METAL,
     'bone': BLOCK_BONE,
     'vegetation': BLOCK_VEGETATION, // placing vegetation could result in either block or rope
+    'rock': BLOCK_ROCK, // NEW
 };
 
 // --- Landmass Generation ---
@@ -272,27 +288,81 @@ export const TREE_INITIAL_CANOPY_RADIUS = 2; // block radius of initial canopy v
 export const TREE_MAX_CANOPY_RADIUS = 4; // max radius canopy can reach
 
 // --- Aging Rules ---
-
-export const AGING_STONEIFICATION_DEPTH_THRESHOLD = Math.floor(GRID_ROWS * 0.45) * BLOCK_HEIGHT; // threshold for stoneification
-export const AGING_WATER_DEPTH_INFLUENCE_MAX_DEPTH = 4; // max contiguous water blocks influencing probabilities
 export const AGING_INITIAL_PASSES = 10; // aging passes on initial world generation
-export const AGING_PROB_WATER_EROSION_SAND = 0.0001; // probability per eligible block per pass
-export const AGING_PROB_AIR_EROSION_SAND = 0.0001;
-export const AGING_PROB_WATER_EROSION_DIRT_VEGETATION = 0.9;
-export const AGING_PROB_STONEIFICATION_DEEP = 0.000001;
-export const AGING_PROB_HORIZONTAL_SAND_SPREAD = 0.85;
-export const AGING_PROB_EROSION_SURFACE_STONE = 0.00001;
-export const AGING_PROB_SEDIMENTATION_UNDERWATER_AIR_WATER = 0.9;
-export const AGING_PROB_SAND_SEDIMENTATION_BELOW = 0.9;
-export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_DIRT = 0.60;
-export const AGING_PROB_AIR_GROWS_VEGETATION_ON_LIT_VEGETATION = 0.50;
-export const AGING_PROB_UNLIT_VEGETATION_DECAY = 0.9;
+export const AGING_DEFAULT_RING_WEIGHTS = { // NEW
+    3: 1.0,  // 3x3 ring (immediate neighbors)
+    5: 0.3,  // 5x5 ring
+    7: 0.1   // 7x7 ring
+};
+export const AGING_RULES = { // NEW
+    [BLOCK_STONE]: {
+        [BLOCK_ROCK]: {
+            baseProbability: 0.0001,
+            influences: {
+                [BLOCK_DIRT]:  0.08,
+                [BLOCK_WATER]: 0.04,
+                [BLOCK_AIR]:   0.02,
+                [BLOCK_SAND]:  0.01,
+            }
+        },
+        [BLOCK_SAND]: {
+             baseProbability: 0.0001,
+             influences: {
+                 [BLOCK_WATER]: 0.10,
+                 [BLOCK_SAND]:  0.05,
+                 [BLOCK_AIR]:   0.01,
+             }
+        }
+    },
+    [BLOCK_ROCK]: {
+        [BLOCK_DIRT]: {
+            baseProbability: 0.0005,
+            influences: {
+                [BLOCK_WATER]: 0.12,
+                [BLOCK_AIR]:   0.06,
+                [BLOCK_VEGETATION]: 0.04,
+            }
+        },
+        [BLOCK_SAND]: {
+             baseProbability: 0.0002,
+             influences: {
+                 [BLOCK_WATER]: 0.15,
+                 [BLOCK_SAND]:  0.07,
+                 [BLOCK_AIR]:   0.02,
+             }
+        }
+    },
+    [BLOCK_DIRT]: {
+        [BLOCK_SAND]: {
+            baseProbability: 0.001,
+            influences: {
+                [BLOCK_WATER]: 0.20,
+            }
+        },
+        [BLOCK_VEGETATION]: {
+            baseProbability: 0.0, // Only grows if lit
+            // 'isLit' will be a special condition checked in the aging manager
+            influences: {
+                [BLOCK_AIR]: 0.10, // Must be exposed to air to grow
+            }
+        }
+    },
+    [BLOCK_VEGETATION]: {
+        [BLOCK_AIR]: { // Decay
+            baseProbability: 0.005,
+            // 'isUnlit' will be a special condition
+            influences: {
+                [BLOCK_WATER]: 0.05, // Water-logged vegetation dies
+            }
+        }
+    }
+};
+
 export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // chance for vegetation chunk to become tree
 export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.3;
 export const AGING_PROB_TREE_CANOPY_GROW = 0.1;
 export const AGING_PROB_TREE_CANOPY_DECAY = 0.01;
 export const AGING_PROB_TREE_TRUNK_DECAY = 0.001;
-
 // --- Animation Constants ---
 
 export const MAX_FALLING_BLOCKS_AT_ONCE = 50;
