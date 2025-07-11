@@ -35,8 +35,7 @@ function calculateInfluenceScore(c, r, transformationRule) {
         for (let dr = -radius; dr <= radius; dr++) {
             for (let dc = -radius; dc <= radius; dc++) {
                 if (dr === 0 && dc === 0) continue; // skip center block
-                // skip inner rings already processed
-                if (Math.abs(dr) < radius && Math.abs(dc) < radius) continue;
+                if (Math.abs(dr) < radius && Math.abs(dc) < radius) continue; // skip inner rings already processed
                 const neighborType = World.getBlockType(c + dc, r + dr);
                 if (neighborType !== null && influences[neighborType]) {
                     totalInfluence += influences[neighborType] * ringWeight;
@@ -48,41 +47,48 @@ function calculateInfluenceScore(c, r, transformationRule) {
 }
 // check special tree formation rule
 function checkForTreeFormation(c, r) {
-    const neighborTypes = {};
-    const neighborOffsets = [
-        { key: 'above', dc: 0, dr: -1 }, { key: 'below', dc: 0, dr: 1 },
-        { key: 'left', dc: -1, dr: 0 }, { key: 'right', dc: 1, dr: 0 },
-        { key: 'aboveLeft', dc: -1, dr: -1 }, { key: 'aboveRight', dc: 1, dr: -1 },
-        { key: 'belowLeft', dc: -1, dr: 1 }, { key: 'belowRight', dc: 1, dr: 1 }
-    ];
-    for (const offset of neighborOffsets) {
-        neighborTypes[offset.key] = World.getBlockType(c + offset.dc, r + offset.dr);
-    }
-    const allEightNeighborsAreVeg = Object.values(neighborTypes).every(type => type === Config.BLOCK_VEGETATION);
-    if (allEightNeighborsAreVeg) {
-        if (GridCollision.isSolid(c, r + 2) && Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
-            const proposedTreeChanges = [];
-            const pattern = [
-                { dr: -1, dc: -1, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 1, type: Config.BLOCK_VEGETATION },
-                { dr: 0, dc: -1, type: Config.BLOCK_AIR }, { dr: 0, dc: 0, type: Config.BLOCK_WOOD }, { dr: 0, dc: 1, type: Config.BLOCK_AIR },
-                { dr: 1, dc: -1, type: Config.BLOCK_AIR }, { dr: 1, dc: 0, type: Config.BLOCK_WOOD }, { dr: 1, dc: 1, type: Config.BLOCK_AIR },
-            ];
-            for (const cell of pattern) {
-                const targetC = c + cell.dc;
-                const targetR = r + cell.dr;
-                if (targetR >= 0 && targetR < Config.GRID_ROWS && targetC >= 0 && targetC < Config.GRID_COLS) {
-                    const oldBlockAtTargetType = World.getBlockType(targetC, targetR);
-                    proposedTreeChanges.push({
-                        c: targetC,
-                        r: targetR,
-                        oldBlockType: oldBlockAtTargetType,
-                        newBlockType: cell.type,
-                        finalBlockData: null
-                    });
+    // Tree Spacing Check
+    const radius = Config.MIN_TREE_SPACING_RADIUS;
+    for (let dr = -radius; dr <= radius; dr++) {
+        for (let dc = -radius; dc <= radius; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const checkC = c + dc;
+            const checkR = r + dr;
+            if (checkR >= 0 && checkR < Config.GRID_ROWS && checkC >= 0 && checkC < Config.GRID_COLS) {
+                // Get full block data to check isPlayerPlaced
+                const block = World.getBlock(checkC, checkR);
+                if (typeof block === 'object' && block !== null) {
+                    // Check if the block is NATURALLY occurring wood.
+                    if (block.type === Config.BLOCK_WOOD && !block.isPlayerPlaced) {
+                        return null; // Found a natural tree nearby, stop.
+                    }
                 }
             }
-            return proposedTreeChanges;
         }
+    }
+    // "Soil" and "Luck" checks
+    if (GridCollision.isSolid(c, r + 2) && Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
+        const proposedTreeChanges = [];
+        const pattern = [
+            { dr: -1, dc: -1, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 0, type: Config.BLOCK_VEGETATION }, { dr: -1, dc: 1, type: Config.BLOCK_VEGETATION },
+            { dr: 0, dc: -1, type: Config.BLOCK_AIR }, { dr: 0, dc: 0, type: Config.BLOCK_WOOD }, { dr: 0, dc: 1, type: Config.BLOCK_AIR },
+            { dr: 1, dc: -1, type: Config.BLOCK_AIR }, { dr: 1, dc: 0, type: Config.BLOCK_WOOD }, { dr: 1, dc: 1, type: Config.BLOCK_AIR },
+        ];
+        for (const cell of pattern) {
+            const targetC = c + cell.dc;
+            const targetR = r + cell.dr;
+            if (targetR >= 0 && targetR < Config.GRID_ROWS && targetC >= 0 && targetC < Config.GRID_COLS) {
+                const oldBlockAtTargetType = World.getBlockType(targetC, targetR);
+                proposedTreeChanges.push({
+                    c: targetC,
+                    r: targetR,
+                    oldBlockType: oldBlockAtTargetType,
+                    newBlockType: cell.type,
+                    finalBlockData: null
+                });
+            }
+        }
+        return proposedTreeChanges;
     }
     return null;
 }
@@ -135,44 +141,36 @@ export function applyAging(portalRef) {
                     for (const targetTypeStr in blockRules) {
                         const targetType = parseInt(targetTypeStr, 10);
                         const rule = blockRules[targetType];
-                        // for outbound "growth" rules 
                         if (rule.target !== undefined) {
-                            // This rule is about changing a NEIGHBOR, not the current block.
                             const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
                             if (originalType === Config.BLOCK_VEGETATION && !blockIsLit) {
-                                continue; // Don't process growth rule for unlit vegetation
+                                continue;
                             }
-                            // Check immediate neighbors for a valid target
                             const neighbors = [{dc:0,dr:-1}, {dc:0,dr:1}, {dc:-1,dr:0}, {dc:1,dr:0}];
                             for (const offset of neighbors) {
                                 const nc = c + offset.dc;
                                 const nr = r + offset.dr;
                                 if (World.getBlockType(nc, nr) === rule.target) {
-                                    // Found a valid neighbor to potentially grow into.
                                     let finalProbability = rule.baseProbability || 0;
-                                    // Influence is calculated based on the original block's surroundings
                                     finalProbability += calculateInfluenceScore(c, r, rule);
                                     if (Math.random() < finalProbability) {
                                         proposedChanges.push({
                                             c: nc, r: nr,
-                                            oldBlockType: rule.target, // The old type was Air
-                                            newBlockType: targetType, // The new type is Vegetation
+                                            oldBlockType: rule.target,
+                                            newBlockType: targetType,
                                             finalBlockData: null
                                         });
-                                        // We break after finding one growth to prevent one block
-                                        // from spawning multiple new blocks in a single pass.
                                         break;
                                     }
                                 }
                             }
                         } else {
-                            // logic for self-transformation rules
                             const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
                             if (originalType === Config.BLOCK_DIRT && targetType === Config.BLOCK_VEGETATION && !blockIsLit) {
-                                continue; // Don't process vegetation growth rule for unlit dirt
+                                continue;
                             }
                             if (originalType === Config.BLOCK_VEGETATION && targetType === Config.BLOCK_AIR && blockIsLit) {
-                                continue; // Don't process decay rule for lit vegetation
+                                continue;
                             }
                             let finalProbability = rule.baseProbability || 0;
                             finalProbability += calculateInfluenceScore(c, r, rule);
@@ -199,19 +197,18 @@ export function applyAging(portalRef) {
     const appliedChanges = [];
     proposedChanges.forEach(change => {
         const { c, r, newBlockType, oldBlockType } = change;
-        const blockBeforeChange = World.getBlock(c, r); // Get original block for its properties
+        const blockBeforeChange = World.getBlock(c, r);
         const originalIsPlayerPlaced = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? (blockBeforeChange.isPlayerPlaced ?? false) : false;
-        // Apply the change to the world grid.
+
         if (World.setBlock(c, r, newBlockType, originalIsPlayerPlaced)) {
             appliedChanges.push({
                 c, r,
                 oldBlockType: oldBlockType,
                 newBlockType: newBlockType,
-                finalBlockData: World.getBlock(c, r) // Now we have the final data
+                finalBlockData: World.getBlock(c, r)
             });
         }
     });
-
     return {
         visualChanges: appliedChanges
     };
