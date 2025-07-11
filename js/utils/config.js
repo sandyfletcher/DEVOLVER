@@ -39,26 +39,26 @@ export const CANVAS_HEIGHT = GRID_ROWS * BLOCK_HEIGHT;
 
 export const BLOCK_DAMAGE_INDICATOR_COLOR = 'rgba(0, 0, 0, 0.9)';
 export const BLOCK_DAMAGE_INDICATOR_LINE_WIDTH = 2;
-export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7;     // / <= 70% 
-export const BLOCK_DAMAGE_THRESHOLD_X = 0.3;         // X <= 30%
-export const GHOST_BLOCK_ALPHA = 0.5;                // placement preview transparency
+export const BLOCK_DAMAGE_THRESHOLD_SLASH = 0.7; // / <= 70% 
+export const BLOCK_DAMAGE_THRESHOLD_X = 0.3; // X <= 30%
+export const GHOST_BLOCK_ALPHA = 0.5; // placement preview transparency
 export const PLAYER_BLOCK_OUTLINE_COLOR = 'rgba(255, 255, 255, 0.8)';
-export const PLAYER_BLOCK_OUTLINE_THICKNESS = 3;     // in pixels
+export const PLAYER_BLOCK_OUTLINE_THICKNESS = 3; // in pixels
 export const VEGETATION_PIXEL_DENSITY = 0.6;
 
 export const BLOCK_AIR = 0;
 export const BLOCK_WATER = 1;
 export const BLOCK_SAND = 2;
 export const BLOCK_DIRT = 3;
-export const BLOCK_VEGETATION = 4;
-export const BLOCK_STONE = 5;
-export const BLOCK_WOOD = 6;
-export const BLOCK_METAL = 7;
-export const BLOCK_BONE = 8;
-export const BLOCK_ROPE = 9;
-export const BLOCK_ROCK = 10;
-export const BLOCK_DIAMOND = 11;
-export const BLOCK_GRAVEL = 12; // NEW
+export const BLOCK_GRAVEL = 4;
+export const BLOCK_ROCK = 5;
+export const BLOCK_STONE = 6;
+export const BLOCK_DIAMOND = 7;
+export const BLOCK_VEGETATION = 8;
+export const BLOCK_WOOD = 9;
+export const BLOCK_BONE = 10;
+export const BLOCK_METAL = 11;
+export const BLOCK_ROPE = 12;
 
 export const BLOCK_PROPERTIES = {
     [BLOCK_AIR]: {
@@ -117,18 +117,32 @@ export const BLOCK_PROPERTIES = {
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(130, 82, 45)' },
         isPlayerPlaceableAsMaterial: true,
     },
-    [BLOCK_VEGETATION]: {
-        name: 'VEGETATION',
-        hp: 25,
-        color: 'rgb(80, 180, 80)',
-        translucency: 0.5,
-        isSolidForPhysics: false,
-        isSolidForPlacementSupport: false,
+    [BLOCK_GRAVEL]: {
+        name: 'GRAVEL',
+        hp: 80,
+        color: 'rgb(165, 155, 145)', // A mix of rock and sand colors
+        translucency: 0.1,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
         isRope: false,
-        isVegetation: true,
+        isVegetation: false,
         isWood: false,
-        droppedItemType: 'vegetation',
-        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' },
+        droppedItemType: 'gravel', // This item contributes to 'rock' inventory
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(165, 155, 145)' },
+        isPlayerPlaceableAsMaterial: false, // Not directly placeable
+    },
+    [BLOCK_ROCK]: {
+        name: 'ROCK',
+        hp: 150,
+        color: 'rgb(155, 145, 135)',
+        translucency: 0.0,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'rock',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(155, 145, 135)' },
         isPlayerPlaceableAsMaterial: true,
     },
     [BLOCK_STONE]: {
@@ -145,18 +159,32 @@ export const BLOCK_PROPERTIES = {
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(140, 140, 140)' },
         isPlayerPlaceableAsMaterial: true,
     },
-    [BLOCK_ROCK]: {
-        name: 'ROCK',
-        hp: 150,
-        color: 'rgb(155, 145, 135)',
-        translucency: 0.0,
+    [BLOCK_DIAMOND]: {
+        name: 'DIAMOND',
+        hp: 1000, // extremely durable
+        color: 'rgb(185, 242, 255)', //bright crystalline blue
+        translucency: 0.8, // mostly transparent, glows when lit
         isSolidForPhysics: true,
         isSolidForPlacementSupport: true,
         isRope: false,
         isVegetation: false,
         isWood: false,
-        droppedItemType: 'rock',
-        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(155, 145, 135)' },
+        droppedItemType: 'diamond',
+        droppedItemConfig: { width: BLOCK_WIDTH * 0.8, height: BLOCK_HEIGHT * 0.8, color: 'rgb(185, 242, 255)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
+    [BLOCK_VEGETATION]: {
+        name: 'VEGETATION',
+        hp: 25,
+        color: 'rgb(80, 180, 80)',
+        translucency: 0.5,
+        isSolidForPhysics: false,
+        isSolidForPlacementSupport: false,
+        isRope: false,
+        isVegetation: true,
+        isWood: false,
+        droppedItemType: 'vegetation',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' },
         isPlayerPlaceableAsMaterial: true,
     },
     [BLOCK_WOOD]: {
@@ -173,34 +201,6 @@ export const BLOCK_PROPERTIES = {
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(160, 110, 70)' },
         isPlayerPlaceableAsMaterial: true,
     },
-    [BLOCK_METAL]: {
-        name: 'METAL',
-        hp: 500,
-        color: 'rgb(190, 190, 200)',
-        translucency: 0.0,
-        isSolidForPhysics: true,
-        isSolidForPlacementSupport: true,
-        isRope: false,
-        isVegetation: false,
-        isWood: false,
-        droppedItemType: 'metal',
-        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(190, 190, 200)' },
-        isPlayerPlaceableAsMaterial: true,
-    },
-        [BLOCK_DIAMOND]: {
-        name: 'DIAMOND',
-        hp: 1000, // extremely durable
-        color: 'rgb(185, 242, 255)', //bright crystalline blue
-        translucency: 0.8, // mostly transparent, glows when lit
-        isSolidForPhysics: true,
-        isSolidForPlacementSupport: true,
-        isRope: false,
-        isVegetation: false,
-        isWood: false,
-        droppedItemType: 'diamond',
-        droppedItemConfig: { width: BLOCK_WIDTH * 0.8, height: BLOCK_HEIGHT * 0.8, color: 'rgb(185, 242, 255)' },
-        isPlayerPlaceableAsMaterial: true,
-    },
     [BLOCK_BONE]: {
         name: 'BONE',
         hp: 120,
@@ -213,6 +213,20 @@ export const BLOCK_PROPERTIES = {
         isWood: false,
         droppedItemType: 'bone',
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(200, 190, 170)' },
+        isPlayerPlaceableAsMaterial: true,
+    },
+    [BLOCK_METAL]: {
+        name: 'METAL',
+        hp: 500,
+        color: 'rgb(190, 190, 200)',
+        translucency: 0.0,
+        isSolidForPhysics: true,
+        isSolidForPlacementSupport: true,
+        isRope: false,
+        isVegetation: false,
+        isWood: false,
+        droppedItemType: 'metal',
+        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(190, 190, 200)' },
         isPlayerPlaceableAsMaterial: true,
     },
     [BLOCK_ROPE]: {
@@ -228,20 +242,6 @@ export const BLOCK_PROPERTIES = {
         droppedItemType: 'vegetation', // drops vegetation when destroyed
         droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(80, 180, 80)' }, // dropped item looks like vegetation
         isPlayerPlaceableAsMaterial: false, // uses vegetation to place
-    },
-    [BLOCK_GRAVEL]: {
-        name: 'GRAVEL',
-        hp: 80,
-        color: 'rgb(165, 155, 145)', // A mix of rock and sand colors
-        translucency: 0.1,
-        isSolidForPhysics: true,
-        isSolidForPlacementSupport: true,
-        isRope: false,
-        isVegetation: false,
-        isWood: false,
-        droppedItemType: 'gravel', // This item contributes to 'rock' inventory
-        droppedItemConfig: { width: BLOCK_WIDTH, height: BLOCK_HEIGHT, color: 'rgb(165, 155, 145)' },
-        isPlayerPlaceableAsMaterial: false, // Not directly placeable
     },
 };
 export const AGING_MATERIAL_CONVERSION_FACTORS = {
@@ -320,7 +320,7 @@ export const TREE_MAX_CANOPY_RADIUS = 4; // max radius canopy can reach
 
 // --- Aging Rules ---
 
-export const AGING_INITIAL_PASSES = 10; // aging passes on initial world generation
+export const AGING_INITIAL_PASSES = 20; // aging passes on initial world generation
 export const AGING_DEFAULT_RING_WEIGHTS = {
     3: 1.0,  // 3x3 ring (immediate neighbours)
     5: 0.3,  // 5x5
@@ -330,7 +330,7 @@ export const AGING_RULES = {
     // STONE -> ROCK
     [BLOCK_STONE]: {
         [BLOCK_ROCK]: {
-            baseProbability: 0.0001,
+            baseProbability: 0.001,
             influences: {
                 [BLOCK_WATER]: 0.05, // Water is a key catalyst
                 [BLOCK_AIR]:   0.03, // Exposure to air
@@ -341,11 +341,11 @@ export const AGING_RULES = {
     // ROCK -> GRAVEL
     [BLOCK_ROCK]: {
         [BLOCK_GRAVEL]: {
-            baseProbability: 0.0003,
+            baseProbability: 0.001,
             influences: {
-                [BLOCK_WATER]: 0.10, // Water is very effective at breaking rock to gravel
-                [BLOCK_AIR]:   0.05,
-                [BLOCK_SAND]:  0.02,
+                [BLOCK_WATER]: 0.05, // Water is very effective at breaking rock to gravel
+                [BLOCK_AIR]:   0.03,
+                [BLOCK_SAND]:  0.01,
             }
         }
     },
@@ -354,8 +354,8 @@ export const AGING_RULES = {
         [BLOCK_SAND]: {
             baseProbability: 0.001,
             influences: {
-                [BLOCK_WATER]: 0.25, // Water is extremely effective at turning gravel to sand
-                [BLOCK_AIR]:   0.05,
+                [BLOCK_WATER]: 0.1, // Water is extremely effective at turning gravel to sand
+                [BLOCK_AIR]:   0.01,
             }
         }
     },
@@ -377,7 +377,7 @@ export const AGING_RULES = {
     // VEG -> decay / grow
     [BLOCK_VEGETATION]: {
         [BLOCK_AIR]: { // Decay
-            baseProbability: 0.05,
+            baseProbability: 0.9,
             // 'isUnlit' will be a special condition
             influences: {
                 [BLOCK_WATER]: 0.05, // Water-logged vegetation dies
