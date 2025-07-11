@@ -58,7 +58,6 @@ function checkForTreeFormation(c, r) {
     for (const offset of neighborOffsets) {
         neighborTypes[offset.key] = World.getBlockType(c + offset.dc, r + offset.dr);
     }
-    // This function is now only called for homogeneous vegetation, so this check is technically redundant but harmless.
     const allEightNeighborsAreVeg = Object.values(neighborTypes).every(type => type === Config.BLOCK_VEGETATION);
     if (allEightNeighborsAreVeg) {
         if (GridCollision.isSolid(c, r + 2) && Math.random() < (Config.AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED ?? 0.02)) {
@@ -93,7 +92,6 @@ export function applyAging(portalRef) {
         return { visualChanges: [] };
     }
     let proposedChanges = [];
-
     // PASS 1: Collect all proposed changes without modifying the grid
     for (let r = 0; r < Config.GRID_ROWS; r++) {
         for (let c = 0; c < Config.GRID_COLS; c++) {
@@ -113,33 +111,21 @@ export function applyAging(portalRef) {
             if (originalType === Config.BLOCK_AIR || originalType === Config.BLOCK_WATER) continue;
             let newType = originalType;
             let changeOccurred = false;
-
             if (areNeighborsHomogeneous(c, r, originalType)) {
-                // This block is surrounded by blocks of the same type.
-                // Diamond Formation Rule
-                // We can check for special "pressure" or "pattern" transformations here.
-
                 if (originalType === Config.BLOCK_STONE) {
-                    // Diamond Formation Rule
                     if (Math.random() < Config.AGING_PROB_DIAMOND_FORMATION) {
                         newType = Config.BLOCK_DIAMOND;
                         changeOccurred = true;
-                        // A change occurred, so we DON'T continue. We fall through to apply it.
                     } else {
-                        // No diamond formed, so we can safely skip the rest of the logic for this block.
                         continue;
                     }
                 } else if (originalType === Config.BLOCK_VEGETATION) {
-                    // Tree Formation Rule - MOVED HERE
                     const treeChanges = checkForTreeFormation(c, r);
                     if (treeChanges) {
-                        // Directly add the multi-block change and skip to the next grid cell
                         proposedChanges.push(...treeChanges);
                         continue;
                     }
                 } else {
-                    // It's a homogeneous block, but not stone or vegetation.
-                    // Nothing to do, so we skip the expensive influence checks.
                     continue;
                 }
             } else {
@@ -149,28 +135,56 @@ export function applyAging(portalRef) {
                     for (const targetTypeStr in blockRules) {
                         const targetType = parseInt(targetTypeStr, 10);
                         const rule = blockRules[targetType];
-                        const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
-                        if (originalType === Config.BLOCK_DIRT && targetType === Config.BLOCK_VEGETATION && !blockIsLit) {
-                            continue; // Don't process vegetation growth rule for unlit dirt
-                        }
-                        if (originalType === Config.BLOCK_VEGETATION && targetType === Config.BLOCK_AIR && blockIsLit) {
-                            continue; // Don't process decay rule for lit vegetation
-                        }
-                        let finalProbability = rule.baseProbability || 0;
-                        finalProbability += calculateInfluenceScore(c, r, rule);
-                        if (Math.random() < finalProbability) {
-                            newType = targetType;
-                            changeOccurred = true;
-                            break;
+                        // for outbound "growth" rules 
+                        if (rule.target !== undefined) {
+                            // This rule is about changing a NEIGHBOR, not the current block.
+                            const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
+                            if (originalType === Config.BLOCK_VEGETATION && !blockIsLit) {
+                                continue; // Don't process growth rule for unlit vegetation
+                            }
+                            // Check immediate neighbors for a valid target
+                            const neighbors = [{dc:0,dr:-1}, {dc:0,dr:1}, {dc:-1,dr:0}, {dc:1,dr:0}];
+                            for (const offset of neighbors) {
+                                const nc = c + offset.dc;
+                                const nr = r + offset.dr;
+                                if (World.getBlockType(nc, nr) === rule.target) {
+                                    // Found a valid neighbor to potentially grow into.
+                                    let finalProbability = rule.baseProbability || 0;
+                                    // Influence is calculated based on the original block's surroundings
+                                    finalProbability += calculateInfluenceScore(c, r, rule);
+                                    if (Math.random() < finalProbability) {
+                                        proposedChanges.push({
+                                            c: nc, r: nr,
+                                            oldBlockType: rule.target, // The old type was Air
+                                            newBlockType: targetType, // The new type is Vegetation
+                                            finalBlockData: null
+                                        });
+                                        // We break after finding one growth to prevent one block
+                                        // from spawning multiple new blocks in a single pass.
+                                        break;
+                                    }
+                                }
+                            }
+                        } else {
+                            // logic for self-transformation rules
+                            const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
+                            if (originalType === Config.BLOCK_DIRT && targetType === Config.BLOCK_VEGETATION && !blockIsLit) {
+                                continue; // Don't process vegetation growth rule for unlit dirt
+                            }
+                            if (originalType === Config.BLOCK_VEGETATION && targetType === Config.BLOCK_AIR && blockIsLit) {
+                                continue; // Don't process decay rule for lit vegetation
+                            }
+                            let finalProbability = rule.baseProbability || 0;
+                            finalProbability += calculateInfluenceScore(c, r, rule);
+                            if (Math.random() < finalProbability) {
+                                newType = targetType;
+                                changeOccurred = true;
+                                break;
+                            }
                         }
                     }
                 }
             }
-
-            // --- Special Pattern-Based Formations are now handled above ---
-            // The old block of code that was here has been removed.
-
-            // --- Apply the Single-Block Change ---
             if (changeOccurred) {
                 proposedChanges.push({
                     c, r,
@@ -181,14 +195,12 @@ export function applyAging(portalRef) {
             }
         }
     }
-
     // PASS 2: Apply all collected changes to the grid
     const appliedChanges = [];
     proposedChanges.forEach(change => {
         const { c, r, newBlockType, oldBlockType } = change;
-        const blockBeforeChange = World.getBlock(c, r); // Get the original block for its properties
+        const blockBeforeChange = World.getBlock(c, r); // Get original block for its properties
         const originalIsPlayerPlaced = (typeof blockBeforeChange === 'object' && blockBeforeChange !== null) ? (blockBeforeChange.isPlayerPlaced ?? false) : false;
-
         // Apply the change to the world grid.
         if (World.setBlock(c, r, newBlockType, originalIsPlayerPlaced)) {
             appliedChanges.push({

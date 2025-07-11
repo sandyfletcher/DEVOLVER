@@ -319,6 +319,7 @@ export const TREE_INITIAL_CANOPY_RADIUS = 2; // block radius of initial canopy v
 export const TREE_MAX_CANOPY_RADIUS = 4; // max radius canopy can reach
 
 // --- Aging Rules ---
+
 export const AGING_INITIAL_PASSES = 10; // aging passes on initial world generation
 export const AGING_DEFAULT_RING_WEIGHTS = {
     3: 1.0,  // 3x3 ring (immediate neighbours)
@@ -358,6 +359,7 @@ export const AGING_RULES = {
             }
         }
     },
+    // DIRT -> SAND / VEG
     [BLOCK_DIRT]: {
         [BLOCK_SAND]: {
             baseProbability: 0.001,
@@ -366,15 +368,14 @@ export const AGING_RULES = {
             }
         },
         [BLOCK_VEGETATION]: {
-            baseProbability: 0.0, // Only grows if lit
-            // 'isLit' will be a special condition checked in the aging manager
+            baseProbability: 0.0, // Only grows if lit — 'isLit' will be a special condition checked in the aging manager
             influences: {
                 [BLOCK_AIR]: 0.10, // Must be exposed to air to grow
             }
         }
     },
+    // VEG -> decay / grow
     [BLOCK_VEGETATION]: {
-        // decay into Air
         [BLOCK_AIR]: { // Decay
             baseProbability: 0.005,
             // 'isUnlit' will be a special condition
@@ -382,9 +383,8 @@ export const AGING_RULES = {
                 [BLOCK_WATER]: 0.05, // Water-logged vegetation dies
             }
         },
-        // grow into adjacent Air
-        [BLOCK_VEGETATION]: { // The key is the NEW block type
-            target: Config.BLOCK_AIR, // Special key: what block type this rule applies TO
+        [BLOCK_VEGETATION]: { // grow into adjacent Air
+            target: BLOCK_AIR, // Special key: what block type this rule applies TO
             baseProbability: 0.02, // 2% base chance to try and spread
             // 'isLit' will be a special condition
             influences: {
@@ -394,7 +394,7 @@ export const AGING_RULES = {
         }
     }
 };
-export const AGING_PROB_DIAMOND_FORMATION = 1 / 9999;
+export const AGING_PROB_DIAMOND_FORMATION = 0.0001;
 export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // chance for vegetation chunk to become tree
 export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.3;
 export const AGING_PROB_TREE_CANOPY_GROW = 0.1;
@@ -699,6 +699,7 @@ export const WEAPON_STATS = {
 };
 
 // --- Projectiles ---
+
 export const PROJECTILE_TYPE_ARROW = 'arrow';
 export const PROJECTILE_STATS = {
     [PROJECTILE_TYPE_ARROW]: {
@@ -886,12 +887,13 @@ export const ENEMY_STATS = {
         fleeDistance_BLOCKS: 4, fleeSpeedFactor: 1.8,
     },
 };
+
 // --- Wave Scripting ---
+
 export const WAVE_START_DELAY = 5.0; // seconds before first wave
 export const EPOCH_DISPLAY_DURATION = 3.0; // seconds epoch text is displayed
 export const MYA_TRANSITION_ANIMATION_DURATION = 8.0; // seconds for the MYA number to animate
 export const AGING_DEFAULT_PASSES_PER_WAVE = 5; // fallback number of aging passes if not specified
-
 export const WAVES = [
     {
         mainWaveNumber: 1,
