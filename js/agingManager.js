@@ -144,6 +144,34 @@ export function applyAging(portalRef) {
             if (blockBeforeChange === null) continue;
             const originalType = (typeof blockBeforeChange === 'object') ? blockBeforeChange.type : blockBeforeChange;
             if (originalType === Config.BLOCK_AIR || originalType === Config.BLOCK_WATER) continue;
+
+            // --- VEGETATION GROWTH LOGIC ---
+            const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
+
+            // 1. Check if the current block is DIRT and meets growth conditions
+            if (originalType === Config.BLOCK_DIRT && blockIsLit) {
+                const blockAboveType = World.getBlockType(c, r - 1);
+
+                // 2. Check if the block directly above is AIR
+                if (blockAboveType === Config.BLOCK_AIR) {
+
+                    // 3. Check the random chance to grow
+                    if (Math.random() < Config.AGING_PROB_DIRT_GROWS_VEGETATION) {
+
+                        // 4. Propose a change for the AIR block ABOVE, not the current DIRT block
+                        proposedChanges.push({
+                            c: c,          // column is the same
+                            r: r - 1,      // row is one above
+                            oldBlockType: Config.BLOCK_AIR,
+                            newBlockType: Config.BLOCK_VEGETATION,
+                            finalBlockData: null
+                        });
+                        // Continue to the next block in the loop to avoid processing other rules on this dirt block
+                        continue;
+                    }
+                }
+            }
+
             let newType = originalType;
             let changeOccurred = false;
             if (areNeighborsHomogeneous(c, r, originalType)) {
@@ -171,7 +199,6 @@ export function applyAging(portalRef) {
                         const targetType = parseInt(targetTypeStr, 10);
                         const rule = blockRules[targetType];
                         if (rule.target !== undefined) {
-                            const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
                             if (originalType === Config.BLOCK_VEGETATION && !blockIsLit) {
                                 continue;
                             }
@@ -194,10 +221,6 @@ export function applyAging(portalRef) {
                                 }
                             }
                         } else {
-                            const blockIsLit = (blockBeforeChange.lightLevel || 0) >= Config.MIN_LIGHT_THRESHOLD;
-                            if (originalType === Config.BLOCK_DIRT && targetType === Config.BLOCK_VEGETATION && !blockIsLit) {
-                                continue;
-                            }
                             if (originalType === Config.BLOCK_VEGETATION && targetType === Config.BLOCK_AIR && blockIsLit) {
                                 continue;
                             }
