@@ -532,7 +532,7 @@ export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
 export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
 export const AUDIO_TRACKS = {
     MENU: 'assets/audio/music/Menu.mp3',
-    pause: 'assets/audio/music/Pause.mp3',
+    pause: 'assets/audio/music/NewPause.mp3',
     gameOver: 'assets/audio/music/GameOver.mp3',
     victory: 'assets/audio/music/Victory.mp3',
     CUTSCENE: 'assets/audio/music/Cutscene.mp3',
