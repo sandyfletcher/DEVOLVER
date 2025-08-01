@@ -367,12 +367,6 @@ export const AGING_RULES = {
                 [BLOCK_WATER]: 0.20,
             }
         },
-        [BLOCK_VEGETATION]: {
-            baseProbability: 0.0, // Only grows if lit — 'isLit' will be a special condition checked in the aging manager
-            influences: {
-                [BLOCK_AIR]: 0.02, // Must be exposed to air to grow
-            }
-        }
     },
     // VEG -> decay / grow
     [BLOCK_VEGETATION]: {
@@ -396,6 +390,7 @@ export const AGING_RULES = {
 };
 export const AGING_PROB_DIAMOND_FORMATION = 0.0001;
 export const AGING_PROB_VEGETATION_TO_WOOD_SURROUNDED = 0.7; // chance for vegetation chunk to become tree
+export const AGING_PROB_DIRT_GROWS_VEGETATION = 0.05; // 5% chance per lit, exposed dirt block per aging pass
 export const AGING_PROB_WOOD_GROWS_WOOD_UP = 0.3;
 export const AGING_PROB_TREE_CANOPY_GROW = 0.1;
 export const AGING_PROB_TREE_CANOPY_DECAY = 0.01;
@@ -532,7 +527,7 @@ export const AUDIO_DEFAULT_UI_VOLUME = 0.6;
 export const AUDIO_DEFAULT_SFX_VOLUME = 0.8;
 export const AUDIO_TRACKS = {
     MENU: 'assets/audio/music/Menu.mp3',
-    pause: 'assets/audio/music/Pause.mp3',
+    pause: 'assets/audio/music/NewPause.mp3',
     gameOver: 'assets/audio/music/GameOver.mp3',
     victory: 'assets/audio/music/Victory.mp3',
     CUTSCENE: 'assets/audio/music/Cutscene.mp3',
